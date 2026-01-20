@@ -157,7 +157,20 @@ export default function ProfileClient() {
         setUserDetails((prev) =>
           prev ? { ...prev, profilePicture: json.secure_url } : prev
         );
-        toast.success("Image uploaded successfully");
+        toast.success(
+          <div className="flex gap-3">
+            <div className="mt-0.5 h-5 w-5 rounded-full bg-green-500/15 flex items-center justify-center">
+              <span className="text-green-600 text-xs">✓</span>
+            </div>
+
+            <div className="flex flex-col gap-0.5">
+              <p className="text-sm font-medium">Profile updated</p>
+              <p className="text-xs text-muted-foreground">
+                Your profile information was saved successfully.
+              </p>
+            </div>
+          </div>
+        );
       } else {
         toast.error("Failed to upload image");
       }
