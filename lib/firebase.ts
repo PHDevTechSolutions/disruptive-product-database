@@ -1,19 +1,25 @@
-// /lib/firebase.ts
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+// lib/firebase.ts
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getFirestore } from "firebase/firestore"; // Import Firestore
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCNonSOohWCFdgL052XUFFZTH1orbP2dH4",
-  authDomain: "taskflow-4605f.firebaseapp.com",
-  projectId: "taskflow-4605f",
-  storageBucket: "taskflow-4605f.firebasestorage.app",
-  messagingSenderId: "558742255762",
-  appId: "1:558742255762:web:5725b5c26f1c6fae9e8e4b",
-  measurementId: "G-9J1LXQ8YZC",
+  apiKey: "AIzaSyDLh9NIhbWwRNDZ530udteUbzpnIarEWOA",
+  authDomain: "product-database-b4975.firebaseapp.com",
+  projectId: "product-database-b4975",
+  storageBucket: "product-database-b4975.firebasestorage.app",
+  messagingSenderId: "681965972013",
+  appId: "1:681965972013:web:c57706c26ea4bc3fbd66a4",
+  measurementId: "G-3NG38E0CF6"
 };
 
-// Initialize Firebase only once
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
-// Export Firestore DB instance
-export const db = getFirestore(app);
+// Initialize Firestore and Analytics
+const db = getFirestore(app);
+const analytics = getAnalytics(app);
+
+// Export Firestore instance
+export { db, analytics };
