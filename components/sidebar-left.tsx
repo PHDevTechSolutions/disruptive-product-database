@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -13,10 +14,11 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, Package } from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
 import { NavUser } from "@/components/nav-user";
+
 
 type UserDetails = {
   Firstname: string;
@@ -27,8 +29,9 @@ type UserDetails = {
 };
 
 export function SidebarLeft() {
-const { state, isMobile } = useSidebar();
+  const { state, isMobile } = useSidebar();
   const { userId } = useUser();
+  const pathname = usePathname(); // ✅ ACTIVE ROUTE
 
   const [user, setUser] = React.useState<UserDetails | null>(null);
 
@@ -68,13 +71,40 @@ const { state, isMobile } = useSidebar();
       <SidebarContent>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-<Link href="/dashboard">
-  <LayoutDashboard />
-  {(isMobile || state === "expanded") && <span>Dashboard</span>}
-</Link>
+            <SidebarMenuButton
+              asChild
+              className={
+                pathname === "/dashboard"
+                  ? "bg-primary text-primary-foreground"
+                  : ""
+              }
+            >
+              <Link href="/dashboard">
+                <LayoutDashboard />
+                {(isMobile || state === "expanded") && (
+                  <span>Dashboard</span>
+                )}
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+
+<SidebarMenuItem>
+  <SidebarMenuButton
+    asChild
+    className={
+      pathname === "/products"
+        ? "bg-primary text-primary-foreground"
+        : ""
+    }
+  >
+    <Link href="/products">
+      <Package />
+      {(isMobile || state === "expanded") && (
+        <span>Products</span>
+      )}
+    </Link>
+  </SidebarMenuButton>
+</SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
 
