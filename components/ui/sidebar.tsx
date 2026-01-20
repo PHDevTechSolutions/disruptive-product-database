@@ -197,12 +197,14 @@ if (isMobile) {
         >
           <button
             onClick={() => setOpenMobile(true)}
-            className="
-              h-2 w-24 rounded-full
-              bg-muted-foreground/40
-              active:scale-95
-              transition
-            "
+              className="
+                h-2 w-24 rounded-full
+                bg-muted-foreground/40
+                active:scale-95
+                transition
+                cursor-pointer
+                hover:bg-muted-foreground/60
+              "
             aria-label="Open sidebar"
           />
         </div>
@@ -233,13 +235,14 @@ if (isMobile) {
           </VisuallyHidden>
         </SheetHeader>
 
-        {/* Drag Handle */}
-        <div
-          className="sticky top-0 z-10 flex justify-center py-3"
-          onClick={() => setOpenMobile(false)}
-        >
-          <div className="h-2 w-24 rounded-full bg-muted-foreground/40" />
-        </div>
+{/* Drag Handle */}
+<div
+  className="sticky top-0 z-10 flex justify-center py-3 cursor-pointer"
+  onClick={() => setOpenMobile(false)}
+>
+  <div className="h-2 w-24 rounded-full bg-muted-foreground/40" />
+</div>
+
 
         {/* SIDEBAR CONTENT */}
         <div className="flex flex-col">
@@ -289,7 +292,7 @@ if (isMobile) {
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm cu"
         >
           {children}
         </div>
