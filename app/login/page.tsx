@@ -1,7 +1,23 @@
-import { GalleryVerticalEnd } from "lucide-react"
-import { LoginForm } from "@/components/login-form"
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { GalleryVerticalEnd } from "lucide-react";
+import { LoginForm } from "@/components/login-form";
+import { useUser } from "@/contexts/UserContext";
+import Image from "next/image";
 
 export default function LoginPage() {
+  const { userId } = useUser();
+  const router = useRouter();
+
+  // ✅ ADD ONLY THIS LOGIC
+  useEffect(() => {
+    if (userId) {
+      router.replace("/dashboard");
+    }
+  }, [userId, router]);
+
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
@@ -22,12 +38,14 @@ export default function LoginPage() {
       </div>
 
       <div className="bg-muted relative hidden lg:block">
-        <img
-          src="/login-wallpaper.jpg"
-          alt="Image"
-          className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-        />
+<Image
+  src="/login-wallpaper.jpg"
+  alt="Image"
+  fill
+  className="object-cover dark:brightness-[0.2] dark:grayscale"
+  priority
+/>
       </div>
     </div>
-  )
+  );
 }

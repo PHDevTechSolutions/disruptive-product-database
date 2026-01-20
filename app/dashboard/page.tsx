@@ -28,6 +28,9 @@ function Dashboard() {
 
   /* ---------------- Fetch User ---------------- */
   useEffect(() => {
+    // ✅ ADD THIS LINE (do nothing while restoring)
+    if (userId === null) return;
+
     if (!userId) {
       router.push("/login");
       return;

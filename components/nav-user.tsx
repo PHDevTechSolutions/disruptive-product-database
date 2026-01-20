@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // Next.js 13 app router
+import { useRouter } from "next/navigation";
+
 import {
   BadgeCheck,
   Bell,
@@ -31,11 +32,21 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
+// ✅ ADD ONLY THIS
+import { useUser } from "@/contexts/UserContext";
 
 export function NavUser({
   user,
@@ -52,6 +63,9 @@ export function NavUser({
   const { isMobile } = useSidebar();
   const router = useRouter();
 
+  // ✅ ADD ONLY THIS
+  const { setUserId } = useUser();
+
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -59,6 +73,7 @@ export function NavUser({
     try {
       const deviceId = localStorage.getItem("deviceId") || "unknown-device";
       const location = null; // add geo-location if needed
+
       await addDoc(collection(db, "activity_logs"), {
         userId,
         email: user.email,
@@ -79,7 +94,10 @@ export function NavUser({
     setIsLoggingOut(true);
     try {
       await logLogoutActivity();
-      localStorage.removeItem("userId");
+
+      // ✅ PROPER LOGOUT (context + localStorage)
+      setUserId(null);
+
       router.replace("/login");
     } finally {
       setIsLoggingOut(false);
@@ -101,14 +119,18 @@ export function NavUser({
                   <AvatarImage src={user.avatar} alt={user.name} />
                   <AvatarFallback className="rounded-lg">CN</AvatarFallback>
                 </Avatar>
+
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium capitalize">{user.name}</span>
+                  <span className="truncate font-medium capitalize">
+                    {user.name}
+                  </span>
                   {user.position && (
                     <span className="truncate text-xs text-muted-foreground">
                       {user.position}
                     </span>
                   )}
                 </div>
+
                 <ChevronsUpDown className="ml-auto size-4" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
@@ -125,8 +147,11 @@ export function NavUser({
                     <AvatarImage src={user.avatar} alt={user.name} />
                     <AvatarFallback className="rounded-lg">EK</AvatarFallback>
                   </Avatar>
+
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium capitalize">{user.name}</span>
+                    <span className="truncate font-medium capitalize">
+                      {user.name}
+                    </span>
                     {user.position && (
                       <span className="truncate text-xs text-muted-foreground">
                         {user.position}
@@ -173,6 +198,7 @@ export function NavUser({
               Are you sure you want to log out?
             </DialogDescription>
           </DialogHeader>
+
           <DialogFooter>
             <Button
               variant="outline"
@@ -181,6 +207,7 @@ export function NavUser({
             >
               Cancel
             </Button>
+
             <Button
               onClick={doLogout}
               disabled={isLoggingOut}
