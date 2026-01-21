@@ -87,8 +87,14 @@ function Dashboard() {
             ) : (
               "Welcome"
             )}
+            
           </h1>
-
+  {/* <Button
+    variant="destructive"
+    onClick={handleLogout}
+  >
+    Logout
+  </Button> */}
         </main>
       </div>
     </SidebarProvider>

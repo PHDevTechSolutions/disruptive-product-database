@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
+import { DrawerTitle } from "@/components/ui/drawer"
+
 import {
   Sheet,
   SheetContent,
@@ -25,6 +27,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+
+import {
+  Drawer,
+  DrawerContent,
+} from "@/components/ui/drawer"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -185,71 +192,53 @@ function Sidebar({
 
 if (isMobile) {
   return (
-    <Sheet open={openMobile} onOpenChange={setOpenMobile}>
-      {/* CLOSED STATE — HANDLE ONLY */}
+    <>
+      {/* CLOSED STATE — GRAY PILL */}
       {!openMobile && (
-        <div
-          className="
-            fixed bottom-0 left-0 right-0 z-40
-            flex justify-center
-            pb-3
-          "
-        >
+        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-3">
           <button
             onClick={() => setOpenMobile(true)}
-              className="
-                h-2 w-24 rounded-full
-                bg-muted-foreground/40
-                active:scale-95
-                transition
-                cursor-pointer
-                hover:bg-muted-foreground/60
-              "
+            className="
+              h-2 w-24 rounded-full
+              bg-muted-foreground/40
+              active:scale-95
+              transition
+              cursor-pointer
+              hover:bg-muted-foreground/60
+            "
             aria-label="Open sidebar"
           />
         </div>
       )}
 
-      {/* OPEN STATE */}
-      <SheetContent
-        side="bottom"
-        data-sidebar="sidebar"
-        data-slot="sidebar"
-        data-mobile="true"
-        className="
-          bg-sidebar text-sidebar-foreground
-          w-full
-          max-h-[85svh]
-          p-0
-          rounded-t-2xl
-          animate-in
-          slide-in-from-bottom
-          duration-300
-          [&>button]:hidden
-        "
-      >
-        {/* REQUIRED FOR RADIX ACCESSIBILITY */}
-        <SheetHeader>
-          <VisuallyHidden>
-            <SheetTitle>Sidebar navigation</SheetTitle>
-          </VisuallyHidden>
-        </SheetHeader>
-
-{/* Drag Handle */}
-<div
-  className="sticky top-0 z-10 flex justify-center py-3 cursor-pointer"
-  onClick={() => setOpenMobile(false)}
+      <Drawer open={openMobile} onOpenChange={setOpenMobile}>
+<DrawerContent
+  className="
+    bg-sidebar text-sidebar-foreground
+    max-h-[85svh]
+    rounded-t-2xl
+    p-0
+  "
 >
-  <div className="h-2 w-24 rounded-full bg-muted-foreground/40" />
-</div>
+  {/* ACCESSIBILITY REQUIRED TITLE */}
+  <VisuallyHidden>
+    <DrawerTitle>Sidebar navigation</DrawerTitle>
+  </VisuallyHidden>
+          {/* DRAG / CLOSE HANDLE */}
+          <div
+            className="sticky top-0 z-10 flex justify-center py-3 cursor-pointer"
+            onClick={() => setOpenMobile(false)}
+          >
+            <div className="h-2 w-24 rounded-full bg-muted-foreground/40" />
+          </div>
 
-
-        {/* SIDEBAR CONTENT */}
-        <div className="flex flex-col">
-          {children}
-        </div>
-      </SheetContent>
-    </Sheet>
+          {/* SIDEBAR CONTENT */}
+          <div className="flex flex-col">
+            {children}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    </>
   )
 }
 
