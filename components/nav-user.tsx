@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 
 import {
   BadgeCheck,
-  Bell,
   ChevronsUpDown,
   LogOut,
 } from "lucide-react";
@@ -45,7 +44,6 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
-// ✅ ADD ONLY THIS
 import { useUser } from "@/contexts/UserContext";
 
 export function NavUser({
@@ -62,17 +60,15 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const router = useRouter();
-
-  // ✅ ADD ONLY THIS
   const { setUserId } = useUser();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  /* ---------------- Logout Activity ---------------- */
   const logLogoutActivity = async () => {
     try {
       const deviceId = localStorage.getItem("deviceId") || "unknown-device";
-      const location = null; // add geo-location if needed
 
       await addDoc(collection(db, "activity_logs"), {
         userId,
@@ -80,7 +76,7 @@ export function NavUser({
         status: "logout",
         timestamp: new Date().toISOString(),
         deviceId,
-        location,
+        location: null,
         browser: navigator.userAgent,
         os: navigator.platform,
         date_created: serverTimestamp(),
@@ -90,115 +86,129 @@ export function NavUser({
     }
   };
 
+  /* ---------------- Logout Action ---------------- */
   const doLogout = async () => {
     setIsLoggingOut(true);
-    try {
-      await logLogoutActivity();
 
-      // ✅ PROPER LOGOUT (context + localStorage)
-      setUserId(null);
+  try {
+    // 🔹 Fire-and-forget logging (DO NOT await)
+    logLogoutActivity().catch(console.error);
 
-      router.replace("/login");
-    } finally {
-      setIsLoggingOut(false);
-      setIsDialogOpen(false);
-    }
-  };
+    // 🔹 Server-side logout (cookie)
+    await fetch("/api/logout", { method: "POST" });
+
+    // 🔹 Client-side cleanup
+    localStorage.removeItem("userId");
+    setUserId(null);
+
+    // 🔹 Redirect MUST happen
+    router.replace("/login");
+  } catch (err) {
+    console.error("Logout failed:", err);
+
+    // 🚨 Even if something fails, force redirect
+    localStorage.removeItem("userId");
+    setUserId(null);
+    router.replace("/login");
+  } finally {
+    setIsLoggingOut(false);
+    setIsDialogOpen(false);
+  }
+};
+
 
   return (
     <>
-<SidebarMenu>
-  <SidebarMenuItem>
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
                 className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
+                <Avatar className="h-8 w-8 rounded-lg">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback className="rounded-lg">
+                    {user.name?.charAt(0) ?? "U"}
+                  </AvatarFallback>
+                </Avatar>
 
-          <Avatar className="h-8 w-8 rounded-lg">
-            <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback className="rounded-lg">
-              {user.name?.charAt(0) ?? "U"}
-            </AvatarFallback>
-          </Avatar>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-medium capitalize">
+                    {user.name}
+                  </span>
+                  {user.position && (
+                    <span className="truncate text-xs text-muted-foreground">
+                      {user.position}
+                    </span>
+                  )}
+                </div>
 
-          <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-medium capitalize">
-              {user.name}
-            </span>
-            {user.position && (
-              <span className="truncate text-xs text-muted-foreground">
-                {user.position}
-              </span>
-            )}
-          </div>
+                <ChevronsUpDown className="ml-auto size-4" />
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
 
-          <ChevronsUpDown className="ml-auto size-4" />
-        </SidebarMenuButton>
-      </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="min-w-[224px] rounded-lg"
+              side={isMobile ? "bottom" : "right"}
+              align="start"
+              sideOffset={4}
+            >
+              {/* USER PREVIEW */}
+              <DropdownMenuLabel className="p-0 font-normal">
+                <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                  <Avatar className="h-8 w-8 rounded-lg">
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback className="rounded-lg">
+                      {user.name?.charAt(0) ?? "U"}
+                    </AvatarFallback>
+                  </Avatar>
 
-      <DropdownMenuContent
-        className="min-w-[224px] rounded-lg"
-        side={isMobile ? "bottom" : "right"}
-        align="start"
-        sideOffset={4}
-      >
-        {/* USER PREVIEW */}
-        <DropdownMenuLabel className="p-0 font-normal">
-          <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-            <Avatar className="h-8 w-8 rounded-lg">
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback className="rounded-lg">
-                {user.name?.charAt(0) ?? "U"}
-              </AvatarFallback>
-            </Avatar>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-medium capitalize">
+                      {user.name}
+                    </span>
+                    {user.position && (
+                      <span className="truncate text-xs text-muted-foreground">
+                        {user.position}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </DropdownMenuLabel>
 
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium capitalize">
-                {user.name}
-              </span>
-              {user.position && (
-                <span className="truncate text-xs text-muted-foreground">
-                  {user.position}
-                </span>
-              )}
-            </div>
-          </div>
-        </DropdownMenuLabel>
+              <DropdownMenuSeparator />
 
-        <DropdownMenuSeparator />
-
-        {/* ACCOUNT */}
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href={`/profile?id=${encodeURIComponent(userId)}`}>
+              {/* ACCOUNT */}
+              <DropdownMenuGroup>
+                <DropdownMenuItem asChild>
+                  <Link href={`/profile?id=${encodeURIComponent(userId)}`}>
                     <div className="flex items-center gap-2 cursor-pointer">
-                <BadgeCheck className="size-4" />
-                <span>Account</span>
-              </div>
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
+                      <BadgeCheck className="size-4" />
+                      <span>Account</span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
 
-        <DropdownMenuSeparator />
+              <DropdownMenuSeparator />
 
-        {/* LOGOUT */}
-        <DropdownMenuItem
-          onClick={() => setIsDialogOpen(true)}
-          className="cursor-pointer"
-          disabled={isLoggingOut}
-        >
-          <LogOut className="size-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  </SidebarMenuItem>
-</SidebarMenu>
+              {/* LOGOUT */}
+              <DropdownMenuItem
+                onClick={() => setIsDialogOpen(true)}
+                className="cursor-pointer"
+                disabled={isLoggingOut}
+              >
+                <LogOut className="size-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
 
-
-      {/* Dialog confirmation */}
+      {/* CONFIRM LOGOUT DIALOG */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
