@@ -1,15 +1,13 @@
 "use client";
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldSeparator,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
@@ -48,12 +46,9 @@ export function LoginForm({
         return;
       }
 
-      // save userId in context
       setUserId(data.userId);
-
-      // ✅ REDIRECT TO DASHBOARD
       router.push("/dashboard");
-    } catch (err) {
+    } catch {
       setError("Something went wrong.");
     } finally {
       setLoading(false);
@@ -63,19 +58,27 @@ export function LoginForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className={cn("flex flex-col gap-6", className)}
+      className={cn(
+        "w-full max-w-md rounded-2xl bg-white/90 backdrop-blur-md p-8 shadow-2xl",
+        className
+      )}
       {...props}
     >
       <FieldGroup>
-        <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Login to your account</h1>
-          <p className="text-muted-foreground text-sm">
-            Enter your email below to login to your account
+        {/* HEADER */}
+        <div className="mb-6 text-center">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            Login to your account
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Disruptive Solutions Inc. · Internal Operations Portal
           </p>
         </div>
 
         {error && (
-          <p className="text-sm text-red-500 text-center">{error}</p>
+          <p className="mb-3 text-sm text-red-600 text-center animate-in fade-in">
+            {error}
+          </p>
         )}
 
         <Field>
@@ -83,6 +86,7 @@ export function LoginForm({
           <Input
             type="email"
             required
+            className="focus-visible:ring-red-500"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -93,18 +97,24 @@ export function LoginForm({
           <Input
             type="password"
             required
+            className="focus-visible:ring-red-500"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </Field>
 
-        <Field>
-          <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
-            {loading ? "Logging in..." : "Login"}
-          </Button>
-        </Field>
+        <Button
+          type="submit"
+          disabled={loading}
+          className="mt-4 h-11 w-full bg-gradient-to-r from-red-600 to-red-700 font-semibold text-white transition-all hover:scale-[1.02] hover:from-red-700 hover:to-red-800"
+        >
+          {loading ? "Signing in..." : "Sign in to Dashboard"}
+        </Button>
+
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Having trouble logging in? Contact your administrator
+        </p>
       </FieldGroup>
     </form>
   );
 }
-
