@@ -3,18 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Always allow these paths
+  // ✅ Allow static assets & system paths
   if (
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico"
+    pathname.startsWith("/favicon.ico") ||
+    pathname.match(/\.(png|jpg|jpeg|gif|webp|svg|ico)$/)
   ) {
     return NextResponse.next();
   }
 
   const isLoginPage = pathname === "/login";
 
-  // Read session cookie
   const session = req.cookies.get("session")?.value;
 
   // ❌ Not logged in → force /login
@@ -31,5 +31,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next|favicon.ico).*)"],
+  matcher: ["/((?!api|_next).*)"],
 };
