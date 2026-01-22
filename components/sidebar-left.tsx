@@ -61,12 +61,18 @@ export function SidebarLeft() {
   return (
     <Sidebar
       collapsible="icon"
-      className="bg-white/90 backdrop-blur-md shadow-2xl border-r border-border/50"
+      className="
+        bg-white/90
+        backdrop-blur-md
+        shadow-2xl
+        border-r
+        border-border/50
+      "
     >
       {/* HEADER */}
       <SidebarHeader className="h-16 px-4 flex items-center">
         {state === "expanded" && (
-          <span className="text-lg font-bold tracking-tight">
+          <span className="text-lg font-bold tracking-tight text-gray-900">
             Inventory
           </span>
         )}
@@ -80,14 +86,26 @@ export function SidebarLeft() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              tooltip="Dashboard"
-              isActive={pathname === "/dashboard"}
+              data-active={pathname === "/dashboard"}
+              className="
+                transition-all
+                hover:bg-red-50
+                hover:text-red-700
+                hover:scale-[1.01]
+                data-[active=true]:bg-gradient-to-r
+                data-[active=true]:from-red-600
+                data-[active=true]:to-red-700
+                data-[active=true]:text-white
+                data-[active=true]:shadow-md
+                data-[active=true]:hover:from-red-700
+                data-[active=true]:hover:to-red-800
+              "
             >
               <Link href="/dashboard">
                 <LayoutDashboard />
-                <span className={state === "collapsed" ? "sr-only" : ""}>
-                  Dashboard
-                </span>
+                {(isMobile || state === "expanded") && (
+                  <span>Dashboard</span>
+                )}
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -96,14 +114,26 @@ export function SidebarLeft() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              tooltip="Products"
-              isActive={pathname === "/products"}
+              data-active={pathname === "/products"}
+              className="
+                transition-all
+                hover:bg-red-50
+                hover:text-red-700
+                hover:scale-[1.01]
+                data-[active=true]:bg-gradient-to-r
+                data-[active=true]:from-red-600
+                data-[active=true]:to-red-700
+                data-[active=true]:text-white
+                data-[active=true]:shadow-md
+                data-[active=true]:hover:from-red-700
+                data-[active=true]:hover:to-red-800
+              "
             >
               <Link href="/products">
                 <Package />
-                <span className={state === "collapsed" ? "sr-only" : ""}>
-                  Products
-                </span>
+                {(isMobile || state === "expanded") && (
+                  <span>Products</span>
+                )}
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -112,14 +142,26 @@ export function SidebarLeft() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              tooltip="Suppliers"
-              isActive={pathname === "/suppliers"}
+              data-active={pathname === "/suppliers"}
+              className="
+                transition-all
+                hover:bg-red-50
+                hover:text-red-700
+                hover:scale-[1.01]
+                data-[active=true]:bg-gradient-to-r
+                data-[active=true]:from-red-600
+                data-[active=true]:to-red-700
+                data-[active=true]:text-white
+                data-[active=true]:shadow-md
+                data-[active=true]:hover:from-red-700
+                data-[active=true]:hover:to-red-800
+              "
             >
               <Link href="/suppliers">
                 <Truck />
-                <span className={state === "collapsed" ? "sr-only" : ""}>
-                  Suppliers
-                </span>
+                {(isMobile || state === "expanded") && (
+                  <span>Suppliers</span>
+                )}
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -132,7 +174,17 @@ export function SidebarLeft() {
       {/* FOOTER */}
       <SidebarFooter className="p-2">
         {user && userId && (
-          <div className="rounded-xl bg-white/80 backdrop-blur-md shadow-lg">
+          <div
+            className="
+              cursor-pointer
+              rounded-xl
+              bg-white/80
+              backdrop-blur-md
+              shadow-lg
+              transition
+              hover:shadow-xl
+            "
+          >
             <NavUser
               user={{
                 name: `${user.Firstname} ${user.Lastname}`.trim() || "Unknown User",
