@@ -1,26 +1,26 @@
 // lib/firebase.ts
-import { initializeApp } from "firebase/app"
+import { initializeApp, getApps, getApp } from "firebase/app"
 import { getAnalytics, isSupported } from "firebase/analytics"
 import { getFirestore } from "firebase/firestore"
 
-// Your web app's Firebase configuration
+// ✅ New Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDLh9NIhbWwRNDZ530udteUbzpnIarEWOA",
-  authDomain: "product-database-b4975.firebaseapp.com",
-  projectId: "product-database-b4975",
-  storageBucket: "product-database-b4975.firebasestorage.app",
-  messagingSenderId: "681965972013",
-  appId: "1:681965972013:web:c57706c26ea4bc3fbd66a4",
-  measurementId: "G-3NG38E0CF6",
+  apiKey: "AIzaSyBcNuHZ_w6c0Qib-NnGyxMtomxIxNOD4p0",
+  authDomain: "disruptive-product-datab-d518f.firebaseapp.com",
+  projectId: "disruptive-product-datab-d518f",
+  storageBucket: "disruptive-product-datab-d518f.firebasestorage.app",
+  messagingSenderId: "130447840889",
+  appId: "1:130447840889:web:e10a1ebd58e61742cea6a8",
+  measurementId: "G-WCNF6TNC3R",
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig)
+// ✅ Prevent re-initialization (important sa Next.js)
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
 
-// Firestore is SSR-safe
+// ✅ Firestore (SSR-safe)
 const db = getFirestore(app)
 
-// ✅ Analytics: browser-only, guarded
+// ✅ Analytics (browser-only, safe)
 let analytics: any = null
 
 if (typeof window !== "undefined") {
@@ -31,4 +31,4 @@ if (typeof window !== "undefined") {
   })
 }
 
-export { db, analytics }
+export { app, db, analytics }

@@ -99,7 +99,7 @@ export function LoginForm({
         </Field>
 
         <Field>
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
             {loading ? "Logging in..." : "Login"}
           </Button>
         </Field>

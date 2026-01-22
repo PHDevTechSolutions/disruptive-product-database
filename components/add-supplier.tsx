@@ -20,8 +20,12 @@ import "react-phone-number-input/style.css";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 import { useUser } from "@/contexts/UserContext";
+
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 /* ---------------- Types ---------------- */
 type UserDetails = {
@@ -29,8 +33,8 @@ type UserDetails = {
   Lastname: string;
   Role: string;
   Email: string;
+  ReferenceID: string; 
 };
-
 
 type AddSupplierProps = {
   open: boolean;
@@ -57,26 +61,27 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
   const [certificates, setCertificates] = useState<string[]>([""]);
 
   /* ---------------- Silent user detection ---------------- */
-useEffect(() => {
-  if (!userId) return;
+  useEffect(() => {
+    if (!userId) return;
 
-  fetch(`/api/users?id=${encodeURIComponent(userId)}`)
-    .then((res) => {
-      if (!res.ok) throw new Error("Failed to fetch user");
-      return res.json();
-    })
-    .then((data) => {
-      setUser({
-        Firstname: data.Firstname ?? "",
-        Lastname: data.Lastname ?? "",
-        Role: data.Role ?? "",
-        Email: data.Email ?? "",
+    fetch(`/api/users?id=${encodeURIComponent(userId)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch user");
+        return res.json();
+      })
+      .then((data) => {
+        setUser({
+          Firstname: data.Firstname ?? "",
+          Lastname: data.Lastname ?? "",
+          Role: data.Role ?? "",
+          Email: data.Email ?? "",
+          ReferenceID: data.ReferenceID ?? "", // ← ADD
+        });
+      })
+      .catch((err) => {
+        console.error("AddSupplier user fetch error:", err);
       });
-    })
-    .catch((err) => {
-      console.error("AddSupplier user fetch error:", err);
-    });
-}, [userId]);
+  }, [userId]);
 
   /* ---------------- Helpers ---------------- */
   const updateList = (
@@ -84,9 +89,7 @@ useEffect(() => {
     index: number,
     value: string,
   ) => {
-    setter((prev) =>
-      prev.map((item, i) => (i === index ? value : item)),
-    );
+    setter((prev) => prev.map((item, i) => (i === index ? value : item)));
   };
 
   const addRowAfter = (
@@ -109,33 +112,90 @@ useEffect(() => {
     );
   };
 
+  const handleSaveSupplier = async () => {
+    try {
+      if (!company || !address) {
+        toast.error("Company and Address are required");
+        return;
+      }
+      if (!user?.ReferenceID) {
+        toast.error("User reference is not loaded yet. Please wait.");
+        return;
+      }
+
+      
+
+      const supplierData = {
+        company,
+        internalCode,
+        address,
+        email,
+        website,
+
+        contacts: contactNames.map((name, index) => ({
+          name,
+          phone: contactNumbers[index] || "",
+        })),
+
+        forteProducts: forteProducts.filter(Boolean),
+        products: products.filter(Boolean),
+        certificates: certificates.filter(Boolean),
+
+        createdBy: userId || null,
+        referenceID: user?.ReferenceID || null,
+        createdAt: serverTimestamp(),
+
+      };
+
+      await addDoc(collection(db, "suppliers"), supplierData);
+
+      toast.success("Supplier saved successfully", {
+        description: company,
+      });
+
+      setCompany("");
+      setInternalCode("");
+      setAddress("");
+      setEmail("");
+      setWebsite("");
+      setContactNames([""]);
+      setContactNumbers([""]);
+      setForteProducts([""]);
+      setProducts([""]);
+      setCertificates([""]);
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error saving supplier:", error);
+      toast.error("Failed to save supplier");
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto px-6">
         <SheetHeader>
           <SheetTitle>Add Supplier</SheetTitle>
-          <SheetDescription>
-            Enter supplier information
-          </SheetDescription>
+          <SheetDescription>Enter supplier information</SheetDescription>
         </SheetHeader>
 
         <Separator className="my-4" />
         {/* ---------------- User Info ---------------- */}
         {user && (
-        <div className="rounded-md border p-3 text-sm space-y-1 bg-muted/40">
+          <div className="rounded-md border p-3 text-sm space-y-1 bg-muted/40">
             <div>
-            <span className="font-medium">Welcome:</span>{" "}
-            {user.Firstname} {user.Lastname}
+              <span className="font-medium">Welcome:</span> {user.Firstname}{" "}
+              {user.Lastname}
             </div>
 
             <div>
-            <span className="font-medium">Role:</span> {user.Role}
+              <span className="font-medium">Role:</span> {user.Role}
             </div>
 
             <div>
-            <span className="font-medium">Email:</span> {user.Email}
+              <span className="font-medium">Email:</span> {user.Email}
             </div>
-        </div>
+          </div>
         )}
         <div className="space-y-6">
           {/* Company */}
@@ -207,17 +267,16 @@ useEffect(() => {
                 />
 
                 <PhoneInput
-                international
-                defaultCountry="PH"
-                countryCallingCodeEditable={false}
-                value={contactNumbers[index]}
-                onChange={(value) =>
+                  international
+                  defaultCountry="PH"
+                  countryCallingCodeEditable={false}
+                  value={contactNumbers[index]}
+                  onChange={(value) =>
                     updateList(setContactNumbers, index, value || "")
-                }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                placeholder="+63 9XX XXX XXXX"
+                  }
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  placeholder="+63 9XX XXX XXXX"
                 />
-
 
                 <div className="flex gap-1">
                   <Button
@@ -281,9 +340,7 @@ useEffect(() => {
                     size="icon"
                     variant="outline"
                     disabled={forteProducts.length === 1}
-                    onClick={() =>
-                      removeRow(setForteProducts, index)
-                    }
+                    onClick={() => removeRow(setForteProducts, index)}
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
@@ -365,9 +422,7 @@ useEffect(() => {
                     size="icon"
                     variant="outline"
                     disabled={certificates.length === 1}
-                    onClick={() =>
-                      removeRow(setCertificates, index)
-                    }
+                    onClick={() => removeRow(setCertificates, index)}
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
@@ -386,9 +441,12 @@ useEffect(() => {
             Cancel
           </Button>
 
-          <Button 
+          <Button
             type="button"
-            className="cursor-pointer">
+            className="cursor-pointer"
+            onClick={handleSaveSupplier}
+            disabled={!user?.ReferenceID}
+          >
             Save Supplier
           </Button>
         </SheetFooter>
