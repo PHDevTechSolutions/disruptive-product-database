@@ -4,10 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Drawer, DrawerContent } from "@/components/ui/drawer";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { DrawerTitle } from "@/components/ui/drawer";
-
 import { LayoutDashboard, Package, Truck } from "lucide-react";
 
 import { useSidebar } from "@/components/ui/sidebar";
@@ -23,7 +19,7 @@ type UserDetails = {
 };
 
 export function SidebarBottom() {
-  const { isMobile, openMobile, setOpenMobile } = useSidebar();
+  const { isMobile } = useSidebar();
   const { userId } = useUser();
   const pathname = usePathname();
 
@@ -56,140 +52,74 @@ export function SidebarBottom() {
   if (!isMobile) return null;
 
   return (
-    <>
-      {/* ================= COLLAPSED BOTTOM BAR (ICON ONLY, NAVIGATES) ================= */}
-      {!openMobile && (
-        <div
-          className="
-            fixed
-            bottom-0
-            left-0
-            right-0
-            z-40
-            flex
-            justify-around
-            border-t
-            border-border/50
-            bg-white/95
-            backdrop-blur-md
-            py-2
-            md:hidden
-          "
+    <div
+      className="
+        fixed bottom-0 left-0 right-0 z-40
+        border-t border-border/50
+        bg-white/95 backdrop-blur-md
+        md:hidden
+      "
+    >
+      {/* NAV ICONS + LABELS */}
+      <div className="flex justify-around py-2">
+        <Link
+          href="/dashboard"
+          className={`flex flex-col items-center gap-1 text-xs ${
+            pathname === "/dashboard" ? "text-red-600" : "text-gray-600"
+          }`}
         >
-          <Link
-            href="/dashboard"
-            onClick={() => setOpenMobile(false)}
-            className={`flex items-center justify-center ${
-              pathname === "/dashboard" ? "text-red-600" : "text-gray-600"
-            }`}
-            aria-label="Go to Dashboard"
-          >
-            <LayoutDashboard className="h-6 w-6" />
-          </Link>
+          <LayoutDashboard className="h-5 w-5" />
+          <span>Dashboard</span>
+        </Link>
 
-          <Link
-            href="/products"
-            onClick={() => setOpenMobile(false)}
-            className={`flex items-center justify-center ${
-              pathname === "/products" ? "text-red-600" : "text-gray-600"
-            }`}
-            aria-label="Go to Products"
-          >
-            <Package className="h-6 w-6" />
-          </Link>
+        <Link
+          href="/products"
+          className={`flex flex-col items-center gap-1 text-xs ${
+            pathname === "/products" ? "text-red-600" : "text-gray-600"
+          }`}
+        >
+          <Package className="h-5 w-5" />
+          <span>Products</span>
+        </Link>
 
-          <Link
-            href="/suppliers"
-            onClick={() => setOpenMobile(false)}
-            className={`flex items-center justify-center ${
-              pathname === "/suppliers" ? "text-red-600" : "text-gray-600"
-            }`}
-            aria-label="Go to Suppliers"
+        <Link
+          href="/suppliers"
+          className={`flex flex-col items-center gap-1 text-xs ${
+            pathname === "/suppliers" ? "text-red-600" : "text-gray-600"
+          }`}
+        >
+          <Truck className="h-5 w-5" />
+          <span>Suppliers</span>
+        </Link>
+      </div>
+
+      {/* USER */}
+      {user && userId && (
+        <div className="p-2 border-t">
+          <div
+            className="
+              rounded-xl
+              bg-white/80
+              backdrop-blur-md
+              shadow-lg
+              transition
+              hover:shadow-xl
+            "
           >
-            <Truck className="h-6 w-6" />
-          </Link>
+            <NavUser
+              user={{
+                name:
+                  `${user.Firstname} ${user.Lastname}`.trim() ||
+                  "Unknown User",
+                position: user.Role,
+                email: user.Email,
+                avatar: user.profilePicture || "/avatars/shadcn.jpg",
+              }}
+              userId={userId}
+            />
+          </div>
         </div>
       )}
-
-      {/* ================= EXPANDED DRAWER ================= */}
-      <Drawer open={openMobile} onOpenChange={setOpenMobile}>
-        <DrawerContent
-          className="
-            bg-white/95
-            backdrop-blur-md
-            shadow-2xl
-            border-t
-            border-border/50
-            rounded-t-2xl
-            max-h-[85svh]
-            p-0
-          "
-        >
-          <VisuallyHidden>
-            <DrawerTitle>Bottom navigation</DrawerTitle>
-          </VisuallyHidden>
-
-          {/* HEADER */}
-          <div className="h-14 px-4 flex items-center justify-center border-b">
-            <span className="text-base font-semibold tracking-tight text-gray-900">
-              Inventory
-            </span>
-          </div>
-
-          {/* CONTENT */}
-          <div className="px-2 py-2 space-y-1">
-            <Link
-              href="/dashboard"
-              onClick={() => setOpenMobile(false)}
-              className={`
-                flex items-center gap-3 rounded-md p-3 transition
-                ${
-                  pathname === "/dashboard"
-                    ? "bg-red-600 text-white"
-                    : "hover:bg-red-50 hover:text-red-700"
-                }
-              `}
-            >
-              <LayoutDashboard />
-              <span>Dashboard</span>
-            </Link>
-
-            <Link
-              href="/products"
-              onClick={() => setOpenMobile(false)}
-              className={`
-                flex items-center gap-3 rounded-md p-3 transition
-                ${
-                  pathname === "/products"
-                    ? "bg-red-600 text-white"
-                    : "hover:bg-red-50 hover:text-red-700"
-                }
-              `}
-            >
-              <Package />
-              <span>Products</span>
-            </Link>
-
-            <Link
-              href="/suppliers"
-              onClick={() => setOpenMobile(false)}
-              className={`
-                flex items-center gap-3 rounded-md p-3 transition
-                ${
-                  pathname === "/suppliers"
-                    ? "bg-red-600 text-white"
-                    : "hover:bg-red-50 hover:text-red-700"
-                }
-              `}
-            >
-              <Truck />
-              <span>Suppliers</span>
-            </Link>
-          </div>
-
-
-        </DrawerContent>
-      </Drawer>
-    </>
+    </div>
   );
 }
