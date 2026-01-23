@@ -85,18 +85,18 @@ export function NavUser({
     try {
       logLogoutActivity().catch(console.error);
       await fetch("/api/logout", { method: "POST" });
-
-      localStorage.removeItem("userId");
-      setUserId(null);
-      router.replace("/login");
     } catch (err) {
       console.error("Logout failed:", err);
-      localStorage.removeItem("userId");
-      setUserId(null);
-      router.replace("/login");
     } finally {
+      // 🔥 HARD CLEAN — IMPORTANT FIX
+      localStorage.removeItem("userid"); // ✅ CORRECT KEY
+      localStorage.removeItem("deviceId"); // optional
+      setUserId(null);
+
       setIsLoggingOut(false);
       setIsDialogOpen(false);
+
+      router.replace("/login");
     }
   };
 
@@ -127,8 +127,6 @@ export function NavUser({
                     </span>
                   )}
                 </div>
-
-                {/* ⛔ collapsible icon REMOVED */}
               </SidebarMenuButton>
             </DropdownMenuTrigger>
 
