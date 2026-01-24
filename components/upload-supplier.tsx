@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import * as XLSX from "xlsx";
+
 
 import {
   Dialog,
@@ -21,6 +22,8 @@ import { db } from "@/lib/firebase";
 import {
   collection,
   addDoc,
+  updateDoc,
+  doc,
   serverTimestamp,
   getDocs,
 } from "firebase/firestore";
@@ -48,6 +51,37 @@ type ExcelRow = {
   "Certificate(s)"?: string;
 };
 
+/* ---------------- Supplier Code Helpers ---------------- */
+const normalizeCompanyPrefix = (name: string) => {
+  return name
+    .replace(/[^a-zA-Z ]/g, "")
+    .split(" ")
+    .filter(
+      (w) =>
+        w &&
+        !["INC", "INCORPORATED", "CORP", "CORPORATION", "LTD", "CO"].includes(
+          w.toUpperCase(),
+        ),
+    )
+    .map((w) => w[0].toUpperCase())
+    .join("")
+    .slice(0, 4);
+};
+
+const generateAlphaNumeric = (length = 6) => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return result;
+};
+
+const generateSupplierCode = (companyName: string) => {
+  const prefix = normalizeCompanyPrefix(companyName) || "COMP";
+  return `${prefix}-SUPP-${generateAlphaNumeric(6)}`;
+};
+
 /* ---------------- Component ---------------- */
 function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   const { userId } = useUser();
@@ -57,6 +91,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
   const [rows, setRows] = useState<ExcelRow[]>([]);
   const [dragActive, setDragActive] = useState(false);
+
+  /* ✅ file input ref (ADDED) */
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   /* ---------------- Fetch user ---------------- */
   useEffect(() => {
@@ -77,7 +114,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = XLSX.utils.sheet_to_json(sheet) as ExcelRow[];
+const data = XLSX.utils.sheet_to_json(sheet, {
+  defval: "",
+}) as ExcelRow[];
 
     if (!data.length) {
       toast.error("Excel file is empty");
@@ -106,96 +145,155 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     readExcel(file);
   };
 
+  /* ✅ CLICK FILE PICKER (ADDED) */
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
+      toast.error("Invalid file type. Only Excel or CSV allowed.");
+      return;
+    }
+
+    readExcel(file);
+  };
+
   /* ---------------- Confirm Upload ---------------- */
-  const handleConfirmUpload = async () => {
-    if (!rows.length) {
-      toast.error("No data to upload");
-      return;
-    }
+const handleConfirmUpload = async () => {
+  if (!rows.length) {
+    toast.error("No data to upload");
+    return;
+  }
 
-    if (!user?.ReferenceID) {
-      toast.error("User reference not loaded");
-      return;
-    }
+  if (!user?.ReferenceID) {
+    toast.error("User reference not loaded");
+    return;
+  }
 
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const snap = await getDocs(collection(db, "suppliers"));
-      const existing = new Set(
-        snap.docs
-          .filter((d) => d.data().isActive !== false)
-          .map((d) => d.data().company?.toLowerCase()),
-      );
+    const snap = await getDocs(collection(db, "suppliers"));
 
-      let inserted = 0;
-      let skipped = 0;
+    // 🔑 company(lowercase) → { id, isActive }
+    const supplierMap = new Map<
+      string,
+      { id: string; isActive: boolean }
+    >();
 
-      for (const row of rows) {
-        const company = String(row["Company Name"] || "").trim();
-        if (!company || existing.has(company.toLowerCase())) {
-          skipped++;
-          continue;
-        }
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      if (!data.company) return;
 
-        const contactNames = row["Contact Name(s)"]
-          ? row["Contact Name(s)"].split("|").map((v) => v.trim())
-          : [];
+      supplierMap.set(data.company.toLowerCase(), {
+        id: d.id,
+        isActive: data.isActive !== false,
+      });
+    });
 
-        const contactPhones = row["Phone Number(s)"]
-          ? row["Phone Number(s)"].split("|").map((v) => v.trim())
-          : [];
+    let inserted = 0;
+    let skipped = 0;
+    let reactivated = 0;
 
-        const contacts = contactNames.map((name, i) => ({
-          name,
-          phone: contactPhones[i] || "",
-        }));
-
-        await addDoc(collection(db, "suppliers"), {
-          company,
-          internalCode: row["Internal Code"] || "",
-          addresses: row.Addresses
-            ? row.Addresses.split("|").map((v) => v.trim())
-            : [],
-          emails: row.Emails
-            ? row.Emails.split("|").map((v) => v.trim())
-            : [],
-          website: row.Website || "",
-
-          contacts,
-          forteProducts: row["Forte Product(s)"]
-            ? row["Forte Product(s)"].split("|").map((v) => v.trim())
-            : [],
-          products: row["Product(s)"]
-            ? row["Product(s)"].split("|").map((v) => v.trim())
-            : [],
-          certificates: row["Certificate(s)"]
-            ? row["Certificate(s)"].split("|").map((v) => v.trim())
-            : [],
-
-          createdBy: userId,
-          referenceID: user.ReferenceID,
-          isActive: true,
-          createdAt: serverTimestamp(),
-        });
-
-        existing.add(company.toLowerCase());
-        inserted++;
+    for (const row of rows) {
+const company = String(
+  row["Company Name"] ??
+  (row as any)["Company"] ??
+  (row as any)["company name"] ??
+  (row as any)["company"] ??
+  ""
+).trim();
+      if (!company) {
+        skipped++;
+        continue;
       }
 
-      toast.success("Upload completed", {
-        description: `Inserted: ${inserted}, Skipped: ${skipped}`,
+      const key = company.toLowerCase();
+      const existing = supplierMap.get(key);
+
+      // 🔴 EXISTING & ACTIVE → SKIP
+      if (existing?.isActive) {
+        skipped++;
+        continue;
+      }
+
+      // 🔁 EXISTING BUT INACTIVE → REACTIVATE
+      if (existing && !existing.isActive) {
+        await updateDoc(doc(db, "suppliers", existing.id), {
+          isActive: true,
+          updatedAt: serverTimestamp(),
+        });
+
+        supplierMap.set(key, { ...existing, isActive: true });
+        reactivated++;
+        continue;
+      }
+
+      // 🟢 NEW SUPPLIER → INSERT
+      const contactNames = row["Contact Name(s)"]
+        ? row["Contact Name(s)"].split("|").map((v) => v.trim())
+        : [];
+
+      const contactPhones = row["Phone Number(s)"]
+        ? row["Phone Number(s)"].split("|").map((v) => v.trim())
+        : [];
+
+      const contacts = contactNames.map((name, i) => ({
+        name,
+        phone: contactPhones[i] || "",
+      }));
+
+      await addDoc(collection(db, "suppliers"), {
+        company,
+        companyCode: generateSupplierCode(company),
+        internalCode: row["Internal Code"] || "",
+        addresses: row.Addresses
+          ? row.Addresses.split("|").map((v) => v.trim())
+          : [],
+        emails: row.Emails
+          ? row.Emails.split("|").map((v) => v.trim())
+          : [],
+        website: row.Website || "",
+        contacts,
+        forteProducts: row["Forte Product(s)"]
+          ? row["Forte Product(s)"].split("|").map((v) => v.trim())
+          : [],
+        products: row["Product(s)"]
+          ? row["Product(s)"].split("|").map((v) => v.trim())
+          : [],
+        certificates: row["Certificate(s)"]
+          ? row["Certificate(s)"].split("|").map((v) => v.trim())
+          : [],
+        createdBy: userId,
+        referenceID: user.ReferenceID,
+        isActive: true,
+        createdAt: serverTimestamp(),
       });
 
-      setRows([]);
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-      toast.error("Upload failed");
-    } finally {
-      setLoading(false);
+      supplierMap.set(key, { id: "new", isActive: true });
+      inserted++;
     }
-  };
+
+if (inserted === 0 && reactivated === 0) {
+  toast.warning("No suppliers uploaded", {
+    description: "All rows were skipped (duplicates or invalid data)",
+  });
+} else {
+  toast.success("Upload completed", {
+    description: `Inserted: ${inserted}, Reactivated: ${reactivated}, Skipped: ${skipped}`,
+  });
+}
+
+
+    setRows([]);
+    onOpenChange(false);
+  } catch (err) {
+    console.error(err);
+    toast.error("Upload failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   /* ---------------- UI ---------------- */
   return (
@@ -207,8 +305,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
         <Separator />
 
-        {/* DROP ZONE */}
+        {/* ✅ CLICK + DRAG ZONE */}
         <div
+          onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => {
             e.preventDefault();
             setDragActive(true);
@@ -218,13 +317,20 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           className={`border-2 border-dashed rounded-md p-6 text-center text-sm cursor-pointer
             ${dragActive ? "border-primary bg-muted/40" : "border-muted"}`}
         >
-          Drag & drop Excel file here
+          Click or drag & drop Excel file here
           <div className="text-xs text-muted-foreground mt-1">
             (.xlsx, .xls, .csv)
           </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
         </div>
 
-        {/* PREVIEW WITH HORIZONTAL SCROLL */}
         {rows.length > 0 && (
           <div className="mt-4 border rounded-md overflow-x-auto max-h-[300px]">
             <table className="min-w-[1400px] text-sm">
@@ -244,7 +350,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
               </thead>
               <tbody>
                 {rows.map((row, i) => (
-                  <tr key={i} className="border-b last:border-b-0">
+                  <tr key={i}>
                     <td className="p-2">{row["Company Name"] || "-"}</td>
                     <td className="p-2">{row["Internal Code"] || "-"}</td>
                     <td className="p-2">{row.Addresses || "-"}</td>
