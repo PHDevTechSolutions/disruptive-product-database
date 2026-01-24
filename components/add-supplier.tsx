@@ -58,9 +58,10 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
 
   /* ---------------- Base Fields ---------------- */
   const [company, setCompany] = useState("");
+  const [companyCode, setCompanyCode] = useState("");
   const [internalCode, setInternalCode] = useState("");
-  const [address, setAddress] = useState("");
-  const [email, setEmail] = useState("");
+  const [addresses, setAddresses] = useState<string[]>([""]);
+  const [emails, setEmails] = useState<string[]>([""]);
   const [website, setWebsite] = useState("");
 
   /* ---------------- Multi Fields ---------------- */
@@ -123,19 +124,57 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
     checkDuplicateCompany();
   }, [company]);
 
-  /* ---------------- EMAIL VALIDATION ---------------- */
+  /* ---------------- AUTO GENERATE SUPPLIER CODE ---------------- */
   useEffect(() => {
-    if (!email) {
-      setEmailError("");
+    if (!company.trim()) {
+      setCompanyCode("");
       return;
     }
 
-    if (!email.includes("@")) {
-      setEmailError("Invalid email format");
+    setCompanyCode(generateSupplierCode(company));
+  }, [company]);
+
+  /* ---------------- EMAIL ARRAY VALIDATION ---------------- */
+  useEffect(() => {
+    const invalid = emails.some((e) => e && !e.includes("@"));
+
+    if (invalid) {
+      setEmailError("One or more emails are invalid");
     } else {
       setEmailError("");
     }
-  }, [email]);
+  }, [emails]);
+
+  /* ---------------- Company Code Helpers ---------------- */
+  const normalizeCompanyPrefix = (name: string) => {
+    return name
+      .replace(/[^a-zA-Z ]/g, "")
+      .split(" ")
+      .filter(
+        (w) =>
+          w &&
+          !["INC", "INCORPORATED", "CORP", "CORPORATION", "LTD", "CO"].includes(
+            w.toUpperCase(),
+          ),
+      )
+      .map((w) => w[0].toUpperCase())
+      .join("")
+      .slice(0, 4);
+  };
+
+  const generateAlphaNumeric = (length = 6) => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return result;
+  };
+
+  const generateSupplierCode = (companyName: string) => {
+    const prefix = normalizeCompanyPrefix(companyName) || "COMP";
+    return `${prefix}-SUPP-${generateAlphaNumeric(6)}`;
+  };
   /* ---------------- Helpers ---------------- */
   const updateList = (
     setter: React.Dispatch<React.SetStateAction<string[]>>,
@@ -167,8 +206,8 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
 
   const handleSaveSupplier = async () => {
     try {
-      if (!company || !address) {
-        toast.error("Company and Address are required");
+      if (!company || addresses.every((a) => !a.trim())) {
+        toast.error("Company and at least one Address are required");
         return;
       }
       if (!user?.ReferenceID) {
@@ -178,9 +217,10 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
 
       const supplierData = {
         company,
+        companyCode,
         internalCode,
-        address,
-        email,
+        addresses: addresses.filter(Boolean),
+        emails: emails.filter(Boolean),
         website,
 
         contacts: contactNames.map((name, index) => ({
@@ -206,8 +246,8 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
 
       setCompany("");
       setInternalCode("");
-      setAddress("");
-      setEmail("");
+      setAddresses([""]);
+      setEmails([""]);
       setWebsite("");
       setContactNames([""]);
       setContactNumbers([""]);
@@ -262,6 +302,16 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
             )}
           </div>
 
+          {/* Supplier Code */}
+          <div className="space-y-1">
+            <Label>Supplier Code</Label>
+            <Input
+              value={companyCode}
+              disabled
+              className="opacity-100 cursor-not-allowed bg-background text-foreground"
+            />
+          </div>
+
           {/* Internal Code */}
           <div className="space-y-1">
             <Label>Internal Code (optional)</Label>
@@ -272,25 +322,90 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
             />
           </div>
 
-          {/* Address */}
-          <div className="space-y-1">
-            <Label>Address</Label>
-            <Textarea
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Full address"
-            />
+          {/* Addresses */}
+          <div className="space-y-3">
+            <Label>Addresses</Label>
+
+            {addresses.map((addr, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-[1fr_auto] gap-2 items-start"
+              >
+                <Textarea
+                  value={addr}
+                  onChange={(e) =>
+                    updateList(setAddresses, index, e.target.value)
+                  }
+                  placeholder="Full address"
+                />
+
+                <div className="flex gap-1 pt-2">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="cursor-pointer"
+                    onClick={() => addRowAfter(setAddresses, index)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="cursor-pointer"
+                    disabled={addresses.length === 1}
+                    onClick={() => removeRow(setAddresses, index)}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Email */}
-          <div className="space-y-1">
-            <Label>Email</Label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="company@email.com"
-            />
+          {/* Emails */}
+          <div className="space-y-3">
+            <Label>Emails</Label>
+
+            {emails.map((mail, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-[1fr_auto] gap-2 items-center"
+              >
+                <Input
+                  type="email"
+                  value={mail}
+                  placeholder="company@email.com"
+                  onChange={(e) => updateList(setEmails, index, e.target.value)}
+                />
+
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="cursor-pointer"
+                    onClick={() => addRowAfter(setEmails, index)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="cursor-pointer"
+                    disabled={emails.length === 1}
+                    onClick={() => removeRow(setEmails, index)}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+
             {emailError && <p className="text-sm text-red-600">{emailError}</p>}
           </div>
 

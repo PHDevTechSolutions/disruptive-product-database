@@ -126,10 +126,10 @@ export default function ProfileClient() {
     setUploading(true);
     const data = new FormData();
     data.append("file", file);
-    data.append("upload_preset", "Xchire");
+    data.append("upload_preset", "disruptive-product-database");
 
     try {
-      const res = await fetch("https://api.cloudinary.com/v1_1/dhczsyzcz/image/upload", {
+      const res = await fetch("https://api.cloudinary.com/v1_1/dkzzvex4k/image/upload", {
         method: "POST",
         body: data,
       });

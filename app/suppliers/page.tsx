@@ -37,8 +37,8 @@ type Supplier = {
   id: string;
   company: string;
   internalCode?: string;
-  address: string;
-  email?: string;
+  addresses: string[];
+  emails?: string[];
   website?: string;
   contacts?: {
     name: string;
@@ -66,9 +66,8 @@ export default function Suppliers() {
   const [deleteSupplierOpen, setDeleteSupplierOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
-    null,
-  );
+  const [selectedSupplier, setSelectedSupplier] =
+    useState<Supplier | null>(null);
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
@@ -141,8 +140,8 @@ export default function Suppliers() {
     const searchMatch =
       s.company.toLowerCase().includes(keyword) ||
       s.internalCode?.toLowerCase().includes(keyword) ||
-      s.address.toLowerCase().includes(keyword) ||
-      s.email?.toLowerCase().includes(keyword) ||
+      s.addresses?.some((a) => a.toLowerCase().includes(keyword)) ||
+      s.emails?.some((e) => e.toLowerCase().includes(keyword)) ||
       s.contacts?.some(
         (c) =>
           c.name.toLowerCase().includes(keyword) ||
@@ -157,7 +156,9 @@ export default function Suppliers() {
           ?.toLowerCase()
           .includes(filters.internalCode.toLowerCase())) &&
       (!filters.email ||
-        s.email?.toLowerCase().includes(filters.email.toLowerCase())) &&
+        s.emails?.some((e) =>
+          e.toLowerCase().includes(filters.email.toLowerCase()),
+        )) &&
       (filters.hasContacts === null ||
         (filters.hasContacts
           ? s.contacts && s.contacts.length > 0
@@ -181,8 +182,8 @@ export default function Suppliers() {
     const headers = [
       "Company",
       "Internal Code",
-      "Address",
-      "Email",
+      "Addresses",
+      "Emails",
       "Website",
       "Contact Names",
       "Contact Phones",
@@ -194,8 +195,8 @@ export default function Suppliers() {
     const rows = filteredSuppliers.map((s) => [
       s.company,
       s.internalCode ?? "",
-      s.address,
-      s.email ?? "",
+      s.addresses?.join(" | ") ?? "",
+      s.emails?.join(" | ") ?? "",
       s.website ?? "",
       s.contacts?.map((c) => c.name).join(" | ") ?? "",
       s.contacts?.map((c) => c.phone).join(" | ") ?? "",
@@ -254,7 +255,6 @@ export default function Suppliers() {
             Filter
           </Button>
 
-          {/* ✅ DOWNLOAD CSV (EXCEL GREEN) */}
           <Button
             onClick={handleDownloadCSV}
             className="w-full md:w-auto cursor-pointer bg-green-600 hover:bg-green-700 text-white"
@@ -273,8 +273,8 @@ export default function Suppliers() {
                 <TableHead>Actions</TableHead>
                 <TableHead>Company Name</TableHead>
                 <TableHead>Internal Code</TableHead>
-                <TableHead>Full Address</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>Addresses</TableHead>
+                <TableHead>Emails</TableHead>
                 <TableHead>Website</TableHead>
                 <TableHead>Contact Name(s)</TableHead>
                 <TableHead>Phone Number(s)</TableHead>
@@ -323,9 +323,9 @@ export default function Suppliers() {
                     <TableCell>{s.company}</TableCell>
                     <TableCell>{s.internalCode || "-"}</TableCell>
                     <TableCell className="max-w-xs truncate">
-                      {s.address}
+                      {s.addresses?.join(", ") || "-"}
                     </TableCell>
-                    <TableCell>{s.email || "-"}</TableCell>
+                    <TableCell>{s.emails?.join(", ") || "-"}</TableCell>
                     <TableCell>{s.website || "-"}</TableCell>
                     <TableCell>
                       {s.contacts?.map((c) => c.name).join(", ") || "-"}
