@@ -193,6 +193,15 @@ export default function Suppliers() {
     currentPage * itemsPerPage,
   );
 
+  /* ---------------- Clamp Invalid Page on Resize / Pagination ---------------- */
+useEffect(() => {
+  if (currentPage > totalPages && totalPages > 0) {
+    setCurrentPage(1);
+  }
+}, [itemsPerPage, totalPages]);
+
+  
+
   /* ---------------- Download CSV ---------------- */
   const handleDownloadCSV = () => {
     if (filteredSuppliers.length === 0) return;
