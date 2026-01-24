@@ -194,13 +194,11 @@ export default function Suppliers() {
   );
 
   /* ---------------- Clamp Invalid Page on Resize / Pagination ---------------- */
-useEffect(() => {
-  if (currentPage > totalPages && totalPages > 0) {
-    setCurrentPage(1);
-  }
-}, [itemsPerPage, totalPages]);
-
-  
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [itemsPerPage, totalPages]);
 
   /* ---------------- Download CSV ---------------- */
   const handleDownloadCSV = () => {
@@ -249,9 +247,8 @@ useEffect(() => {
     URL.revokeObjectURL(url);
   };
 
-return (
-  <div
-    className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
+  return (
+    <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
       <SidebarTrigger className="hidden md:flex" />
 
       {/* HEADER */}
@@ -321,6 +318,7 @@ return (
             ) : (
               paginatedSuppliers.map((s) => (
                 <TableRow key={s.id}>
+                  {/* ACTIONS */}
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -347,22 +345,97 @@ return (
                     </div>
                   </TableCell>
 
-                  <TableCell>{s.company}</TableCell>
-                  <TableCell>{s.internalCode || "-"}</TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {s.addresses?.join(", ") || "-"}
+                  {/* COMPANY */}
+                  <TableCell className="whitespace-normal break-words">
+                    {s.company}
                   </TableCell>
-                  <TableCell>{s.emails?.join(", ") || "-"}</TableCell>
-                  <TableCell>{s.website || "-"}</TableCell>
-                  <TableCell>
-                    {s.contacts?.map((c) => c.name).join(", ") || "-"}
+
+                  {/* INTERNAL CODE */}
+                  <TableCell className="whitespace-normal break-words">
+                    {s.internalCode || "-"}
                   </TableCell>
-                  <TableCell>
-                    {s.contacts?.map((c) => c.phone).join(", ") || "-"}
+
+                  {/* ADDRESSES */}
+                  <TableCell className="whitespace-normal break-words">
+                    {s.addresses?.length
+                      ? s.addresses.length === 1
+                        ? s.addresses[0]
+                        : s.addresses.map((item, i) => (
+                            <div key={i}>{`${i + 1}. ${item}`}</div>
+                          ))
+                      : "-"}
                   </TableCell>
-                  <TableCell>{s.forteProducts?.join(", ") || "-"}</TableCell>
-                  <TableCell>{s.products?.join(", ") || "-"}</TableCell>
-                  <TableCell>{s.certificates?.join(", ") || "-"}</TableCell>
+
+                  {/* EMAILS */}
+                  <TableCell className="whitespace-normal break-words">
+                    {s.emails?.length
+                      ? s.emails.length === 1
+                        ? s.emails[0]
+                        : s.emails.map((item, i) => (
+                            <div key={i}>{`${i + 1}. ${item}`}</div>
+                          ))
+                      : "-"}
+                  </TableCell>
+
+                  {/* WEBSITE */}
+                  <TableCell className="whitespace-normal break-words">
+                    {s.website || "-"}
+                  </TableCell>
+
+                  {/* CONTACT NAMES */}
+                  <TableCell className="whitespace-normal break-words">
+                    {s.contacts?.length
+                      ? s.contacts.length === 1
+                        ? s.contacts[0].name
+                        : s.contacts.map((c, i) => (
+                            <div key={i}>{`${i + 1}. ${c.name}`}</div>
+                          ))
+                      : "-"}
+                  </TableCell>
+
+                  {/* CONTACT PHONES */}
+                  <TableCell className="whitespace-normal break-words">
+                    {s.contacts?.length
+                      ? s.contacts.length === 1
+                        ? s.contacts[0].phone
+                        : s.contacts.map((c, i) => (
+                            <div key={i}>{`${i + 1}. ${c.phone}`}</div>
+                          ))
+                      : "-"}
+                  </TableCell>
+
+                  {/* FORTE PRODUCTS */}
+                  <TableCell className="whitespace-normal break-words">
+                    {s.forteProducts?.length
+                      ? s.forteProducts.length === 1
+                        ? s.forteProducts[0]
+                        : s.forteProducts.map((item, i) => (
+                            <div key={i}>{`${i + 1}. ${item}`}</div>
+                          ))
+                      : "-"}
+                  </TableCell>
+
+                  {/* PRODUCTS */}
+                  <TableCell className="whitespace-normal break-words">
+                    {s.products?.length
+                      ? s.products.length === 1
+                        ? s.products[0]
+                        : s.products.map((item, i) => (
+                            <div key={i}>{`${i + 1}. ${item}`}</div>
+                          ))
+                      : "-"}
+                  </TableCell>
+
+                  {/* CERTIFICATES */}
+                  <TableCell className="whitespace-normal break-words">
+                    {s.certificates?.length
+                      ? s.certificates.length === 1
+                        ? s.certificates[0]
+                        : s.certificates.map((item, i) => (
+                            <div key={i}>{`${i + 1}. ${item}`}</div>
+                          ))
+                      : "-"}
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -380,68 +453,172 @@ return (
           paginatedSuppliers.map((s) => (
             <div
               key={s.id}
-              className="border rounded-lg p-4 space-y-3 shadow-sm"
+              className="border rounded-lg p-4 space-y-4 shadow-sm"
             >
-              <div className="flex items-start justify-between">
+              {/* COMPANY NAME */}
+              <h3 className="text-lg font-semibold underline">{s.company}</h3>
+
+              {/* FIELDS */}
+              <div className="text-sm space-y-3">
+                {/* INTERNAL CODE */}
                 <div>
-                  <h3 className="font-semibold">{s.company}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {s.internalCode || "No internal code"}
-                  </p>
+                  <div className="font-semibold text-muted-foreground">
+                    Internal Code
+                  </div>
+                  <div className="ml-2 text-muted-foreground">
+                    {s.internalCode || "-"}
+                  </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      setSelectedSupplier(s);
-                      setEditSupplierOpen(true);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => {
-                      setSelectedSupplier(s);
-                      setDeleteSupplierOpen(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                {/* ADDRESSES */}
+                <div>
+                  <div className="font-semibold text-muted-foreground">
+                    Addresses
+                  </div>
+                  <div className="ml-2 text-muted-foreground">
+                    {s.addresses?.length ? (
+                      s.addresses.length === 1 ? (
+                        <div>{s.addresses[0]}</div>
+                      ) : (
+                        s.addresses.map((item, i) => (
+                          <div key={i}>{`${i + 1}. ${item}`}</div>
+                        ))
+                      )
+                    ) : (
+                      <div>-</div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="text-sm space-y-1">
-                <p>
-                  <strong>Addresses:</strong> {s.addresses?.join(", ") || "-"}
-                </p>
-                <p>
-                  <strong>Emails:</strong> {s.emails?.join(", ") || "-"}
-                </p>
-                <p>
-                  <strong>Website:</strong> {s.website || "-"}
-                </p>
-                <p>
-                  <strong>Contacts:</strong>{" "}
-                  {s.contacts
-                    ?.map((c) => `${c.name} (${c.phone})`)
-                    .join(", ") || "-"}
-                </p>
-                <p>
-                  <strong>Forte Products:</strong>{" "}
-                  {s.forteProducts?.join(", ") || "-"}
-                </p>
-                <p>
-                  <strong>Products:</strong> {s.products?.join(", ") || "-"}
-                </p>
-                <p>
-                  <strong>Certificates:</strong>{" "}
-                  {s.certificates?.join(", ") || "-"}
-                </p>
+                {/* EMAILS */}
+                <div>
+                  <div className="font-semibold text-muted-foreground">
+                    Emails
+                  </div>
+                  <div className="ml-2 text-muted-foreground">
+                    {s.emails?.length ? (
+                      s.emails.length === 1 ? (
+                        <div>{s.emails[0]}</div>
+                      ) : (
+                        s.emails.map((item, i) => (
+                          <div key={i}>{`${i + 1}. ${item}`}</div>
+                        ))
+                      )
+                    ) : (
+                      <div>-</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* WEBSITE */}
+                <div>
+                  <div className="font-semibold text-muted-foreground">
+                    Website
+                  </div>
+                  <div className="ml-2 text-muted-foreground">
+                    {s.website || "-"}
+                  </div>
+                </div>
+
+                {/* CONTACT NAMES */}
+                <div>
+                  <div className="font-semibold text-muted-foreground">
+                    Contact Name(s)
+                  </div>
+                  <div className="ml-2 text-muted-foreground">
+                    {s.contacts?.length ? (
+                      s.contacts.length === 1 ? (
+                        <div>{s.contacts[0].name}</div>
+                      ) : (
+                        s.contacts.map((c, i) => (
+                          <div key={i}>{`${i + 1}. ${c.name}`}</div>
+                        ))
+                      )
+                    ) : (
+                      <div>-</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* PHONE NUMBERS */}
+                <div>
+                  <div className="font-semibold text-muted-foreground">
+                    Phone Number(s)
+                  </div>
+                  <div className="ml-2 text-muted-foreground">
+                    {s.contacts?.length ? (
+                      s.contacts.length === 1 ? (
+                        <div>{s.contacts[0].phone}</div>
+                      ) : (
+                        s.contacts.map((c, i) => (
+                          <div key={i}>{`${i + 1}. ${c.phone}`}</div>
+                        ))
+                      )
+                    ) : (
+                      <div>-</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* FORTE PRODUCTS */}
+                <div>
+                  <div className="font-semibold text-muted-foreground">
+                    Forte Product(s)
+                  </div>
+                  <div className="ml-2 text-muted-foreground">
+                    {s.forteProducts?.length ? (
+                      s.forteProducts.length === 1 ? (
+                        <div>{s.forteProducts[0]}</div>
+                      ) : (
+                        s.forteProducts.map((item, i) => (
+                          <div key={i}>{`${i + 1}. ${item}`}</div>
+                        ))
+                      )
+                    ) : (
+                      <div>-</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* PRODUCTS */}
+                <div>
+                  <div className="font-semibold text-muted-foreground">
+                    Product(s)
+                  </div>
+                  <div className="ml-2 text-muted-foreground">
+                    {s.products?.length ? (
+                      s.products.length === 1 ? (
+                        <div>{s.products[0]}</div>
+                      ) : (
+                        s.products.map((item, i) => (
+                          <div key={i}>{`${i + 1}. ${item}`}</div>
+                        ))
+                      )
+                    ) : (
+                      <div>-</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CERTIFICATES */}
+                <div>
+                  <div className="font-semibold text-muted-foreground">
+                    Certificate(s)
+                  </div>
+                  <div className="ml-2 text-muted-foreground">
+                    {s.certificates?.length ? (
+                      s.certificates.length === 1 ? (
+                        <div>{s.certificates[0]}</div>
+                      ) : (
+                        s.certificates.map((item, i) => (
+                          <div key={i}>{`${i + 1}. ${item}`}</div>
+                        ))
+                      )
+                    ) : (
+                      <div>-</div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           ))
