@@ -4,7 +4,6 @@ import * as React from "react";
 import { useEffect, useState, useRef } from "react";
 import * as XLSX from "xlsx";
 
-
 import {
   Dialog,
   DialogContent,
@@ -114,9 +113,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-const data = XLSX.utils.sheet_to_json(sheet, {
-  defval: "",
-}) as ExcelRow[];
+    const data = XLSX.utils.sheet_to_json(sheet, {
+      defval: "",
+    }) as ExcelRow[];
 
     if (!data.length) {
       toast.error("Excel file is empty");
@@ -159,141 +158,156 @@ const data = XLSX.utils.sheet_to_json(sheet, {
   };
 
   /* ---------------- Confirm Upload ---------------- */
-const handleConfirmUpload = async () => {
-  if (!rows.length) {
-    toast.error("No data to upload");
-    return;
-  }
-
-  if (!user?.ReferenceID) {
-    toast.error("User reference not loaded");
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    const snap = await getDocs(collection(db, "suppliers"));
-
-    // 🔑 company(lowercase) → { id, isActive }
-    const supplierMap = new Map<
-      string,
-      { id: string; isActive: boolean }
-    >();
-
-    snap.docs.forEach((d) => {
-      const data = d.data();
-      if (!data.company) return;
-
-      supplierMap.set(data.company.toLowerCase(), {
-        id: d.id,
-        isActive: data.isActive !== false,
-      });
-    });
-
-    let inserted = 0;
-    let skipped = 0;
-    let reactivated = 0;
-
-    for (const row of rows) {
-const company = String(
-  row["Company Name"] ??
-  (row as any)["Company"] ??
-  (row as any)["company name"] ??
-  (row as any)["company"] ??
-  ""
-).trim();
-      if (!company) {
-        skipped++;
-        continue;
-      }
-
-      const key = company.toLowerCase();
-      const existing = supplierMap.get(key);
-
-      // 🔴 EXISTING & ACTIVE → SKIP
-      if (existing?.isActive) {
-        skipped++;
-        continue;
-      }
-
-      // 🔁 EXISTING BUT INACTIVE → REACTIVATE
-      if (existing && !existing.isActive) {
-        await updateDoc(doc(db, "suppliers", existing.id), {
-          isActive: true,
-          updatedAt: serverTimestamp(),
-        });
-
-        supplierMap.set(key, { ...existing, isActive: true });
-        reactivated++;
-        continue;
-      }
-
-      // 🟢 NEW SUPPLIER → INSERT
-      const contactNames = row["Contact Name(s)"]
-        ? row["Contact Name(s)"].split("|").map((v) => v.trim())
-        : [];
-
-      const contactPhones = row["Phone Number(s)"]
-        ? row["Phone Number(s)"].split("|").map((v) => v.trim())
-        : [];
-
-      const contacts = contactNames.map((name, i) => ({
-        name,
-        phone: contactPhones[i] || "",
-      }));
-
-      await addDoc(collection(db, "suppliers"), {
-        company,
-        companyCode: generateSupplierCode(company),
-        internalCode: row["Internal Code"] || "",
-        addresses: row.Addresses
-          ? row.Addresses.split("|").map((v) => v.trim())
-          : [],
-        emails: row.Emails
-          ? row.Emails.split("|").map((v) => v.trim())
-          : [],
-        website: row.Website || "",
-        contacts,
-        forteProducts: row["Forte Product(s)"]
-          ? row["Forte Product(s)"].split("|").map((v) => v.trim())
-          : [],
-        products: row["Product(s)"]
-          ? row["Product(s)"].split("|").map((v) => v.trim())
-          : [],
-        certificates: row["Certificate(s)"]
-          ? row["Certificate(s)"].split("|").map((v) => v.trim())
-          : [],
-        createdBy: userId,
-        referenceID: user.ReferenceID,
-        isActive: true,
-        createdAt: serverTimestamp(),
-      });
-
-      supplierMap.set(key, { id: "new", isActive: true });
-      inserted++;
+  const handleConfirmUpload = async () => {
+    if (!rows.length) {
+      toast.error("No data to upload");
+      return;
     }
 
-if (inserted === 0 && reactivated === 0) {
-  toast.warning("No suppliers uploaded", {
-    description: "All rows were skipped (duplicates or invalid data)",
-  });
-} else {
-  toast.success("Upload completed", {
-    description: `Inserted: ${inserted}, Reactivated: ${reactivated}, Skipped: ${skipped}`,
-  });
-}
+    if (!user?.ReferenceID) {
+      toast.error("User reference not loaded");
+      return;
+    }
 
+    try {
+      setLoading(true);
 
-    setRows([]);
-    onOpenChange(false);
-  } catch (err) {
-    console.error(err);
-    toast.error("Upload failed");
-  } finally {
-    setLoading(false);
-  }
-};
+      const snap = await getDocs(collection(db, "suppliers"));
+
+      // 🔑 company(lowercase) → { id, isActive }
+      const supplierMap = new Map<string, { id: string; isActive: boolean }>();
+
+      snap.docs.forEach((d) => {
+        const data = d.data();
+        if (!data.company) return;
+
+        supplierMap.set(data.company.toLowerCase(), {
+          id: d.id,
+          isActive: data.isActive !== false,
+        });
+      });
+
+      let inserted = 0;
+      let skipped = 0;
+      let reactivated = 0;
+
+      for (const row of rows) {
+        const company = String(
+          row["Company Name"] ??
+            (row as any)["Company"] ??
+            (row as any)["company name"] ??
+            (row as any)["company"] ??
+            "",
+        ).trim();
+        if (!company) {
+          skipped++;
+          continue;
+        }
+
+        const key = company.toLowerCase();
+        const existing = supplierMap.get(key);
+
+        // 🔴 EXISTING & ACTIVE → SKIP
+        if (existing?.isActive) {
+          skipped++;
+          continue;
+        }
+
+        // 🔁 EXISTING BUT INACTIVE → REACTIVATE
+        // ♻ EXISTING (ACTIVE OR INACTIVE) → UPDATE ALL FIELDS
+        if (existing) {
+          const split = (v?: string) =>
+            String(v || "")
+              .split("|")
+              .map((s) => s.trim())
+              .filter(Boolean);
+
+          const names = split(row["Contact Name(s)"]);
+          const phones = split(row["Phone Number(s)"]);
+
+          await updateDoc(doc(db, "suppliers", existing.id), {
+            internalCode: row["Internal Code"] || "",
+            addresses: split(row.Addresses),
+            emails: split(row.Emails),
+            website: row.Website || "",
+            contacts: names.map((n, i) => ({
+              name: n,
+              phone: phones[i] || "",
+            })),
+            forteProducts: split(row["Forte Product(s)"]),
+            products: split(row["Product(s)"]),
+            certificates: split(row["Certificate(s)"]),
+            isActive: true,
+            updatedAt: serverTimestamp(),
+          });
+
+          supplierMap.set(key, { ...existing, isActive: true });
+          reactivated++;
+          continue;
+        }
+
+        // 🟢 NEW SUPPLIER → INSERT
+        const contactNames = row["Contact Name(s)"]
+          ? row["Contact Name(s)"].split("|").map((v) => v.trim())
+          : [];
+
+        const contactPhones = row["Phone Number(s)"]
+          ? row["Phone Number(s)"].split("|").map((v) => v.trim())
+          : [];
+
+        const contacts = contactNames.map((name, i) => ({
+          name,
+          phone: contactPhones[i] || "",
+        }));
+
+        await addDoc(collection(db, "suppliers"), {
+          company,
+          companyCode: generateSupplierCode(company),
+          internalCode: row["Internal Code"] || "",
+          addresses: row.Addresses
+            ? row.Addresses.split("|").map((v) => v.trim())
+            : [],
+          emails: row.Emails ? row.Emails.split("|").map((v) => v.trim()) : [],
+          website: row.Website || "",
+          contacts,
+          forteProducts: row["Forte Product(s)"]
+            ? row["Forte Product(s)"].split("|").map((v) => v.trim())
+            : [],
+          products: row["Product(s)"]
+            ? row["Product(s)"].split("|").map((v) => v.trim())
+            : [],
+          certificates: row["Certificate(s)"]
+            ? row["Certificate(s)"].split("|").map((v) => v.trim())
+            : [],
+          createdBy: userId,
+          referenceID: user.ReferenceID,
+          isActive: true,
+          createdAt: serverTimestamp(),
+        });
+
+        supplierMap.set(key, { id: "new", isActive: true });
+        inserted++;
+      }
+
+      if (inserted === 0 && reactivated === 0) {
+        toast.warning("No suppliers uploaded", {
+          description: "All rows were skipped (duplicates or invalid data)",
+        });
+      } else {
+        toast.success("Upload completed", {
+          description: `Inserted: ${inserted}, Reactivated: ${reactivated}, Skipped: ${skipped}`,
+        });
+      }
+
+      setRows([]);
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Upload failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   /* ---------------- UI ---------------- */
   return (
@@ -321,7 +335,6 @@ if (inserted === 0 && reactivated === 0) {
           <div className="text-xs text-muted-foreground mt-1">
             (.xlsx, .xls, .csv)
           </div>
-
           <input
             ref={fileInputRef}
             type="file"
