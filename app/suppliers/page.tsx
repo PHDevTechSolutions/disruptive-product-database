@@ -264,111 +264,113 @@ export default function Suppliers() {
         </div>
       </div>
 
-      {/* TABLE */}
-      <div className="rounded-md border overflow-x-auto">
-        <div className="min-w-[1400px]">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Actions</TableHead>
-                <TableHead>Company Name</TableHead>
-                <TableHead>Internal Code</TableHead>
-                <TableHead>Addresses</TableHead>
-                <TableHead>Emails</TableHead>
-                <TableHead>Website</TableHead>
-                <TableHead>Contact Name(s)</TableHead>
-                <TableHead>Phone Number(s)</TableHead>
-                <TableHead>Forte Product(s)</TableHead>
-                <TableHead>Product(s)</TableHead>
-                <TableHead>Certificate(s)</TableHead>
-              </TableRow>
-            </TableHeader>
+{/* TABLE */}
+<div className="rounded-md border overflow-x-auto">
+  <div className="min-w-[1400px]">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Actions</TableHead>
+          <TableHead>Company Name</TableHead>
+          <TableHead>Internal Code</TableHead>
+          <TableHead>Addresses</TableHead>
+          <TableHead>Emails</TableHead>
+          <TableHead>Website</TableHead>
+          <TableHead>Contact Name(s)</TableHead>
+          <TableHead>Phone Number(s)</TableHead>
+          <TableHead>Forte Product(s)</TableHead>
+          <TableHead>Product(s)</TableHead>
+          <TableHead>Certificate(s)</TableHead>
+        </TableRow>
+      </TableHeader>
 
-            <TableBody>
-              {filteredSuppliers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8">
-                    No suppliers found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                paginatedSuppliers.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedSupplier(s);
-                            setEditSupplierOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+      <TableBody>
+        {filteredSuppliers.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={11} className="text-center py-8">
+              No suppliers found.
+            </TableCell>
+          </TableRow>
+        ) : (
+          paginatedSuppliers.map((s) => (
+            <TableRow key={s.id}>
+              <TableCell>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedSupplier(s);
+                      setEditSupplierOpen(true);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
 
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedSupplier(s);
-                            setDeleteSupplierOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedSupplier(s);
+                      setDeleteSupplierOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
 
-                    <TableCell>{s.company}</TableCell>
-                    <TableCell>{s.internalCode || "-"}</TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {s.addresses?.join(", ") || "-"}
-                    </TableCell>
-                    <TableCell>{s.emails?.join(", ") || "-"}</TableCell>
-                    <TableCell>{s.website || "-"}</TableCell>
-                    <TableCell>
-                      {s.contacts?.map((c) => c.name).join(", ") || "-"}
-                    </TableCell>
-                    <TableCell>
-                      {s.contacts?.map((c) => c.phone).join(", ") || "-"}
-                    </TableCell>
-                    <TableCell>{s.forteProducts?.join(", ") || "-"}</TableCell>
-                    <TableCell>{s.products?.join(", ") || "-"}</TableCell>
-                    <TableCell>{s.certificates?.join(", ") || "-"}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+              <TableCell>{s.company}</TableCell>
+              <TableCell>{s.internalCode || "-"}</TableCell>
+              <TableCell className="max-w-xs truncate">
+                {s.addresses?.join(", ") || "-"}
+              </TableCell>
+              <TableCell>{s.emails?.join(", ") || "-"}</TableCell>
+              <TableCell>{s.website || "-"}</TableCell>
+              <TableCell>
+                {s.contacts?.map((c) => c.name).join(", ") || "-"}
+              </TableCell>
+              <TableCell>
+                {s.contacts?.map((c) => c.phone).join(", ") || "-"}
+              </TableCell>
+              <TableCell>{s.forteProducts?.join(", ") || "-"}</TableCell>
+              <TableCell>{s.products?.join(", ") || "-"}</TableCell>
+              <TableCell>{s.certificates?.join(", ") || "-"}</TableCell>
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </Table>
+  </div>
+</div>
 
-          <div className="flex items-center justify-between p-4">
-            <span className="text-sm">
-              Page {currentPage} of {totalPages || 1}
-            </span>
+{/* PAGINATION (OUTSIDE SCROLL) */}
+<div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-md">
+  <span className="text-xs sm:text-sm text-center sm:text-left">
+    Page {currentPage} of {totalPages || 1}
+  </span>
 
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
+  <div className="flex gap-2 justify-center sm:justify-end">
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={currentPage === 1}
+      onClick={() => setCurrentPage((p) => p - 1)}
+    >
+      Previous
+    </Button>
 
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={currentPage === totalPages || totalPages === 0}
-                onClick={() => setCurrentPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={currentPage === totalPages || totalPages === 0}
+      onClick={() => setCurrentPage((p) => p + 1)}
+    >
+      Next
+    </Button>
+  </div>
+</div>
+
 
       <AddSupplier open={addSupplierOpen} onOpenChange={setAddSupplierOpen} />
 
