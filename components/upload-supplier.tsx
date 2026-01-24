@@ -208,43 +208,46 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         const existing = supplierMap.get(key);
 
         // 🔴 EXISTING & ACTIVE → SKIP
-        if (existing?.isActive) {
-          skipped++;
-          continue;
-        }
+if (existing?.isActive) {
+  skipped++;
+  continue;
+}
+
+/* ---------------- HELPERS ---------------- */
+const splitPipe = (v?: string) =>
+  String(v || "")
+    .split("|")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
         // 🔁 EXISTING BUT INACTIVE → REACTIVATE
         // ♻ EXISTING (ACTIVE OR INACTIVE) → UPDATE ALL FIELDS
-        if (existing) {
-          const split = (v?: string) =>
-            String(v || "")
-              .split("|")
-              .map((s) => s.trim())
-              .filter(Boolean);
+// ♻ EXISTING SUPPLIER → ALWAYS UPDATE (ACTIVE OR INACTIVE)
+if (existing) {
+  const names = splitPipe(row["Contact Name(s)"]);
+  const phones = splitPipe(row["Phone Number(s)"]);
 
-          const names = split(row["Contact Name(s)"]);
-          const phones = split(row["Phone Number(s)"]);
+  await updateDoc(doc(db, "suppliers", existing.id), {
+    internalCode: row["Internal Code"] || "",
+    addresses: splitPipe(row.Addresses),
+    emails: splitPipe(row.Emails),
+    website: row.Website || "",
+    contacts: names.map((n, i) => ({
+      name: n,
+      phone: phones[i] || "",
+    })),
+    forteProducts: splitPipe(row["Forte Product(s)"]),
+    products: splitPipe(row["Product(s)"]),
+    certificates: splitPipe(row["Certificate(s)"]),
+    isActive: true, // 🔥 auto-reactivate if needed
+    updatedAt: serverTimestamp(),
+  });
 
-          await updateDoc(doc(db, "suppliers", existing.id), {
-            internalCode: row["Internal Code"] || "",
-            addresses: split(row.Addresses),
-            emails: split(row.Emails),
-            website: row.Website || "",
-            contacts: names.map((n, i) => ({
-              name: n,
-              phone: phones[i] || "",
-            })),
-            forteProducts: split(row["Forte Product(s)"]),
-            products: split(row["Product(s)"]),
-            certificates: split(row["Certificate(s)"]),
-            isActive: true,
-            updatedAt: serverTimestamp(),
-          });
+  supplierMap.set(key, { ...existing, isActive: true });
+  reactivated++;
+  continue;
+}
 
-          supplierMap.set(key, { ...existing, isActive: true });
-          reactivated++;
-          continue;
-        }
 
         // 🟢 NEW SUPPLIER → INSERT
         const contactNames = row["Contact Name(s)"]
