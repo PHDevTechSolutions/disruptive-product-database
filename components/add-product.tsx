@@ -14,6 +14,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+
 import { useUser } from "@/contexts/UserContext";
 
 /* ---------------- Types ---------------- */
@@ -22,6 +23,7 @@ type UserDetails = {
   Lastname: string;
   Role: string;
   Email: string;
+  ReferenceID?: string;
 };
 
 type AddProductProps = {
@@ -48,6 +50,7 @@ function AddProduct({ open, onOpenChange }: AddProductProps) {
           Lastname: data.Lastname ?? "",
           Role: data.Role ?? "",
           Email: data.Email ?? "",
+          ReferenceID: data.ReferenceID ?? "",
         });
       })
       .catch((err) => {
@@ -55,14 +58,19 @@ function AddProduct({ open, onOpenChange }: AddProductProps) {
       });
   }, [userId]);
 
+  /* ---------------- PLACEHOLDER HANDLER ---------------- */
+  const handleSaveProduct = () => {
+    // intentionally empty
+    // firestore logic will be added in the future
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
-    <SheetContent
-      className=" w-full sm:max-w-lg pb-[140px] z-50">
+      <SheetContent className="w-full sm:max-w-lg pb-[140px] z-50">
         <SheetHeader>
           <SheetTitle>Add Product</SheetTitle>
           <SheetDescription>
-            Product creation sheet (fields to be added later)
+            Product creation (structure only — no fields yet)
           </SheetDescription>
         </SheetHeader>
 
@@ -75,29 +83,34 @@ function AddProduct({ open, onOpenChange }: AddProductProps) {
               <span className="font-medium">Welcome:</span>{" "}
               {user.Firstname} {user.Lastname}
             </div>
-
             <div>
               <span className="font-medium">Role:</span> {user.Role}
             </div>
-
             <div>
               <span className="font-medium">Email:</span> {user.Email}
             </div>
           </div>
         )}
 
-        {/* BODY (EMPTY ON PURPOSE) */}
+        {/* ---------------- BODY (EMPTY ON PURPOSE) ---------------- */}
         <div className="flex items-center justify-center text-muted-foreground text-sm mt-10">
-          Product form fields will go here
+          Product form fields will be added here later
         </div>
 
-        <SheetFooter className="mt-6">
+        <SheetFooter className="mt-6 flex gap-2">
           <Button
             variant="secondary"
             onClick={() => onOpenChange(false)}
-            className="cursor-pointer"
           >
-            Close
+            Cancel
+          </Button>
+
+          <Button
+            type="button"
+            onClick={handleSaveProduct}
+            disabled
+          >
+            Save Product
           </Button>
         </SheetFooter>
       </SheetContent>
