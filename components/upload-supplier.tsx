@@ -243,6 +243,10 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           const phones = splitPipe(row["Phone Number(s)"]);
 
           await updateDoc(doc(db, "suppliers", existing.id), {
+            companyCode:
+              (existing as any)?.companyCode ||
+              generateSupplierCode(company),
+
             internalCode: row["Internal Code"] || "",
             addresses: splitPipe(row.Addresses),
             emails: splitPipe(row.Emails),
@@ -254,9 +258,10 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
             forteProducts: splitPipe(row["Forte Product(s)"]),
             products: splitPipe(row["Product(s)"]),
             certificates: splitPipe(row["Certificate(s)"]),
-            isActive: true, // 🔥 auto-reactivate if needed
+            isActive: true,
             updatedAt: serverTimestamp(),
           });
+
 
           supplierMap.set(key, { ...existing, isActive: true });
           reactivated++;
