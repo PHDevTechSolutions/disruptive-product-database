@@ -206,15 +206,10 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
 
   const handleSaveSupplier = async () => {
     try {
-      if (!company || addresses.every((a) => !a.trim())) {
-        toast.error("Company and at least one Address are required");
+      if (!company.trim()) {
+        toast.error("Company is required");
         return;
       }
-      if (!user?.ReferenceID) {
-        toast.error("User reference is not loaded yet. Please wait.");
-        return;
-      }
-
       const supplierData = {
         company,
         companyCode,
@@ -623,7 +618,7 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
             type="button"
             className="cursor-pointer"
             onClick={handleSaveSupplier}
-            disabled={!user?.ReferenceID || isDuplicateCompany || !!emailError}
+            disabled={isDuplicateCompany || !!emailError || !company.trim()}
           >
             Save Supplier
           </Button>

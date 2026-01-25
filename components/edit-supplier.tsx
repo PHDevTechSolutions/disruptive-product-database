@@ -25,7 +25,14 @@ import { toast } from "sonner";
 import { useUser } from "@/contexts/UserContext";
 
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  updateDoc,
+  serverTimestamp,
+  getDocs,
+  collection,
+} from "firebase/firestore";
+
 
 /* ---------------- Types ---------------- */
 type UserDetails = {
@@ -47,6 +54,11 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
   const { userId } = useUser();
   const [user, setUser] = useState<UserDetails | null>(null);
 
+  /* ---------------- VALIDATION STATES ---------------- */
+  const [companyError, setCompanyError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [isDuplicateCompany, setIsDuplicateCompany] = useState(false);
+
   /* ---------------- Base Fields ---------------- */
   const [company, setCompany] = useState("");
   const [internalCode, setInternalCode] = useState("");
@@ -61,6 +73,49 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
   const [forteProducts, setForteProducts] = useState<string[]>([""]);
   const [products, setProducts] = useState<string[]>([""]);
   const [certificates, setCertificates] = useState<string[]>([""]);
+
+
+  useEffect(() => {
+    if (!company.trim()) {
+      setCompanyError("");
+      setIsDuplicateCompany(false);
+      return;
+    }
+
+    const checkDuplicateCompany = async () => {
+      const snap = await getDocs(collection(db, "suppliers"));
+
+      const exists = snap.docs.some((d) => {
+        if (d.id === supplier?.id) return false; // 👈 allow self
+        const data = d.data();
+        return (
+          data.isActive !== false &&
+          data.company?.toLowerCase() === company.toLowerCase()
+        );
+      });
+
+      if (exists) {
+        setCompanyError("Company already exists");
+        setIsDuplicateCompany(true);
+      } else {
+        setCompanyError("");
+        setIsDuplicateCompany(false);
+      }
+    };
+
+    checkDuplicateCompany();
+  }, [company, supplier?.id]);
+
+  useEffect(() => {
+    const invalid = emails.some((e) => e && !e.includes("@"));
+
+    if (invalid) {
+      setEmailError("One or more emails are invalid");
+    } else {
+      setEmailError("");
+    }
+  }, [emails]);
+
 
   useEffect(() => {
     if (!userId) return;
@@ -104,7 +159,11 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
     // ✅ CONTACTS – always at least 1 row
     if (supplier.contacts && supplier.contacts.length > 0) {
       setContactNames(supplier.contacts.map((c: any) => c.name || ""));
-      setContactNumbers(supplier.contacts.map((c: any) => c.phone || ""));
+      setContactNumbers(
+        supplier.contacts.map((c: any) =>
+          c.phone ? c.phone.replace(/\s+/g, "") : ""
+        )
+      );
     } else {
       setContactNames([""]);
       setContactNumbers([""]);
@@ -164,13 +223,18 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
   /* ---------------- Save Supplier ---------------- */
   const handleSaveSupplier = async () => {
     try {
-      if (!company || addresses.every((a) => !a.trim())) {
-        toast.error("Company and at least one Address are required");
+      if (!company.trim()) {
+        toast.error("Company is required");
         return;
       }
 
-      if (!user?.ReferenceID) {
-        toast.error("User reference is not loaded yet. Please wait.");
+      if (isDuplicateCompany) {
+        toast.error("Company already exists");
+        return;
+      }
+
+      if (emailError) {
+        toast.error("Please fix invalid email(s)");
         return;
       }
 
@@ -192,25 +256,13 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
         products: products.filter(Boolean),
         certificates: certificates.filter(Boolean),
 
-        referenceID: user?.ReferenceID || null, // 👈 editor
+        referenceID: user?.ReferenceID || supplier.referenceID || null,
         updatedAt: serverTimestamp(),
       });
 
       toast.success("Supplier saved successfully", {
         description: company,
       });
-
-      /* Reset form */
-      setCompany("");
-      setInternalCode("");
-      setAddresses([""]);
-      setEmails([""]);
-      setWebsite("");
-      setContactNames([""]);
-      setContactNumbers([""]);
-      setForteProducts([""]);
-      setProducts([""]);
-      setCertificates([""]);
 
       onOpenChange(false);
     } catch (error) {
@@ -254,6 +306,9 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
               onChange={(e) => setCompany(e.target.value)}
               placeholder="Company name"
             />
+            {companyError && (
+              <p className="text-sm text-red-600">{companyError}</p>
+            )}
           </div>
 
           {/* Internal Code */}
@@ -325,6 +380,9 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
                   placeholder="company@email.com"
                   onChange={(e) => updateList(setEmails, index, e.target.value)}
                 />
+                {emailError && (
+                  <p className="text-sm text-red-600">{emailError}</p>
+                )}
 
                 <div className="flex gap-1">
                   <Button
@@ -548,9 +606,18 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
             Cancel
           </Button>
 
-          <Button type="button" onClick={handleSaveSupplier}>
+          <Button
+            type="button"
+            onClick={handleSaveSupplier}
+            disabled={
+              !company.trim() ||
+              isDuplicateCompany ||
+              !!emailError
+            }
+          >
             Save Supplier
           </Button>
+
         </SheetFooter>
       </SheetContent>
     </Sheet>
