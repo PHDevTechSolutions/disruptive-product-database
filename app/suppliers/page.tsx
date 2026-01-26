@@ -695,6 +695,7 @@ export default function Suppliers() {
             variant="outline"
             disabled={currentPage === 1}
             onClick={() => setCurrentPage((p) => p - 1)}
+            className="cursor-pointer"
           >
             Previous
           </Button>
@@ -704,6 +705,7 @@ export default function Suppliers() {
             variant="outline"
             disabled={currentPage === totalPages || totalPages === 0}
             onClick={() => setCurrentPage((p) => p + 1)}
+            className="cursor-pointer"
           >
             Next
           </Button>
