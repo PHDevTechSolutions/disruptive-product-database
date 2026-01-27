@@ -2,6 +2,14 @@
 
 import * as React from "react";
 import { useEffect, useState } from "react";
+import { Plus, Minus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   Sheet,
@@ -15,6 +23,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useUser } from "@/contexts/UserContext";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 
 /* ---------------- Types ---------------- */
@@ -227,6 +237,10 @@ function AddProduct({ open, onOpenChange }: AddProductProps) {
   const { userId } = useUser();
   const [user, setUser] = useState<UserDetails | null>(null);
 
+  const [suppliers, setSuppliers] = useState<
+    { id: string; company: string; companyCode?: string }[]
+  >([]);
+
   /* ---------------- Stepper State ---------------- */
   const [step, setStep] = useState(1);
 
@@ -241,6 +255,35 @@ function AddProduct({ open, onOpenChange }: AddProductProps) {
   /* ---------------- Step 3: Product Sub Type ---------------- */
   const [productSubType, setProductSubType] = useState("");
 
+  /* ---------------- Step 4: Company Description ---------------- */
+
+  // company
+  const [company, setCompany] = useState("");
+  const [companyCode, setCompanyCode] = useState("");
+  const [supplierId, setSupplierId] = useState("");
+
+  // images
+  const [images, setImages] = useState<(File | null)[]>([null]);
+
+  // product info
+  const [productModel, setProductModel] = useState("");
+  const [productCode, setProductCode] = useState("");
+
+  // pricing
+  const [unitCost, setUnitCost] = useState(""); // numbers + decimals only
+  const [srp, setSrp] = useState(""); // PHP only
+  const [pricingCategory, setPricingCategory] = useState("");
+
+  // packaging
+  const [packagingLength, setPackagingLength] = useState("");
+  const [packagingWidth, setPackagingWidth] = useState("");
+  const [packagingHeight, setPackagingHeight] = useState("");
+
+  // quantities
+  const [qtyPerCtn, setQtyPerCtn] = useState<number | "">("");
+  const [moq, setMoq] = useState<number | "">("");
+  const [warrantyYears, setWarrantyYears] = useState<number | "">("");
+
   /* ---------------- Reset category & product type when parent changes ---------------- */
   useEffect(() => {
     setCategory("");
@@ -251,7 +294,66 @@ function AddProduct({ open, onOpenChange }: AddProductProps) {
     setProductSubType("");
   }, [category]);
 
+  /* ---------------- Image Array Helpers ---------------- */
+  const updateImage = (index: number, file: File | null) => {
+    setImages((prev) => prev.map((img, i) => (i === index ? file : img)));
+  };
+
+  const addImageAfter = (index: number) => {
+    setImages((prev) => {
+      const copy = [...prev];
+      copy.splice(index + 1, 0, null);
+      return copy;
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) =>
+      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
+    );
+  };
+
+  /* ---------------- Auto Generate Product Code ---------------- */
+  useEffect(() => {
+    if (!productModel) {
+      setProductCode("");
+      return;
+    }
+
+    const prefix = productModel
+      .replace(/[^A-Z0-9]/gi, "")
+      .toUpperCase()
+      .slice(0, 4);
+
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    setProductCode(`${prefix}-${random}`);
+  }, [productModel]);
+
   /* ---------------- Silent user detection ---------------- */
+
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        const snap = await getDocs(collection(db, "suppliers"));
+
+const list = snap.docs
+  .filter((d) => d.data().isActive !== false)
+  .map((d) => ({
+    id: d.id,
+    company: d.data().company,
+    companyCode: d.data().companyCode,
+  }))
+  .sort((a, b) =>
+    a.company.localeCompare(b.company, undefined, { sensitivity: "base" }),
+  );
+        setSuppliers(list);
+      } catch (err) {
+        console.error("Failed to fetch suppliers:", err);
+      }
+    };
+
+    fetchSuppliers();
+  }, []);
   useEffect(() => {
     if (!userId) return;
 
@@ -400,7 +502,7 @@ function AddProduct({ open, onOpenChange }: AddProductProps) {
         )}
 
         {/* ---------------- Placeholder for other steps ---------------- */}
-        {step !== 1 && step !== 2 && step !== 3 && (
+        {step !== 1 && step !== 2 && step !== 3 && step !== 4 && (
           <div className="flex items-center justify-center text-muted-foreground text-sm mt-10">
             {STEPS[step - 1]} fields will go here
           </div>
@@ -497,6 +599,210 @@ function AddProduct({ open, onOpenChange }: AddProductProps) {
           </div>
         )}
 
+        {/* ---------------- Step 4: Company Description ---------------- */}
+        {step === 4 && (
+          <div className="space-y-6 mt-6">
+            {/* Select Company + Company Code */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Select Company */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Select Company</label>
+                <Select
+                  value={supplierId}
+                  onValueChange={(id) => {
+                    const selected = suppliers.find((s) => s.id === id);
+
+                    setSupplierId(id);
+                    setCompany(selected?.company || "");
+                    setCompanyCode(selected?.companyCode || "");
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select supplier" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.company}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Company Code */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Company Code</label>
+                <input
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-muted"
+                  value={companyCode}
+                  disabled
+                />
+              </div>
+            </div>
+
+            {/* Upload Images */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Product Images</label>
+
+              {images.map((img, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-[1fr_auto] gap-2 items-center"
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      updateImage(index, e.target.files?.[0] || null)
+                    }
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  />
+
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => addImageAfter(index)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      disabled={images.length === 1}
+                      onClick={() => removeImage(index)}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Product Model */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Product Model</label>
+              <input
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={productModel}
+                onChange={(e) => setProductModel(e.target.value)}
+              />
+            </div>
+
+            {/* Product Code */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Product Code</label>
+              <input
+                className="w-full border rounded-md px-3 py-2 text-sm bg-muted"
+                value={productCode}
+                disabled
+              />
+            </div>
+
+            {/* Unit Cost */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Unit Cost</label>
+              <input
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={unitCost}
+                onChange={(e) =>
+                  /^\d*\.?\d*$/.test(e.target.value) &&
+                  setUnitCost(e.target.value)
+                }
+                placeholder="0.00"
+              />
+            </div>
+
+            {/* SRP */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">SRP (PHP)</label>
+              <input
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={srp}
+                onChange={(e) =>
+                  /^\d*\.?\d*$/.test(e.target.value) && setSrp(e.target.value)
+                }
+                placeholder="₱0.00"
+              />
+            </div>
+
+            {/* Pricing Category */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Category</label>
+              <select
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={pricingCategory}
+                onChange={(e) => setPricingCategory(e.target.value)}
+              >
+                <option value="">Select</option>
+                <option value="Economy">Economy</option>
+                <option value="Mid-End">Mid-End</option>
+                <option value="To Be Evaluated">To Be Evaluated</option>
+              </select>
+            </div>
+
+            {/* Packaging Dimensions */}
+            <div className="grid grid-cols-3 gap-2">
+              <input
+                placeholder="Length"
+                className="border rounded-md px-2 py-2 text-sm"
+                value={packagingLength}
+                onChange={(e) => setPackagingLength(e.target.value)}
+              />
+              <input
+                placeholder="Width"
+                className="border rounded-md px-2 py-2 text-sm"
+                value={packagingWidth}
+                onChange={(e) => setPackagingWidth(e.target.value)}
+              />
+              <input
+                placeholder="Height"
+                className="border rounded-md px-2 py-2 text-sm"
+                value={packagingHeight}
+                onChange={(e) => setPackagingHeight(e.target.value)}
+              />
+            </div>
+
+            {/* QTY / CTN */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">QTY / CTN</label>
+              <input
+                type="number"
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={qtyPerCtn}
+                onChange={(e) => setQtyPerCtn(Number(e.target.value))}
+              />
+            </div>
+
+            {/* MOQ */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">MOQ</label>
+              <input
+                type="number"
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={moq}
+                onChange={(e) => setMoq(Number(e.target.value))}
+              />
+            </div>
+
+            {/* Warranty */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Warranty (Years)</label>
+              <input
+                type="number"
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={warrantyYears}
+                onChange={(e) => setWarrantyYears(Number(e.target.value))}
+              />
+            </div>
+          </div>
+        )}
+
         {/* ---------------- Footer ---------------- */}
         <SheetFooter className="mt-6 flex justify-between">
           <Button
@@ -514,7 +820,8 @@ function AddProduct({ open, onOpenChange }: AddProductProps) {
               disabled={
                 (step === 1 && !productType) ||
                 (step === 2 && !category) ||
-                (step === 3 && !productSubType)
+                (step === 3 && !productSubType) ||
+                (step === 4 && !company)
               }
               className="
                 bg-gradient-to-r
