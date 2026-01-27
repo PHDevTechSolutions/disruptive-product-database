@@ -36,6 +36,13 @@ type UserData = {
   Role: string;
 };
 
+const formatWebsite = (url?: string) => {
+  if (!url) return undefined;
+  return url.startsWith("http://") || url.startsWith("https://")
+    ? url
+    : `https://${url}`;
+};
+
 type Supplier = {
   id: string;
   company: string;
@@ -191,7 +198,9 @@ export default function Suppliers() {
         (!filters.phoneCountry ||
           s.contacts?.some((c) => {
             try {
-              const callingCode = getCountryCallingCode(filters.phoneCountry as CountryCode);
+              const callingCode = getCountryCallingCode(
+                filters.phoneCountry as CountryCode,
+              );
               return c.phone?.startsWith("+" + callingCode);
             } catch {
               return false;
@@ -206,7 +215,6 @@ export default function Suppliers() {
         ? a.company.localeCompare(b.company)
         : b.company.localeCompare(a.company);
     });
-
 
   /* ---------------- Pagination ---------------- */
   const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
@@ -395,8 +403,8 @@ export default function Suppliers() {
                       ? s.addresses.length === 1
                         ? s.addresses[0]
                         : s.addresses.map((item, i) => (
-                          <div key={i}>{`${i + 1}. ${item}`}</div>
-                        ))
+                            <div key={i}>{`${i + 1}. ${item}`}</div>
+                          ))
                       : "-"}
                   </TableCell>
 
@@ -406,14 +414,25 @@ export default function Suppliers() {
                       ? s.emails.length === 1
                         ? s.emails[0]
                         : s.emails.map((item, i) => (
-                          <div key={i}>{`${i + 1}. ${item}`}</div>
-                        ))
+                            <div key={i}>{`${i + 1}. ${item}`}</div>
+                          ))
                       : "-"}
                   </TableCell>
 
                   {/* WEBSITE */}
                   <TableCell className="whitespace-normal break-words">
-                    {s.website || "-"}
+                    {s.website ? (
+                      <a
+                        href={formatWebsite(s.website)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline hover:text-blue-800"
+                      >
+                        {s.website}
+                      </a>
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
 
                   {/* CONTACT NAMES */}
@@ -422,8 +441,8 @@ export default function Suppliers() {
                       ? s.contacts.length === 1
                         ? s.contacts[0].name
                         : s.contacts.map((c, i) => (
-                          <div key={i}>{`${i + 1}. ${c.name}`}</div>
-                        ))
+                            <div key={i}>{`${i + 1}. ${c.name}`}</div>
+                          ))
                       : "-"}
                   </TableCell>
 
@@ -433,8 +452,8 @@ export default function Suppliers() {
                       ? s.contacts.length === 1
                         ? s.contacts[0].phone
                         : s.contacts.map((c, i) => (
-                          <div key={i}>{`${i + 1}. ${c.phone}`}</div>
-                        ))
+                            <div key={i}>{`${i + 1}. ${c.phone}`}</div>
+                          ))
                       : "-"}
                   </TableCell>
 
@@ -444,8 +463,8 @@ export default function Suppliers() {
                       ? s.forteProducts.length === 1
                         ? s.forteProducts[0]
                         : s.forteProducts.map((item, i) => (
-                          <div key={i}>{`${i + 1}. ${item}`}</div>
-                        ))
+                            <div key={i}>{`${i + 1}. ${item}`}</div>
+                          ))
                       : "-"}
                   </TableCell>
 
@@ -455,8 +474,8 @@ export default function Suppliers() {
                       ? s.products.length === 1
                         ? s.products[0]
                         : s.products.map((item, i) => (
-                          <div key={i}>{`${i + 1}. ${item}`}</div>
-                        ))
+                            <div key={i}>{`${i + 1}. ${item}`}</div>
+                          ))
                       : "-"}
                   </TableCell>
 
@@ -466,8 +485,8 @@ export default function Suppliers() {
                       ? s.certificates.length === 1
                         ? s.certificates[0]
                         : s.certificates.map((item, i) => (
-                          <div key={i}>{`${i + 1}. ${item}`}</div>
-                        ))
+                            <div key={i}>{`${i + 1}. ${item}`}</div>
+                          ))
                       : "-"}
                   </TableCell>
                 </TableRow>
@@ -569,8 +588,19 @@ export default function Suppliers() {
                 {/* WEBSITE */}
                 <div>
                   <strong>Website:</strong>
-                  <div className="ml-2 text-muted-foreground">
-                    {s.website || "-"}
+                  <div className="ml-2">
+                    {s.website ? (
+                      <a
+                        href={formatWebsite(s.website)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline break-all"
+                      >
+                        {s.website}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </div>
                 </div>
 
@@ -665,6 +695,7 @@ export default function Suppliers() {
             variant="outline"
             disabled={currentPage === 1}
             onClick={() => setCurrentPage((p) => p - 1)}
+            className="cursor-pointer"
           >
             Previous
           </Button>
@@ -674,6 +705,7 @@ export default function Suppliers() {
             variant="outline"
             disabled={currentPage === totalPages || totalPages === 0}
             onClick={() => setCurrentPage((p) => p + 1)}
+            className="cursor-pointer"
           >
             Next
           </Button>
