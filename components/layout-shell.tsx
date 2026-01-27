@@ -9,11 +9,13 @@ export default function LayoutShell({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = useUser();
+  const { userId, loading } = useUser();
+
+  // ⛔ prevent flicker & disappearing sidebar
+  if (loading) return null;
 
   return (
     <div className="relative flex min-h-[100svh] w-full">
-      {/* ✅ SIDEBARS ONLY WHEN LOGGED IN */}
       {userId && (
         <>
           <div className="hidden md:block">
