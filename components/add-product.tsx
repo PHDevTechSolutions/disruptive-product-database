@@ -1,4 +1,3 @@
-/**add product */
 "use client";
 
 import * as React from "react";
