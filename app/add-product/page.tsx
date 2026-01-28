@@ -41,12 +41,11 @@ type TechSpec = {
   value: string;
 };
 
-/* ===== START CHANGE: CLASSIFICATION TYPE ===== */
+/* ===== CLASSIFICATION TYPE ===== */
 type ClassificationType =
   | "Type 1 Per Industry"
   | "Type 2 Per Product Family"
   | null;
-/* ===== END CHANGE: CLASSIFICATION TYPE ===== */
 
 export default function AddProductPage() {
   const router = useRouter();
@@ -63,10 +62,8 @@ export default function AddProductPage() {
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  /* ===== START CHANGE: CLASSIFICATION STATE ===== */
   const [classificationType, setClassificationType] =
     useState<ClassificationType>(null);
-  /* ===== END CHANGE: CLASSIFICATION STATE ===== */
 
   /* ---------------- Fetch User ---------------- */
   useEffect(() => {
@@ -75,9 +72,7 @@ export default function AddProductPage() {
       return;
     }
 
-    const uid = userId as string;
-
-    fetch(`/api/users?id=${encodeURIComponent(uid)}`)
+    fetch(`/api/users?id=${encodeURIComponent(userId)}`)
       .then((res) => res.json())
       .then((data) =>
         setUser({
@@ -142,10 +137,7 @@ export default function AddProductPage() {
           (s) => s.key || s.value,
         ),
         mainImage: mainImage?.name || null,
-
-        /* ===== SAVED AS-IS ===== */
-        classificationType, // "Type 1 Per Industry" | "Type 2 Per Product Family"
-
+        classificationType,
         createdBy: userId,
         referenceID: user?.ReferenceID || null,
         isActive: true,
@@ -154,7 +146,7 @@ export default function AddProductPage() {
 
       toast.success("Product saved successfully");
       router.push("/products");
-    } catch (err) {
+    } catch {
       toast.error("Failed to save product");
     }
   };
@@ -162,7 +154,8 @@ export default function AddProductPage() {
   if (loading) return null;
 
   return (
-    <div className="p-6 space-y-6">
+    /* ✅ SAME SCROLL LOGIC AS SUPPLIERS */
+    <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
       <SidebarTrigger className="hidden md:flex" />
 
       <h1 className="text-2xl font-bold">
@@ -238,7 +231,6 @@ export default function AddProductPage() {
 
         {/* RIGHT */}
         <div className="space-y-6">
-          {/* IMAGE CARD */}
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-sm">
@@ -249,10 +241,7 @@ export default function AddProductPage() {
             <CardContent>
               <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg h-56 cursor-pointer">
                 {preview ? (
-                  <img
-                    src={preview}
-                    className="h-full object-contain"
-                  />
+                  <img src={preview} className="h-full object-contain" />
                 ) : (
                   <>
                     <ImagePlus className="h-10 w-10 text-muted-foreground" />
@@ -272,7 +261,6 @@ export default function AddProductPage() {
             </CardContent>
           </Card>
 
-          {/* ===== START CHANGE: CLASSIFICATION CARD ===== */}
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-sm">
@@ -285,31 +273,21 @@ export default function AddProductPage() {
 
               <div className="flex items-center space-x-2">
                 <Checkbox
-                  checked={
-                    classificationType ===
-                    "Type 1 Per Industry"
-                  }
+                  checked={classificationType === "Type 1 Per Industry"}
                   onCheckedChange={() =>
-                    setClassificationType(
-                      "Type 1 Per Industry",
-                    )
+                    setClassificationType("Type 1 Per Industry")
                   }
                 />
-                <span className="text-sm">
-                  Type 1 Per Industry
-                </span>
+                <span className="text-sm">Type 1 Per Industry</span>
               </div>
 
               <div className="flex items-center space-x-2">
                 <Checkbox
                   checked={
-                    classificationType ===
-                    "Type 2 Per Product Family"
+                    classificationType === "Type 2 Per Product Family"
                   }
                   onCheckedChange={() =>
-                    setClassificationType(
-                      "Type 2 Per Product Family",
-                    )
+                    setClassificationType("Type 2 Per Product Family")
                   }
                 />
                 <span className="text-sm">
@@ -318,7 +296,6 @@ export default function AddProductPage() {
               </div>
             </CardContent>
           </Card>
-          {/* ===== END CHANGE: CLASSIFICATION CARD ===== */}
         </div>
       </div>
 
@@ -329,9 +306,7 @@ export default function AddProductPage() {
         >
           Cancel
         </Button>
-        <Button onClick={handleSaveProduct}>
-          Save Product
-        </Button>
+        <Button onClick={handleSaveProduct}>Save Product</Button>
       </div>
     </div>
   );
