@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Minus, ImagePlus } from "lucide-react";
+import { Plus, Minus, ImagePlus, Pencil } from "lucide-react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,9 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
+/* 🔹 EDIT COMPONENT */
+import AddProductSelectType from "@/components/add-product-select-type";
+
 /* ---------------- Types ---------------- */
 type UserData = {
   Firstname: string;
@@ -47,6 +50,11 @@ type Classification = {
 };
 
 type ClassificationType = string | null;
+
+type ProductType = {
+  id: string;
+  name: string;
+};
 
 export default function AddProductPage() {
   const router = useRouter();
@@ -72,6 +80,13 @@ export default function AddProductPage() {
   >([]);
   const [newClassification, setNewClassification] = useState("");
 
+  /* ===== PRODUCT TYPE STATE ===== */
+  const [newProductType, setNewProductType] = useState("");
+  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
+  const [selectedProductTypes, setSelectedProductTypes] = useState<string[]>(
+    [],
+  );
+
   /* ---------------- Fetch User ---------------- */
   useEffect(() => {
     if (!userId) {
@@ -93,6 +108,36 @@ export default function AddProductPage() {
   }, [userId, router]);
 
   /* ---------------- REAL-TIME CLASSIFICATIONS ---------------- */
+
+  /* ---------------- REAL-TIME PRODUCT TYPES (DEPENDS ON CLASSIFICATION) ---------------- */
+  useEffect(() => {
+    setProductTypes([]);
+    setSelectedProductTypes([]);
+
+    if (!classificationType) return;
+
+    const selected = classificationTypes.find(
+      (c) => c.name === classificationType,
+    );
+    if (!selected) return;
+
+    const q = query(
+      collection(db, "classificationTypes", selected.id, "productTypes"),
+      where("isActive", "==", true),
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        name: docSnap.data().name as string,
+      }));
+
+      setProductTypes(list);
+    });
+
+    return () => unsubscribe();
+  }, [classificationType, classificationTypes]);
+
   useEffect(() => {
     const q = query(
       collection(db, "classificationTypes"),
@@ -116,9 +161,7 @@ export default function AddProductPage() {
   /* ---------------- Helpers ---------------- */
   const updateSpec = (index: number, field: "key" | "value", value: string) => {
     setTechnicalSpecs((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item,
-      ),
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
     );
   };
 
@@ -146,11 +189,7 @@ export default function AddProductPage() {
   const handleAddClassification = async () => {
     if (!newClassification.trim()) return;
 
-    if (
-      classificationTypes.some(
-        (c) => c.name === newClassification.trim(),
-      )
-    ) {
+    if (classificationTypes.some((c) => c.name === newClassification.trim())) {
       toast.error("Classification already exists");
       return;
     }
@@ -162,6 +201,61 @@ export default function AddProductPage() {
     });
 
     setNewClassification("");
+  };
+
+  /* ---------------- Product Type Handlers ---------------- */
+  const handleAddProductType = async () => {
+    if (!newProductType.trim() || !classificationType) return;
+
+    const selected = classificationTypes.find(
+      (c) => c.name === classificationType,
+    );
+    if (!selected) return;
+
+    if (productTypes.some((p) => p.name === newProductType.trim())) {
+      toast.error("Product type already exists");
+      return;
+    }
+
+    await addDoc(
+      collection(db, "classificationTypes", selected.id, "productTypes"),
+      {
+        name: newProductType.trim(),
+        isActive: true,
+        createdAt: serverTimestamp(),
+      },
+    );
+
+    setNewProductType("");
+  };
+
+  const handleRemoveProductType = async (item: ProductType) => {
+    if (!classificationType) return;
+
+    const selected = classificationTypes.find(
+      (c) => c.name === classificationType,
+    );
+    if (!selected) return;
+
+    await updateDoc(
+      doc(db, "classificationTypes", selected.id, "productTypes", item.id),
+      {
+        isActive: false,
+      },
+    );
+
+    // remove if currently selected
+    setSelectedProductTypes((prev) =>
+      prev.filter((name) => name !== item.name),
+    );
+
+    toast.success("Product type removed");
+  };
+
+  const toggleProductType = (name: string) => {
+    setSelectedProductTypes((prev) =>
+      prev.includes(name) ? prev.filter((p) => p !== name) : [...prev, name],
+    );
   };
 
   const handleRemoveClassification = async (item: Classification) => {
@@ -191,9 +285,8 @@ export default function AddProductPage() {
 
       await addDoc(collection(db, "products"), {
         productName,
-        technicalSpecifications: technicalSpecs.filter(
-          (s) => s.key || s.value,
-        ),
+        productTypes: selectedProductTypes,
+        technicalSpecifications: technicalSpecs.filter((s) => s.key || s.value),
         mainImage: mainImage?.name || null,
         classificationType,
         createdBy: userId,
@@ -252,16 +345,12 @@ export default function AddProductPage() {
                   <Input
                     value={spec.key}
                     placeholder="Spec"
-                    onChange={(e) =>
-                      updateSpec(index, "key", e.target.value)
-                    }
+                    onChange={(e) => updateSpec(index, "key", e.target.value)}
                   />
                   <Input
                     value={spec.value}
                     placeholder="Value"
-                    onChange={(e) =>
-                      updateSpec(index, "value", e.target.value)
-                    }
+                    onChange={(e) => updateSpec(index, "value", e.target.value)}
                   />
                   <div className="flex gap-1">
                     <Button
@@ -326,14 +415,13 @@ export default function AddProductPage() {
             </CardHeader>
 
             <CardContent className="space-y-4">
+              {/* ===== CLASSIFICATION ===== */}
               <Label>Add / Select Type</Label>
 
               <div className="flex gap-2">
                 <Input
                   value={newClassification}
-                  onChange={(e) =>
-                    setNewClassification(e.target.value)
-                  }
+                  onChange={(e) => setNewClassification(e.target.value)}
                   placeholder="Add classification..."
                 />
                 <Button
@@ -351,14 +439,65 @@ export default function AddProductPage() {
                 {classificationTypes.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between"
+                    className="flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         checked={classificationType === item.name}
-                        onCheckedChange={() =>
-                          setClassificationType(item.name)
-                        }
+                        onCheckedChange={() => setClassificationType(item.name)}
+                      />
+                      <span className="text-sm">{item.name}</span>
+                    </div>
+
+                    <div className="flex gap-1">
+                      {/* EDIT */}
+                      <AddProductSelectType item={item} />
+
+                      {/* DELETE */}
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => handleRemoveClassification(item)}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ===== PRODUCT TYPE (UI ONLY – SEPARATE SECTION) ===== */}
+              <Separator />
+
+              <Label>Add / Select Product Type</Label>
+
+              <div className="flex gap-2">
+                <Input
+                  value={newProductType}
+                  onChange={(e) => setNewProductType(e.target.value)}
+                  placeholder="Add product type..."
+                  disabled={!classificationType}
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleAddProductType}
+                  disabled={!classificationType}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-2 mt-3">
+                {productTypes.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={selectedProductTypes.includes(item.name)}
+                        onCheckedChange={() => toggleProductType(item.name)}
                       />
                       <span className="text-sm">{item.name}</span>
                     </div>
@@ -366,9 +505,7 @@ export default function AddProductPage() {
                     <Button
                       size="icon"
                       variant="outline"
-                      onClick={() =>
-                        handleRemoveClassification(item)
-                      }
+                      onClick={() => handleRemoveProductType(item)}
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
@@ -381,10 +518,7 @@ export default function AddProductPage() {
       </div>
 
       <div className="flex gap-2">
-        <Button
-          variant="secondary"
-          onClick={() => router.push("/products")}
-        >
+        <Button variant="secondary" onClick={() => router.push("/products")}>
           Cancel
         </Button>
         <Button onClick={handleSaveProduct}>Save Product</Button>
