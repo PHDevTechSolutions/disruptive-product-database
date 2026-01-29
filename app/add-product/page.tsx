@@ -30,6 +30,7 @@ import { db } from "@/lib/firebase";
 
 /* 🔹 EDIT COMPONENT */
 import AddProductSelectType from "@/components/add-product-select-type";
+import AddProductSelectProductType from "@/components/add-product-select-product-type";
 
 /* ---------------- Types ---------------- */
 type UserData = {
@@ -502,13 +503,26 @@ export default function AddProductPage() {
                       <span className="text-sm">{item.name}</span>
                     </div>
 
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => handleRemoveProductType(item)}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      {/* ✏️ EDIT PRODUCT TYPE */}
+                      <AddProductSelectProductType
+                        classificationId={
+                          classificationTypes.find(
+                            (c) => c.name === classificationType,
+                          )?.id || ""
+                        }
+                        item={item}
+                      />
+
+                      {/* ➖ DELETE PRODUCT TYPE */}
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => handleRemoveProductType(item)}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
