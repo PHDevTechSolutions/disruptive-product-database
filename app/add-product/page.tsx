@@ -368,23 +368,24 @@ export default function AddProductPage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            <div>
-              <Label>Product Name</Label>
-              <Input
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                placeholder="Enter product name..."
-              />
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Product Name</Label>
+                <Input
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                  placeholder="Enter product name..."
+                />
+              </div>
 
-            {/* ================= PRODUCT CODE UI ================= */}
-            <div>
-              <Label>Product Code</Label>
-              <Input
-                value={productCode}
-                disabled
-                className="opacity-100 cursor-not-allowed bg-background text-foreground"
-              />
+              <div>
+                <Label>Product Code</Label>
+                <Input
+                  value={productCode}
+                  disabled
+                  className="opacity-100 cursor-not-allowed bg-background text-foreground"
+                />
+              </div>
             </div>
 
             <div className="space-y-3">
