@@ -127,14 +127,17 @@ export default function AddProductPage() {
       where("isActive", "==", true),
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        name: docSnap.data().name as string,
-      }));
+const unsubscribe = onSnapshot(q, (snapshot) => {
+  const list = snapshot.docs
+    .map((docSnap) => ({
+      id: docSnap.id,
+      name: docSnap.data().name as string,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
-      setProductTypes(list);
-    });
+  setProductTypes(list);
+});
+
 
     return () => unsubscribe();
   }, [classificationType, classificationTypes]);
