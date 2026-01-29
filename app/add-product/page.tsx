@@ -316,9 +316,13 @@ export default function AddProductPage() {
         productName,
         productCode,
 
-        classification: classificationType, // { id, name }
+        classificationId: classificationType.id,
+        classificationName: classificationType.name, // { id, name }
 
-        categoryTypes: selectedCategoryTypes, // [{ id, name }]
+        categoryTypes: selectedCategoryTypes.map((c) => ({
+          productTypeId: c.id,
+          productTypeName: c.name,
+        })), // [{ id, name }]
 
         technicalSpecifications: technicalSpecs.filter((s) => s.key || s.value),
         mainImage: mainImage?.name || null,

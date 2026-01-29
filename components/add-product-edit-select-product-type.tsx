@@ -59,7 +59,9 @@ export default function AddProductSelectProductType({
     try {
       setSaving(true);
 
-      // 1️⃣ Update master category type
+      /* ===============================
+         1️⃣ UPDATE MASTER CATEGORY TYPE
+      =============================== */
       await updateDoc(
         doc(
           db,
@@ -73,35 +75,47 @@ export default function AddProductSelectProductType({
         },
       );
 
-      // 2️⃣ Update ALL products using this category type
+      /* =========================================
+         2️⃣ FETCH PRODUCTS UNDER CLASSIFICATION
+             (NO array-contains BUG)
+      ========================================= */
       const q = query(
         collection(db, "products"),
-        where("categoryTypes", "array-contains", {
-          id: item.id,
-          name: item.name,
-        }),
+        where("classificationId", "==", classificationId),
       );
 
       const snap = await getDocs(q);
 
+      /* =========================================
+         3️⃣ UPDATE ONLY PRODUCTS THAT USE THIS TYPE
+      ========================================= */
       await Promise.all(
-        snap.docs.map((p) => {
-          const data = p.data();
+        snap.docs
+          .filter((p) =>
+            (p.data().categoryTypes || []).some(
+              (c: any) => c.productTypeId === item.id,
+            ),
+          )
+          .map((p) => {
+            const data = p.data();
 
-          const updatedCategoryTypes = (data.categoryTypes || []).map(
-            (c: any) =>
-              c.id === item.id ? { ...c, name: value.trim() } : c,
-          );
+            const updatedCategoryTypes = (data.categoryTypes || []).map(
+              (c: any) =>
+                c.productTypeId === item.id
+                  ? { ...c, productTypeName: value.trim() }
+                  : c,
+            );
 
-          return updateDoc(p.ref, {
-            categoryTypes: updatedCategoryTypes,
-          });
-        }),
+            return updateDoc(p.ref, {
+              categoryTypes: updatedCategoryTypes,
+            });
+          }),
       );
 
       toast.success("Category type updated");
       setOpen(false);
-    } catch {
+    } catch (error) {
+      console.error(error);
       toast.error("Failed to update product type");
     } finally {
       setSaving(false);

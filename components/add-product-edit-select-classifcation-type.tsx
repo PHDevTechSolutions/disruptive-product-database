@@ -63,7 +63,7 @@ export default function AddProductEditClassification({ item }: Props) {
       // 2️⃣ Update ALL products using this classification
       const q = query(
         collection(db, "products"),
-        where("classification.id", "==", item.id),
+        where("classificationId", "==", item.id),
       );
 
       const snap = await getDocs(q);
@@ -71,7 +71,7 @@ export default function AddProductEditClassification({ item }: Props) {
       await Promise.all(
         snap.docs.map((p) =>
           updateDoc(p.ref, {
-            "classification.name": value.trim(),
+            classificationName: value.trim(),
           }),
         ),
       );
