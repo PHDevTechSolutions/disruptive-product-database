@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Minus, ImagePlus } from "lucide-react";
+import { Plus, Minus, ImagePlus, Pencil } from "lucide-react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import { db } from "@/lib/firebase";
 /* 🔹 EDIT COMPONENT */
 import AddProductSelectType from "@/components/add-product-edit-select-classifcation-type";
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
+import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
 
 /* 🔹 DELETE (SOFT DELETE) COMPONENT */
 import AddProductDeleteClassification from "@/components/add-product-delete-select-classification-type";
@@ -92,6 +93,20 @@ export default function AddProductPage() {
   /* ===== PRODUCT TYPE STATE ===== */
   const [newCategoryType, setNewCategoryType] = useState("");
   const [categoryTypes, setCategoryTypes] = useState<CategoryType[]>([]);
+
+  /* ===== PRODUCT TYPE (DEPENDENT ON CATEGORY TYPE) ===== */
+  type ProductType = {
+    id: string;
+    name: string;
+    categoryTypeId: string;
+  };
+
+  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
+  const [selectedProductTypes, setSelectedProductTypes] = useState<
+    ProductType[]
+  >([]);
+  const [productTypeSearch, setProductTypeSearch] = useState("");
+  const [newProductType, setNewProductType] = useState("");
   type SelectedCategoryType = {
     id: string;
     name: string;
@@ -135,6 +150,42 @@ export default function AddProductPage() {
   /* ---------------- REAL-TIME CLASSIFICATIONS ---------------- */
 
   /* ---------------- REAL-TIME PRODUCT TYPES (DEPENDS ON CLASSIFICATION) ---------------- */
+
+  useEffect(() => {
+    setProductTypes([]);
+
+    if (!classificationType) return;
+    if (selectedCategoryTypes.length === 0) return;
+
+    const unsubscribers = selectedCategoryTypes.map((cat) => {
+      const q = query(
+        collection(
+          db,
+          "classificationTypes",
+          classificationType.id,
+          "categoryTypes",
+          cat.id,
+          "productTypes",
+        ),
+        where("isActive", "==", true),
+      );
+
+      return onSnapshot(q, (snapshot) => {
+        const list = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          name: docSnap.data().name,
+          categoryTypeId: cat.id,
+        }));
+
+        setProductTypes((prev) => {
+          const filtered = prev.filter((p) => p.categoryTypeId !== cat.id);
+          return [...filtered, ...list];
+        });
+      });
+    });
+
+    return () => unsubscribers.forEach((u) => u());
+  }, [selectedCategoryTypes, classificationType]);
   useEffect(() => {
     setCategoryTypes([]);
 
@@ -293,6 +344,55 @@ export default function AddProductPage() {
     );
   };
 
+  const toggleProductType = (item: ProductType) => {
+    setSelectedProductTypes((prev) =>
+      prev.some((p) => p.id === item.id)
+        ? prev.filter((p) => p.id !== item.id)
+        : [...prev, item],
+    );
+  };
+
+  const handleAddProductType = async () => {
+    if (!newProductType.trim()) return;
+    if (!classificationType) return;
+    if (selectedCategoryTypes.length !== 1) {
+      toast.error("Select exactly one category type to add a product type");
+      return;
+    }
+
+    const categoryTypeId = selectedCategoryTypes[0].id;
+
+    // Prevent duplicate
+    if (
+      productTypes.some(
+        (p) =>
+          p.name === newProductType.trim() &&
+          p.categoryTypeId === categoryTypeId,
+      )
+    ) {
+      toast.error("Product type already exists");
+      return;
+    }
+
+    await addDoc(
+      collection(
+        db,
+        "classificationTypes",
+        classificationType.id,
+        "categoryTypes",
+        categoryTypeId,
+        "productTypes",
+      ),
+      {
+        name: newProductType.trim(),
+        isActive: true,
+        createdAt: serverTimestamp(),
+      },
+    );
+
+    setNewProductType("");
+  };
+
   const handleRemoveClassification = async (_item: Classification) => {
     // UI ONLY – no soft delete logic
     return;
@@ -317,6 +417,12 @@ export default function AddProductPage() {
 
         classificationId: classificationType.id,
         classificationName: classificationType.name, // { id, name }
+
+        productTypes: selectedProductTypes.map((p) => ({
+          productTypeId: p.id,
+          productTypeName: p.name,
+          categoryTypeId: p.categoryTypeId,
+        })),
 
         categoryTypes: selectedCategoryTypes.map((c) => ({
           categoryTypeId: c.id,
@@ -510,10 +616,7 @@ export default function AddProductPage() {
                             setClassificationType(
                               classificationType?.id === item.id
                                 ? null
-                                : {
-                                    id: item.id,
-                                    name: item.name,
-                                  },
+                                : { id: item.id, name: item.name },
                             )
                           }
                         />
@@ -610,6 +713,81 @@ export default function AddProductPage() {
                           referenceID={user?.ReferenceID || ""}
                         />
                       </div>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* SELECT PRODUCT TYPE */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center text-sm">
+                SELECT PRODUCT TYPE
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Select Product Type</Label>
+                <Input
+                  value={productTypeSearch}
+                  onChange={(e) => setProductTypeSearch(e.target.value)}
+                  placeholder="Search product type..."
+                  className="h-8 w-[160px]"
+                  disabled={selectedCategoryTypes.length === 0}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="flex gap-2">
+                <Input
+                  value={newProductType}
+                  onChange={(e) => setNewProductType(e.target.value)}
+                  placeholder={
+                    selectedCategoryTypes.length === 1
+                      ? "Add product type..."
+                      : "Select exactly 1 category type"
+                  }
+                  disabled={selectedCategoryTypes.length !== 1}
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleAddProductType}
+                  disabled={selectedCategoryTypes.length !== 1}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                {productTypes
+                  .filter((item) =>
+                    item.name
+                      .toLowerCase()
+                      .includes(productTypeSearch.toLowerCase()),
+                  )
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={selectedProductTypes.some(
+                            (p) => p.id === item.id,
+                          )}
+                          onCheckedChange={() => toggleProductType(item)}
+                        />
+                        <span className="text-sm">{item.name}</span>
+                      </div>
+
+                      <AddProductEditSelectProduct
+                        classificationId={classificationType!.id}
+                        item={item}
+                      />
                     </div>
                   ))}
               </div>
