@@ -30,11 +30,11 @@ import { db } from "@/lib/firebase";
 
 /* 🔹 EDIT COMPONENT */
 import AddProductSelectType from "@/components/add-product-edit-select-classifcation-type";
-import AddProductSelectProductType from "@/components/add-product-edit-select-product-type";
+import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 
 /* 🔹 DELETE (SOFT DELETE) COMPONENT */
 import AddProductDeleteClassification from "@/components/add-product-delete-select-classification-type";
-import AddProductDeleteProductType from "@/components/add-product-delete-select-product-type";
+import AddProductDeleteProductType from "@/components/add-product-delete-select-category-type";
 
 /* ---------------- Types ---------------- */
 type UserData = {
@@ -319,9 +319,9 @@ export default function AddProductPage() {
         classificationName: classificationType.name, // { id, name }
 
         categoryTypes: selectedCategoryTypes.map((c) => ({
-          productTypeId: c.id,
-          productTypeName: c.name,
-        })), // [{ id, name }]
+          categoryTypeId: c.id,
+          categoryTypeName: c.name,
+        })),
 
         technicalSpecifications: technicalSpecs.filter((s) => s.key || s.value),
         mainImage: mainImage?.name || null,

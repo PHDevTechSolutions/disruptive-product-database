@@ -5,15 +5,14 @@ import { getFirestore } from "firebase/firestore"
 
 // ✅ New Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBcNuHZ_w6c0Qib-NnGyxMtomxIxNOD4p0",
-  authDomain: "disruptive-product-datab-d518f.firebaseapp.com",
-  projectId: "disruptive-product-datab-d518f",
-  storageBucket: "disruptive-product-datab-d518f.firebasestorage.app",
-  messagingSenderId: "130447840889",
-  appId: "1:130447840889:web:e10a1ebd58e61742cea6a8",
-  measurementId: "G-WCNF6TNC3R",
-}
-
+  apiKey: "AIzaSyAWtJIQtdC8-0VARFiQvp-nVV2Gk1iljkU",
+  authDomain: "disruptive-product-database-v2.firebaseapp.com",
+  projectId: "disruptive-product-database-v2",
+  storageBucket: "disruptive-product-database-v2.firebasestorage.app",
+  messagingSenderId: "944237041937",
+  appId: "1:944237041937:web:6f57e8eea770b1178354b0",
+  measurementId: "G-Y2Q6WXVYR7"
+};
 // ✅ Prevent re-initialization (important sa Next.js)
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
 

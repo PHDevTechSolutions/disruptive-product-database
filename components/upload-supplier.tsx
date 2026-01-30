@@ -27,6 +27,10 @@ import {
   getDocs,
 } from "firebase/firestore";
 
+import UploadSupplierWarning, {
+  SupplierConflict,
+} from "@/components/upload-supplier-warning";
+
 /* ---------------- Types ---------------- */
 type UserDetails = {
   ReferenceID: string;
@@ -83,18 +87,30 @@ const generateSupplierCode = (companyName: string) => {
 
 const safeSplit = (value: any) => {
   if (Array.isArray(value))
-    return value.map(String).map(v => v.trim()).filter(Boolean);
+    return value
+      .map(String)
+      .map((v) => v.trim())
+      .filter(Boolean);
 
   if (typeof value === "string")
-    return value.split("|").map(v => v.trim()).filter(Boolean);
+    return value
+      .split("|")
+      .map((v) => v.trim())
+      .filter(Boolean);
 
   if (value == null) return [];
 
   return String(value)
     .split("|")
-    .map(v => v.trim())
+    .map((v) => v.trim())
     .filter(Boolean);
 };
+
+const normalizeJoin = (arr?: string[]) =>
+  arr && arr.length ? arr.join(" | ") : "";
+
+const normalizeContacts = (arr?: { name: string; phone: string }[]) =>
+  arr && arr.length ? arr.map((c) => `${c.name}|${c.phone}`).join(" | ") : "";
 
 /* ---------------- Component ---------------- */
 function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
@@ -105,6 +121,10 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
   const [rows, setRows] = useState<ExcelRow[]>([]);
   const [dragActive, setDragActive] = useState(false);
+
+  /* ⚠️ Duplicate warning */
+  const [conflicts, setConflicts] = useState<SupplierConflict[]>([]);
+  const [warningOpen, setWarningOpen] = useState(false);
 
   /* ✅ file input ref (ADDED) */
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -190,7 +210,10 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
       const snap = await getDocs(collection(db, "suppliers"));
 
       // 🔑 company(lowercase) → { id, isActive }
-      const supplierMap = new Map<string, { id: string; isActive: boolean }>();
+      const supplierMap = new Map<
+        string,
+        { id: string; isActive: boolean; data: any }
+      >();
 
       snap.docs.forEach((d) => {
         const data = d.data();
@@ -199,6 +222,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         supplierMap.set(data.company.toLowerCase(), {
           id: d.id,
           isActive: data.isActive !== false,
+          data,
         });
       });
 
@@ -206,13 +230,15 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
       let skipped = 0;
       let reactivated = 0;
 
+      const detectedConflicts: SupplierConflict[] = [];
+
       for (const row of rows) {
         const company = String(
           row["Company Name"] ??
-          (row as any)["Company"] ??
-          (row as any)["company name"] ??
-          (row as any)["company"] ??
-          "",
+            (row as any)["Company"] ??
+            (row as any)["company name"] ??
+            (row as any)["company"] ??
+            "",
         ).trim();
         if (!company) {
           skipped++;
@@ -224,7 +250,49 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
         // 🔴 EXISTING & ACTIVE → SKIP
         if (existing?.isActive) {
-          skipped++;
+          const existingData = existing.data;
+
+          const incomingData = {
+            internalCode: row["Internal Code"] || "",
+            addresses: safeSplit(row.Addresses),
+            emails: safeSplit(row.Emails),
+            website: row.Website || "",
+            contacts: safeSplit(row["Contact Name(s)"]).map((n, i) => ({
+              name: n,
+              phone: safeSplit(row["Phone Number(s)"])[i] || "",
+            })),
+            forteProducts: safeSplit(row["Forte Product(s)"]),
+            products: safeSplit(row["Product(s)"]),
+            certificates: safeSplit(row["Certificate(s)"]),
+          };
+
+          const isDifferent =
+            (existingData.internalCode || "") !== incomingData.internalCode ||
+            normalizeJoin(existingData.addresses) !==
+              normalizeJoin(incomingData.addresses) ||
+            normalizeJoin(existingData.emails) !==
+              normalizeJoin(incomingData.emails) ||
+            (existingData.website || "") !== incomingData.website ||
+            normalizeContacts(existingData.contacts) !==
+              normalizeContacts(incomingData.contacts) ||
+            normalizeJoin(existingData.forteProducts) !==
+              normalizeJoin(incomingData.forteProducts) ||
+            normalizeJoin(existingData.products) !==
+              normalizeJoin(incomingData.products) ||
+            normalizeJoin(existingData.certificates) !==
+              normalizeJoin(incomingData.certificates);
+
+          if (isDifferent) {
+            detectedConflicts.push({
+              supplierId: existing.id,
+              company,
+              existing: existingData,
+              incoming: incomingData,
+            });
+          } else {
+            skipped++;
+          }
+
           continue;
         }
 
@@ -246,8 +314,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
             supplierId: existing.id, // 👈 ADD THIS
 
             companyCode:
-              (existing as any)?.companyCode ||
-              generateSupplierCode(company),
+              (existing as any)?.companyCode || generateSupplierCode(company),
 
             internalCode: row["Internal Code"] || "",
             addresses: splitPipe(row.Addresses),
@@ -264,13 +331,10 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
             updatedAt: serverTimestamp(),
           });
 
-
-
           supplierMap.set(key, { ...existing, isActive: true });
           reactivated++;
           continue;
         }
-
 
         // 🟢 NEW SUPPLIER → INSERT
         const contactNames = safeSplit(row["Contact Name(s)"]);
@@ -305,11 +369,19 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           supplierId: docRef.id,
         });
 
-
-        supplierMap.set(key, { id: "new", isActive: true });
+        supplierMap.set(key, {
+          id: "new",
+          isActive: true,
+          data: {},
+        });
         inserted++;
       }
-
+      if (detectedConflicts.length > 0) {
+        setConflicts(detectedConflicts);
+        setWarningOpen(true);
+        setLoading(false);
+        return;
+      }
       if (inserted === 0 && reactivated === 0) {
         toast.warning("No suppliers uploaded", {
           description: "All rows were skipped (duplicates or invalid data)",
@@ -332,6 +404,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
   /* ---------------- UI ---------------- */
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-5xl">
         <DialogHeader>
@@ -422,8 +495,85 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
-  );
+
+      <UploadSupplierWarning
+        open={warningOpen}
+        conflicts={conflicts}
+        performedByReferenceID={user?.ReferenceID}
+        onCancel={() => {
+          setConflicts([]);
+          setWarningOpen(false);
+        }}
+        onProceed={async () => {
+          setWarningOpen(false);
+          setLoading(true);
+
+          for (const c of conflicts) {
+            await updateDoc(doc(db, "suppliers", c.supplierId), {
+              internalCode: c.incoming.internalCode,
+              addresses: c.incoming.addresses,
+              emails: c.incoming.emails,
+              website: c.incoming.website,
+              contacts: c.incoming.contacts,
+              forteProducts: c.incoming.forteProducts,
+              products: c.incoming.products,
+              certificates: c.incoming.certificates,
+              updatedAt: serverTimestamp(),
+              updatedBy: userId,
+              updatedByReferenceID: user?.ReferenceID,
+            });
+          }
+
+          toast.success("Suppliers updated", {
+            description: `${conflicts.length} supplier(s) overwritten`,
+          });
+
+          setConflicts([]);
+          onOpenChange(false);
+          setLoading(false);
+        }}
+      />
+</Dialog>
+
+<UploadSupplierWarning
+  open={warningOpen}
+  conflicts={conflicts}
+  performedByReferenceID={user?.ReferenceID}
+  onCancel={() => {
+    setConflicts([]);
+    setWarningOpen(false);
+  }}
+  onProceed={async () => {
+    setWarningOpen(false);
+    setLoading(true);
+
+    for (const c of conflicts) {
+      await updateDoc(doc(db, "suppliers", c.supplierId), {
+        internalCode: c.incoming.internalCode,
+        addresses: c.incoming.addresses,
+        emails: c.incoming.emails,
+        website: c.incoming.website,
+        contacts: c.incoming.contacts,
+        forteProducts: c.incoming.forteProducts,
+        products: c.incoming.products,
+        certificates: c.incoming.certificates,
+        updatedAt: serverTimestamp(),
+        updatedBy: userId,
+        updatedByReferenceID: user?.ReferenceID,
+      });
+    }
+
+    toast.success("Suppliers updated", {
+      description: `${conflicts.length} supplier(s) overwritten`,
+    });
+
+    setConflicts([]);
+    onOpenChange(false);
+    setLoading(false);
+  }}
+/>
+</>
+);
 }
 
 export default UploadSupplier;

@@ -59,13 +59,6 @@ export default function Products() {
         <h1 className="text-2xl font-semibold">Products</h1>
 
         <div className="flex gap-2">
-          {/* <Button
-            type="button"
-            className="gap-1 cursor-pointer"
-            onClick={() => setAddProductOpen(true)}
-          >
-            + Add Product
-          </Button> */}
 
           {/* ADD PRODUCT V2 */}
           <Button

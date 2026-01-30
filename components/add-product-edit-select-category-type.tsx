@@ -77,7 +77,6 @@ export default function AddProductSelectProductType({
 
       /* =========================================
          2️⃣ FETCH PRODUCTS UNDER CLASSIFICATION
-             (NO array-contains BUG)
       ========================================= */
       const q = query(
         collection(db, "products"),
@@ -93,7 +92,7 @@ export default function AddProductSelectProductType({
         snap.docs
           .filter((p) =>
             (p.data().categoryTypes || []).some(
-              (c: any) => c.productTypeId === item.id,
+              (c: any) => c.categoryTypeId === item.id,
             ),
           )
           .map((p) => {
@@ -101,8 +100,8 @@ export default function AddProductSelectProductType({
 
             const updatedCategoryTypes = (data.categoryTypes || []).map(
               (c: any) =>
-                c.productTypeId === item.id
-                  ? { ...c, productTypeName: value.trim() }
+                c.categoryTypeId === item.id
+                  ? { ...c, categoryTypeName: value.trim() }
                   : c,
             );
 
