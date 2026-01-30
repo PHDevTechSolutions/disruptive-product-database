@@ -62,10 +62,10 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
   /* ---------------- Base Fields ---------------- */
   const [company, setCompany] = useState("");
   const [companyCode, setCompanyCode] = useState("");
-  const [internalCode, setInternalCode] = useState("");
+  const [internalCode, setInternalCode] = useState<string[]>([""]);
   const [addresses, setAddresses] = useState<string[]>([""]);
   const [emails, setEmails] = useState<string[]>([""]);
-  const [website, setWebsite] = useState("");
+  const [website, setWebsite] = useState<string[]>([""]);
 
   /* ---------------- Multi Fields ---------------- */
   const [contactNames, setContactNames] = useState<string[]>([""]);
@@ -216,10 +216,10 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
       const supplierData = {
         company,
         companyCode,
-        internalCode,
+        internalCode: internalCode.filter(Boolean),
         addresses: addresses.filter(Boolean),
         emails: emails.filter(Boolean),
-        website,
+        website: website.filter(Boolean),
 
         contacts: contactNames.map((name, index) => ({
           name,
@@ -249,10 +249,10 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
       });
 
       setCompany("");
-      setInternalCode("");
+      setInternalCode([""]);
       setAddresses([""]);
       setEmails([""]);
-      setWebsite("");
+      setWebsite([""]);
       setContactNames([""]);
       setContactNumbers([""]);
       setForteProducts([""]);
@@ -317,13 +317,44 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
           </div>
 
           {/* Internal Code */}
-          <div className="space-y-1">
+          <div className="space-y-3">
             <Label>Internal Code (optional)</Label>
-            <Input
-              value={internalCode}
-              onChange={(e) => setInternalCode(e.target.value)}
-              placeholder="Internal code"
-            />
+
+            {internalCode.map((code, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-[1fr_auto] gap-2 items-center"
+              >
+                <Input
+                  value={code}
+                  placeholder="Internal code"
+                  onChange={(e) =>
+                    updateList(setInternalCode, index, e.target.value)
+                  }
+                />
+
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => addRowAfter(setInternalCode, index)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    disabled={internalCode.length === 1}
+                    onClick={() => removeRow(setInternalCode, index)}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Addresses */}
@@ -414,14 +445,46 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
           </div>
 
           {/* Website */}
-          <div className="space-y-1">
+          <div className="space-y-3">
             <Label>Website (optional)</Label>
-            <Input
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://example.com"
-            />
+
+            {website.map((site, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-[1fr_auto] gap-2 items-center"
+              >
+                <Input
+                  value={site}
+                  placeholder="https://example.com"
+                  onChange={(e) =>
+                    updateList(setWebsite, index, e.target.value)
+                  }
+                />
+
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => addRowAfter(setWebsite, index)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    disabled={website.length === 1}
+                    onClick={() => removeRow(setWebsite, index)}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
+
 
           {/* Contacts */}
           <div className="space-y-3">

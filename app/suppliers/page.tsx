@@ -46,10 +46,10 @@ const formatWebsite = (url?: string) => {
 type Supplier = {
   id: string;
   company: string;
-  internalCode?: string;
+  internalCode?: string[]; // ✅ ARRAY
   addresses: string[];
   emails?: string[];
-  website?: string;
+  website?: string[]; // ✅ ARRAY
   contacts?: {
     name: string;
     phone: string;
@@ -63,7 +63,6 @@ type Supplier = {
   createdAt?: any;
   updatedAt?: any;
 };
-
 export default function Suppliers() {
   const router = useRouter();
   const { userId } = useUser();
@@ -133,11 +132,30 @@ export default function Suppliers() {
 
     const unsub = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
+        .map((doc) => {
+          const data = doc.data();
+
+          return {
+            id: doc.id,
+            ...data,
+
+            // ✅ NORMALIZE internalCode
+            internalCode: Array.isArray(data.internalCode)
+              ? data.internalCode
+              : data.internalCode
+                ? [data.internalCode]
+                : [],
+
+            // ✅ NORMALIZE website
+            website: Array.isArray(data.website)
+              ? data.website
+              : data.website
+                ? [data.website]
+                : [],
+          };
+        })
         .filter((s: any) => s.isActive !== false);
+
 
       setSuppliers(list as Supplier[]);
     });
@@ -171,7 +189,9 @@ export default function Suppliers() {
 
       const searchMatch =
         s.company.toLowerCase().includes(keyword) ||
-        s.internalCode?.toLowerCase().includes(keyword) ||
+        s.internalCode?.some((code) =>
+          code.toLowerCase().includes(keyword),
+        ) ||
         s.addresses?.some((a) => a.toLowerCase().includes(keyword)) ||
         s.emails?.some((e) => e.toLowerCase().includes(keyword)) ||
         s.contacts?.some(
@@ -184,9 +204,10 @@ export default function Suppliers() {
         (!filters.company ||
           s.company.toLowerCase().includes(filters.company.toLowerCase())) &&
         (!filters.internalCode ||
-          s.internalCode
-            ?.toLowerCase()
-            .includes(filters.internalCode.toLowerCase())) &&
+          s.internalCode?.some((code) =>
+            code.toLowerCase().includes(filters.internalCode.toLowerCase()),
+          )
+        ) &&
         (!filters.email ||
           s.emails?.some((e) =>
             e.toLowerCase().includes(filters.email.toLowerCase()),
@@ -394,7 +415,13 @@ export default function Suppliers() {
 
                   {/* INTERNAL CODE */}
                   <TableCell className="whitespace-normal break-words">
-                    {s.internalCode || "-"}
+                    {s.internalCode?.length
+                      ? s.internalCode.length === 1
+                        ? s.internalCode[0]
+                        : s.internalCode.map((item, i) => (
+                          <div key={i}>{`${i + 1}. ${item}`}</div>
+                        ))
+                      : "-"}
                   </TableCell>
 
                   {/* ADDRESSES */}
@@ -403,8 +430,8 @@ export default function Suppliers() {
                       ? s.addresses.length === 1
                         ? s.addresses[0]
                         : s.addresses.map((item, i) => (
-                            <div key={i}>{`${i + 1}. ${item}`}</div>
-                          ))
+                          <div key={i}>{`${i + 1}. ${item}`}</div>
+                        ))
                       : "-"}
                   </TableCell>
 
@@ -414,26 +441,29 @@ export default function Suppliers() {
                       ? s.emails.length === 1
                         ? s.emails[0]
                         : s.emails.map((item, i) => (
-                            <div key={i}>{`${i + 1}. ${item}`}</div>
-                          ))
+                          <div key={i}>{`${i + 1}. ${item}`}</div>
+                        ))
                       : "-"}
                   </TableCell>
 
                   {/* WEBSITE */}
                   <TableCell className="whitespace-normal break-words">
-                    {s.website ? (
-                      <a
-                        href={formatWebsite(s.website)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline hover:text-blue-800"
-                      >
-                        {s.website}
-                      </a>
-                    ) : (
-                      "-"
-                    )}
+                    {s.website?.length
+                      ? s.website.map((site, i) => (
+                        <div key={i}>
+                          <a
+                            href={formatWebsite(site)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline hover:text-blue-800 break-all"
+                          >
+                            {site}
+                          </a>
+                        </div>
+                      ))
+                      : "-"}
                   </TableCell>
+
 
                   {/* CONTACT NAMES */}
                   <TableCell className="whitespace-normal break-words">
@@ -441,8 +471,8 @@ export default function Suppliers() {
                       ? s.contacts.length === 1
                         ? s.contacts[0].name
                         : s.contacts.map((c, i) => (
-                            <div key={i}>{`${i + 1}. ${c.name}`}</div>
-                          ))
+                          <div key={i}>{`${i + 1}. ${c.name}`}</div>
+                        ))
                       : "-"}
                   </TableCell>
 
@@ -452,8 +482,8 @@ export default function Suppliers() {
                       ? s.contacts.length === 1
                         ? s.contacts[0].phone
                         : s.contacts.map((c, i) => (
-                            <div key={i}>{`${i + 1}. ${c.phone}`}</div>
-                          ))
+                          <div key={i}>{`${i + 1}. ${c.phone}`}</div>
+                        ))
                       : "-"}
                   </TableCell>
 
@@ -463,8 +493,8 @@ export default function Suppliers() {
                       ? s.forteProducts.length === 1
                         ? s.forteProducts[0]
                         : s.forteProducts.map((item, i) => (
-                            <div key={i}>{`${i + 1}. ${item}`}</div>
-                          ))
+                          <div key={i}>{`${i + 1}. ${item}`}</div>
+                        ))
                       : "-"}
                   </TableCell>
 
@@ -474,8 +504,8 @@ export default function Suppliers() {
                       ? s.products.length === 1
                         ? s.products[0]
                         : s.products.map((item, i) => (
-                            <div key={i}>{`${i + 1}. ${item}`}</div>
-                          ))
+                          <div key={i}>{`${i + 1}. ${item}`}</div>
+                        ))
                       : "-"}
                   </TableCell>
 
@@ -485,8 +515,8 @@ export default function Suppliers() {
                       ? s.certificates.length === 1
                         ? s.certificates[0]
                         : s.certificates.map((item, i) => (
-                            <div key={i}>{`${i + 1}. ${item}`}</div>
-                          ))
+                          <div key={i}>{`${i + 1}. ${item}`}</div>
+                        ))
                       : "-"}
                   </TableCell>
                 </TableRow>
@@ -545,7 +575,11 @@ export default function Suppliers() {
                 <div>
                   <strong>Internal Code:</strong>
                   <div className="ml-2 text-muted-foreground">
-                    {s.internalCode || "-"}
+                    {s.internalCode?.length
+                      ? s.internalCode.map((c, i) => (
+                        <div key={i}>{`${i + 1}. ${c}`}</div>
+                      ))
+                      : "-"}
                   </div>
                 </div>
 
@@ -589,20 +623,24 @@ export default function Suppliers() {
                 <div>
                   <strong>Website:</strong>
                   <div className="ml-2">
-                    {s.website ? (
-                      <a
-                        href={formatWebsite(s.website)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline break-all"
-                      >
-                        {s.website}
-                      </a>
+                    {s.website?.length ? (
+                      s.website.map((site, i) => (
+                        <a
+                          key={i}
+                          href={formatWebsite(site)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline block break-all"
+                        >
+                          {site}
+                        </a>
+                      ))
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </div>
                 </div>
+
 
                 {/* CONTACTS */}
                 <div>

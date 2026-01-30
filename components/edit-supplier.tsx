@@ -62,10 +62,10 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
 
   /* ---------------- Base Fields ---------------- */
   const [company, setCompany] = useState("");
-  const [internalCode, setInternalCode] = useState("");
+  const [internalCode, setInternalCode] = useState<string[]>([""]);
   const [addresses, setAddresses] = useState<string[]>([""]);
   const [emails, setEmails] = useState<string[]>([""]);
-  const [website, setWebsite] = useState("");
+  const [website, setWebsite] = useState<string[]>([""]);
 
   /* ---------------- Multi Fields ---------------- */
   const [contactNames, setContactNames] = useState<string[]>([""]);
@@ -143,7 +143,11 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
     if (!supplier) return;
 
     setCompany(supplier.company || "");
-    setInternalCode(supplier.internalCode || "");
+    setInternalCode(
+      supplier.internalCode && supplier.internalCode.length > 0
+        ? supplier.internalCode
+        : [""],
+    );
     setAddresses(
       supplier.addresses && supplier.addresses.length > 0
         ? supplier.addresses
@@ -153,7 +157,11 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
     setEmails(
       supplier.emails && supplier.emails.length > 0 ? supplier.emails : [""],
     );
-    setWebsite(supplier.website || "");
+    setWebsite(
+      supplier.website && supplier.website.length > 0
+        ? supplier.website
+        : [""],
+    );
 
     // ✅ CONTACTS – always at least 1 row
     if (supplier.contacts && supplier.contacts.length > 0) {
@@ -243,10 +251,10 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
       await updateDoc(doc(db, "suppliers", supplier.id), {
         supplierId: supplier.id,
         company: company.trim(),
-        internalCode,
+        internalCode: internalCode.filter(Boolean),
         addresses: addresses.filter(Boolean),
         emails: emails.filter(Boolean),
-        website,
+        website: website.filter(Boolean),
         contacts: contactNames
           .map((name, index) => ({
             name,
@@ -339,14 +347,46 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
           </div>
 
           {/* Internal Code */}
-          <div className="space-y-1">
+          <div className="space-y-3">
             <Label>Internal Code (optional)</Label>
-            <Input
-              value={internalCode}
-              onChange={(e) => setInternalCode(e.target.value)}
-              placeholder="Internal code"
-            />
+
+            {internalCode.map((code, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-[1fr_auto] gap-2 items-center"
+              >
+                <Input
+                  value={code}
+                  placeholder="Internal code"
+                  onChange={(e) =>
+                    updateList(setInternalCode, index, e.target.value)
+                  }
+                />
+
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => addRowAfter(setInternalCode, index)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    disabled={internalCode.length === 1}
+                    onClick={() => removeRow(setInternalCode, index)}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
+
 
           {/* Addresses */}
           <div className="space-y-3">
@@ -436,14 +476,46 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
           </div>
 
           {/* Website */}
-          <div className="space-y-1">
+          <div className="space-y-3">
             <Label>Website (optional)</Label>
-            <Input
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://example.com"
-            />
+
+            {website.map((site, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-[1fr_auto] gap-2 items-center"
+              >
+                <Input
+                  value={site}
+                  placeholder="https://example.com"
+                  onChange={(e) =>
+                    updateList(setWebsite, index, e.target.value)
+                  }
+                />
+
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => addRowAfter(setWebsite, index)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    disabled={website.length === 1}
+                    onClick={() => removeRow(setWebsite, index)}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
+
 
           {/* Contacts */}
           <div className="space-y-3">
