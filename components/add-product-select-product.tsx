@@ -27,27 +27,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 /* ---------------- Types ---------------- */
-type CategoryType = {
-  id: string;
-  name: string;
+type Product = {
+  id: string;        // productId
+  name: string;      // productName
 };
 
 type Props = {
-  classificationId: string;
-  item: CategoryType;
+  item: Product;
 };
 
-export default function AddProductSelectCategoryType({
-  classificationId,
-  item,
-}: Props) {
+export default function AddProductSelectProduct({ item }: Props) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(item.name);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (!value.trim()) {
-      toast.error("Category type name cannot be empty");
+      toast.error("Product name cannot be empty");
       return;
     }
 
@@ -59,63 +55,34 @@ export default function AddProductSelectCategoryType({
     try {
       setSaving(true);
 
-      /* ===============================
-         1️⃣ UPDATE MASTER CATEGORY TYPE
-      =============================== */
-      await updateDoc(
-        doc(
-          db,
-          "classificationTypes",
-          classificationId,
-          "categoryTypes",
-          item.id,
-        ),
-        {
-          name: value.trim(),
-        },
-      );
+      /* 1️⃣ Update MASTER product */
+      await updateDoc(doc(db, "products", item.id), {
+        productName: value.trim(),
+      });
 
-      /* =========================================
-         2️⃣ FETCH PRODUCTS UNDER CLASSIFICATION
-      ========================================= */
+      /* 2️⃣ Update ALL references that store productId + productName */
+      // ⚠️ Example: other collections that reference productId
+      // If wala pa ngayon, future-proof na ito
+
       const q = query(
         collection(db, "products"),
-        where("classificationId", "==", classificationId),
+        where("productId", "==", item.id),
       );
 
       const snap = await getDocs(q);
 
-      /* =========================================
-         3️⃣ UPDATE ONLY PRODUCTS USING THIS CATEGORY TYPE
-      ========================================= */
       await Promise.all(
-        snap.docs
-          .filter((p) =>
-            (p.data().categoryTypes || []).some(
-              (c: any) => c.categoryTypeId === item.id,
-            ),
-          )
-          .map((p) => {
-            const data = p.data();
-
-            const updatedCategoryTypes = (data.categoryTypes || []).map(
-              (c: any) =>
-                c.categoryTypeId === item.id
-                  ? { ...c, categoryTypeName: value.trim() }
-                  : c,
-            );
-
-            return updateDoc(p.ref, {
-              categoryTypes: updatedCategoryTypes,
-            });
+        snap.docs.map((p) =>
+          updateDoc(p.ref, {
+            productName: value.trim(),
           }),
+        ),
       );
 
-      toast.success("Category type updated");
+      toast.success("Product updated successfully");
       setOpen(false);
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to update category type");
+      toast.error("Failed to update product");
     } finally {
       setSaving(false);
     }
@@ -131,15 +98,15 @@ export default function AddProductSelectCategoryType({
 
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Edit Category Type</DialogTitle>
+          <DialogTitle>Edit Product</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-2">
-          <Label>Category Type Name</Label>
+          <Label>Product Name</Label>
           <Input
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Enter category type name..."
+            placeholder="Enter product name..."
             disabled={saving}
           />
         </div>
