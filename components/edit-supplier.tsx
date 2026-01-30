@@ -31,10 +31,9 @@ import {
   serverTimestamp,
   getDocs,
   collection,
-  query,     // ✅ ADD
-  where,     // ✅ ADD
+  query, // ✅ ADD
+  where, // ✅ ADD
 } from "firebase/firestore";
-
 
 /* ---------------- Types ---------------- */
 type UserDetails = {
@@ -76,7 +75,6 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
   const [products, setProducts] = useState<string[]>([""]);
   const [certificates, setCertificates] = useState<string[]>([""]);
 
-
   useEffect(() => {
     if (!company.trim()) {
       setCompanyError("");
@@ -117,7 +115,6 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
       setEmailError("");
     }
   }, [emails]);
-
 
   useEffect(() => {
     if (!userId) return;
@@ -163,8 +160,8 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
       setContactNames(supplier.contacts.map((c: any) => c.name || ""));
       setContactNumbers(
         supplier.contacts.map((c: any) =>
-          c.phone ? c.phone.replace(/\s+/g, "") : ""
-        )
+          c.phone ? c.phone.replace(/\s+/g, "") : "",
+        ),
       );
     } else {
       setContactNames([""]);
@@ -240,54 +237,57 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
         return;
       }
 
-await updateDoc(doc(db, "suppliers", supplier.id), {
-  supplierId: supplier.id,
-  company,
-  internalCode,
-  addresses: addresses.filter(Boolean),
-  emails: emails.filter(Boolean),
-  website,
-  contacts: contactNames
-    .map((name, index) => ({
-      name,
-      phone: contactNumbers[index] || "",
-    }))
-    .filter((c) => c.name || c.phone),
-  forteProducts: forteProducts.filter(Boolean),
-  products: products.filter(Boolean),
-  certificates: certificates.filter(Boolean),
-  referenceID: user?.ReferenceID || supplier.referenceID || null,
-  updatedAt: serverTimestamp(),
-});
+      /* ===============================
+       1️⃣ UPDATE SUPPLIER (MASTER)
+    =============================== */
+      await updateDoc(doc(db, "suppliers", supplier.id), {
+        supplierId: supplier.id,
+        company: company.trim(),
+        internalCode,
+        addresses: addresses.filter(Boolean),
+        emails: emails.filter(Boolean),
+        website,
+        contacts: contactNames
+          .map((name, index) => ({
+            name,
+            phone: contactNumbers[index] || "",
+          }))
+          .filter((c) => c.name || c.phone),
+        forteProducts: forteProducts.filter(Boolean),
+        products: products.filter(Boolean),
+        certificates: certificates.filter(Boolean),
+        referenceID: user?.ReferenceID || supplier.referenceID || null,
+        updatedAt: serverTimestamp(),
+      });
 
-/* =========================================
-   SUPPLIER CASCADE (SAME AS CATEGORY TYPE)
-========================================= */
+      /* =========================================
+       2️⃣ FETCH PRODUCTS USING THIS SUPPLIER ID
+    ========================================= */
+      const q = query(
+        collection(db, "products"),
+        where("supplier.supplierId", "==", supplier.id),
+      );
 
-const q = query(
-  collection(db, "products"),
-  where("supplier.supplierId", "==", supplier.id),
-);
+      const snap = await getDocs(q);
 
-const snap = await getDocs(q);
+      /* =========================================
+       3️⃣ UPDATE SUPPLIER NAME IN PRODUCTS
+    ========================================= */
+      await Promise.all(
+        snap.docs.map((p) => {
+          const data = p.data();
+          if (!data.supplier) return Promise.resolve();
 
-await Promise.all(
-  snap.docs.map((p) => {
-    const data = p.data();
+          return updateDoc(p.ref, {
+            supplier: {
+              ...data.supplier,
+              company: company.trim(), // 👈 SYNC NAME
+            },
+          });
+        }),
+      );
 
-    if (!data.supplier) return Promise.resolve();
-
-    return updateDoc(p.ref, {
-      supplier: {
-        ...data.supplier,
-        company: company.trim(), // 🔥 UPDATE ALL
-      },
-    });
-  }),
-);
-
-
-      toast.success("Supplier saved successfully", {
+      toast.success("Supplier updated everywhere", {
         description: company,
       });
 
@@ -636,15 +636,10 @@ await Promise.all(
           <Button
             type="button"
             onClick={handleSaveSupplier}
-            disabled={
-              !company.trim() ||
-              isDuplicateCompany ||
-              !!emailError
-            }
+            disabled={!company.trim() || isDuplicateCompany || !!emailError}
           >
             Save Supplier
           </Button>
-
         </SheetFooter>
       </SheetContent>
     </Sheet>
