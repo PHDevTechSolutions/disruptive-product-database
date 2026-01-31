@@ -36,6 +36,20 @@ type UserData = {
   Role: string;
 };
 
+const highlightText = (text: string, keyword: string) => {
+  if (!keyword) return text;
+
+  const regex = new RegExp(`(${keyword})`, "gi");
+  return text.split(regex).map((part, i) =>
+    part.toLowerCase() === keyword.toLowerCase() ? (
+      <mark key={i} className="bg-yellow-200 text-black px-0.5 rounded">
+        {part}
+      </mark>
+    ) : (
+      part
+    ),
+  );
+};
 const formatWebsite = (url?: string) => {
   if (!url) return undefined;
   return url.startsWith("http://") || url.startsWith("https://")
@@ -418,39 +432,41 @@ export default function Suppliers() {
 
                   {/* COMPANY */}
                   <TableCell className="whitespace-normal break-words">
-                    <span className="text-base font-semibold">{s.company}</span>
+                    <span className="text-base font-semibold">
+                      {highlightText(s.company, search)}
+                    </span>
                   </TableCell>
 
                   {/* INTERNAL CODE */}
                   <TableCell className="whitespace-normal break-words">
                     {s.internalCode?.length
-                      ? s.internalCode.length === 1
-                        ? s.internalCode[0]
-                        : s.internalCode.map((item, i) => (
-                            <div key={i}>{`${i + 1}. ${item}`}</div>
-                          ))
+                      ? s.internalCode.map((item, i) => (
+                          <div key={i}>
+                            {i + 1}. {highlightText(item, search)}
+                          </div>
+                        ))
                       : "-"}
                   </TableCell>
 
                   {/* ADDRESSES */}
                   <TableCell className="whitespace-normal break-words">
                     {s.addresses?.length
-                      ? s.addresses.length === 1
-                        ? s.addresses[0]
-                        : s.addresses.map((item, i) => (
-                            <div key={i}>{`${i + 1}. ${item}`}</div>
-                          ))
+                      ? s.addresses.map((item, i) => (
+                          <div key={i}>
+                            {i + 1}. {highlightText(item, search)}
+                          </div>
+                        ))
                       : "-"}
                   </TableCell>
 
                   {/* EMAILS */}
                   <TableCell className="whitespace-normal break-words">
                     {s.emails?.length
-                      ? s.emails.length === 1
-                        ? s.emails[0]
-                        : s.emails.map((item, i) => (
-                            <div key={i}>{`${i + 1}. ${item}`}</div>
-                          ))
+                      ? s.emails.map((item, i) => (
+                          <div key={i}>
+                            {i + 1}. {highlightText(item, search)}
+                          </div>
+                        ))
                       : "-"}
                   </TableCell>
 
@@ -465,7 +481,7 @@ export default function Suppliers() {
                               rel="noopener noreferrer"
                               className="text-blue-600 underline hover:text-blue-800 break-all"
                             >
-                              {site}
+                              {highlightText(site, search)}
                             </a>
                           </div>
                         ))
@@ -475,55 +491,55 @@ export default function Suppliers() {
                   {/* CONTACT NAMES */}
                   <TableCell className="whitespace-normal break-words">
                     {s.contacts?.length
-                      ? s.contacts.length === 1
-                        ? s.contacts[0].name
-                        : s.contacts.map((c, i) => (
-                            <div key={i}>{`${i + 1}. ${c.name}`}</div>
-                          ))
+                      ? s.contacts.map((c, i) => (
+                          <div key={i}>
+                            {i + 1}. {highlightText(c.name, search)}
+                          </div>
+                        ))
                       : "-"}
                   </TableCell>
 
                   {/* CONTACT PHONES */}
                   <TableCell className="whitespace-normal break-words">
                     {s.contacts?.length
-                      ? s.contacts.length === 1
-                        ? s.contacts[0].phone
-                        : s.contacts.map((c, i) => (
-                            <div key={i}>{`${i + 1}. ${c.phone}`}</div>
-                          ))
+                      ? s.contacts.map((c, i) => (
+                          <div key={i}>
+                            {i + 1}. {highlightText(c.phone, search)}
+                          </div>
+                        ))
                       : "-"}
                   </TableCell>
 
                   {/* FORTE PRODUCTS */}
                   <TableCell className="whitespace-normal break-words">
                     {s.forteProducts?.length
-                      ? s.forteProducts.length === 1
-                        ? s.forteProducts[0]
-                        : s.forteProducts.map((item, i) => (
-                            <div key={i}>{`${i + 1}. ${item}`}</div>
-                          ))
+                      ? s.forteProducts.map((item, i) => (
+                          <div key={i}>
+                            {i + 1}. {highlightText(item, search)}
+                          </div>
+                        ))
                       : "-"}
                   </TableCell>
 
                   {/* PRODUCTS */}
                   <TableCell className="whitespace-normal break-words">
                     {s.products?.length
-                      ? s.products.length === 1
-                        ? s.products[0]
-                        : s.products.map((item, i) => (
-                            <div key={i}>{`${i + 1}. ${item}`}</div>
-                          ))
+                      ? s.products.map((item, i) => (
+                          <div key={i}>
+                            {i + 1}. {highlightText(item, search)}
+                          </div>
+                        ))
                       : "-"}
                   </TableCell>
 
                   {/* CERTIFICATES */}
                   <TableCell className="whitespace-normal break-words">
                     {s.certificates?.length
-                      ? s.certificates.length === 1
-                        ? s.certificates[0]
-                        : s.certificates.map((item, i) => (
-                            <div key={i}>{`${i + 1}. ${item}`}</div>
-                          ))
+                      ? s.certificates.map((item, i) => (
+                          <div key={i}>
+                            {i + 1}. {highlightText(item, search)}
+                          </div>
+                        ))
                       : "-"}
                   </TableCell>
                 </TableRow>
@@ -548,7 +564,7 @@ export default function Suppliers() {
               {/* HEADER */}
               <div className="flex items-start justify-between">
                 <h3 className="text-lg font-bold underline leading-tight">
-                  {s.company}
+                  {highlightText(s.company, search)}
                 </h3>
 
                 <div className="flex gap-2">
@@ -584,7 +600,9 @@ export default function Suppliers() {
                   <div className="ml-2 text-muted-foreground">
                     {s.internalCode?.length
                       ? s.internalCode.map((c, i) => (
-                          <div key={i}>{`${i + 1}. ${c}`}</div>
+                          <div key={i}>
+                            {i + 1}. {highlightText(c, search)}
+                          </div>
                         ))
                       : "-"}
                   </div>
@@ -595,13 +613,11 @@ export default function Suppliers() {
                   <strong>Addresses:</strong>
                   <div className="ml-2 text-muted-foreground">
                     {s.addresses?.length ? (
-                      s.addresses.length === 1 ? (
-                        <div>{s.addresses[0]}</div>
-                      ) : (
-                        s.addresses.map((item, i) => (
-                          <div key={i}>{`${i + 1}. ${item}`}</div>
-                        ))
-                      )
+                      s.addresses.map((item, i) => (
+                        <div key={i}>
+                          {i + 1}. {highlightText(item, search)}
+                        </div>
+                      ))
                     ) : (
                       <div>-</div>
                     )}
@@ -613,13 +629,11 @@ export default function Suppliers() {
                   <strong>Emails:</strong>
                   <div className="ml-2 text-muted-foreground">
                     {s.emails?.length ? (
-                      s.emails.length === 1 ? (
-                        <div>{s.emails[0]}</div>
-                      ) : (
-                        s.emails.map((item, i) => (
-                          <div key={i}>{`${i + 1}. ${item}`}</div>
-                        ))
-                      )
+                      s.emails.map((item, i) => (
+                        <div key={i}>
+                          {i + 1}. {highlightText(item, search)}
+                        </div>
+                      ))
                     ) : (
                       <div>-</div>
                     )}
@@ -639,7 +653,7 @@ export default function Suppliers() {
                           rel="noopener noreferrer"
                           className="text-blue-600 underline block break-all"
                         >
-                          {site}
+                          {highlightText(site, search)}
                         </a>
                       ))
                     ) : (
@@ -653,15 +667,12 @@ export default function Suppliers() {
                   <strong>Contacts:</strong>
                   <div className="ml-2 text-muted-foreground">
                     {s.contacts?.length ? (
-                      s.contacts.length === 1 ? (
-                        <div>{`${s.contacts[0].name} (${s.contacts[0].phone})`}</div>
-                      ) : (
-                        s.contacts.map((c, i) => (
-                          <div key={i}>
-                            {`${i + 1}. ${c.name} (${c.phone})`}
-                          </div>
-                        ))
-                      )
+                      s.contacts.map((c, i) => (
+                        <div key={i}>
+                          {i + 1}. {highlightText(c.name, search)} (
+                          {highlightText(c.phone, search)})
+                        </div>
+                      ))
                     ) : (
                       <div>-</div>
                     )}
@@ -673,13 +684,11 @@ export default function Suppliers() {
                   <strong>Forte Products:</strong>
                   <div className="ml-2 text-muted-foreground">
                     {s.forteProducts?.length ? (
-                      s.forteProducts.length === 1 ? (
-                        <div>{s.forteProducts[0]}</div>
-                      ) : (
-                        s.forteProducts.map((item, i) => (
-                          <div key={i}>{`${i + 1}. ${item}`}</div>
-                        ))
-                      )
+                      s.forteProducts.map((item, i) => (
+                        <div key={i}>
+                          {i + 1}. {highlightText(item, search)}
+                        </div>
+                      ))
                     ) : (
                       <div>-</div>
                     )}
@@ -691,13 +700,11 @@ export default function Suppliers() {
                   <strong>Products:</strong>
                   <div className="ml-2 text-muted-foreground">
                     {s.products?.length ? (
-                      s.products.length === 1 ? (
-                        <div>{s.products[0]}</div>
-                      ) : (
-                        s.products.map((item, i) => (
-                          <div key={i}>{`${i + 1}. ${item}`}</div>
-                        ))
-                      )
+                      s.products.map((item, i) => (
+                        <div key={i}>
+                          {i + 1}. {highlightText(item, search)}
+                        </div>
+                      ))
                     ) : (
                       <div>-</div>
                     )}
@@ -709,13 +716,11 @@ export default function Suppliers() {
                   <strong>Certificates:</strong>
                   <div className="ml-2 text-muted-foreground">
                     {s.certificates?.length ? (
-                      s.certificates.length === 1 ? (
-                        <div>{s.certificates[0]}</div>
-                      ) : (
-                        s.certificates.map((item, i) => (
-                          <div key={i}>{`${i + 1}. ${item}`}</div>
-                        ))
-                      )
+                      s.certificates.map((item, i) => (
+                        <div key={i}>
+                          {i + 1}. {highlightText(item, search)}
+                        </div>
+                      ))
                     ) : (
                       <div>-</div>
                     )}

@@ -96,6 +96,7 @@ export default function AddProductPage() {
 
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [productName, setProductName] = useState("");
   const [productCode, setProductCode] = useState("");
@@ -105,6 +106,14 @@ export default function AddProductPage() {
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+
+  type GalleryItem = {
+    type: "image" | "video";
+    file: File;
+    preview: string; // UI only
+  };
+
+  const [galleryMedia, setGalleryMedia] = useState<GalleryItem[]>([]);
 
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
@@ -144,14 +153,6 @@ export default function AddProductPage() {
   const [classificationSearch, setClassificationSearch] = useState("");
   const [categoryTypeSearch, setCategoryTypeSearch] = useState("");
 
-  useEffect(() => {
-    if (!productName.trim()) {
-      setProductCode("");
-      return;
-    }
-
-    setProductCode(generateProductCode(productName));
-  }, [productName]);
   /* ---------------- Fetch User ---------------- */
   useEffect(() => {
     if (!userId) {
@@ -195,8 +196,6 @@ export default function AddProductPage() {
   /* ---------------- REAL-TIME PRODUCT TYPES (DEPENDS ON CLASSIFICATION) ---------------- */
 
   useEffect(() => {
-    setProductTypes([]);
-
     if (!classificationType) return;
     if (selectedCategoryTypes.length === 0) return;
 
@@ -228,7 +227,10 @@ export default function AddProductPage() {
     });
 
     return () => unsubscribers.forEach((u) => u());
-  }, [selectedCategoryTypes, classificationType]);
+  }, [
+    selectedCategoryTypes.map((c) => c.id).join(","),
+    classificationType?.id,
+  ]);
   useEffect(() => {
     setCategoryTypes([]);
 
@@ -279,6 +281,27 @@ export default function AddProductPage() {
   }, []);
 
   /* ---------------- Helpers ---------------- */
+
+  const uploadToCloudinary = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/api/upload-product", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error("Cloudinary upload failed");
+
+    const data = await res.json();
+
+    if (!data.secure_url || !data.public_id) {
+      throw new Error("Invalid Cloudinary response");
+    }
+
+    return data;
+  };
+
   const updateSpec = (index: number, field: "key" | "value", value: string) => {
     setTechnicalSpecs((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
@@ -318,6 +341,13 @@ export default function AddProductPage() {
     return `${prefix}-PROD-${generateAlphaNumeric(6)}`;
   };
 
+  const handleProductNameBlur = () => {
+    if (!productName.trim()) return;
+    if (!productCode) {
+      setProductCode(generateProductCode(productName));
+    }
+  };
+
   const removeSpecRow = (index: number) => {
     setTechnicalSpecs((prev) =>
       prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
@@ -327,7 +357,38 @@ export default function AddProductPage() {
   const handleImageChange = (file: File | null) => {
     if (!file) return;
     setMainImage(file);
+    if (preview) URL.revokeObjectURL(preview);
     setPreview(URL.createObjectURL(file));
+  };
+
+  const handleAddGalleryMedia = async (file: File | null) => {
+    if (!file) return;
+
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+
+    if (!isImage && !isVideo) {
+      toast.error("Only image or video files are allowed");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+
+    setGalleryMedia((prev) => [
+      ...prev,
+      {
+        type: isVideo ? "video" : "image",
+        file,
+        preview: previewUrl,
+      },
+    ]);
+  };
+
+  const handleRemoveGalleryMedia = (index: number) => {
+    setGalleryMedia((prev) => {
+      URL.revokeObjectURL(prev[index].preview);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   /* ---------------- Classification Handlers ---------------- */
@@ -441,9 +502,79 @@ export default function AddProductPage() {
     return;
   };
 
+  const uploadProductMedia = async (productId: string) => {
+  try {
+    const uploads: Promise<any>[] = [];
+
+    if (mainImage) uploads.push(uploadToCloudinary(mainImage));
+    galleryMedia.forEach((item) =>
+      uploads.push(uploadToCloudinary(item.file)),
+    );
+
+    if (uploads.length === 0) return;
+
+    const results = await Promise.all(uploads);
+
+    let uploadedMainImage = null;
+    let galleryIndex = 0;
+
+    if (mainImage) {
+      const r = results[0];
+      uploadedMainImage = {
+        name: mainImage.name,
+        url: r.secure_url,
+        publicId: r.public_id,
+      };
+      galleryIndex = 1;
+    }
+
+    const uploadedGallery = galleryMedia.map((item, i) => {
+      const r = results[i + galleryIndex];
+      return {
+        type: item.type,
+        name: item.file.name,
+        url: r.secure_url,
+        publicId: r.public_id,
+      };
+    });
+
+    await updateDoc(doc(db, "products", productId), {
+      mainImage: uploadedMainImage,
+      gallery: uploadedGallery,
+      mediaStatus: "done",
+    });
+  } catch (error) {
+    console.error("MEDIA UPLOAD FAILED:", error);
+    await updateDoc(doc(db, "products", productId), {
+      mediaStatus: "failed",
+    });
+  }
+};
+
+
+  const filteredClassifications = React.useMemo(() => {
+  return classificationTypes.filter((item) =>
+    item.name.toLowerCase().includes(classificationSearch.toLowerCase()),
+  );
+}, [classificationTypes, classificationSearch]);
+
+const filteredCategoryTypes = React.useMemo(() => {
+  return categoryTypes.filter((item) =>
+    item.name.toLowerCase().includes(categoryTypeSearch.toLowerCase()),
+  );
+}, [categoryTypes, categoryTypeSearch]);
+
+const filteredProductTypes = React.useMemo(() => {
+  return productTypes.filter((item) =>
+    item.name.toLowerCase().includes(productTypeSearch.toLowerCase()),
+  );
+}, [productTypes, productTypeSearch]);
+
   /* ---------------- Save Product ---------------- */
   const handleSaveProduct = async () => {
+    if (saving) return;
     try {
+      setSaving(true);
       if (!productName.trim()) {
         toast.error("Product name is required");
         return;
@@ -458,44 +589,69 @@ export default function AddProductPage() {
         return;
       }
 
-      await addDoc(collection(db, "products"), {
-        productName,
-        productCode,
+      // ================= CLOUDINARY UPLOAD =================
 
-        classificationId: classificationType.id,
-        classificationName: classificationType.name, // { id, name }
+      // MAIN IMAGE
+// 🔥 INSTANT SAVE — NO MEDIA WAIT
+const productRef = await addDoc(collection(db, "products"), {
+  productName,
+  productCode,
 
-        supplier: {
-          supplierId: selectedSupplier.supplierId,
-          company: selectedSupplier.company,
-        },
-        productTypes: selectedProductTypes.map((p) => ({
-          productTypeId: p.id,
-          productTypeName: p.name,
-          categoryTypeId: p.categoryTypeId,
-        })),
+  classificationId: classificationType.id,
+  classificationName: classificationType.name,
 
-        categoryTypes: selectedCategoryTypes.map((c) => ({
-          categoryTypeId: c.id,
-          categoryTypeName: c.name,
-        })),
+  supplier: {
+    supplierId: selectedSupplier.supplierId,
+    company: selectedSupplier.company,
+  },
 
-        technicalSpecifications: technicalSpecs.filter((s) => s.key || s.value),
-        mainImage: mainImage?.name || null,
-        createdBy: userId,
-        referenceID: user?.ReferenceID || null,
-        isActive: true,
-        createdAt: serverTimestamp(),
-      });
+  productTypes: selectedProductTypes.map((p) => ({
+    productTypeId: p.id,
+    productTypeName: p.name,
+    categoryTypeId: p.categoryTypeId,
+  })),
+
+  categoryTypes: selectedCategoryTypes.map((c) => ({
+    categoryTypeId: c.id,
+    categoryTypeName: c.name,
+  })),
+
+  technicalSpecifications: technicalSpecs.filter((s) => s.key || s.value),
+
+  // placeholders muna
+  mainImage: null,
+  gallery: [],
+  mediaStatus: "pending",
+
+  createdBy: userId,
+  referenceID: user?.ReferenceID || null,
+  isActive: true,
+  createdAt: serverTimestamp(),
+});
+
+toast.success("Product saved successfully");
+router.push("/products");
+
+// 🚀 background upload (wag hintayin)
+uploadProductMedia(productRef.id);
+
+
+
 
       toast.success("Product saved successfully");
       router.push("/products");
-    } catch {
-      toast.error("Failed to save product");
+    } catch (error) {
+      console.error("SAVE PRODUCT ERROR:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save product",
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
   if (loading) return null;
+
 
   return (
     <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
@@ -518,12 +674,99 @@ export default function AddProductPage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
+            {/* IMAGE */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-center text-sm">
+                  MAIN PRODUCT IMAGE
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent>
+                <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg h-56 cursor-pointer">
+                  {preview ? (
+                    <img src={preview} className="h-full object-contain" />
+                  ) : (
+                    <>
+                      <ImagePlus className="h-10 w-10 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground mt-2">
+                        CLICK TO UPLOAD
+                      </span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(e) =>
+                      handleImageChange(e.target.files?.[0] || null)
+                    }
+                  />
+                </label>
+              </CardContent>
+            </Card>
+
+            {/* GALLERY IMAGES & VIDEOS */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-center text-sm">
+                  GALLERY IMAGES & VIDEOS
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent>
+                <div className="flex gap-4 overflow-x-auto pb-2">
+                  {/* EXISTING MEDIA */}
+                  {galleryMedia.map((item, index) => (
+                    <div
+                      key={index}
+                      className="relative min-w-[160px] h-[120px] border rounded-lg overflow-hidden bg-black"
+                    >
+                      {item.type === "image" ? (
+                        <img
+                          src={item.preview}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <video
+                          src={item.preview}
+                          className="w-full h-full object-cover"
+                          controls
+                        />
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGalleryMedia(index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* ADD MEDIA */}
+                  <label className="min-w-[160px] h-[120px] flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer text-muted-foreground">
+                    <Plus className="h-6 w-6" />
+                    <span className="text-xs mt-1">ADD PHOTO / VIDEO</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*,video/*"
+                      onChange={(e) =>
+                        handleAddGalleryMedia(e.target.files?.[0] || null)
+                      }
+                    />
+                  </label>
+                </div>
+              </CardContent>
+            </Card>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Product Name</Label>
                 <Input
                   value={productName}
                   onChange={(e) => setProductName(e.target.value)}
+                  onBlur={handleProductNameBlur}
                   placeholder="Enter product name..."
                 />
               </div>
@@ -537,60 +780,58 @@ export default function AddProductPage() {
                 />
               </div>
             </div>
-{/* ================= SUPPLIER SELECT ================= */}
-<div className="space-y-2">
-  <Label>Supplier / Company</Label>
+            {/* ================= SUPPLIER SELECT ================= */}
+            <div className="space-y-2">
+              <Label>Supplier / Company</Label>
 
-  <Popover>
-    <PopoverTrigger asChild>
-      <Button
-        variant="outline"
-        role="combobox"
-        className="w-[360px] justify-between" // 🔒 FIXED WIDTH
-      >
-        <span className="truncate text-left max-w-[85%]">
-          {selectedSupplier
-            ? selectedSupplier.company
-            : "Select supplier..."}
-        </span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-[360px] justify-between" // 🔒 FIXED WIDTH
+                  >
+                    <span className="truncate text-left max-w-[85%]">
+                      {selectedSupplier
+                        ? selectedSupplier.company
+                        : "Select supplier..."}
+                    </span>
 
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
-    </PopoverTrigger>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
 
-    <PopoverContent className="p-0 w-[360px]">
-      <Command>
-        <CommandInput placeholder="Search supplier..." />
-        <CommandEmpty>No supplier found.</CommandEmpty>
+                <PopoverContent className="p-0 w-[360px]">
+                  <Command>
+                    <CommandInput placeholder="Search supplier..." />
+                    <CommandEmpty>No supplier found.</CommandEmpty>
 
-        <CommandGroup>
-          {suppliers.map((supplier) => (
-            <CommandItem
-              key={supplier.supplierId}
-              value={supplier.company}
-              onSelect={() => setSelectedSupplier(supplier)}
-            >
-              <Check
-                className={cn(
-                  "mr-2 h-4 w-4",
-                  selectedSupplier?.supplierId === supplier.supplierId
-                    ? "opacity-100"
-                    : "opacity-0",
-                )}
-              />
-              <span className="truncate">
-                {supplier.company}
-              </span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </Command>
-    </PopoverContent>
-  </Popover>
-</div>
+                    <CommandGroup>
+                      {suppliers.map((supplier) => (
+                        <CommandItem
+                          key={supplier.supplierId}
+                          value={supplier.company}
+                          onSelect={() => setSelectedSupplier(supplier)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedSupplier?.supplierId ===
+                                supplier.supplierId
+                                ? "opacity-100"
+                                : "opacity-0",
+                            )}
+                          />
+                          <span className="truncate">{supplier.company}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
 
-
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
               <Label>Technical Specifications</Label>
 
               {technicalSpecs.map((spec, index) => (
@@ -633,37 +874,6 @@ export default function AddProductPage() {
 
         {/* RIGHT */}
         <div className="space-y-6">
-          {/* IMAGE */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center text-sm">
-                MAIN PRODUCT IMAGE
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent>
-              <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg h-56 cursor-pointer">
-                {preview ? (
-                  <img src={preview} className="h-full object-contain" />
-                ) : (
-                  <>
-                    <ImagePlus className="h-10 w-10 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground mt-2">
-                      CLICK TO UPLOAD
-                    </span>
-                  </>
-                )}
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={(e) =>
-                    handleImageChange(e.target.files?.[0] || null)
-                  }
-                />
-              </label>
-            </CardContent>
-          </Card>
-
           {/* CLASSIFICATION */}
           <Card>
             <CardHeader>
@@ -701,40 +911,34 @@ export default function AddProductPage() {
               <Separator />
 
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {classificationTypes
-                  .filter((item) =>
-                    item.name
-                      .toLowerCase()
-                      .includes(classificationSearch.toLowerCase()),
-                  )
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={classificationType?.id === item.id}
-                          onCheckedChange={() =>
-                            setClassificationType(
-                              classificationType?.id === item.id
-                                ? null
-                                : { id: item.id, name: item.name },
-                            )
-                          }
-                        />
-                        <span className="text-sm">{item.name}</span>
-                      </div>
-
-                      <div className="flex gap-1">
-                        <AddProductSelectType item={item} />
-                        <AddProductDeleteClassification
-                          item={item}
-                          referenceID={user?.ReferenceID || ""}
-                        />
-                      </div>
+                {filteredClassifications.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={classificationType?.id === item.id}
+                        onCheckedChange={() =>
+                          setClassificationType(
+                            classificationType?.id === item.id
+                              ? null
+                              : { id: item.id, name: item.name },
+                          )
+                        }
+                      />
+                      <span className="text-sm">{item.name}</span>
                     </div>
-                  ))}
+
+                    <div className="flex gap-1">
+                      <AddProductSelectType item={item} />
+                      <AddProductDeleteClassification
+                        item={item}
+                        referenceID={user?.ReferenceID || ""}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -779,45 +983,39 @@ export default function AddProductPage() {
               <Separator />
 
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {categoryTypes
-                  .filter((item) =>
-                    item.name
-                      .toLowerCase()
-                      .includes(categoryTypeSearch.toLowerCase()),
-                  )
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={selectedCategoryTypes.some(
-                            (p) => p.id === item.id,
-                          )}
-                          onCheckedChange={() =>
-                            toggleCategoryType({
-                              id: item.id,
-                              name: item.name,
-                            })
-                          }
-                        />
-                        <span className="text-sm">{item.name}</span>
-                      </div>
-
-                      <div className="flex gap-1">
-                        <AddProductSelectProductType
-                          classificationId={classificationType?.id || ""}
-                          item={item}
-                        />
-                        <AddProductDeleteProductType
-                          classificationId={classificationType?.id || ""}
-                          item={item}
-                          referenceID={user?.ReferenceID || ""}
-                        />
-                      </div>
+                {filteredCategoryTypes.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={selectedCategoryTypes.some(
+                          (p) => p.id === item.id,
+                        )}
+                        onCheckedChange={() =>
+                          toggleCategoryType({
+                            id: item.id,
+                            name: item.name,
+                          })
+                        }
+                      />
+                      <span className="text-sm">{item.name}</span>
                     </div>
-                  ))}
+
+                    <div className="flex gap-1">
+                      <AddProductSelectProductType
+                        classificationId={classificationType?.id || ""}
+                        item={item}
+                      />
+                      <AddProductDeleteProductType
+                        classificationId={classificationType?.id || ""}
+                        item={item}
+                        referenceID={user?.ReferenceID || ""}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -866,33 +1064,27 @@ export default function AddProductPage() {
               </div>
 
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {productTypes
-                  .filter((item) =>
-                    item.name
-                      .toLowerCase()
-                      .includes(productTypeSearch.toLowerCase()),
-                  )
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={selectedProductTypes.some(
-                            (p) => p.id === item.id,
-                          )}
-                          onCheckedChange={() => toggleProductType(item)}
-                        />
-                        <span className="text-sm">{item.name}</span>
-                      </div>
-
-                      <AddProductEditSelectProduct
-                        classificationId={classificationType!.id}
-                        item={item}
+                {filteredProductTypes.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={selectedProductTypes.some(
+                          (p) => p.id === item.id,
+                        )}
+                        onCheckedChange={() => toggleProductType(item)}
                       />
+                      <span className="text-sm">{item.name}</span>
                     </div>
-                  ))}
+
+                    <AddProductEditSelectProduct
+                      classificationId={classificationType!.id}
+                      item={item}
+                    />
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -903,7 +1095,9 @@ export default function AddProductPage() {
         <Button variant="secondary" onClick={() => router.push("/products")}>
           Cancel
         </Button>
-        <Button onClick={handleSaveProduct}>Save Product</Button>
+        <Button onClick={handleSaveProduct} disabled={saving}>
+          {saving ? "Saving..." : "Save Product"}
+        </Button>
       </div>
     </div>
   );

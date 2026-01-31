@@ -47,6 +47,7 @@
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^12.8.0",
+    "formidable": "^3.5.4",
     "geist": "^1.5.1",
     "i18n-iso-countries": "^7.14.0",
     "input-otp": "^1.4.2",
@@ -73,6 +74,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^6.0.0",
+    "@types/formidable": "^3.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
