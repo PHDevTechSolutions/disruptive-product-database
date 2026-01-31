@@ -508,18 +508,20 @@ export default function AddProductPage() {
 
   const toggleCategoryType = (item: { id: string; name: string }) => {
     setSelectedCategoryTypes((prev) => {
-      const isRemoving = prev.some((p) => p.id === item.id);
+      const isSame = prev.length === 1 && prev[0].id === item.id;
 
-      // 🔥 REMOVE product types under unchecked category
-      if (isRemoving) {
-        setSelectedProductTypes((prevProducts) =>
-          prevProducts.filter((pt) => pt.categoryTypeId !== item.id),
-        );
+      // if clicking the same checked item → uncheck
+      if (isSame) {
+        setSelectedProductTypes([]);
+        setProductTypes([]);
+        return [];
       }
 
-      return isRemoving
-        ? prev.filter((p) => p.id !== item.id)
-        : [...prev, item];
+      // clicking a different one → replace array
+      setSelectedProductTypes([]);
+      setProductTypes([]);
+
+      return [item];
     });
   };
 
