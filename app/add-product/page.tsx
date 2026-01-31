@@ -255,11 +255,13 @@ export default function AddProductPage() {
       );
 
       return onSnapshot(q, (snapshot) => {
-        const list = snapshot.docs.map((docSnap) => ({
-          id: docSnap.id,
-          name: docSnap.data().name,
-          categoryTypeId: cat.id,
-        }));
+        const list = snapshot.docs
+          .map((docSnap) => ({
+            id: docSnap.id,
+            name: docSnap.data().name as string,
+            categoryTypeId: cat.id,
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
 
         setProductTypes((prev) => {
           const filtered = prev.filter((p) => p.categoryTypeId !== cat.id);
@@ -645,11 +647,13 @@ export default function AddProductPage() {
   const filteredProductTypes = React.useMemo(() => {
     const allowedCategoryIds = selectedCategoryTypes.map((c) => c.id);
 
-    return productTypes.filter(
-      (item) =>
-        allowedCategoryIds.includes(item.categoryTypeId) &&
-        item.name.toLowerCase().includes(productTypeSearch.toLowerCase()),
-    );
+    return productTypes
+      .filter(
+        (item) =>
+          allowedCategoryIds.includes(item.categoryTypeId) &&
+          item.name.toLowerCase().includes(productTypeSearch.toLowerCase()),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [productTypes, productTypeSearch, selectedCategoryTypes]);
 
   /* ---------------- Save Product ---------------- */
