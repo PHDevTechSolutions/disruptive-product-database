@@ -47,10 +47,13 @@ import { db } from "@/lib/firebase";
 import AddProductSelectType from "@/components/add-product-edit-select-classifcation-type";
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
+import AddProductEditSisterCompanyType from "@/components/add-product-edit-sister-company-type";
 
 /* 🔹 DELETE (SOFT DELETE) COMPONENT */
+import AddProductDeleteSisterCompany from "@/components/add-product-delete-select-sister-company";
 import AddProductDeleteClassification from "@/components/add-product-delete-select-classification-type";
 import AddProductDeleteProductType from "@/components/add-product-delete-select-category-type";
+import AddProductDeleteProduct from "@/components/add-product-delete-select-product";
 
 /* ---------------- Types ---------------- */
 type UserData = {
@@ -117,6 +120,24 @@ export default function AddProductPage() {
 
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
+
+  /* ===== SISTER COMPANY (REAL-TIME + SOFT DELETE) ===== */
+  type SisterCompany = {
+    id: string;
+    name: string;
+  };
+
+  type SelectedSisterCompany = {
+    id: string;
+    name: string;
+  } | null;
+
+  const [selectedSisterCompany, setSelectedSisterCompany] =
+    useState<SelectedSisterCompany>(null);
+
+  const [sisterCompanies, setSisterCompanies] = useState<SisterCompany[]>([]);
+  const [newSisterCompany, setNewSisterCompany] = useState("");
+  const [sisterCompanySearch, setSisterCompanySearch] = useState("");
 
   /* ===== CLASSIFICATION (REAL-TIME + SOFT DELETE) ===== */
   const [classificationTypes, setClassificationTypes] = useState<
@@ -191,6 +212,27 @@ export default function AddProductPage() {
     return () => unsubscribe();
   }, []);
 
+  /* ---------------- REAL-TIME SISTER COMPANIES ---------------- */
+  useEffect(() => {
+    const q = query(
+      collection(db, "sisterCompanies"),
+      where("isActive", "==", true),
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs
+        .map((docSnap) => ({
+          id: docSnap.id,
+          name: docSnap.data().name as string,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      setSisterCompanies(list);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   /* ---------------- REAL-TIME CLASSIFICATIONS ---------------- */
 
   /* ---------------- REAL-TIME PRODUCT TYPES (DEPENDS ON CLASSIFICATION) ---------------- */
@@ -233,6 +275,10 @@ export default function AddProductPage() {
   ]);
   useEffect(() => {
     setCategoryTypes([]);
+
+    setSelectedCategoryTypes([]);
+    setSelectedProductTypes([]);
+    setProductTypes([]);
 
     if (!classificationType) return;
 
@@ -409,6 +455,24 @@ export default function AddProductPage() {
     setNewClassification("");
   };
 
+  /* ---------------- Sister Company Handlers ---------------- */
+  const handleAddSisterCompany = async () => {
+    if (!newSisterCompany.trim()) return;
+
+    if (sisterCompanies.some((s) => s.name === newSisterCompany.trim())) {
+      toast.error("Sister company already exists");
+      return;
+    }
+
+    await addDoc(collection(db, "sisterCompanies"), {
+      name: newSisterCompany.trim(),
+      isActive: true,
+      createdAt: serverTimestamp(),
+    });
+
+    setNewSisterCompany("");
+  };
+
   /* ---------------- Product Type Handlers ---------------- */
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim() || !classificationType) return;
@@ -441,11 +505,20 @@ export default function AddProductPage() {
   };
 
   const toggleCategoryType = (item: { id: string; name: string }) => {
-    setSelectedCategoryTypes((prev) =>
-      prev.some((p) => p.id === item.id)
+    setSelectedCategoryTypes((prev) => {
+      const isRemoving = prev.some((p) => p.id === item.id);
+
+      // 🔥 REMOVE product types under unchecked category
+      if (isRemoving) {
+        setSelectedProductTypes((prevProducts) =>
+          prevProducts.filter((pt) => pt.categoryTypeId !== item.id),
+        );
+      }
+
+      return isRemoving
         ? prev.filter((p) => p.id !== item.id)
-        : [...prev, item],
-    );
+        : [...prev, item];
+    });
   };
 
   const toggleProductType = (item: ProductType) => {
@@ -503,72 +576,81 @@ export default function AddProductPage() {
   };
 
   const uploadProductMedia = async (productId: string) => {
-  try {
-    const uploads: Promise<any>[] = [];
+    try {
+      const uploads: Promise<any>[] = [];
 
-    if (mainImage) uploads.push(uploadToCloudinary(mainImage));
-    galleryMedia.forEach((item) =>
-      uploads.push(uploadToCloudinary(item.file)),
-    );
+      if (mainImage) uploads.push(uploadToCloudinary(mainImage));
+      galleryMedia.forEach((item) =>
+        uploads.push(uploadToCloudinary(item.file)),
+      );
 
-    if (uploads.length === 0) return;
+      if (uploads.length === 0) return;
 
-    const results = await Promise.all(uploads);
+      const results = await Promise.all(uploads);
 
-    let uploadedMainImage = null;
-    let galleryIndex = 0;
+      let uploadedMainImage = null;
+      let galleryIndex = 0;
 
-    if (mainImage) {
-      const r = results[0];
-      uploadedMainImage = {
-        name: mainImage.name,
-        url: r.secure_url,
-        publicId: r.public_id,
-      };
-      galleryIndex = 1;
+      if (mainImage) {
+        const r = results[0];
+        uploadedMainImage = {
+          name: mainImage.name,
+          url: r.secure_url,
+          publicId: r.public_id,
+        };
+        galleryIndex = 1;
+      }
+
+      const uploadedGallery = galleryMedia.map((item, i) => {
+        const r = results[i + galleryIndex];
+        return {
+          type: item.type,
+          name: item.file.name,
+          url: r.secure_url,
+          publicId: r.public_id,
+        };
+      });
+
+      await updateDoc(doc(db, "products", productId), {
+        mainImage: uploadedMainImage,
+        gallery: uploadedGallery,
+        mediaStatus: "done",
+      });
+    } catch (error) {
+      console.error("MEDIA UPLOAD FAILED:", error);
+      await updateDoc(doc(db, "products", productId), {
+        mediaStatus: "failed",
+      });
     }
-
-    const uploadedGallery = galleryMedia.map((item, i) => {
-      const r = results[i + galleryIndex];
-      return {
-        type: item.type,
-        name: item.file.name,
-        url: r.secure_url,
-        publicId: r.public_id,
-      };
-    });
-
-    await updateDoc(doc(db, "products", productId), {
-      mainImage: uploadedMainImage,
-      gallery: uploadedGallery,
-      mediaStatus: "done",
-    });
-  } catch (error) {
-    console.error("MEDIA UPLOAD FAILED:", error);
-    await updateDoc(doc(db, "products", productId), {
-      mediaStatus: "failed",
-    });
-  }
-};
-
+  };
 
   const filteredClassifications = React.useMemo(() => {
-  return classificationTypes.filter((item) =>
-    item.name.toLowerCase().includes(classificationSearch.toLowerCase()),
-  );
-}, [classificationTypes, classificationSearch]);
+    return classificationTypes.filter((item) =>
+      item.name.toLowerCase().includes(classificationSearch.toLowerCase()),
+    );
+  }, [classificationTypes, classificationSearch]);
 
-const filteredCategoryTypes = React.useMemo(() => {
-  return categoryTypes.filter((item) =>
-    item.name.toLowerCase().includes(categoryTypeSearch.toLowerCase()),
-  );
-}, [categoryTypes, categoryTypeSearch]);
+  const filteredSisterCompanies = React.useMemo(() => {
+    return sisterCompanies.filter((item) =>
+      item.name.toLowerCase().includes(sisterCompanySearch.toLowerCase()),
+    );
+  }, [sisterCompanies, sisterCompanySearch]);
 
-const filteredProductTypes = React.useMemo(() => {
-  return productTypes.filter((item) =>
-    item.name.toLowerCase().includes(productTypeSearch.toLowerCase()),
-  );
-}, [productTypes, productTypeSearch]);
+  const filteredCategoryTypes = React.useMemo(() => {
+    return categoryTypes.filter((item) =>
+      item.name.toLowerCase().includes(categoryTypeSearch.toLowerCase()),
+    );
+  }, [categoryTypes, categoryTypeSearch]);
+
+  const filteredProductTypes = React.useMemo(() => {
+    const allowedCategoryIds = selectedCategoryTypes.map((c) => c.id);
+
+    return productTypes.filter(
+      (item) =>
+        allowedCategoryIds.includes(item.categoryTypeId) &&
+        item.name.toLowerCase().includes(productTypeSearch.toLowerCase()),
+    );
+  }, [productTypes, productTypeSearch, selectedCategoryTypes]);
 
   /* ---------------- Save Product ---------------- */
   const handleSaveProduct = async () => {
@@ -589,54 +671,59 @@ const filteredProductTypes = React.useMemo(() => {
         return;
       }
 
+      if (!selectedSisterCompany) {
+        toast.error("Please select a sister company");
+        return;
+      }
+
       // ================= CLOUDINARY UPLOAD =================
 
       // MAIN IMAGE
-// 🔥 INSTANT SAVE — NO MEDIA WAIT
-const productRef = await addDoc(collection(db, "products"), {
-  productName,
-  productCode,
+      // 🔥 INSTANT SAVE — NO MEDIA WAIT
+      const productRef = await addDoc(collection(db, "products"), {
+        productName,
+        productCode,
 
-  classificationId: classificationType.id,
-  classificationName: classificationType.name,
+        sisterCompanyId: selectedSisterCompany.id,
+        sisterCompanyName: selectedSisterCompany.name,
 
-  supplier: {
-    supplierId: selectedSupplier.supplierId,
-    company: selectedSupplier.company,
-  },
+        classificationId: classificationType.id,
+        classificationName: classificationType.name,
 
-  productTypes: selectedProductTypes.map((p) => ({
-    productTypeId: p.id,
-    productTypeName: p.name,
-    categoryTypeId: p.categoryTypeId,
-  })),
+        supplier: {
+          supplierId: selectedSupplier.supplierId,
+          company: selectedSupplier.company,
+        },
 
-  categoryTypes: selectedCategoryTypes.map((c) => ({
-    categoryTypeId: c.id,
-    categoryTypeName: c.name,
-  })),
+        productTypes: selectedProductTypes.map((p) => ({
+          productTypeId: p.id,
+          productTypeName: p.name,
+          categoryTypeId: p.categoryTypeId,
+        })),
 
-  technicalSpecifications: technicalSpecs.filter((s) => s.key || s.value),
+        categoryTypes: selectedCategoryTypes.map((c) => ({
+          categoryTypeId: c.id,
+          categoryTypeName: c.name,
+        })),
 
-  // placeholders muna
-  mainImage: null,
-  gallery: [],
-  mediaStatus: "pending",
+        technicalSpecifications: technicalSpecs.filter((s) => s.key || s.value),
 
-  createdBy: userId,
-  referenceID: user?.ReferenceID || null,
-  isActive: true,
-  createdAt: serverTimestamp(),
-});
+        // placeholders muna
+        mainImage: null,
+        gallery: [],
+        mediaStatus: "pending",
 
-toast.success("Product saved successfully");
-router.push("/products");
+        createdBy: userId,
+        referenceID: user?.ReferenceID || null,
+        isActive: true,
+        createdAt: serverTimestamp(),
+      });
 
-// 🚀 background upload (wag hintayin)
-uploadProductMedia(productRef.id);
+      toast.success("Product saved successfully");
+      router.push("/products");
 
-
-
+      // 🚀 background upload (wag hintayin)
+      uploadProductMedia(productRef.id);
 
       toast.success("Product saved successfully");
       router.push("/products");
@@ -651,7 +738,6 @@ uploadProductMedia(productRef.id);
   };
 
   if (loading) return null;
-
 
   return (
     <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
@@ -874,11 +960,92 @@ uploadProductMedia(productRef.id);
 
         {/* RIGHT */}
         <div className="space-y-6">
+          {/* SELECT SISTER COMPANY */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center text-sm">
+                SELECT SISTER COMPANY
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              {/* SEARCH */}
+              <div className="flex items-center justify-between gap-2">
+                <Label>Select Sister Company</Label>
+                <Input
+                  value={sisterCompanySearch}
+                  onChange={(e) => setSisterCompanySearch(e.target.value)}
+                  placeholder="Search sister company..."
+                  className="h-8 w-[160px]"
+                />
+              </div>
+
+              {/* ADD */}
+              <div className="flex gap-2">
+                <Input
+                  value={newSisterCompany}
+                  onChange={(e) => setNewSisterCompany(e.target.value)}
+                  placeholder="Add sister company..."
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleAddSisterCompany}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <Separator />
+
+              {/* LIST */}
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                {filteredSisterCompanies.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={selectedSisterCompany?.id === item.id}
+                        onCheckedChange={() =>
+                          setSelectedSisterCompany(
+                            selectedSisterCompany?.id === item.id
+                              ? null
+                              : { id: item.id, name: item.name },
+                          )
+                        }
+                      />
+                      <span className="text-sm">{item.name}</span>
+                    </div>
+
+                    <div className="flex gap-1">
+                      {/* EDIT */}
+                      <AddProductEditSisterCompanyType item={item} />
+
+                      {/* DELETE */}
+                      <AddProductDeleteSisterCompany
+                        item={item}
+                        referenceID={user?.ReferenceID || ""}
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                {filteredSisterCompanies.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No sister companies found
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* CLASSIFICATION */}
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-sm">
-                CLASSIFICATION TYPE
+                SELECT CLASSIFICATION TYPE
               </CardTitle>
             </CardHeader>
 
@@ -942,12 +1109,11 @@ uploadProductMedia(productRef.id);
               </div>
             </CardContent>
           </Card>
-
           {/* CATEGORY TYPE */}
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-sm">
-                CATEGORY TYPE
+                SELECT CATEGORY TYPE
               </CardTitle>
             </CardHeader>
 
@@ -1079,10 +1245,23 @@ uploadProductMedia(productRef.id);
                       <span className="text-sm">{item.name}</span>
                     </div>
 
-                    <AddProductEditSelectProduct
-                      classificationId={classificationType!.id}
-                      item={item}
-                    />
+                    {/* ACTION BUTTONS */}
+                    <div className="flex gap-1">
+                      <AddProductEditSelectProduct
+                        classificationId={classificationType!.id}
+                        item={item}
+                      />
+
+                      <AddProductDeleteProduct
+                        item={{
+                          id: item.id,
+                          productName: item.name,
+                          categoryTypeId: item.categoryTypeId,
+                          classificationId: classificationType!.id,
+                        }}
+                        referenceID={user?.ReferenceID || ""}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
