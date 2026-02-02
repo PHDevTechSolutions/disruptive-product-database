@@ -172,6 +172,21 @@ export default function AddProductPage() {
   /* ===== ADDITIONAL LOGISTICS FIELDS ===== */
   type ProductCategory = "Economy" | "Mid-End" | "To Be Evaluated";
 
+  /* ===== SUPPLIER DATA SHEET (FILES ARRAY) ===== */
+  type SupplierDataSheetItem = {
+    name: string;
+    url: string;
+    publicId: string;
+  };
+
+  type SupplierSheetRow = {
+    file: File | null;
+  };
+
+  const [supplierDataSheets, setSupplierDataSheets] = useState<
+    SupplierSheetRow[]
+  >([{ file: null }]);
+
   const [productCategory, setProductCategory] =
     useState<ProductCategory>("To Be Evaluated");
 
@@ -399,12 +414,13 @@ export default function AddProductPage() {
   const generateSku = async (sisterCompany: { id: string; name: string }) => {
     const year = new Date().getFullYear();
 
-    // short code from sister company name
+    // 3-letter company code (BUI, ECO, etc.)
     const companyCode = sisterCompany.name
       .replace(/[^A-Za-z]/g, "")
       .substring(0, 3)
       .toUpperCase();
 
+    // fetch ALL products for this sister company + year
     const q = query(
       collection(db, "products"),
       where("sisterCompanyId", "==", sisterCompany.id),
@@ -413,9 +429,38 @@ export default function AddProductPage() {
 
     const snapshot = await getDocs(q);
 
-    const running = String(snapshot.size + 1).padStart(4, "0");
+    // find highest running number for this year
+    let maxRunning = 0;
 
-    return `${companyCode}-${year}-${running}`;
+    snapshot.forEach((docSnap) => {
+      const sku: string | undefined = docSnap.data().sku;
+
+      /**
+       * Expected format:
+       * BUI-SPF-2026-0001
+       */
+      if (!sku) return;
+
+      const parts = sku.split("-");
+      if (parts.length !== 4) return;
+
+      const skuYear = Number(parts[2]);
+      const running = Number(parts[3]);
+
+      if (skuYear === year && !Number.isNaN(running)) {
+        maxRunning = Math.max(maxRunning, running);
+      }
+    });
+
+    const nextRunning = maxRunning + 1;
+
+    // pad ONLY if less than 4 digits
+    const runningFormatted =
+      nextRunning < 10000
+        ? String(nextRunning).padStart(4, "0")
+        : String(nextRunning);
+
+    return `${companyCode}-SPF-${year}-${runningFormatted}`;
   };
 
   /* ================= NUMBER FORMATTERS ================= */
@@ -537,6 +582,27 @@ export default function AddProductPage() {
       URL.revokeObjectURL(prev[index].preview);
       return prev.filter((_, i) => i !== index);
     });
+  };
+
+  /* ===== SUPPLIER DATA SHEET HANDLERS ===== */
+  const updateSupplierSheet = (index: number, file: File | null) => {
+    setSupplierDataSheets((prev) =>
+      prev.map((row, i) => (i === index ? { file } : row)),
+    );
+  };
+
+  const addSupplierSheetRow = (index: number) => {
+    setSupplierDataSheets((prev) => {
+      const copy = [...prev];
+      copy.splice(index + 1, 0, { file: null });
+      return copy;
+    });
+  };
+
+  const removeSupplierSheetRow = (index: number) => {
+    setSupplierDataSheets((prev) =>
+      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
+    );
   };
 
   /* ---------------- Classification Handlers ---------------- */
@@ -720,6 +786,32 @@ export default function AddProductPage() {
         gallery: uploadedGallery,
         mediaStatus: "done",
       });
+
+      const validSupplierSheets = supplierDataSheets
+        .map((row) => row.file)
+        .filter((file): file is File => !!file);
+
+      if (validSupplierSheets.length > 0) {
+        const uploadedSupplierSheets: {
+          name: string;
+          url: string;
+          publicId: string;
+        }[] = [];
+
+        for (const file of validSupplierSheets) {
+          const res = await uploadToCloudinary(file);
+
+          uploadedSupplierSheets.push({
+            name: file.name,
+            url: res.secure_url, // already FIXED by API
+            publicId: res.public_id,
+          });
+        }
+
+        await updateDoc(doc(db, "products", productId), {
+          supplierDataSheets: uploadedSupplierSheets,
+        });
+      }
     } catch (error) {
       console.error("MEDIA UPLOAD FAILED:", error);
       await updateDoc(doc(db, "products", productId), {
@@ -763,7 +855,6 @@ export default function AddProductPage() {
   /* ===== SAFE LOGISTICS PAYLOAD (FIRESTORE SAFE) ===== */
   const logisticsPayload = {
     calculationType,
-
     unitCost: unitCost ?? 0,
 
     packaging:
@@ -782,7 +873,6 @@ export default function AddProductPage() {
     srp: srp ?? 0,
 
     category: productCategory || "To Be Evaluated",
-
     moq: moq ?? 0,
 
     warranty: {
@@ -1222,6 +1312,7 @@ export default function AddProductPage() {
               <Separator />
 
               {/* ===== ADDITIONAL LOGISTICS INFO ===== */}
+
               <div className="space-y-4">
                 {/* CATEGORY */}
                 <div>
@@ -1280,6 +1371,48 @@ export default function AddProductPage() {
                       <option value="Years">Years</option>
                     </select>
                   </div>
+                </div>
+
+                {/* ===== SUPPLIER DATA SHEET ===== */}
+                <div className="space-y-3">
+                  <Label>Supplier&apos;s Data Sheet (PDF / Docs)</Label>
+
+                  {supplierDataSheets.map((row, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-[1fr_auto] gap-2 items-center"
+                    >
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) =>
+                          updateSupplierSheet(
+                            index,
+                            e.target.files?.[0] || null,
+                          )
+                        }
+                      />
+
+                      <div className="flex gap-1">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => addSupplierSheetRow(index)}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={supplierDataSheets.length === 1}
+                          onClick={() => removeSupplierSheetRow(index)}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </CardContent>

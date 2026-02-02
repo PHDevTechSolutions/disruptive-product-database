@@ -5,7 +5,7 @@ import fs from "fs";
 
 export const config = {
   api: {
-    bodyParser: false, // REQUIRED for file uploads
+    bodyParser: false, // REQUIRED for formidable
   },
 };
 
@@ -13,12 +13,13 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // ================= METHOD GUARD =================
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    // 🔹 Parse multipart/form-data correctly
+    // ================= PARSE FORM =================
     const form = formidable({
       multiples: false,
       keepExtensions: true,
@@ -27,20 +28,13 @@ export default async function handler(
     const { files } = await new Promise<{
       files: formidable.Files;
     }>((resolve, reject) => {
-      form.parse(
-        req,
-        (
-          err: Error | null, // ✅ FIXED TYPE
-          _fields: formidable.Fields,
-          files: formidable.Files
-        ) => {
-          if (err) reject(err);
-          resolve({ files });
-        }
-      );
+      form.parse(req, (err, _fields, files) => {
+        if (err) reject(err);
+        resolve({ files });
+      });
     });
 
-    // 🔹 IMPORTANT: must match formData.append("file", file)
+    // ================= GET FILE =================
     const uploadedFile = files.file as File | File[] | undefined;
 
     if (!uploadedFile) {
@@ -51,16 +45,36 @@ export default async function handler(
       ? uploadedFile[0]
       : uploadedFile;
 
-    // 🔹 Upload to Cloudinary (IMAGE / VIDEO auto-detect)
+    // ================= FILE TYPE CHECK =================
+    const isRaw =
+      file.mimetype?.includes("pdf") ||
+      file.mimetype?.includes("word") ||
+      file.mimetype?.includes("officedocument");
+
+    // ================= CLOUDINARY UPLOAD =================
     const uploadResult = await cloudinary.uploader.upload(file.filepath, {
       folder: "products",
-      resource_type: "auto", // ✅ image + video
+      resource_type: isRaw ? "raw" : "auto",
+      use_filename: true,
+      unique_filename: false,
     });
 
-    // 🔹 Cleanup temp file
+    // ================= CLEANUP =================
     fs.unlinkSync(file.filepath);
 
-    return res.status(200).json(uploadResult);
+    // ================= FIX URL (🔥 IMPORTANT) =================
+    const fixedUrl =
+      uploadResult.resource_type === "raw"
+        ? uploadResult.secure_url.replace("/image/upload/", "/raw/upload/")
+        : uploadResult.secure_url;
+
+    // ================= SUCCESS =================
+    return res.status(200).json({
+      secure_url: fixedUrl,
+      public_id: uploadResult.public_id,
+      resource_type: uploadResult.resource_type,
+      original_filename: uploadResult.original_filename,
+    });
   } catch (error) {
     console.error("UPLOAD ERROR:", error);
     return res.status(500).json({ error: "Upload failed" });
