@@ -188,6 +188,11 @@ export default function EditProductPage() {
 
   type SupplierSheetRow = {
     file: File | null;
+    existing?: {
+      name: string;
+      url: string;
+      publicId: string;
+    } | null;
   };
 
   const [supplierDataSheets, setSupplierDataSheets] = useState<
@@ -381,8 +386,13 @@ export default function EditProductPage() {
           // LOAD EXISTING SUPPLIER DATA SHEETS
           if (Array.isArray(data.supplierDataSheets)) {
             setSupplierDataSheets(
-              data.supplierDataSheets.map(() => ({
+              data.supplierDataSheets.map((sheet: any) => ({
                 file: null,
+                existing: {
+                  name: sheet.name,
+                  url: sheet.url,
+                  publicId: sheet.publicId,
+                },
               })),
             );
           }
@@ -729,7 +739,14 @@ export default function EditProductPage() {
   /* ===== SUPPLIER DATA SHEET HANDLERS ===== */
   const updateSupplierSheet = (index: number, file: File | null) => {
     setSupplierDataSheets((prev) =>
-      prev.map((row, i) => (i === index ? { file } : row)),
+      prev.map((row, i) =>
+        i === index
+          ? {
+              ...row, // KEEP EXISTING DATA
+              file, // ADD NEW FILE
+            }
+          : row,
+      ),
     );
   };
 
@@ -959,31 +976,36 @@ export default function EditProductPage() {
         mediaStatus: "done",
       });
 
-      const validSupplierSheets = supplierDataSheets
-        .map((row) => row.file)
-        .filter((file): file is File => !!file);
+      const finalSupplierSheets: SupplierDataSheetItem[] = [];
 
-      if (validSupplierSheets.length > 0) {
-        const uploadedSupplierSheets: {
-          name: string;
-          url: string;
-          publicId: string;
-        }[] = [];
+      // 1. KEEP EXISTING FILES (that were not removed)
+      for (const row of supplierDataSheets) {
+        if (row.existing && !row.file) {
+          finalSupplierSheets.push({
+            name: row.existing.name,
+            url: row.existing.url,
+            publicId: row.existing.publicId,
+          });
+        }
+      }
 
-        for (const file of validSupplierSheets) {
-          const res = await uploadToCloudinary(file);
+      // 2. UPLOAD NEW FILES (added or replaced)
+      for (const row of supplierDataSheets) {
+        if (row.file) {
+          const res = await uploadToCloudinary(row.file);
 
-          uploadedSupplierSheets.push({
-            name: file.name,
-            url: res.secure_url, // already FIXED by API
+          finalSupplierSheets.push({
+            name: row.file.name,
+            url: res.secure_url,
             publicId: res.public_id,
           });
         }
-
-        await updateDoc(doc(db, "products", productId), {
-          supplierDataSheets: uploadedSupplierSheets,
-        });
       }
+
+      // 3. SAVE UPDATED ARRAY (even if empty)
+      await updateDoc(doc(db, "products", productId), {
+        supplierDataSheets: finalSupplierSheets,
+      });
     } catch (error) {
       console.error("MEDIA UPLOAD FAILED:", error);
       await updateDoc(doc(db, "products", productId), {
@@ -1129,8 +1151,9 @@ export default function EditProductPage() {
       // ONLY reset media fields IF NEW FILES ARE ACTUALLY ADDED
       const hasNewMainImage = !!mainImage;
       const hasNewGalleryFiles = galleryMedia.some((g) => g.file);
+      const hasNewDocuments = supplierDataSheets.some((s) => s.file);
 
-      if (hasNewMainImage || hasNewGalleryFiles) {
+      if (hasNewMainImage || hasNewGalleryFiles || hasNewDocuments) {
         updatePayload.mediaStatus = "pending";
       }
 
@@ -1560,16 +1583,40 @@ export default function EditProductPage() {
                       key={index}
                       className="grid grid-cols-[1fr_auto] gap-2 items-center"
                     >
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) =>
-                          updateSupplierSheet(
-                            index,
-                            e.target.files?.[0] || null,
-                          )
-                        }
-                      />
+                      <div className="space-y-1">
+                        {/* SHOW EXISTING FILE IF PRESENT */}
+                        {row.existing && !row.file && (
+                          <div className="text-sm text-blue-600">
+                            Current File:
+                            <a
+                              href={row.existing.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline ml-1"
+                            >
+                              {row.existing.name}
+                            </a>
+                          </div>
+                        )}
+
+                        {/* SHOW NEWLY SELECTED FILE */}
+                        {row.file && (
+                          <div className="text-sm text-green-600">
+                            New File: {row.file.name}
+                          </div>
+                        )}
+
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          onChange={(e) =>
+                            updateSupplierSheet(
+                              index,
+                              e.target.files?.[0] || null,
+                            )
+                          }
+                        />
+                      </div>
 
                       <div className="flex gap-1">
                         <Button

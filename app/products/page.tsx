@@ -60,21 +60,21 @@ export default function ProductsPage() {
                 "Actions",
                 "Product Name",
                 "Main Image",
-                "Gallery Images",
-                "Video",
-                "Supplier",
                 "SKU",
+                "Supplier",
                 "Unit Cost",
                 "Landed Cost",
                 "SRP",
+                "MOQ",
                 "Technical Specifications",
                 "Warranty",
                 "Category Type",
                 "Product Type",
                 "Classification",
+                "Gallery Images",
+                "Video",
                 "Supplier Data Sheet",
                 "Sister Company",
-                "MOQ",
                 "Package (L×W×H)",
                 "Qty / Carton",
                 "Qty / Container",
@@ -101,7 +101,7 @@ export default function ProductsPage() {
 
               return (
                 <tr key={p.id}>
-                  {/* ===== ACTIONS COLUMN ===== */}
+                  {/* ACTIONS */}
                   <td className="border px-2">
                     <div className="flex gap-2">
                       <Button
@@ -131,6 +131,46 @@ export default function ProductsPage() {
                     )}
                   </td>
 
+                  <td className="border px-2">{p.sku}</td>
+
+                  <td className="border px-2">{p.supplier?.company || "-"}</td>
+
+                  <td className="border px-2 text-right">
+                    {format2(p.logistics?.unitCost)}
+                  </td>
+
+                  <td className="border px-2 text-right">
+                    {format2(p.logistics?.landedCost)}
+                  </td>
+
+                  <td className="border px-2 font-semibold text-right">
+                    {format2(p.logistics?.srp)}
+                  </td>
+
+                  <td className="border px-2">{p.logistics?.moq ?? "-"}</td>
+
+                  <td className="border px-2 max-w-[300px]">
+                    {tech.length
+                      ? tech.map((t: any) => `${t.key}: ${t.value}`).join(" | ")
+                      : "-"}
+                  </td>
+
+                  <td className="border px-2">
+                    {p.logistics?.warranty
+                      ? `${p.logistics.warranty.value} ${p.logistics.warranty.unit}`
+                      : "-"}
+                  </td>
+
+                  <td className="border px-2">
+                    {cat?.categoryTypeName || "-"}
+                  </td>
+
+                  <td className="border px-2">
+                    {prod?.productTypeName || "-"}
+                  </td>
+
+                  <td className="border px-2">{p.classificationName || "-"}</td>
+
                   <td className="border px-2">
                     <div className="flex gap-1">
                       {images.length
@@ -157,44 +197,6 @@ export default function ProductsPage() {
                     )}
                   </td>
 
-                  <td className="border px-2">{p.supplier?.company || "-"}</td>
-
-                  <td className="border px-2">{p.sku}</td>
-
-                  <td className="border px-2 text-right">
-                    {format2(p.logistics?.unitCost)}
-                  </td>
-
-                  <td className="border px-2 text-right">
-                    {format2(p.logistics?.landedCost)}
-                  </td>
-
-                  <td className="border px-2 font-semibold text-right">
-                    {format2(p.logistics?.srp)}
-                  </td>
-
-                  <td className="border px-2 max-w-[300px]">
-                    {tech.length
-                      ? tech.map((t: any) => `${t.key}: ${t.value}`).join(" | ")
-                      : "-"}
-                  </td>
-
-                  <td className="border px-2">
-                    {p.logistics?.warranty
-                      ? `${p.logistics.warranty.value} ${p.logistics.warranty.unit}`
-                      : "-"}
-                  </td>
-
-                  <td className="border px-2">
-                    {cat?.categoryTypeName || "-"}
-                  </td>
-
-                  <td className="border px-2">
-                    {prod?.productTypeName || "-"}
-                  </td>
-
-                  <td className="border px-2">{p.classificationName || "-"}</td>
-
                   <td className="border px-2">
                     {p.supplierDataSheets?.length ? (
                       <div className="flex flex-col gap-1">
@@ -217,8 +219,6 @@ export default function ProductsPage() {
                   </td>
 
                   <td className="border px-2">{p.sisterCompanyName || "-"}</td>
-
-                  <td className="border px-2">{p.logistics?.moq ?? "-"}</td>
 
                   <td className="border px-2">
                     {p.logistics?.packaging
