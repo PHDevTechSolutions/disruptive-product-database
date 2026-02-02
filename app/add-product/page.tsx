@@ -40,6 +40,7 @@ import {
   doc,
   updateDoc,
   onSnapshot,
+  getDocs, // 👈 IDINAGDAG LANG ITO
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -102,7 +103,8 @@ export default function AddProductPage() {
   const [saving, setSaving] = useState(false);
 
   const [productName, setProductName] = useState("");
-  const [productCode, setProductCode] = useState("");
+  const [sku, setSku] = useState("");
+
   const [technicalSpecs, setTechnicalSpecs] = useState<TechSpec[]>([
     { key: "", value: "" },
   ]);
@@ -135,6 +137,21 @@ export default function AddProductPage() {
   const [selectedSisterCompany, setSelectedSisterCompany] =
     useState<SelectedSisterCompany>(null);
 
+  /* ===== AUTO SET SKU ON SISTER COMPANY SELECT ===== */
+  useEffect(() => {
+    if (!selectedSisterCompany) {
+      setSku("");
+      return;
+    }
+
+    const run = async () => {
+      const autoSku = await generateSku(selectedSisterCompany);
+      setSku(autoSku);
+    };
+
+    run();
+  }, [selectedSisterCompany]);
+
   const [sisterCompanies, setSisterCompanies] = useState<SisterCompany[]>([]);
   const [newSisterCompany, setNewSisterCompany] = useState("");
   const [sisterCompanySearch, setSisterCompanySearch] = useState("");
@@ -148,6 +165,54 @@ export default function AddProductPage() {
   /* ===== PRODUCT TYPE STATE ===== */
   const [newCategoryType, setNewCategoryType] = useState("");
   const [categoryTypes, setCategoryTypes] = useState<CategoryType[]>([]);
+
+  /* ===== PRICING / LOGISTICS STATE (CTRL+F SAFE) ===== */
+  type CalculationType = "LIGHTS" | "POLE";
+
+  /* ===== ADDITIONAL LOGISTICS FIELDS ===== */
+  type ProductCategory = "Economy" | "Mid-End" | "To Be Evaluated";
+
+  const [productCategory, setProductCategory] =
+    useState<ProductCategory>("To Be Evaluated");
+
+  const [moq, setMoq] = useState<number>(0);
+
+  const [warrantyValue, setWarrantyValue] = useState<number>(0);
+  const [warrantyUnit, setWarrantyUnit] = useState<"Days" | "Months" | "Years">(
+    "Years",
+  );
+
+  const [calculationType, setCalculationType] =
+    useState<CalculationType>("LIGHTS");
+  /* ===== RESET FIELDS WHEN CALCULATION TYPE CHANGES ===== */
+  useEffect(() => {
+    if (calculationType === "POLE") {
+      // clear LIGHTS-only fields
+      setLength(0);
+      setWidth(0);
+      setHeight(0);
+      setQtyPerCarton(1);
+    }
+
+    if (calculationType === "LIGHTS") {
+      // clear POLE-only fields
+      setQtyPerContainer(1);
+    }
+  }, [calculationType]);
+  const [unitCost, setUnitCost] = useState<number>(0);
+
+  // LIGHTS
+  const [length, setLength] = useState<number>(0);
+  const [width, setWidth] = useState<number>(0);
+  const [height, setHeight] = useState<number>(0);
+  const [qtyPerCarton, setQtyPerCarton] = useState<number>(1);
+
+  // POLE
+  const [qtyPerContainer, setQtyPerContainer] = useState<number>(1);
+
+  // RESULTS
+  const [landedCost, setLandedCost] = useState<number>(0);
+  const [srp, setSrp] = useState<number>(0);
 
   /* ===== PRODUCT TYPE (DEPENDENT ON CATEGORY TYPE) ===== */
   type ProductType = {
@@ -330,6 +395,73 @@ export default function AddProductPage() {
 
   /* ---------------- Helpers ---------------- */
 
+  /* ===== SKU AUTO GENERATOR ===== */
+  const generateSku = async (sisterCompany: { id: string; name: string }) => {
+    const year = new Date().getFullYear();
+
+    // short code from sister company name
+    const companyCode = sisterCompany.name
+      .replace(/[^A-Za-z]/g, "")
+      .substring(0, 3)
+      .toUpperCase();
+
+    const q = query(
+      collection(db, "products"),
+      where("sisterCompanyId", "==", sisterCompany.id),
+      where("isActive", "==", true),
+    );
+
+    const snapshot = await getDocs(q);
+
+    const running = String(snapshot.size + 1).padStart(4, "0");
+
+    return `${companyCode}-${year}-${running}`;
+  };
+
+  /* ================= NUMBER FORMATTERS ================= */
+  const formatPHP = (value: number, decimals = 2) => {
+    return value.toLocaleString("en-PH", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  };
+  /* ================= PRICING / LOGISTICS FORMULAS ================= */
+  useEffect(() => {
+    let lc = 0;
+
+    if (calculationType === "LIGHTS") {
+      const cbm = (length * width * height) / 1_000_000;
+
+      if (cbm > 0 && qtyPerCarton > 0) {
+        lc = (unitCost * 60 + (520000 / (65 / cbm)) * qtyPerCarton) * 1.01;
+      }
+    }
+
+    if (calculationType === "POLE") {
+      if (qtyPerContainer > 0) {
+        lc = (unitCost * 60 + 600000 / qtyPerContainer) * 1.01;
+      }
+    }
+
+    setLandedCost(lc);
+
+    if (calculationType === "LIGHTS") {
+      setSrp(lc ? Math.round(lc / 0.35 / 10) * 10 : 0);
+    }
+
+    if (calculationType === "POLE") {
+      setSrp(lc ? Math.ceil(lc / 0.45 / 100) * 100 : 0);
+    }
+  }, [
+    calculationType,
+    unitCost,
+    length,
+    width,
+    height,
+    qtyPerCarton,
+    qtyPerContainer,
+  ]);
+
   const uploadToCloudinary = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -362,38 +494,6 @@ export default function AddProductPage() {
       copy.splice(index + 1, 0, { key: "", value: "" });
       return copy;
     });
-  };
-
-  // ================= PRODUCT CODE HELPERS =================
-  const normalizeProductPrefix = (name: string) => {
-    return name
-      .replace(/[^a-zA-Z ]/g, "")
-      .split(" ")
-      .filter((w) => w)
-      .map((w) => w[0].toUpperCase())
-      .join("")
-      .slice(0, 4);
-  };
-
-  const generateAlphaNumeric = (length = 6) => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let result = "";
-    for (let i = 0; i < length; i++) {
-      result += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return result;
-  };
-
-  const generateProductCode = (productName: string) => {
-    const prefix = normalizeProductPrefix(productName) || "PROD";
-    return `${prefix}-PROD-${generateAlphaNumeric(6)}`;
-  };
-
-  const handleProductNameBlur = () => {
-    if (!productName.trim()) return;
-    if (!productCode) {
-      setProductCode(generateProductCode(productName));
-    }
   };
 
   const removeSpecRow = (index: number) => {
@@ -659,6 +759,38 @@ export default function AddProductPage() {
   }, [productTypes, productTypeSearch, selectedCategoryTypes]);
 
   /* ---------------- Save Product ---------------- */
+
+  /* ===== SAFE LOGISTICS PAYLOAD (FIRESTORE SAFE) ===== */
+  const logisticsPayload = {
+    calculationType,
+
+    unitCost: unitCost ?? 0,
+
+    packaging:
+      calculationType === "LIGHTS"
+        ? {
+            length: length ?? 0,
+            width: width ?? 0,
+            height: height ?? 0,
+            qtyPerCarton: qtyPerCarton ?? 1,
+          }
+        : null,
+
+    qtyPerContainer: calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
+
+    landedCost: landedCost ?? 0,
+    srp: srp ?? 0,
+
+    category: productCategory || "To Be Evaluated",
+
+    moq: moq ?? 0,
+
+    warranty: {
+      value: warrantyValue ?? 0,
+      unit: warrantyUnit || "Years",
+    },
+  };
+
   const handleSaveProduct = async () => {
     if (saving) return;
     try {
@@ -667,6 +799,7 @@ export default function AddProductPage() {
         toast.error("Product name is required");
         return;
       }
+
       if (!selectedSupplier) {
         toast.error("Please select a supplier");
         return;
@@ -682,13 +815,20 @@ export default function AddProductPage() {
         return;
       }
 
+      const finalSku = await generateSku(selectedSisterCompany);
+
+      if (!finalSku) {
+        toast.error("SKU is still being generated. Please wait.");
+        return;
+      }
+
       // ================= CLOUDINARY UPLOAD =================
 
       // MAIN IMAGE
       // 🔥 INSTANT SAVE — NO MEDIA WAIT
       const productRef = await addDoc(collection(db, "products"), {
         productName,
-        productCode,
+        sku: finalSku,
 
         sisterCompanyId: selectedSisterCompany.id,
         sisterCompanyName: selectedSisterCompany.name,
@@ -714,6 +854,9 @@ export default function AddProductPage() {
 
         technicalSpecifications: technicalSpecs.filter((s) => s.key || s.value),
 
+        /* ================= PRICING / LOGISTICS ================= */
+        logistics: logisticsPayload,
+
         // placeholders muna
         mainImage: null,
         gallery: [],
@@ -730,9 +873,6 @@ export default function AddProductPage() {
 
       // 🚀 background upload (wag hintayin)
       uploadProductMedia(productRef.id);
-
-      toast.success("Product saved successfully");
-      router.push("/products");
     } catch (error) {
       console.error("SAVE PRODUCT ERROR:", error);
       toast.error(
@@ -858,17 +998,21 @@ export default function AddProductPage() {
                 <Input
                   value={productName}
                   onChange={(e) => setProductName(e.target.value)}
-                  onBlur={handleProductNameBlur}
                   placeholder="Enter product name..."
                 />
               </div>
 
               <div>
-                <Label>Product Code</Label>
+                <Label>SKU</Label>
+
                 <Input
-                  value={productCode}
+                  value={sku}
                   disabled
-                  className="opacity-100 cursor-not-allowed bg-background text-foreground"
+                  placeholder={
+                    selectedSisterCompany
+                      ? "Auto-generated SKU"
+                      : "Select sister company first"
+                  }
                 />
               </div>
             </div>
@@ -962,6 +1106,184 @@ export default function AddProductPage() {
               ))}
             </div>
           </CardContent>
+
+          {/* ================= PRICING / LOGISTICS ================= */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center text-sm">
+                PRICING / LOGISTICS
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              {/* CALCULATION TYPE */}
+              <div>
+                <Label>Calculation Type</Label>
+                <select
+                  className="w-full h-10 border rounded-md px-2"
+                  value={calculationType}
+                  onChange={(e) =>
+                    setCalculationType(e.target.value as CalculationType)
+                  }
+                >
+                  <option value="LIGHTS">Lights</option>
+                  <option value="POLE">Pole</option>
+                </select>
+              </div>
+
+              {/* UNIT COST */}
+              <div>
+                <Label>Unit Cost (USD)</Label>
+                <Input
+                  type="number"
+                  value={unitCost}
+                  onChange={(e) => setUnitCost(Number(e.target.value))}
+                />
+              </div>
+
+              {/* ================= LIGHTS ONLY ================= */}
+              {calculationType === "LIGHTS" && (
+                <div className="space-y-2">
+                  <Label>Packaging Dimensions (CM)</Label>
+
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Length (L)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={length || ""}
+                        onChange={(e) => setLength(Number(e.target.value))}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Width (W)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={width || ""}
+                        onChange={(e) => setWidth(Number(e.target.value))}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Height (H)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={height || ""}
+                        onChange={(e) => setHeight(Number(e.target.value))}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Quantity Per Carton</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={qtyPerCarton || ""}
+                        onChange={(e) =>
+                          setQtyPerCarton(Number(e.target.value))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ================= POLE ONLY ================= */}
+              {calculationType === "POLE" && (
+                <div>
+                  <Label>Quantity Per Container</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={qtyPerContainer || ""}
+                    onChange={(e) => setQtyPerContainer(Number(e.target.value))}
+                  />
+                </div>
+              )}
+
+              <Separator />
+
+              {/* RESULTS */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Landed Cost (PHP)</Label>
+                  <Input value={formatPHP(landedCost, 2)} disabled />
+                </div>
+                <div>
+                  <Label>SRP (PHP)</Label>
+                  <Input value={formatPHP(srp, 0)} disabled />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* ===== ADDITIONAL LOGISTICS INFO ===== */}
+              <div className="space-y-4">
+                {/* CATEGORY */}
+                <div>
+                  <Label>Category</Label>
+                  <select
+                    className="w-full h-10 border rounded-md px-2"
+                    value={productCategory}
+                    onChange={(e) =>
+                      setProductCategory(e.target.value as ProductCategory)
+                    }
+                  >
+                    <option value="Economy">Economy</option>
+                    <option value="Mid-End">Mid-End</option>
+                    <option value="To Be Evaluated">To Be Evaluated</option>
+                  </select>
+                </div>
+
+                {/* MOQ */}
+                <div>
+                  <Label>MOQ</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={moq || ""}
+                    onChange={(e) => setMoq(Number(e.target.value))}
+                    placeholder="Enter MOQ"
+                  />
+                </div>
+
+                {/* WARRANTY */}
+                <div className="grid grid-cols-[1fr_1fr] gap-2">
+                  <div>
+                    <Label>Warranty</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={warrantyValue || ""}
+                      onChange={(e) => setWarrantyValue(Number(e.target.value))}
+                      placeholder="Enter number"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Unit</Label>
+                    <select
+                      className="w-full h-10 border rounded-md px-2"
+                      value={warrantyUnit}
+                      onChange={(e) =>
+                        setWarrantyUnit(
+                          e.target.value as "Days" | "Months" | "Years",
+                        )
+                      }
+                    >
+                      <option value="Days">Days</option>
+                      <option value="Months">Months</option>
+                      <option value="Years">Years</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </Card>
 
         {/* RIGHT */}
@@ -1280,7 +1602,7 @@ export default function AddProductPage() {
         <Button variant="secondary" onClick={() => router.push("/products")}>
           Cancel
         </Button>
-        <Button onClick={handleSaveProduct} disabled={saving}>
+        <Button onClick={handleSaveProduct} disabled={saving || !sku}>
           {saving ? "Saving..." : "Save Product"}
         </Button>
       </div>
