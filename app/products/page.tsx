@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import AddProduct from "@/components/add-product";
+
 
 /* ---------------- Types ---------------- */
 type UserData = {
@@ -66,7 +66,7 @@ export default function Products() {
             className="gap-1 cursor-pointer"
             onClick={() => router.push("/add-product")}
           >
-            + Add Product v2
+            + Add Product
           </Button>
         </div>
       </div>
@@ -75,11 +75,6 @@ export default function Products() {
         No products yet.
       </div>
 
-      {/* ADD PRODUCT SHEET */}
-      <AddProduct
-        open={addProductOpen}
-        onOpenChange={setAddProductOpen}
-      />
     </div>
   );
 }
