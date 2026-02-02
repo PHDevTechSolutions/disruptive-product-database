@@ -57,12 +57,13 @@ export default function ProductsPage() {
           <thead className="bg-muted sticky top-0 z-10">
             <tr>
               {[
+                "Actions",
                 "Product Name",
                 "Main Image",
                 "Gallery Images",
                 "Video",
                 "Supplier",
-                "SKU", // 👈 moved here
+                "SKU",
                 "Unit Cost",
                 "Landed Cost",
                 "SRP",
@@ -100,9 +101,24 @@ export default function ProductsPage() {
 
               return (
                 <tr key={p.id}>
-                  <td className="border px-2 font-semibold">
-                    {p.productName}
+                  {/* ===== ACTIONS COLUMN ===== */}
+                  <td className="border px-2">
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push(`/edit-product?id=${p.id}`)}
+                      >
+                        Edit
+                      </Button>
+
+                      <Button size="sm" variant="destructive">
+                        Delete
+                      </Button>
+                    </div>
                   </td>
+
+                  <td className="border px-2 font-semibold">{p.productName}</td>
 
                   <td className="border px-2">
                     {p.mainImage?.url ? (
@@ -141,15 +157,10 @@ export default function ProductsPage() {
                     )}
                   </td>
 
-                  {/* SUPPLIER */}
-                  <td className="border px-2">
-                    {p.supplier?.company || "-"}
-                  </td>
+                  <td className="border px-2">{p.supplier?.company || "-"}</td>
 
-                  {/* SKU (MOVED BESIDE SUPPLIER) */}
                   <td className="border px-2">{p.sku}</td>
 
-                  {/* PRICING */}
                   <td className="border px-2 text-right">
                     {format2(p.logistics?.unitCost)}
                   </td>
@@ -162,12 +173,9 @@ export default function ProductsPage() {
                     {format2(p.logistics?.srp)}
                   </td>
 
-                  {/* TECH SPECS */}
                   <td className="border px-2 max-w-[300px]">
                     {tech.length
-                      ? tech
-                          .map((t: any) => `${t.key}: ${t.value}`)
-                          .join(" | ")
+                      ? tech.map((t: any) => `${t.key}: ${t.value}`).join(" | ")
                       : "-"}
                   </td>
 
@@ -185,9 +193,7 @@ export default function ProductsPage() {
                     {prod?.productTypeName || "-"}
                   </td>
 
-                  <td className="border px-2">
-                    {p.classificationName || "-"}
-                  </td>
+                  <td className="border px-2">{p.classificationName || "-"}</td>
 
                   <td className="border px-2">
                     {p.supplierDataSheets?.length ? (
@@ -210,13 +216,9 @@ export default function ProductsPage() {
                     )}
                   </td>
 
-                  <td className="border px-2">
-                    {p.sisterCompanyName || "-"}
-                  </td>
+                  <td className="border px-2">{p.sisterCompanyName || "-"}</td>
 
-                  <td className="border px-2">
-                    {p.logistics?.moq ?? "-"}
-                  </td>
+                  <td className="border px-2">{p.logistics?.moq ?? "-"}</td>
 
                   <td className="border px-2">
                     {p.logistics?.packaging

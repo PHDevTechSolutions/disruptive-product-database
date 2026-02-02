@@ -89,8 +89,15 @@ type Supplier = {
   company: string;
 };
 
-export default function AddProductPage() {
+export default function EditProductPage() {
   const router = useRouter();
+
+  // ================== EDIT MODE: GET PRODUCT ID ==================
+  const searchParams = new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search : "",
+  );
+
+  const productId = searchParams.get("id");
   const { userId } = useUser();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -255,6 +262,141 @@ export default function AddProductPage() {
   const [categoryTypeSearch, setCategoryTypeSearch] = useState("");
 
   /* ---------------- Fetch User ---------------- */
+
+  // ================== LOAD EXISTING PRODUCT (EDIT MODE) ==================
+  useEffect(() => {
+    if (!productId) return;
+
+    const loadProduct = async () => {
+      try {
+        const productRef = doc(db, "products", productId);
+
+        const unsubscribe = onSnapshot(productRef, (snap) => {
+          if (!snap.exists()) {
+            toast.error("Product not found");
+            router.push("/products");
+            return;
+          }
+
+          const data: any = snap.data();
+
+          // BASIC INFO
+          setProductName(data.productName || "");
+          setSku(data.sku || "");
+
+          // SUPPLIER
+          if (data.supplier) {
+            setSelectedSupplier({
+              supplierId: data.supplier.supplierId,
+              company: data.supplier.company,
+            });
+          }
+
+          // SISTER COMPANY
+          if (data.sisterCompanyId) {
+            setSelectedSisterCompany({
+              id: data.sisterCompanyId,
+              name: data.sisterCompanyName,
+            });
+          }
+
+          // CLASSIFICATION
+          if (data.classificationId) {
+            setClassificationType({
+              id: data.classificationId,
+              name: data.classificationName,
+            });
+          }
+
+          // TECHNICAL SPECS ARRAY
+          if (Array.isArray(data.technicalSpecifications)) {
+            setTechnicalSpecs(
+              data.technicalSpecifications.length
+                ? data.technicalSpecifications
+                : [{ key: "", value: "" }],
+            );
+          }
+
+          // CATEGORY TYPES ARRAY
+          if (Array.isArray(data.categoryTypes)) {
+            setSelectedCategoryTypes(
+              data.categoryTypes.map((c: any) => ({
+                id: c.categoryTypeId,
+                name: c.categoryTypeName,
+              })),
+            );
+          }
+
+          // PRODUCT TYPES ARRAY
+          if (Array.isArray(data.productTypes)) {
+            setSelectedProductTypes(
+              data.productTypes.map((p: any) => ({
+                id: p.productTypeId,
+                name: p.productTypeName,
+                categoryTypeId: p.categoryTypeId,
+              })),
+            );
+          }
+
+          // LOGISTICS DATA
+          if (data.logistics) {
+            setCalculationType(data.logistics.calculationType || "LIGHTS");
+            setUnitCost(data.logistics.unitCost || 0);
+
+            if (data.logistics.packaging) {
+              setLength(data.logistics.packaging.length || 0);
+              setWidth(data.logistics.packaging.width || 0);
+              setHeight(data.logistics.packaging.height || 0);
+              setQtyPerCarton(data.logistics.packaging.qtyPerCarton || 1);
+            }
+
+            setQtyPerContainer(data.logistics.qtyPerContainer || 1);
+
+            setProductCategory(data.logistics.category || "To Be Evaluated");
+
+            setMoq(data.logistics.moq || 0);
+
+            if (data.logistics.warranty) {
+              setWarrantyValue(data.logistics.warranty.value || 0);
+              setWarrantyUnit(data.logistics.warranty.unit || "Years");
+            }
+          }
+
+          // IMAGES (DISPLAY ONLY – CANNOT RELOAD FILE OBJECTS)
+
+          if (Array.isArray(data.gallery)) {
+            setGalleryMedia(
+              data.gallery.map((g: any) => ({
+                type: g.type,
+                file: null as any,
+                preview: g.url,
+              })),
+            );
+          }
+
+          if (data.mainImage?.url) {
+            setPreview(data.mainImage.url);
+          }
+
+          // LOAD EXISTING SUPPLIER DATA SHEETS
+          if (Array.isArray(data.supplierDataSheets)) {
+            setSupplierDataSheets(
+              data.supplierDataSheets.map(() => ({
+                file: null,
+              })),
+            );
+          }
+        });
+
+        return () => unsubscribe();
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadProduct();
+  }, [productId]);
+
   useEffect(() => {
     if (!userId) {
       router.push("/login");
@@ -749,15 +891,16 @@ export default function AddProductPage() {
     try {
       const uploads: Promise<any>[] = [];
 
+      // Only upload NEW files (skip existing ones)
       if (mainImage) {
         uploads.push(uploadToCloudinary(mainImage));
       }
 
-      for (const item of galleryMedia) {
-        if (item.file instanceof File) {
+      galleryMedia.forEach((item) => {
+        if (item.file) {
           uploads.push(uploadToCloudinary(item.file));
         }
-      }
+      });
 
       if (uploads.length === 0) return;
 
@@ -776,6 +919,7 @@ export default function AddProductPage() {
         galleryIndex = 1;
       }
 
+      // Preserve existing gallery + append new uploads
       let resultCursor = galleryIndex;
 
       const uploadedGallery = galleryMedia.map((item) => {
@@ -810,7 +954,7 @@ export default function AddProductPage() {
       });
 
       await updateDoc(doc(db, "products", productId), {
-        mainImage: uploadedMainImage,
+        mainImage: uploadedMainImage || null,
         gallery: uploadedGallery,
         mediaStatus: "done",
       });
@@ -933,12 +1077,7 @@ export default function AddProductPage() {
         return;
       }
 
-      const finalSku = await generateSku(selectedSisterCompany);
-
-      if (!mainImage && galleryMedia.length === 0) {
-        toast.error("Please upload at least one image or video");
-        return;
-      }
+      const finalSku = sku;
 
       if (!finalSku) {
         toast.error("SKU is still being generated. Please wait.");
@@ -949,7 +1088,9 @@ export default function AddProductPage() {
 
       // MAIN IMAGE
       // 🔥 INSTANT SAVE — NO MEDIA WAIT
-      const productRef = await addDoc(collection(db, "products"), {
+      const productRef = doc(db, "products", productId!);
+
+      const updatePayload: any = {
         productName,
         sku: finalSku,
 
@@ -977,26 +1118,29 @@ export default function AddProductPage() {
 
         technicalSpecifications: technicalSpecs.filter((s) => s.key || s.value),
 
-        /* ================= PRICING / LOGISTICS ================= */
         logistics: logisticsPayload,
-
-        // placeholders muna
-        mainImage: null,
-        gallery: [],
-        mediaStatus: "pending",
 
         createdBy: userId,
         referenceID: user?.ReferenceID || null,
         isActive: true,
         createdAt: serverTimestamp(),
-      });
+      };
+
+      // ONLY reset media fields IF NEW FILES ARE ACTUALLY ADDED
+      const hasNewMainImage = !!mainImage;
+      const hasNewGalleryFiles = galleryMedia.some((g) => g.file);
+
+      if (hasNewMainImage || hasNewGalleryFiles) {
+        updatePayload.mediaStatus = "pending";
+      }
+
+      await updateDoc(productRef, updatePayload);
 
       toast.success("Product saved successfully");
-      await uploadProductMedia(productRef.id);
       router.push("/products");
 
       // 🚀 background upload (wag hintayin)
-      uploadProductMedia(productRef.id);
+      uploadProductMedia(productId!);
     } catch (error) {
       console.error("SAVE PRODUCT ERROR:", error);
       toast.error(
@@ -1014,7 +1158,7 @@ export default function AddProductPage() {
       <SidebarTrigger className="hidden md:flex" />
 
       <h1 className="text-2xl font-bold">
-        Welcome, {user?.Firstname} {user?.Lastname}
+        Edit Product –
         <span className="ml-2 text-sm font-normal text-muted-foreground">
           ({user?.Role})
         </span>
