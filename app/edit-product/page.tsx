@@ -919,62 +919,53 @@ export default function EditProductPage() {
         }
       });
 
-      if (uploads.length === 0) return;
+      // HUWAG mag return agad – kahit walang images, tuloy pa rin for documents
+if (uploads.length > 0) {
+  const results = await Promise.all(uploads);
 
-      const results = await Promise.all(uploads);
+  let uploadedMainImage = null;
+  let galleryIndex = 0;
 
-      let uploadedMainImage = null;
-      let galleryIndex = 0;
+  if (mainImage) {
+    const r = results[0];
+    uploadedMainImage = {
+      name: mainImage.name,
+      url: r.secure_url,
+      publicId: r.public_id,
+    };
+    galleryIndex = 1;
+  }
 
-      if (mainImage) {
-        const r = results[0];
-        uploadedMainImage = {
-          name: mainImage.name,
-          url: r.secure_url,
-          publicId: r.public_id,
-        };
-        galleryIndex = 1;
-      }
+  let resultCursor = galleryIndex;
 
-      // Preserve existing gallery + append new uploads
-      let resultCursor = galleryIndex;
+  const uploadedGallery = galleryMedia.map((item) => {
+    if (!item.file) {
+      return {
+        type: item.type,
+        name: "existing",
+        url: item.preview,
+        publicId: "existing",
+      };
+    }
 
-      const uploadedGallery = galleryMedia.map((item) => {
-        if (!item.file) {
-          return {
-            type: item.type,
-            name: "existing",
-            url: item.preview,
-            publicId: "existing",
-          };
-        }
+    const r = results[resultCursor];
+    resultCursor++;
 
-        const r = results[resultCursor];
-        resultCursor++;
+    return {
+      type: item.type,
+      name: item.file.name,
+      url: r.secure_url,
+      publicId: r.public_id,
+    };
+  });
 
-        if (!r || !r.secure_url) {
-          console.error("Missing cloudinary result for item:", item);
-          return {
-            type: item.type,
-            name: item.file.name,
-            url: item.preview,
-            publicId: "upload-failed",
-          };
-        }
+  await updateDoc(doc(db, "products", productId), {
+    mainImage: uploadedMainImage || null,
+    gallery: uploadedGallery,
+    mediaStatus: "done",
+  });
+}
 
-        return {
-          type: item.type,
-          name: item.file.name,
-          url: r.secure_url,
-          publicId: r.public_id,
-        };
-      });
-
-      await updateDoc(doc(db, "products", productId), {
-        mainImage: uploadedMainImage || null,
-        gallery: uploadedGallery,
-        mediaStatus: "done",
-      });
 
       const finalSupplierSheets: SupplierDataSheetItem[] = [];
 
