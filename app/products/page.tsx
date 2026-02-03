@@ -42,7 +42,7 @@ export default function ProductsPage() {
     <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
       <SidebarTrigger className="hidden md:flex" />
 
-      {/* ===== HEADER ===== */}
+      {/* HEADER */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-semibold">Products</h1>
 
@@ -51,7 +51,7 @@ export default function ProductsPage() {
         </Button>
       </div>
 
-      {/* ===== CONTENT AREA ===== */}
+      {/* CONTENT */}
       {loading ? (
         <p className="text-center text-muted-foreground">Loading products...</p>
       ) : products.length === 0 ? (
@@ -82,39 +82,49 @@ export default function ProductsPage() {
                 </div>
 
                 {/* DETAILS */}
-                <div className="p-4 space-y-2 flex-1">
-                  <h2 className="font-semibold text-base line-clamp-2">
+                <div className="p-4 space-y-3 flex-1">
+                  {/* MAIN PRODUCT NAME – BIG & BOLD */}
+                  <h2 className="text-lg font-bold line-clamp-2">
                     {p.productName}
                   </h2>
 
-                  <div className="text-sm text-muted-foreground space-y-1">
+                  {/* PRICING – RED FONT */}
+                  <div className="space-y-1">
+                    <p className="text-red-600 text-sm font-semibold">
+                      SRP: {format2(p.logistics?.srp)}
+                    </p>
+
+                    <p className="text-red-600 text-xs">
+                      Unit Cost: {format2(p.logistics?.unitCost)}
+                    </p>
+
+                    <p className="text-red-600 text-xs">
+                      Landed Cost: {format2(p.logistics?.landedCost)}
+                    </p>
+                  </div>
+
+                  {/* PRODUCT INFO – GREY TEXT */}
+                  <div className="text-xs text-gray-500 space-y-1">
                     <p>
-                      <span className="font-medium">SKU:</span> {p.sku || "-"}
+                      Classification Type:{" "}
+                      {p.classificationName || "-"}
                     </p>
 
                     <p>
-                      <span className="font-medium">Supplier:</span>{" "}
-                      {p.supplier?.company || "-"}
-                    </p>
-
-                    <p>
-                      <span className="font-medium">Category:</span>{" "}
+                      Category Type:{" "}
                       {cat?.categoryTypeName || "-"}
                     </p>
 
                     <p>
-                      <span className="font-medium">Product Type:</span>{" "}
+                      Product Type:{" "}
                       {prod?.productTypeName || "-"}
                     </p>
 
-                    <p>
-                      <span className="font-medium">SRP:</span>{" "}
-                      {format2(p.logistics?.srp)}
-                    </p>
+                    <p>SKU: {p.sku || "-"}</p>
 
                     <p>
-                      <span className="font-medium">MOQ:</span>{" "}
-                      {p.logistics?.moq ?? "-"}
+                      Supplier:{" "}
+                      {p.supplier?.company || "-"}
                     </p>
                   </div>
                 </div>
