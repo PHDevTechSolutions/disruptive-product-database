@@ -4,15 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import {
-  SidebarTrigger,
-  useSidebar,
-} from "@/components/ui/sidebar";
-
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { LayoutDashboard, Package, Truck } from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
 import { NavUser } from "@/components/nav-user";
+
+/* ================= TYPES ================= */
 
 type UserDetails = {
   Firstname: string;
@@ -22,12 +20,23 @@ type UserDetails = {
   profilePicture: string;
 };
 
+type NavItemProps = {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  active?: boolean;
+};
+
+/* ================= COMPONENT ================= */
+
 export function SidebarLeft() {
   const { isMobile } = useSidebar();
   const { userId } = useUser();
   const pathname = usePathname();
 
   const [user, setUser] = React.useState<UserDetails | null>(null);
+
+  /* -------- Fetch User Details -------- */
 
   React.useEffect(() => {
     if (!userId) return;
@@ -58,24 +67,23 @@ export function SidebarLeft() {
         h-12
         bg-white/90
         backdrop-blur-md
-        border-b
-        border-border/50
+        border-b border-border/50
         shadow-sm
         z-50
         flex items-center
         px-3
       "
     >
-      {/* LEFT SECTION */}
+      {/* ===== LEFT SECTION ===== */}
       <div className="flex items-center gap-2">
         {isMobile && <SidebarTrigger />}
 
         <span className="text-sm font-semibold tracking-tight text-gray-900">
-          Inventory
+          Product Database
         </span>
       </div>
 
-      {/* CENTER NAVIGATION */}
+      {/* ===== CENTER NAVIGATION ===== */}
       <div className="flex-1 flex items-center justify-center gap-3">
         <NavItem
           href="/dashboard"
@@ -99,18 +107,20 @@ export function SidebarLeft() {
         />
       </div>
 
-      {/* RIGHT SECTION - USER */}
+      {/* ===== RIGHT SECTION - USER ===== */}
       <div className="flex items-center">
         {user && userId && (
           <div
             className="
               cursor-pointer
-              rounded-lg
+              rounded-md
               bg-white/80
               backdrop-blur-md
               shadow-sm
               transition
               hover:shadow-md
+              scale-[0.80]
+              origin-right
             "
           >
             <NavUser
@@ -131,20 +141,18 @@ export function SidebarLeft() {
   );
 }
 
-type NavItemProps = {
-  href: string;
-  label: string;
-  icon: React.ReactNode;
-  active?: boolean;
-};
+/* ================= SUB COMPONENT ================= */
 
 function NavItem({ href, label, icon, active }: NavItemProps) {
   return (
     <Link
       href={href}
       className={`
-        flex items-center gap-1.5 px-3 py-1 rounded-md
-        transition-all text-xs font-medium
+        flex items-center gap-1.5
+        px-3 py-1
+        rounded-md
+        transition-all
+        text-xs font-medium
 
         ${
           active

@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useUser } from "@/contexts/UserContext";
-import { collection, onSnapshot, query } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
+import AddProductDeleteProductItem from "@/components/add-product-delete-product-item";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function ProductsPage() {
       return;
     }
 
-    const q = query(collection(db, "products"));
+    const q = query(collection(db, "products"), where("isActive", "==", true));
     const unsub = onSnapshot(q, (snap) => {
       setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoading(false);
@@ -129,9 +130,16 @@ export default function ProductsPage() {
                     Edit
                   </Button>
 
-                  <Button size="sm" variant="destructive" className="flex-1">
-                    Delete
-                  </Button>
+                  <AddProductDeleteProductItem
+                    productId={p.id}
+                    productName={p.productName}
+                    referenceID={userId ?? ""}
+                    onDeleted={(id) =>
+                      setProducts((prev) =>
+                        prev.filter((prod) => prod.id !== id),
+                      )
+                    }
+                  />
                 </div>
               </div>
             );
