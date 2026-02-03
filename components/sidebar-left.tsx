@@ -5,14 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarSeparator,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 
@@ -30,7 +23,7 @@ type UserDetails = {
 };
 
 export function SidebarLeft() {
-  const { state, isMobile } = useSidebar();
+  const { isMobile } = useSidebar();
   const { userId } = useUser();
   const pathname = usePathname();
 
@@ -54,140 +47,77 @@ export function SidebarLeft() {
         });
       })
       .catch((err) => {
-        console.error("Sidebar user fetch error:", err);
+        console.error("Topbar user fetch error:", err);
       });
   }, [userId]);
 
   return (
-    <Sidebar
-      collapsible="icon"
+    <div
       className="
+        fixed top-0 left-0 right-0
+        h-12
         bg-white/90
         backdrop-blur-md
-        shadow-2xl
-        border-r
+        border-b
         border-border/50
+        shadow-sm
+        z-50
+        flex items-center
+        px-3
       "
     >
-      {/* HEADER */}
-      <SidebarHeader className="h-16 px-4 flex items-center">
-        {state === "expanded" && (
-          <span className="text-lg font-bold tracking-tight text-gray-900">
-            Inventory
-          </span>
-        )}
-      </SidebarHeader>
+      {/* LEFT SECTION */}
+      <div className="flex items-center gap-2">
+        {isMobile && <SidebarTrigger />}
 
-      {/* CONTENT */}
-      <SidebarContent className="px-2">
-        <SidebarMenu>
+        <span className="text-sm font-semibold tracking-tight text-gray-900">
+          Inventory
+        </span>
+      </div>
 
-          {/* DASHBOARD */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              data-active={pathname === "/dashboard"}
-              className="
-                transition-all
-                hover:bg-red-50
-                hover:text-red-700
-                hover:scale-[1.01]
-                data-[active=true]:bg-gradient-to-r
-                data-[active=true]:from-red-600
-                data-[active=true]:to-red-700
-                data-[active=true]:text-white
-                data-[active=true]:shadow-md
-                data-[active=true]:hover:from-red-700
-                data-[active=true]:hover:to-red-800
-              "
-            >
-              <Link href="/dashboard">
-                <LayoutDashboard />
-                {(isMobile || state === "expanded") && (
-                  <span>Dashboard</span>
-                )}
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+      {/* CENTER NAVIGATION */}
+      <div className="flex-1 flex items-center justify-center gap-3">
+        <NavItem
+          href="/dashboard"
+          label="Dashboard"
+          icon={<LayoutDashboard className="h-3.5 w-3.5" />}
+          active={pathname === "/dashboard"}
+        />
 
-          {/* PRODUCTS */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              data-active={pathname === "/products"}
-              className="
-                transition-all
-                hover:bg-red-50
-                hover:text-red-700
-                hover:scale-[1.01]
-                data-[active=true]:bg-gradient-to-r
-                data-[active=true]:from-red-600
-                data-[active=true]:to-red-700
-                data-[active=true]:text-white
-                data-[active=true]:shadow-md
-                data-[active=true]:hover:from-red-700
-                data-[active=true]:hover:to-red-800
-              "
-            >
-              <Link href="/products">
-                <Package />
-                {(isMobile || state === "expanded") && (
-                  <span>Products</span>
-                )}
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+        <NavItem
+          href="/products"
+          label="Products"
+          icon={<Package className="h-3.5 w-3.5" />}
+          active={pathname === "/products"}
+        />
 
-          {/* SUPPLIERS */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              data-active={pathname === "/suppliers"}
-              className="
-                transition-all
-                hover:bg-red-50
-                hover:text-red-700
-                hover:scale-[1.01]
-                data-[active=true]:bg-gradient-to-r
-                data-[active=true]:from-red-600
-                data-[active=true]:to-red-700
-                data-[active=true]:text-white
-                data-[active=true]:shadow-md
-                data-[active=true]:hover:from-red-700
-                data-[active=true]:hover:to-red-800
-              "
-            >
-              <Link href="/suppliers">
-                <Truck />
-                {(isMobile || state === "expanded") && (
-                  <span>Suppliers</span>
-                )}
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+        <NavItem
+          href="/suppliers"
+          label="Suppliers"
+          icon={<Truck className="h-3.5 w-3.5" />}
+          active={pathname === "/suppliers"}
+        />
+      </div>
 
-        </SidebarMenu>
-      </SidebarContent>
-
-      <SidebarSeparator />
-
-      {/* FOOTER */}
-      <SidebarFooter className="p-2">
+      {/* RIGHT SECTION - USER */}
+      <div className="flex items-center">
         {user && userId && (
           <div
             className="
               cursor-pointer
-              rounded-xl
+              rounded-lg
               bg-white/80
               backdrop-blur-md
-              shadow-lg
+              shadow-sm
               transition
-              hover:shadow-xl
+              hover:shadow-md
             "
           >
             <NavUser
               user={{
-                name: `${user.Firstname} ${user.Lastname}`.trim() || "Unknown User",
+                name:
+                  `${user.Firstname} ${user.Lastname}`.trim() ||
+                  "Unknown User",
                 position: user.Role,
                 email: user.Email,
                 avatar: user.profilePicture || "/avatars/shadcn.jpg",
@@ -196,7 +126,35 @@ export function SidebarLeft() {
             />
           </div>
         )}
-      </SidebarFooter>
-    </Sidebar>
+      </div>
+    </div>
+  );
+}
+
+type NavItemProps = {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  active?: boolean;
+};
+
+function NavItem({ href, label, icon, active }: NavItemProps) {
+  return (
+    <Link
+      href={href}
+      className={`
+        flex items-center gap-1.5 px-3 py-1 rounded-md
+        transition-all text-xs font-medium
+
+        ${
+          active
+            ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-sm"
+            : "hover:bg-red-50 hover:text-red-700"
+        }
+      `}
+    >
+      {icon}
+      <span>{label}</span>
+    </Link>
   );
 }

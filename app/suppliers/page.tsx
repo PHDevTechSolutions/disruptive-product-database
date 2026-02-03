@@ -322,7 +322,7 @@ export default function Suppliers() {
   };
 
   return (
-    <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
+    <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-">
       <SidebarTrigger className="hidden md:flex" />
 
       {/* HEADER */}

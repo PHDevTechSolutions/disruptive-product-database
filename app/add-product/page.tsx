@@ -992,7 +992,6 @@ export default function AddProductPage() {
       });
 
       toast.success("Product saved successfully");
-      await uploadProductMedia(productRef.id);
       router.push("/products");
 
       // 🚀 background upload (wag hintayin)
