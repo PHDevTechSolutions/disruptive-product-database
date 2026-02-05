@@ -630,7 +630,9 @@ export default function EditProductPage() {
       const cbm = (length * width * height) / 1_000_000;
 
       if (cbm > 0 && qtyPerCarton > 0) {
-        lc = (unitCost * 60 + (520000 / (65 / cbm)) * qtyPerCarton) * 1.01;
+        const shippingPerItem = 520000 / ((65 / cbm) * qtyPerCarton);
+
+        lc = ((unitCost * 60) + shippingPerItem) * 1.01;
       }
     }
 
@@ -643,10 +645,12 @@ export default function EditProductPage() {
     setLandedCost(lc);
 
     if (calculationType === "LIGHTS") {
-      setSrp(lc ? Math.round(lc / 0.35 / 10) * 10 : 0);
+      // Excel = ROUNDUP(G6/0.35, -1)
+      setSrp(lc ? Math.ceil(lc / 0.35 / 10) * 10 : 0);
     }
 
     if (calculationType === "POLE") {
+      // POLE formula already correct
       setSrp(lc ? Math.ceil(lc / 0.45 / 100) * 100 : 0);
     }
   }, [
@@ -658,6 +662,7 @@ export default function EditProductPage() {
     qtyPerCarton,
     qtyPerContainer,
   ]);
+
 
   const uploadToCloudinary = async (file: File) => {
     const formData = new FormData();
@@ -742,9 +747,9 @@ export default function EditProductPage() {
       prev.map((row, i) =>
         i === index
           ? {
-              ...row, // KEEP EXISTING DATA
-              file, // ADD NEW FILE
-            }
+            ...row, // KEEP EXISTING DATA
+            file, // ADD NEW FILE
+          }
           : row,
       ),
     );
@@ -920,51 +925,51 @@ export default function EditProductPage() {
       });
 
       // HUWAG mag return agad – kahit walang images, tuloy pa rin for documents
-if (uploads.length > 0) {
-  const results = await Promise.all(uploads);
+      if (uploads.length > 0) {
+        const results = await Promise.all(uploads);
 
-  let uploadedMainImage = null;
-  let galleryIndex = 0;
+        let uploadedMainImage = null;
+        let galleryIndex = 0;
 
-  if (mainImage) {
-    const r = results[0];
-    uploadedMainImage = {
-      name: mainImage.name,
-      url: r.secure_url,
-      publicId: r.public_id,
-    };
-    galleryIndex = 1;
-  }
+        if (mainImage) {
+          const r = results[0];
+          uploadedMainImage = {
+            name: mainImage.name,
+            url: r.secure_url,
+            publicId: r.public_id,
+          };
+          galleryIndex = 1;
+        }
 
-  let resultCursor = galleryIndex;
+        let resultCursor = galleryIndex;
 
-  const uploadedGallery = galleryMedia.map((item) => {
-    if (!item.file) {
-      return {
-        type: item.type,
-        name: "existing",
-        url: item.preview,
-        publicId: "existing",
-      };
-    }
+        const uploadedGallery = galleryMedia.map((item) => {
+          if (!item.file) {
+            return {
+              type: item.type,
+              name: "existing",
+              url: item.preview,
+              publicId: "existing",
+            };
+          }
 
-    const r = results[resultCursor];
-    resultCursor++;
+          const r = results[resultCursor];
+          resultCursor++;
 
-    return {
-      type: item.type,
-      name: item.file.name,
-      url: r.secure_url,
-      publicId: r.public_id,
-    };
-  });
+          return {
+            type: item.type,
+            name: item.file.name,
+            url: r.secure_url,
+            publicId: r.public_id,
+          };
+        });
 
-  await updateDoc(doc(db, "products", productId), {
-    mainImage: uploadedMainImage || null,
-    gallery: uploadedGallery,
-    mediaStatus: "done",
-  });
-}
+        await updateDoc(doc(db, "products", productId), {
+          mainImage: uploadedMainImage || null,
+          gallery: uploadedGallery,
+          mediaStatus: "done",
+        });
+      }
 
 
       const finalSupplierSheets: SupplierDataSheetItem[] = [];
@@ -1045,11 +1050,11 @@ if (uploads.length > 0) {
     packaging:
       calculationType === "LIGHTS"
         ? {
-            length: length ?? 0,
-            width: width ?? 0,
-            height: height ?? 0,
-            qtyPerCarton: qtyPerCarton ?? 1,
-          }
+          length: length ?? 0,
+          width: width ?? 0,
+          height: height ?? 0,
+          qtyPerCarton: qtyPerCarton ?? 1,
+        }
         : null,
 
     qtyPerContainer: calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,

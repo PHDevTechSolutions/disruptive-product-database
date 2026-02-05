@@ -478,9 +478,12 @@ export default function AddProductPage() {
       const cbm = (length * width * height) / 1_000_000;
 
       if (cbm > 0 && qtyPerCarton > 0) {
-        lc = (unitCost * 60 + (520000 / (65 / cbm)) * qtyPerCarton) * 1.01;
+        const shippingPerItem = 520000 / ((65 / cbm) * qtyPerCarton);
+
+        lc = ((unitCost * 60) + shippingPerItem) * 1.01;
       }
     }
+
 
     if (calculationType === "POLE") {
       if (qtyPerContainer > 0) {
@@ -491,7 +494,8 @@ export default function AddProductPage() {
     setLandedCost(lc);
 
     if (calculationType === "LIGHTS") {
-      setSrp(lc ? Math.round(lc / 0.35 / 10) * 10 : 0);
+      setSrp(lc ? Math.ceil(lc / 0.35 / 10) * 10 : 0);
+
     }
 
     if (calculationType === "POLE") {
@@ -888,11 +892,11 @@ export default function AddProductPage() {
     packaging:
       calculationType === "LIGHTS"
         ? {
-            length: length ?? 0,
-            width: width ?? 0,
-            height: height ?? 0,
-            qtyPerCarton: qtyPerCarton ?? 1,
-          }
+          length: length ?? 0,
+          width: width ?? 0,
+          height: height ?? 0,
+          qtyPerCarton: qtyPerCarton ?? 1,
+        }
         : null,
 
     qtyPerContainer: calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
