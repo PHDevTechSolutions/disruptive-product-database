@@ -199,6 +199,20 @@ export default function AddProductPage() {
 
   const [calculationType, setCalculationType] =
     useState<CalculationType>("LIGHTS");
+
+  const [isMultipleDimensions, setIsMultipleDimensions] = useState(false);
+
+  type PackagingDimension = {
+    length: number;
+    width: number;
+    height: number;
+    qtyPerCarton: number;
+  };
+
+  const [packagingList, setPackagingList] = useState<PackagingDimension[]>([
+    { length: 0, width: 0, height: 0, qtyPerCarton: 1 },
+  ]);
+
   /* ===== RESET FIELDS WHEN CALCULATION TYPE CHANGES ===== */
   useEffect(() => {
     if (calculationType === "POLE") {
@@ -475,10 +489,35 @@ export default function AddProductPage() {
     let lc = 0;
 
     if (calculationType === "LIGHTS") {
-      const cbm = (length * width * height) / 1_000_000;
+      if (isMultipleDimensions) {
+        let totalLC = 0;
+        let totalSRP = 0;
 
-      if (cbm > 0 && qtyPerCarton > 0) {
-        lc = (unitCost * 60 + (520000 / (65 / cbm)) * qtyPerCarton) * 1.01;
+        packagingList.forEach((p) => {
+          const cbm = (p.length * p.width * p.height) / 1_000_000;
+
+          if (cbm > 0 && p.qtyPerCarton > 0) {
+            const singleLC =
+              (unitCost * 60 + (520000 / (65 / cbm)) * p.qtyPerCarton) * 1.01;
+
+            totalLC += singleLC;
+
+            totalSRP += Math.round(singleLC / 0.35 / 10) * 10;
+          }
+        });
+
+        setLandedCost(totalLC);
+
+        // Excel logic: ROUNDUP SUM to nearest 100
+        setSrp(Math.ceil(totalSRP / 100) * 100);
+
+        return;
+      } else {
+        const cbm = (length * width * height) / 1_000_000;
+
+        if (cbm > 0 && qtyPerCarton > 0) {
+          lc = (unitCost * 60 + (520000 / (65 / cbm)) * qtyPerCarton) * 1.01;
+        }
       }
     }
 
@@ -497,15 +536,17 @@ export default function AddProductPage() {
     if (calculationType === "POLE") {
       setSrp(lc ? Math.ceil(lc / 0.45 / 100) * 100 : 0);
     }
-  }, [
-    calculationType,
-    unitCost,
-    length,
-    width,
-    height,
-    qtyPerCarton,
-    qtyPerContainer,
-  ]);
+}, [
+  calculationType,
+  unitCost,
+  length,
+  width,
+  height,
+  qtyPerCarton,
+  qtyPerContainer,
+  packagingList,
+  isMultipleDimensions,
+]);
 
   const uploadToCloudinary = async (file: File) => {
     const formData = new FormData();
@@ -601,6 +642,35 @@ export default function AddProductPage() {
 
   const removeSupplierSheetRow = (index: number) => {
     setSupplierDataSheets((prev) =>
+      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
+    );
+  };
+
+  const updatePackaging = (
+    index: number,
+    field: keyof PackagingDimension,
+    value: number,
+  ) => {
+    setPackagingList((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+    );
+  };
+
+  const addPackagingRow = (index: number) => {
+    setPackagingList((prev) => {
+      const copy = [...prev];
+      copy.splice(index + 1, 0, {
+        length: 0,
+        width: 0,
+        height: 0,
+        qtyPerCarton: 1,
+      });
+      return copy;
+    });
+  };
+
+  const removePackagingRow = (index: number) => {
+    setPackagingList((prev) =>
       prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
     );
   };
@@ -887,12 +957,16 @@ export default function AddProductPage() {
 
     packaging:
       calculationType === "LIGHTS"
-        ? {
-            length: length ?? 0,
-            width: width ?? 0,
-            height: height ?? 0,
-            qtyPerCarton: qtyPerCarton ?? 1,
-          }
+        ? isMultipleDimensions
+          ? packagingList
+          : [
+              {
+                length: length ?? 0,
+                width: width ?? 0,
+                height: height ?? 0,
+                qtyPerCarton: qtyPerCarton ?? 1,
+              },
+            ]
         : null,
 
     qtyPerContainer: calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
@@ -1266,52 +1340,159 @@ export default function AddProductPage() {
 
               {/* ================= LIGHTS ONLY ================= */}
               {calculationType === "LIGHTS" && (
-                <div className="space-y-2">
+                <div className="space-y-3">
+                  {/* MULTIPLE DIMENSIONS CHECKBOX */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={isMultipleDimensions}
+                      onCheckedChange={(v) => setIsMultipleDimensions(!!v)}
+                    />
+                    <Label>Multiple Packaging Dimensions</Label>
+                  </div>
+
                   <Label>Packaging Dimensions (CM)</Label>
 
-                  <div className="grid grid-cols-4 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Length (L)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={length || ""}
-                        onChange={(e) => setLength(Number(e.target.value))}
-                      />
-                    </div>
+                  {isMultipleDimensions ? (
+                    /* ===== MULTIPLE DIMENSIONS MODE ===== */
+                    <div className="space-y-3">
+                      {packagingList.map((dim, index) => (
+                        <div
+                          key={index}
+                          className="grid grid-cols-5 gap-2 items-end"
+                        >
+                          <div className="space-y-1">
+                            <Label className="text-xs">Length (L)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={dim.length || ""}
+                              onChange={(e) =>
+                                updatePackaging(
+                                  index,
+                                  "length",
+                                  Number(e.target.value),
+                                )
+                              }
+                            />
+                          </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-xs">Width (W)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={width || ""}
-                        onChange={(e) => setWidth(Number(e.target.value))}
-                      />
-                    </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Width (W)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={dim.width || ""}
+                              onChange={(e) =>
+                                updatePackaging(
+                                  index,
+                                  "width",
+                                  Number(e.target.value),
+                                )
+                              }
+                            />
+                          </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-xs">Height (H)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={height || ""}
-                        onChange={(e) => setHeight(Number(e.target.value))}
-                      />
-                    </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Height (H)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={dim.height || ""}
+                              onChange={(e) =>
+                                updatePackaging(
+                                  index,
+                                  "height",
+                                  Number(e.target.value),
+                                )
+                              }
+                            />
+                          </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-xs">Quantity Per Carton</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={qtyPerCarton || ""}
-                        onChange={(e) =>
-                          setQtyPerCarton(Number(e.target.value))
-                        }
-                      />
+                          <div className="space-y-1">
+                            <Label className="text-xs">
+                              Quantity Per Carton
+                            </Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={dim.qtyPerCarton || ""}
+                              onChange={(e) =>
+                                updatePackaging(
+                                  index,
+                                  "qtyPerCarton",
+                                  Number(e.target.value),
+                                )
+                              }
+                            />
+                          </div>
+
+                          <div className="flex gap-1">
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              onClick={() => addPackagingRow(index)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              disabled={packagingList.length === 1}
+                              onClick={() => removePackagingRow(index)}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  ) : (
+                    /* ===== SINGLE DIMENSION MODE (DEFAULT) ===== */
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Length (L)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={length || ""}
+                          onChange={(e) => setLength(Number(e.target.value))}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs">Width (W)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={width || ""}
+                          onChange={(e) => setWidth(Number(e.target.value))}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs">Height (H)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={height || ""}
+                          onChange={(e) => setHeight(Number(e.target.value))}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs">Quantity Per Carton</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={qtyPerCarton || ""}
+                          onChange={(e) =>
+                            setQtyPerCarton(Number(e.target.value))
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
