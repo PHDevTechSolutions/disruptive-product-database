@@ -227,6 +227,35 @@ export default function AddProductPage() {
 
   // RESULTS
   const [landedCost, setLandedCost] = useState<number>(0);
+
+  /* ===== MULTIPLE DIMENSIONS (NEW FEATURE) ===== */
+  const [useArrayInput, setUseArrayInput] = useState(false);
+
+  type MultiRow = {
+    itemName: string;
+    unitCost: number;
+    length: number;
+    width: number;
+    height: number;
+    qtyPerCarton: number;
+    landed: number;
+    srp: number;
+  };
+
+
+  const [multiRows, setMultiRows] = useState<MultiRow[]>([
+    {
+      itemName: "",
+      unitCost: 0,
+      length: 0,
+      width: 0,
+      height: 0,
+      qtyPerCarton: 1,
+      landed: 0,
+      srp: 0,
+    },
+  ]);
+
   const [srp, setSrp] = useState<number>(0);
 
   /* ===== PRODUCT TYPE (DEPENDENT ON CATEGORY TYPE) ===== */
@@ -463,6 +492,40 @@ export default function AddProductPage() {
     return `${companyCode}-SPF-${year}-${runningFormatted}`;
   };
 
+  const updateMultiRow = (
+    index: number,
+    field: keyof MultiRow,
+    value: any
+  ) => {
+    setMultiRows((prev) =>
+      prev.map((row, i) =>
+        i === index ? { ...row, [field]: value } : row
+      )
+    );
+  };
+
+  const addMultiRow = (index: number) => {
+    setMultiRows((prev) => {
+      const copy = [...prev];
+      copy.splice(index + 1, 0, {
+        itemName: "",
+        unitCost: 0,
+        length: 0,
+        width: 0,
+        height: 0,
+        qtyPerCarton: 1,
+        landed: 0,
+        srp: 0,
+      });
+      return copy;
+    });
+  };
+
+  const removeMultiRow = (index: number) => {
+    setMultiRows((prev) =>
+      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev
+    );
+  };
   /* ================= NUMBER FORMATTERS ================= */
   const formatPHP = (value: number, decimals = 2) => {
     return value.toLocaleString("en-PH", {
@@ -472,9 +535,56 @@ export default function AddProductPage() {
   };
   /* ================= PRICING / LOGISTICS FORMULAS ================= */
   useEffect(() => {
-    let lc = 0;
+    // ===== POLE LOGIC (EXACTLY SAME AS ORIGINAL) =====
+    if (calculationType === "POLE") {
+      let lc = 0;
 
-    if (calculationType === "LIGHTS") {
+      if (qtyPerContainer > 0) {
+        lc = (unitCost * 60 + 600000 / qtyPerContainer) * 1.01;
+      }
+
+      setLandedCost(lc);
+      setSrp(lc ? Math.ceil(lc / 0.45 / 100) * 100 : 0);
+      return;
+    }
+
+    // ===== LIGHTS - MULTIPLE DIMENSIONS MODE =====
+    if (calculationType === "LIGHTS" && useArrayInput) {
+      let grandTotal = 0;
+
+      const updated = multiRows.map((row) => {
+        const cbm =
+          (row.length * row.width * row.height) / 1_000_000;
+
+        let landed = 0;
+        let srp = 0;
+
+        if (cbm > 0 && row.qtyPerCarton > 0) {
+          const shippingPerItem =
+            520000 / ((65 / cbm) * row.qtyPerCarton);
+
+          landed =
+            ((row.unitCost * 60) + shippingPerItem) * 1.01;
+
+          srp = Math.ceil(landed / 0.35 / 10) * 10;
+        }
+
+        grandTotal += landed;
+
+        return { ...row, landed, srp };
+      });
+
+      setMultiRows(updated);
+
+      setLandedCost(grandTotal);
+      setSrp(grandTotal ? Math.ceil(grandTotal / 0.35 / 100) * 100 : 0);
+      return;
+    }
+
+    // ===== LIGHTS - SINGLE MODE (ORIGINAL LOGIC) =====
+    if (calculationType === "LIGHTS" && !useArrayInput) {
+      let lc = 0;
+
       const cbm = (length * width * height) / 1_000_000;
 
       if (cbm > 0 && qtyPerCarton > 0) {
@@ -482,24 +592,9 @@ export default function AddProductPage() {
 
         lc = ((unitCost * 60) + shippingPerItem) * 1.01;
       }
-    }
 
-
-    if (calculationType === "POLE") {
-      if (qtyPerContainer > 0) {
-        lc = (unitCost * 60 + 600000 / qtyPerContainer) * 1.01;
-      }
-    }
-
-    setLandedCost(lc);
-
-    if (calculationType === "LIGHTS") {
+      setLandedCost(lc);
       setSrp(lc ? Math.ceil(lc / 0.35 / 10) * 10 : 0);
-
-    }
-
-    if (calculationType === "POLE") {
-      setSrp(lc ? Math.ceil(lc / 0.45 / 100) * 100 : 0);
     }
   }, [
     calculationType,
@@ -509,6 +604,10 @@ export default function AddProductPage() {
     height,
     qtyPerCarton,
     qtyPerContainer,
+    useArrayInput,
+    multiRows.map(
+      (r) => `${r.unitCost}-${r.length}-${r.width}-${r.height}-${r.qtyPerCarton}`
+    ).join("|"),
   ]);
 
   const uploadToCloudinary = async (file: File) => {
@@ -889,8 +988,15 @@ export default function AddProductPage() {
     calculationType,
     unitCost: unitCost ?? 0,
 
+    useArrayInput: useArrayInput,
+
+    multiDimensions:
+      calculationType === "LIGHTS" && useArrayInput
+        ? multiRows
+        : null,
+
     packaging:
-      calculationType === "LIGHTS"
+      calculationType === "LIGHTS" && !useArrayInput
         ? {
           length: length ?? 0,
           width: width ?? 0,
@@ -899,7 +1005,8 @@ export default function AddProductPage() {
         }
         : null,
 
-    qtyPerContainer: calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
+    qtyPerContainer:
+      calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
 
     landedCost: landedCost ?? 0,
     srp: srp ?? 0,
@@ -912,6 +1019,7 @@ export default function AddProductPage() {
       unit: warrantyUnit || "Years",
     },
   };
+
 
   const handleSaveProduct = async () => {
     if (saving) return;
@@ -1259,63 +1367,171 @@ export default function AddProductPage() {
               </div>
 
               {/* UNIT COST */}
-              <div>
-                <Label>Unit Cost (USD)</Label>
-                <Input
-                  type="number"
-                  value={unitCost}
-                  onChange={(e) => setUnitCost(Number(e.target.value))}
-                />
-              </div>
+              {calculationType === "LIGHTS" && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={useArrayInput}
+                    onCheckedChange={(v) => {
+                      const newValue = !!v;
+                      setUseArrayInput(newValue);
+
+                      // CLEAR ALL LIGHTS FIELDS KAPAG NAGPALIT MODE
+                      setUnitCost(0);
+                      setLength(0);
+                      setWidth(0);
+                      setHeight(0);
+                      setQtyPerCarton(1);
+
+                      // RESET MULTI ROWS DIN
+                      setMultiRows([
+                        {
+                          itemName: "",
+                          unitCost: 0,
+                          length: 0,
+                          width: 0,
+                          height: 0,
+                          qtyPerCarton: 1,
+                          landed: 0,
+                          srp: 0,
+                        },
+                      ]);
+                    }}
+                  />
+
+                  <Label>Multiple Dimensions</Label>
+                </div>
+              )}
+              {calculationType === "LIGHTS" && !useArrayInput && (
+                <div>
+                  <Label>Unit Cost (USD)</Label>
+                  <Input
+                    type="number"
+                    value={unitCost}
+                    onChange={(e) => setUnitCost(Number(e.target.value))}
+                  />
+                </div>
+              )}
 
               {/* ================= LIGHTS ONLY ================= */}
-              {calculationType === "LIGHTS" && (
+
+              {calculationType === "LIGHTS" && !useArrayInput && (
                 <div className="space-y-2">
                   <Label>Packaging Dimensions (CM)</Label>
 
                   <div className="grid grid-cols-4 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Length (L)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={length || ""}
-                        onChange={(e) => setLength(Number(e.target.value))}
-                      />
-                    </div>
+                    <Input
+                      type="number"
+                      placeholder="L"
+                      value={length || ""}
+                      onChange={(e) => setLength(Number(e.target.value))}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="W"
+                      value={width || ""}
+                      onChange={(e) => setWidth(Number(e.target.value))}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="H"
+                      value={height || ""}
+                      onChange={(e) => setHeight(Number(e.target.value))}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Qty/Box"
+                      value={qtyPerCarton || ""}
+                      onChange={(e) => setQtyPerCarton(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+              )}
 
-                    <div className="space-y-1">
-                      <Label className="text-xs">Width (W)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={width || ""}
-                        onChange={(e) => setWidth(Number(e.target.value))}
-                      />
-                    </div>
+              {calculationType === "LIGHTS" && useArrayInput && (
+                <div className="space-y-2">
+                  <Label>Multiple Packaging Dimensions</Label>
 
-                    <div className="space-y-1">
-                      <Label className="text-xs">Height (H)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={height || ""}
-                        onChange={(e) => setHeight(Number(e.target.value))}
-                      />
-                    </div>
+                  {multiRows.map((row, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2"
+                    >
 
-                    <div className="space-y-1">
-                      <Label className="text-xs">Quantity Per Carton</Label>
                       <Input
-                        type="number"
-                        min={1}
-                        value={qtyPerCarton || ""}
+                        placeholder="Item Name"
+                        value={row.itemName}
                         onChange={(e) =>
-                          setQtyPerCarton(Number(e.target.value))
+                          updateMultiRow(index, "itemName", e.target.value)
                         }
                       />
+                      <Input
+                        type="number"
+                        placeholder="Unit Cost"
+                        value={row.unitCost || ""}
+                        onChange={(e) =>
+                          updateMultiRow(index, "unitCost", Number(e.target.value))
+                        }
+                      />
+
+                      <Input
+                        type="number"
+                        placeholder="L"
+                        value={row.length || ""}
+                        onChange={(e) =>
+                          updateMultiRow(index, "length", Number(e.target.value))
+                        }
+                      />
+
+                      <Input
+                        type="number"
+                        placeholder="W"
+                        value={row.width || ""}
+                        onChange={(e) =>
+                          updateMultiRow(index, "width", Number(e.target.value))
+                        }
+                      />
+
+                      <Input
+                        type="number"
+                        placeholder="H"
+                        value={row.height || ""}
+                        onChange={(e) =>
+                          updateMultiRow(index, "height", Number(e.target.value))
+                        }
+                      />
+
+                      <Input
+                        type="number"
+                        placeholder="Qty/Box"
+                        value={row.qtyPerCarton || ""}
+                        onChange={(e) =>
+                          updateMultiRow(index, "qtyPerCarton", Number(e.target.value))
+                        }
+                      />
+
+                      <Input disabled value={formatPHP(row.landed, 2)} />
+                      <Input disabled value={formatPHP(row.srp, 0)} />
+
+                      <div className="flex gap-1">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => addMultiRow(index)}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={multiRows.length === 1}
+                          onClick={() => removeMultiRow(index)}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               )}
 
