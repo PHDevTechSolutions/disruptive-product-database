@@ -466,7 +466,7 @@ export default function AddProductPage() {
 
       /**
        * Expected format:
-       * BUI-SPF-2026-0001
+       * BUI-2026-0001
        */
       if (!sku) return;
 
@@ -489,7 +489,7 @@ export default function AddProductPage() {
         ? String(nextRunning).padStart(4, "0")
         : String(nextRunning);
 
-    return `${companyCode}-SPF-${year}-${runningFormatted}`;
+    return `${companyCode}-${year}-${runningFormatted}`;
   };
 
   const updateMultiRow = (

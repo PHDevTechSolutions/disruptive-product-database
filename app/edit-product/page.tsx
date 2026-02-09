@@ -679,7 +679,7 @@ export default function EditProductPage() {
         ? String(nextRunning).padStart(4, "0")
         : String(nextRunning);
 
-    return `${companyCode}-SPF-${year}-${runningFormatted}`;
+    return `${companyCode}-${year}-${runningFormatted}`;
   };
 
   /* ================= NUMBER FORMATTERS ================= */
