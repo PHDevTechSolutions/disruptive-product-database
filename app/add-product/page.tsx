@@ -103,7 +103,6 @@ export default function AddProductPage() {
   const [saving, setSaving] = useState(false);
 
   const [productName, setProductName] = useState("");
-  const [productID, setproductID] = useState("");
 
   const [technicalSpecs, setTechnicalSpecs] = useState<TechSpec[]>([
     { key: "", value: "" },
@@ -250,9 +249,9 @@ export default function AddProductPage() {
   };
 
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
-  const [selectedProductTypes, setSelectedProductTypes] = useState<
-    ProductType[]
-  >([]);
+  const [selectedProductType, setSelectedProductType] =
+    useState<ProductType | null>(null);
+
   const [productTypeSearch, setProductTypeSearch] = useState("");
   const [newProductType, setNewProductType] = useState("");
   type SelectedCategoryType = {
@@ -372,7 +371,7 @@ export default function AddProductPage() {
     setCategoryTypes([]);
 
     setSelectedCategoryTypes([]);
-    setSelectedProductTypes([]);
+    setSelectedProductType(null);
     setProductTypes([]);
 
     if (!classificationType) return;
@@ -704,27 +703,21 @@ export default function AddProductPage() {
     setSelectedCategoryTypes((prev) => {
       const isSame = prev.length === 1 && prev[0].id === item.id;
 
-      // if clicking the same checked item → uncheck
       if (isSame) {
-        setSelectedProductTypes([]);
+        setSelectedProductType(null);
         setProductTypes([]);
         return [];
       }
 
-      // clicking a different one → replace array
-      setSelectedProductTypes([]);
+      setSelectedProductType(null);
       setProductTypes([]);
 
       return [item];
     });
   };
 
-  const toggleProductType = (item: ProductType) => {
-    setSelectedProductTypes((prev) =>
-      prev.some((p) => p.id === item.id)
-        ? prev.filter((p) => p.id !== item.id)
-        : [...prev, item],
-    );
+  const selectProductType = (item: ProductType) => {
+    setSelectedProductType(item);
   };
 
   const handleAddProductType = async () => {
@@ -951,11 +944,6 @@ export default function AddProductPage() {
         return;
       }
 
-      if (!productID.trim()) {
-        toast.error("Product ID is required");
-        return;
-      }
-
       if (!selectedSupplier) {
         toast.error("Please select a supplier");
         return;
@@ -981,7 +969,6 @@ export default function AddProductPage() {
       // MAIN IMAGE
       const productRef = await addDoc(collection(db, "products"), {
         productName,
-        productID,
 
         sisterCompanyId: selectedSisterCompany.id,
         sisterCompanyName: selectedSisterCompany.name,
@@ -994,11 +981,15 @@ export default function AddProductPage() {
           company: selectedSupplier.company,
         },
 
-        productTypes: selectedProductTypes.map((p) => ({
-          productTypeId: p.id,
-          productTypeName: p.name,
-          categoryTypeId: p.categoryTypeId,
-        })),
+        productTypes: selectedProductType
+          ? [
+              {
+                productTypeId: selectedProductType.id,
+                productTypeName: selectedProductType.name,
+                categoryTypeId: selectedProductType.categoryTypeId,
+              },
+            ]
+          : [],
 
         categoryTypes: selectedCategoryTypes.map((c) => ({
           categoryTypeId: c.id,
@@ -1145,25 +1136,13 @@ export default function AddProductPage() {
                 </div>
               </CardContent>
             </Card>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Product Name</Label>
-                <Input
-                  value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                  placeholder="Enter product name..."
-                />
-              </div>
-
-              <div>
-                <Label>Product ID</Label>
-
-                <Input
-                  value={productID}
-                  onChange={(e) => setproductID(e.target.value)}
-                  placeholder="Enter product ID..."
-                />
-              </div>
+            <div>
+              <Label>Product Name</Label>
+              <Input
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="Enter product name..."
+              />
             </div>
             {/* ================= SUPPLIER SELECT ================= */}
             <div className="space-y-2">
@@ -1649,14 +1628,15 @@ export default function AddProductPage() {
                     className="flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center space-x-2">
-                      <Checkbox
+                      <input
+                        type="radio"
+                        name="sisterCompany"
                         checked={selectedSisterCompany?.id === item.id}
-                        onCheckedChange={() =>
-                          setSelectedSisterCompany(
-                            selectedSisterCompany?.id === item.id
-                              ? null
-                              : { id: item.id, name: item.name },
-                          )
+                        onChange={() =>
+                          setSelectedSisterCompany({
+                            id: item.id,
+                            name: item.name,
+                          })
                         }
                       />
                       <span className="text-sm">{item.name}</span>
@@ -1727,14 +1707,15 @@ export default function AddProductPage() {
                     className="flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center space-x-2">
-                      <Checkbox
+                      <input
+                        type="radio"
+                        name="classificationType"
                         checked={classificationType?.id === item.id}
-                        onCheckedChange={() =>
-                          setClassificationType(
-                            classificationType?.id === item.id
-                              ? null
-                              : { id: item.id, name: item.name },
-                          )
+                        onChange={() =>
+                          setClassificationType({
+                            id: item.id,
+                            name: item.name,
+                          })
                         }
                       />
                       <span className="text-sm">{item.name}</span>
@@ -1798,15 +1779,17 @@ export default function AddProductPage() {
                     className="flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={selectedCategoryTypes.some(
-                          (p) => p.id === item.id,
-                        )}
-                        onCheckedChange={() =>
-                          toggleCategoryType({
-                            id: item.id,
-                            name: item.name,
-                          })
+                      <input
+                        type="radio"
+                        name="categoryType"
+                        checked={
+                          selectedCategoryTypes.length === 1 &&
+                          selectedCategoryTypes[0].id === item.id
+                        }
+                        onChange={() =>
+                          setSelectedCategoryTypes([
+                            { id: item.id, name: item.name },
+                          ])
                         }
                       />
                       <span className="text-sm">{item.name}</span>
@@ -1879,11 +1862,11 @@ export default function AddProductPage() {
                     className="flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={selectedProductTypes.some(
-                          (p) => p.id === item.id,
-                        )}
-                        onCheckedChange={() => toggleProductType(item)}
+                      <input
+                        type="radio"
+                        name="productType"
+                        checked={selectedProductType?.id === item.id}
+                        onChange={() => selectProductType(item)}
                       />
                       <span className="text-sm">{item.name}</span>
                     </div>
@@ -1917,7 +1900,7 @@ export default function AddProductPage() {
         <Button variant="secondary" onClick={() => router.push("/products")}>
           Cancel
         </Button>
-        <Button onClick={handleSaveProduct} disabled={saving || !productID}>
+        <Button onClick={handleSaveProduct} disabled={saving}>
           {saving ? "Saving..." : "Save Product"}
         </Button>
       </div>

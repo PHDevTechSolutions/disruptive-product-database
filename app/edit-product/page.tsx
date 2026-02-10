@@ -110,7 +110,6 @@ export default function EditProductPage() {
   const [saving, setSaving] = useState(false);
 
   const [productName, setProductName] = useState("");
-  const [productID, setProductID] = useState("");
 
   const [technicalSpecs, setTechnicalSpecs] = useState<TechSpec[]>([
     { key: "", value: "" },
@@ -261,9 +260,8 @@ export default function EditProductPage() {
   };
 
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
-  const [selectedProductTypes, setSelectedProductTypes] = useState<
-    ProductType[]
-  >([]);
+  const [selectedProductType, setSelectedProductType] =
+    useState<ProductType | null>(null);
   const [productTypeSearch, setProductTypeSearch] = useState("");
   const [newProductType, setNewProductType] = useState("");
   type SelectedCategoryType = {
@@ -299,7 +297,6 @@ export default function EditProductPage() {
 
           // BASIC INFO
           setProductName(data.productName || "");
-          setProductID(data.productID || "");
 
           // SUPPLIER
           if (data.supplier) {
@@ -335,24 +332,29 @@ export default function EditProductPage() {
           }
 
           // CATEGORY TYPES ARRAY
-          if (Array.isArray(data.categoryTypes)) {
-            setSelectedCategoryTypes(
-              data.categoryTypes.map((c: any) => ({
-                id: c.categoryTypeId,
-                name: c.categoryTypeName,
-              })),
-            );
+          if (
+            Array.isArray(data.categoryTypes) &&
+            data.categoryTypes.length > 0
+          ) {
+            setSelectedCategoryTypes([
+              {
+                id: data.categoryTypes[0].categoryTypeId,
+                name: data.categoryTypes[0].categoryTypeName,
+              },
+            ]);
           }
 
           // PRODUCT TYPES ARRAY
-          if (Array.isArray(data.productTypes)) {
-            setSelectedProductTypes(
-              data.productTypes.map((p: any) => ({
-                id: p.productTypeId,
-                name: p.productTypeName,
-                categoryTypeId: p.categoryTypeId,
-              })),
-            );
+          if (
+            Array.isArray(data.productTypes) &&
+            data.productTypes.length > 0
+          ) {
+            const p = data.productTypes[0];
+            setSelectedProductType({
+              id: p.productTypeId,
+              name: p.productTypeName,
+              categoryTypeId: p.categoryTypeId,
+            });
           }
 
           // LOGISTICS DATA
@@ -513,7 +515,16 @@ export default function EditProductPage() {
 
         setProductTypes((prev) => {
           const filtered = prev.filter((p) => p.categoryTypeId !== cat.id);
-          return [...filtered, ...list];
+          const updated = [...filtered, ...list];
+
+          // 🟢 IMPORTANT: restore selected product type if exists
+          setSelectedProductType((current) =>
+            current && updated.some((u) => u.id === current.id)
+              ? current
+              : null,
+          );
+
+          return updated;
         });
       });
     });
@@ -525,9 +536,6 @@ export default function EditProductPage() {
   ]);
   useEffect(() => {
     setCategoryTypes([]);
-
-    setSelectedCategoryTypes([]);
-    setSelectedProductTypes([]);
     setProductTypes([]);
 
     if (!classificationType) return;
@@ -551,6 +559,11 @@ export default function EditProductPage() {
         .sort((a, b) => a.name.localeCompare(b.name));
 
       setCategoryTypes(list);
+
+      // 🟢 IMPORTANT: Restore selected category type if existing
+      setSelectedCategoryTypes((prev) =>
+        prev.filter((p) => list.some((l) => l.id === p.id)),
+      );
     });
 
     return () => unsubscribe();
@@ -867,27 +880,21 @@ export default function EditProductPage() {
     setSelectedCategoryTypes((prev) => {
       const isSame = prev.length === 1 && prev[0].id === item.id;
 
-      // if clicking the same checked item → uncheck
       if (isSame) {
-        setSelectedProductTypes([]);
+        setSelectedProductType(null);
         setProductTypes([]);
         return [];
       }
 
-      // clicking a different one → replace array
-      setSelectedProductTypes([]);
+      setSelectedProductType(null);
       setProductTypes([]);
 
       return [item];
     });
   };
 
-  const toggleProductType = (item: ProductType) => {
-    setSelectedProductTypes((prev) =>
-      prev.some((p) => p.id === item.id)
-        ? prev.filter((p) => p.id !== item.id)
-        : [...prev, item],
-    );
+  const selectProductType = (item: ProductType) => {
+    setSelectedProductType(item);
   };
 
   const handleAddProductType = async () => {
@@ -1126,10 +1133,6 @@ export default function EditProductPage() {
         return;
       }
 
-      if (!productID.trim()) {
-        toast.error("Product ID is required");
-        return;
-      }
       // ================= CLOUDINARY UPLOAD =================
 
       // MAIN IMAGE
@@ -1138,7 +1141,6 @@ export default function EditProductPage() {
 
       const updatePayload: any = {
         productName,
-        productID,
 
         sisterCompanyId: selectedSisterCompany.id,
         sisterCompanyName: selectedSisterCompany.name,
@@ -1151,11 +1153,15 @@ export default function EditProductPage() {
           company: selectedSupplier.company,
         },
 
-        productTypes: selectedProductTypes.map((p) => ({
-          productTypeId: p.id,
-          productTypeName: p.name,
-          categoryTypeId: p.categoryTypeId,
-        })),
+        productTypes: selectedProductType
+          ? [
+              {
+                productTypeId: selectedProductType.id,
+                productTypeName: selectedProductType.name,
+                categoryTypeId: selectedProductType.categoryTypeId,
+              },
+            ]
+          : [],
 
         categoryTypes: selectedCategoryTypes.map((c) => ({
           categoryTypeId: c.id,
@@ -1307,25 +1313,13 @@ export default function EditProductPage() {
                 </div>
               </CardContent>
             </Card>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Product Name</Label>
-                <Input
-                  value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                  placeholder="Enter product name..."
-                />
-              </div>
-
-              <div>
-                <Label>Product ID</Label>
-
-                <Input
-                  value={productID}
-                  onChange={(e) => setProductID(e.target.value)}
-                  placeholder="Enter Product ID..."
-                />
-              </div>
+            <div>
+              <Label>Product Name</Label>
+              <Input
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="Enter product name..."
+              />
             </div>
             {/* ================= SUPPLIER SELECT ================= */}
             <div className="space-y-2">
@@ -1800,14 +1794,15 @@ export default function EditProductPage() {
                     className="flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center space-x-2">
-                      <Checkbox
+                      <input
+                        type="radio"
+                        name="sisterCompany"
                         checked={selectedSisterCompany?.id === item.id}
-                        onCheckedChange={() =>
-                          setSelectedSisterCompany(
-                            selectedSisterCompany?.id === item.id
-                              ? null
-                              : { id: item.id, name: item.name },
-                          )
+                        onChange={() =>
+                          setSelectedSisterCompany({
+                            id: item.id,
+                            name: item.name,
+                          })
                         }
                       />
                       <span className="text-sm">{item.name}</span>
@@ -1878,14 +1873,15 @@ export default function EditProductPage() {
                     className="flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center space-x-2">
-                      <Checkbox
+                      <input
+                        type="radio"
+                        name="classificationType"
                         checked={classificationType?.id === item.id}
-                        onCheckedChange={() =>
-                          setClassificationType(
-                            classificationType?.id === item.id
-                              ? null
-                              : { id: item.id, name: item.name },
-                          )
+                        onChange={() =>
+                          setClassificationType({
+                            id: item.id,
+                            name: item.name,
+                          })
                         }
                       />
                       <span className="text-sm">{item.name}</span>
@@ -1949,11 +1945,14 @@ export default function EditProductPage() {
                     className="flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={selectedCategoryTypes.some(
-                          (p) => p.id === item.id,
-                        )}
-                        onCheckedChange={() =>
+                      <input
+                        type="radio"
+                        name="categoryType"
+                        checked={
+                          selectedCategoryTypes.length === 1 &&
+                          selectedCategoryTypes[0].id === item.id
+                        }
+                        onChange={() =>
                           toggleCategoryType({
                             id: item.id,
                             name: item.name,
@@ -2030,11 +2029,11 @@ export default function EditProductPage() {
                     className="flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={selectedProductTypes.some(
-                          (p) => p.id === item.id,
-                        )}
-                        onCheckedChange={() => toggleProductType(item)}
+                      <input
+                        type="radio"
+                        name="productType"
+                        checked={selectedProductType?.id === item.id}
+                        onChange={() => selectProductType(item)}
                       />
                       <span className="text-sm">{item.name}</span>
                     </div>
@@ -2068,7 +2067,7 @@ export default function EditProductPage() {
         <Button variant="secondary" onClick={() => router.push("/products")}>
           Cancel
         </Button>
-        <Button onClick={handleSaveProduct} disabled={saving || !productID}>
+        <Button onClick={handleSaveProduct} disabled={saving}>
           {saving ? "Saving..." : "Save Product"}
         </Button>
       </div>
