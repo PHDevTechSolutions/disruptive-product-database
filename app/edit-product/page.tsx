@@ -110,7 +110,7 @@ export default function EditProductPage() {
   const [saving, setSaving] = useState(false);
 
   const [productName, setProductName] = useState("");
-  const [sku, setSku] = useState("");
+  const [productID, setProductID] = useState("");
 
   const [technicalSpecs, setTechnicalSpecs] = useState<TechSpec[]>([
     { key: "", value: "" },
@@ -143,21 +143,6 @@ export default function EditProductPage() {
 
   const [selectedSisterCompany, setSelectedSisterCompany] =
     useState<SelectedSisterCompany>(null);
-
-  /* ===== AUTO SET SKU ON SISTER COMPANY SELECT ===== */
-  useEffect(() => {
-    if (!selectedSisterCompany) {
-      setSku("");
-      return;
-    }
-
-    const run = async () => {
-      const autoSku = await generateSku(selectedSisterCompany);
-      setSku(autoSku);
-    };
-
-    run();
-  }, [selectedSisterCompany]);
 
   const [sisterCompanies, setSisterCompanies] = useState<SisterCompany[]>([]);
   const [newSisterCompany, setNewSisterCompany] = useState("");
@@ -268,7 +253,6 @@ export default function EditProductPage() {
     },
   ]);
 
-
   /* ===== PRODUCT TYPE (DEPENDENT ON CATEGORY TYPE) ===== */
   type ProductType = {
     id: string;
@@ -315,7 +299,7 @@ export default function EditProductPage() {
 
           // BASIC INFO
           setProductName(data.productName || "");
-          setSku(data.sku || "");
+          setProductID(data.productID || "");
 
           // SUPPLIER
           if (data.supplier) {
@@ -594,15 +578,9 @@ export default function EditProductPage() {
 
   /* ---------------- Helpers ---------------- */
 
-  const updateMultiRow = (
-    index: number,
-    field: keyof MultiRow,
-    value: any
-  ) => {
+  const updateMultiRow = (index: number, field: keyof MultiRow, value: any) => {
     setMultiRows((prev) =>
-      prev.map((row, i) =>
-        i === index ? { ...row, [field]: value } : row
-      )
+      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
     );
   };
 
@@ -625,61 +603,8 @@ export default function EditProductPage() {
 
   const removeMultiRow = (index: number) => {
     setMultiRows((prev) =>
-      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev
+      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
     );
-  };
-
-  /* ===== SKU AUTO GENERATOR ===== */
-  const generateSku = async (sisterCompany: { id: string; name: string }) => {
-    const year = new Date().getFullYear();
-
-    // 3-letter company code (BUI, ECO, etc.)
-    const companyCode = sisterCompany.name
-      .replace(/[^A-Za-z]/g, "")
-      .substring(0, 3)
-      .toUpperCase();
-
-    // fetch ALL products for this sister company + year
-    const q = query(
-      collection(db, "products"),
-      where("sisterCompanyId", "==", sisterCompany.id),
-      where("isActive", "==", true),
-    );
-
-    const snapshot = await getDocs(q);
-
-    // find highest running number for this year
-    let maxRunning = 0;
-
-    snapshot.forEach((docSnap) => {
-      const sku: string | undefined = docSnap.data().sku;
-
-      /**
-       * Expected format:
-       * BUI-SPF-2026-0001
-       */
-      if (!sku) return;
-
-      const parts = sku.split("-");
-      if (parts.length !== 4) return;
-
-      const skuYear = Number(parts[2]);
-      const running = Number(parts[3]);
-
-      if (skuYear === year && !Number.isNaN(running)) {
-        maxRunning = Math.max(maxRunning, running);
-      }
-    });
-
-    const nextRunning = maxRunning + 1;
-
-    // pad ONLY if less than 4 digits
-    const runningFormatted =
-      nextRunning < 10000
-        ? String(nextRunning).padStart(4, "0")
-        : String(nextRunning);
-
-    return `${companyCode}-${year}-${runningFormatted}`;
   };
 
   /* ================= NUMBER FORMATTERS ================= */
@@ -709,18 +634,15 @@ export default function EditProductPage() {
       let grandTotal = 0;
 
       const updated = multiRows.map((row) => {
-        const cbm =
-          (row.length * row.width * row.height) / 1_000_000;
+        const cbm = (row.length * row.width * row.height) / 1_000_000;
 
         let landed = 0;
         let srp = 0;
 
         if (cbm > 0 && row.qtyPerCarton > 0) {
-          const shippingPerItem =
-            520000 / ((65 / cbm) * row.qtyPerCarton);
+          const shippingPerItem = 520000 / ((65 / cbm) * row.qtyPerCarton);
 
-          landed =
-            ((row.unitCost * 60) + shippingPerItem) * 1.01;
+          landed = (row.unitCost * 60 + shippingPerItem) * 1.01;
 
           srp = Math.ceil(landed / 0.35 / 10) * 10;
         }
@@ -746,7 +668,7 @@ export default function EditProductPage() {
       if (cbm > 0 && qtyPerCarton > 0) {
         const shippingPerItem = 520000 / ((65 / cbm) * qtyPerCarton);
 
-        lc = ((unitCost * 60) + shippingPerItem) * 1.01;
+        lc = (unitCost * 60 + shippingPerItem) * 1.01;
       }
 
       setLandedCost(lc);
@@ -761,11 +683,13 @@ export default function EditProductPage() {
     qtyPerCarton,
     qtyPerContainer,
     useArrayInput,
-    multiRows.map(
-      (r) => `${r.unitCost}-${r.length}-${r.width}-${r.height}-${r.qtyPerCarton}`
-    ).join("|"),
+    multiRows
+      .map(
+        (r) =>
+          `${r.unitCost}-${r.length}-${r.width}-${r.height}-${r.qtyPerCarton}`,
+      )
+      .join("|"),
   ]);
-
 
   const uploadToCloudinary = async (file: File) => {
     const formData = new FormData();
@@ -850,9 +774,9 @@ export default function EditProductPage() {
       prev.map((row, i) =>
         i === index
           ? {
-            ...row, // KEEP EXISTING DATA
-            file, // ADD NEW FILE
-          }
+              ...row, // KEEP EXISTING DATA
+              file, // ADD NEW FILE
+            }
           : row,
       ),
     );
@@ -1074,7 +998,6 @@ export default function EditProductPage() {
         });
       }
 
-
       const finalSupplierSheets: SupplierDataSheetItem[] = [];
 
       // 1. KEEP EXISTING FILES (that were not removed)
@@ -1153,22 +1076,19 @@ export default function EditProductPage() {
     useArrayInput: useArrayInput,
 
     multiDimensions:
-      calculationType === "LIGHTS" && useArrayInput
-        ? multiRows
-        : null,
+      calculationType === "LIGHTS" && useArrayInput ? multiRows : null,
 
     packaging:
       calculationType === "LIGHTS" && !useArrayInput
         ? {
-          length: length ?? 0,
-          width: width ?? 0,
-          height: height ?? 0,
-          qtyPerCarton: qtyPerCarton ?? 1,
-        }
+            length: length ?? 0,
+            width: width ?? 0,
+            height: height ?? 0,
+            qtyPerCarton: qtyPerCarton ?? 1,
+          }
         : null,
 
-    qtyPerContainer:
-      calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
+    qtyPerContainer: calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
 
     landedCost: landedCost ?? 0,
     srp: srp ?? 0,
@@ -1206,13 +1126,10 @@ export default function EditProductPage() {
         return;
       }
 
-      const finalSku = sku;
-
-      if (!finalSku) {
-        toast.error("SKU is still being generated. Please wait.");
+      if (!productID.trim()) {
+        toast.error("Product ID is required");
         return;
       }
-
       // ================= CLOUDINARY UPLOAD =================
 
       // MAIN IMAGE
@@ -1221,7 +1138,7 @@ export default function EditProductPage() {
 
       const updatePayload: any = {
         productName,
-        sku: finalSku,
+        productID,
 
         sisterCompanyId: selectedSisterCompany.id,
         sisterCompanyName: selectedSisterCompany.name,
@@ -1401,16 +1318,12 @@ export default function EditProductPage() {
               </div>
 
               <div>
-                <Label>SKU</Label>
+                <Label>Product ID</Label>
 
                 <Input
-                  value={sku}
-                  disabled
-                  placeholder={
-                    selectedSisterCompany
-                      ? "Auto-generated SKU"
-                      : "Select sister company first"
-                  }
+                  value={productID}
+                  onChange={(e) => setProductID(e.target.value)}
+                  placeholder="Enter Product ID..."
                 />
               </div>
             </div>
@@ -1596,7 +1509,11 @@ export default function EditProductPage() {
                         placeholder="Unit Cost"
                         value={row.unitCost || ""}
                         onChange={(e) =>
-                          updateMultiRow(index, "unitCost", Number(e.target.value))
+                          updateMultiRow(
+                            index,
+                            "unitCost",
+                            Number(e.target.value),
+                          )
                         }
                       />
 
@@ -1605,7 +1522,11 @@ export default function EditProductPage() {
                         placeholder="L"
                         value={row.length || ""}
                         onChange={(e) =>
-                          updateMultiRow(index, "length", Number(e.target.value))
+                          updateMultiRow(
+                            index,
+                            "length",
+                            Number(e.target.value),
+                          )
                         }
                       />
 
@@ -1623,7 +1544,11 @@ export default function EditProductPage() {
                         placeholder="H"
                         value={row.height || ""}
                         onChange={(e) =>
-                          updateMultiRow(index, "height", Number(e.target.value))
+                          updateMultiRow(
+                            index,
+                            "height",
+                            Number(e.target.value),
+                          )
                         }
                       />
 
@@ -1632,7 +1557,11 @@ export default function EditProductPage() {
                         placeholder="Qty/Box"
                         value={row.qtyPerCarton || ""}
                         onChange={(e) =>
-                          updateMultiRow(index, "qtyPerCarton", Number(e.target.value))
+                          updateMultiRow(
+                            index,
+                            "qtyPerCarton",
+                            Number(e.target.value),
+                          )
                         }
                       />
 
@@ -2139,7 +2068,7 @@ export default function EditProductPage() {
         <Button variant="secondary" onClick={() => router.push("/products")}>
           Cancel
         </Button>
-        <Button onClick={handleSaveProduct} disabled={saving || !sku}>
+        <Button onClick={handleSaveProduct} disabled={saving || !productID}>
           {saving ? "Saving..." : "Save Product"}
         </Button>
       </div>
