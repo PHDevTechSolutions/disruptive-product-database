@@ -373,28 +373,29 @@ export default function EditProductPage() {
           }
 
           // TECHNICAL SPECS ARRAY
-if (Array.isArray(data.technicalSpecifications)) {
-  const mappedSpecs = data.technicalSpecifications.map((spec: any) => ({
-    id: spec.technicalSpecificationId || "",
-    title: spec.title || "",
-    specs: Array.isArray(spec.specs) ? spec.specs : [emptyRow],
-    units: Array.isArray(spec.units) ? spec.units : [],
-  }));
+          if (Array.isArray(data.technicalSpecifications)) {
+            const mappedSpecs = data.technicalSpecifications.map(
+              (spec: any) => ({
+                id: spec.technicalSpecificationId || "",
+                title: spec.title || "",
+                specs: Array.isArray(spec.specs) ? spec.specs : [emptyRow],
+                units: Array.isArray(spec.units) ? spec.units : [],
+              }),
+            );
 
-  setTechnicalSpecs(
-    mappedSpecs.length
-      ? mappedSpecs
-      : [
-          {
-            id: "",
-            title: "",
-            specs: [emptyRow],
-            units: [],
-          },
-        ]
-  );
-}
-
+            setTechnicalSpecs(
+              mappedSpecs.length
+                ? mappedSpecs
+                : [
+                    {
+                      id: "",
+                      title: "",
+                      specs: [emptyRow],
+                      units: [],
+                    },
+                  ],
+            );
+          }
 
           // CATEGORY TYPES ARRAY
           if (
@@ -886,8 +887,6 @@ if (Array.isArray(data.technicalSpecifications)) {
     );
   };
 
-
-
   const handleImageChange = (file: File | null) => {
     if (!file) return;
     setMainImage(file);
@@ -1312,7 +1311,12 @@ if (Array.isArray(data.technicalSpecifications)) {
           categoryTypeName: c.name,
         })),
 
-        technicalSpecifications: technicalSpecs,
+        technicalSpecifications: technicalSpecs.map((spec) => ({
+          technicalSpecificationId: spec.id || "",
+          title: spec.title,
+          specs: spec.specs,
+          units: spec.units,
+        })),
 
         logistics: logisticsPayload,
 
@@ -2311,7 +2315,9 @@ if (Array.isArray(data.technicalSpecifications)) {
                     {/* ACTION BUTTONS */}
                     <div className="flex gap-1">
                       <AddProductEditSelectProduct
-                        classificationId={classificationType!.id}
+                        classificationId={
+                          classificationType ? classificationType.id : ""
+                        }
                         item={item}
                       />
 
@@ -2320,7 +2326,9 @@ if (Array.isArray(data.technicalSpecifications)) {
                           id: item.id,
                           productName: item.name,
                           categoryTypeId: item.categoryTypeId,
-                          classificationId: classificationType!.id,
+                          classificationId: classificationType
+                            ? classificationType.id
+                            : "",
                         }}
                         referenceID={user?.ReferenceID || ""}
                       />
