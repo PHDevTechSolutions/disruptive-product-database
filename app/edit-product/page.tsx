@@ -1584,54 +1584,170 @@ export default function EditProductPage() {
                         key={rIndex}
                         className="border p-2 rounded space-y-2"
                       >
-                        <div className="grid grid-cols-[2fr_1fr_auto] gap-2">
-                          <Input
-                            placeholder="Specification"
-                            value={row.specId}
-                            onChange={(e) =>
-                              updateSpecField(
-                                index,
-                                rIndex,
-                                "specId",
-                                e.target.value,
-                              )
-                            }
-                          />
+<div className="grid grid-cols-[2fr_1fr_1fr_120px_auto] gap-2 items-center">
 
-                          {!row.isSlashing && !row.isIPRating && (
-                            <Input
-                              placeholder="Unit"
-                              value={row.unit}
-                              onChange={(e) =>
-                                updateSpecField(
-                                  index,
-                                  rIndex,
-                                  "unit",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          )}
+  {/* SPECIFICATION NAME */}
+  <Input
+    placeholder="Specification"
+    value={row.specId}
+    onChange={(e) =>
+      updateSpecField(index, rIndex, "specId", e.target.value)
+    }
+  />
 
-                          <div className="flex gap-1">
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() => addSpecRow(index)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
+  {/* DEFAULT MODE */}
+  {!row.isRanging &&
+    !row.isSlashing &&
+    !row.isDimension &&
+    !row.isIPRating && (
+      <Input
+        placeholder="Value"
+        value={row.value}
+        onChange={(e) =>
+          updateSpecField(index, rIndex, "value", e.target.value)
+        }
+      />
+  )}
 
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              disabled={item.specs.length === 1}
-                              onClick={() => removeSpecRow(index, rIndex)}
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
+  {/* RANGING MODE */}
+  {row.isRanging && (
+    <>
+      <Input
+        placeholder="From"
+        value={row.rangeFrom}
+        onChange={(e) =>
+          updateSpecField(index, rIndex, "rangeFrom", e.target.value)
+        }
+      />
+
+      <Input
+        placeholder="To"
+        value={row.rangeTo}
+        onChange={(e) =>
+          updateSpecField(index, rIndex, "rangeTo", e.target.value)
+        }
+      />
+    </>
+  )}
+
+  {/* SLASHING MODE */}
+  {row.isSlashing && (
+    <div className="flex items-center gap-1">
+      {row.slashValues.map((s, si) => (
+        <React.Fragment key={si}>
+          <Input
+            placeholder="Value"
+            value={s}
+            onChange={(e) => {
+              const newArr = [...row.slashValues];
+              newArr[si] = e.target.value;
+
+              setTechnicalSpecs((prev) =>
+                prev.map((it, ii) =>
+                  ii === index
+                    ? {
+                        ...it,
+                        specs: it.specs.map((sr, ri) =>
+                          ri === rIndex
+                            ? { ...sr, slashValues: newArr }
+                            : sr
+                        ),
+                      }
+                    : it
+                )
+              );
+            }}
+          />
+
+          {si < row.slashValues.length - 1 && (
+            <span className="px-1">/</span>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  )}
+
+  {/* DIMENSION MODE */}
+  {row.isDimension && (
+    <>
+      <Input
+        placeholder="L"
+        value={row.length}
+        onChange={(e) =>
+          updateSpecField(index, rIndex, "length", e.target.value)
+        }
+      />
+      <Input
+        placeholder="W"
+        value={row.width}
+        onChange={(e) =>
+          updateSpecField(index, rIndex, "width", e.target.value)
+        }
+      />
+      <Input
+        placeholder="H"
+        value={row.height}
+        onChange={(e) =>
+          updateSpecField(index, rIndex, "height", e.target.value)
+        }
+      />
+    </>
+  )}
+
+  {/* IP RATING MODE */}
+  {row.isIPRating && (
+    <>
+      <span>IP</span>
+      <Input
+        placeholder="X"
+        value={row.ipFirst}
+        onChange={(e) =>
+          updateSpecField(index, rIndex, "ipFirst", e.target.value)
+        }
+      />
+      <Input
+        placeholder="Y"
+        value={row.ipSecond}
+        onChange={(e) =>
+          updateSpecField(index, rIndex, "ipSecond", e.target.value)
+        }
+      />
+    </>
+  )}
+
+  {/* UNIT FIELD – ALWAYS LAST (EXCEPT SLASHING & IP RATING) */}
+  {!row.isSlashing && !row.isIPRating && (
+    <Input
+      placeholder="Unit"
+      value={row.unit}
+      onChange={(e) =>
+        updateSpecField(index, rIndex, "unit", e.target.value)
+      }
+    />
+  )}
+
+  {/* ADD / REMOVE ROW */}
+  <div className="flex gap-1">
+    <Button
+      size="icon"
+      variant="outline"
+      onClick={() => addSpecRow(index)}
+    >
+      <Plus className="h-4 w-4" />
+    </Button>
+
+    <Button
+      size="icon"
+      variant="outline"
+      disabled={item.specs.length === 1}
+      onClick={() => removeSpecRow(index, rIndex)}
+    >
+      <Minus className="h-4 w-4" />
+    </Button>
+  </div>
+
+</div>
+
 
                         <div className="flex gap-3 text-sm">
                           <label className="flex items-center gap-1">
