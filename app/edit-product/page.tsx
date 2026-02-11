@@ -55,6 +55,8 @@ import AddProductDeleteSisterCompany from "@/components/add-product-delete-selec
 import AddProductDeleteClassification from "@/components/add-product-delete-select-classification-type";
 import AddProductDeleteProductType from "@/components/add-product-delete-select-category-type";
 import AddProductDeleteProduct from "@/components/add-product-delete-select-product";
+import AddProductEditSelectTechnicalSpecification from "@/components/add-product-edit-select-technical-specification";
+import AddProductDeleteTechnicalSpecification from "@/components/add-product-delete-technical-specification";
 
 /* ---------------- Types ---------------- */
 type UserData = {
@@ -64,9 +66,35 @@ type UserData = {
   ReferenceID: string;
 };
 
-type TechSpec = {
-  key: string;
+type TechSpecRow = {
+  specId: string;
+  unit: string;
+
+  isRanging: boolean;
+  isSlashing: boolean;
+  isDimension: boolean;
+  isIPRating: boolean;
+
   value: string;
+
+  rangeFrom: string;
+  rangeTo: string;
+
+  slashValues: string[];
+
+  length: string;
+  width: string;
+  height: string;
+
+  ipFirst: string;
+  ipSecond: string;
+};
+
+type TechSpec = {
+  id?: string;
+  title: string;
+  specs: TechSpecRow[];
+  units: string[];
 };
 
 type Classification = {
@@ -111,8 +139,30 @@ export default function EditProductPage() {
 
   const [productName, setProductName] = useState("");
 
+  const emptyRow: TechSpecRow = {
+    specId: "",
+    unit: "",
+    isRanging: false,
+    isSlashing: false,
+    isDimension: false,
+    isIPRating: false,
+    value: "",
+    rangeFrom: "",
+    rangeTo: "",
+    slashValues: [""],
+    length: "",
+    width: "",
+    height: "",
+    ipFirst: "",
+    ipSecond: "",
+  };
+
   const [technicalSpecs, setTechnicalSpecs] = useState<TechSpec[]>([
-    { key: "", value: "" },
+    {
+      title: "",
+      specs: [emptyRow],
+      units: [],
+    },
   ]);
 
   const [mainImage, setMainImage] = useState<File | null>(null);
@@ -323,13 +373,28 @@ export default function EditProductPage() {
           }
 
           // TECHNICAL SPECS ARRAY
-          if (Array.isArray(data.technicalSpecifications)) {
-            setTechnicalSpecs(
-              data.technicalSpecifications.length
-                ? data.technicalSpecifications
-                : [{ key: "", value: "" }],
-            );
-          }
+if (Array.isArray(data.technicalSpecifications)) {
+  const mappedSpecs = data.technicalSpecifications.map((spec: any) => ({
+    id: spec.technicalSpecificationId || "",
+    title: spec.title || "",
+    specs: Array.isArray(spec.specs) ? spec.specs : [emptyRow],
+    units: Array.isArray(spec.units) ? spec.units : [],
+  }));
+
+  setTechnicalSpecs(
+    mappedSpecs.length
+      ? mappedSpecs
+      : [
+          {
+            id: "",
+            title: "",
+            specs: [emptyRow],
+            units: [],
+          },
+        ]
+  );
+}
+
 
           // CATEGORY TYPES ARRAY
           if (
@@ -724,25 +789,104 @@ export default function EditProductPage() {
     return data;
   };
 
-  const updateSpec = (index: number, field: "key" | "value", value: string) => {
+  const updateTitle = (index: number, value: string) => {
     setTechnicalSpecs((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+      prev.map((item, i) => (i === index ? { ...item, title: value } : item)),
     );
   };
 
-  const addSpecRow = (index: number) => {
-    setTechnicalSpecs((prev) => {
-      const copy = [...prev];
-      copy.splice(index + 1, 0, { key: "", value: "" });
-      return copy;
-    });
+  const updateSpecField = (
+    specIndex: number,
+    rowIndex: number,
+    field: keyof TechSpecRow,
+    value: any,
+  ) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
+        i === specIndex
+          ? {
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex ? { ...row, [field]: value } : row,
+              ),
+            }
+          : item,
+      ),
+    );
   };
 
-  const removeSpecRow = (index: number) => {
+  const addTechnicalSpec = () => {
+    setTechnicalSpecs((prev) => [
+      ...prev,
+      {
+        title: "",
+        specs: [emptyRow],
+        units: [],
+      },
+    ]);
+  };
+
+  const removeTechnicalSpec = (index: number) => {
     setTechnicalSpecs((prev) =>
       prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
     );
   };
+
+  const addSpecRow = (index: number) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? { ...item, specs: [...item.specs, { ...emptyRow }] }
+          : item,
+      ),
+    );
+  };
+
+  const removeSpecRow = (specIndex: number, rowIndex: number) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
+        i === specIndex
+          ? {
+              ...item,
+              specs:
+                item.specs.length > 1
+                  ? item.specs.filter((_, r) => r !== rowIndex)
+                  : item.specs,
+            }
+          : item,
+      ),
+    );
+  };
+
+  const toggleMode = (
+    specIndex: number,
+    rowIndex: number,
+    mode: keyof TechSpecRow,
+  ) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
+        i === specIndex
+          ? {
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex
+                  ? {
+                      ...row,
+                      isRanging: false,
+                      isSlashing: false,
+                      isDimension: false,
+                      isIPRating: false,
+                      [mode]: !row[mode],
+                    }
+                  : row,
+              ),
+            }
+          : item,
+      ),
+    );
+  };
+
+
 
   const handleImageChange = (file: File | null) => {
     if (!file) return;
@@ -1168,7 +1312,7 @@ export default function EditProductPage() {
           categoryTypeName: c.name,
         })),
 
-        technicalSpecifications: technicalSpecs.filter((s) => s.key || s.value),
+        technicalSpecifications: technicalSpecs,
 
         logistics: logisticsPayload,
 
@@ -1372,43 +1516,169 @@ export default function EditProductPage() {
               </Popover>
             </div>
 
-            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
-              <Label>Technical Specifications</Label>
+            {/* ===== TECHNICAL SPECIFICATIONS (FULL EDITOR - EDIT MODE) ===== */}
 
-              {technicalSpecs.map((spec, index) => (
-                <div
-                  key={index}
-                  className="grid grid-cols-[1fr_1fr_auto] gap-2"
-                >
-                  <Input
-                    value={spec.key}
-                    placeholder="Spec"
-                    onChange={(e) => updateSpec(index, "key", e.target.value)}
-                  />
-                  <Input
-                    value={spec.value}
-                    placeholder="Value"
-                    onChange={(e) => updateSpec(index, "value", e.target.value)}
-                  />
-                  <div className="flex gap-1">
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => addSpecRow(index)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      disabled={technicalSpecs.length === 1}
-                      onClick={() => removeSpecRow(index)}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center bg-white sticky top-0 z-10 pb-2">
+                <Label>Technical Specifications</Label>
+
+                <Button size="sm" variant="outline" onClick={addTechnicalSpec}>
+                  Add Title
+                </Button>
+              </div>
+
+              <div className="max-h-[600px] overflow-y-auto pr-2 space-y-3">
+                {technicalSpecs.map((item, index) => (
+                  <Card key={index} className="p-3 space-y-3">
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        placeholder="Title"
+                        value={item.title}
+                        onChange={(e) => updateTitle(index, e.target.value)}
+                      />
+
+                      {item.id &&
+                        classificationType &&
+                        selectedCategoryTypes.length === 1 &&
+                        selectedProductType && (
+                          <>
+                            <AddProductEditSelectTechnicalSpecification
+                              classificationId={classificationType.id}
+                              categoryTypeId={selectedCategoryTypes[0].id}
+                              productTypeId={selectedProductType.id}
+                              technicalSpecificationId={item.id}
+                              title={item.title}
+                              specs={item.specs}
+                              units={item.units}
+                            />
+
+                            <AddProductDeleteTechnicalSpecification
+                              classificationId={classificationType.id}
+                              categoryTypeId={selectedCategoryTypes[0].id}
+                              productTypeId={selectedProductType.id}
+                              technicalSpecificationId={item.id}
+                              title={item.title}
+                              referenceID={user?.ReferenceID || ""}
+                            />
+                          </>
+                        )}
+
+                      {!item.id && (
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={technicalSpecs.length === 1}
+                          onClick={() => removeTechnicalSpec(index)}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {item.specs.map((row, rIndex) => (
+                      <div
+                        key={rIndex}
+                        className="border p-2 rounded space-y-2"
+                      >
+                        <div className="grid grid-cols-[2fr_1fr_auto] gap-2">
+                          <Input
+                            placeholder="Specification"
+                            value={row.specId}
+                            onChange={(e) =>
+                              updateSpecField(
+                                index,
+                                rIndex,
+                                "specId",
+                                e.target.value,
+                              )
+                            }
+                          />
+
+                          {!row.isSlashing && !row.isIPRating && (
+                            <Input
+                              placeholder="Unit"
+                              value={row.unit}
+                              onChange={(e) =>
+                                updateSpecField(
+                                  index,
+                                  rIndex,
+                                  "unit",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          )}
+
+                          <div className="flex gap-1">
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              onClick={() => addSpecRow(index)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              disabled={item.specs.length === 1}
+                              onClick={() => removeSpecRow(index, rIndex)}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 text-sm">
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="checkbox"
+                              checked={row.isRanging}
+                              onChange={() =>
+                                toggleMode(index, rIndex, "isRanging")
+                              }
+                            />
+                            isRanging
+                          </label>
+
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="checkbox"
+                              checked={row.isSlashing}
+                              onChange={() =>
+                                toggleMode(index, rIndex, "isSlashing")
+                              }
+                            />
+                            isSlashing
+                          </label>
+
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="checkbox"
+                              checked={row.isDimension}
+                              onChange={() =>
+                                toggleMode(index, rIndex, "isDimension")
+                              }
+                            />
+                            isDimension
+                          </label>
+
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="checkbox"
+                              checked={row.isIPRating}
+                              onChange={() =>
+                                toggleMode(index, rIndex, "isIPRating")
+                              }
+                            />
+                            isIPRating
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </Card>
+                ))}
+              </div>
             </div>
           </CardContent>
 
