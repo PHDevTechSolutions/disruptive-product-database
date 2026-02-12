@@ -1457,17 +1457,44 @@ export default function EditProductPage() {
       technicalSpecs.forEach((spec) => {
         const ref = spec.id ? doc(specsRef, spec.id) : doc(specsRef);
 
-        batch.set(
-          ref,
-          {
-            title: spec.title,
-            specs: spec.specs,
-            units: spec.units,
-            isActive: true,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
+batch.set(
+  ref,
+  {
+    title: spec.title,
+
+    specs: spec.specs.map((row) => {
+      let formattedValue = "";
+
+      if (row.isRanging) {
+        formattedValue = `${row.rangeFrom} - ${row.rangeTo}${row.unit ? " " + row.unit : ""}`;
+      } 
+      else if (row.isSlashing) {
+        formattedValue = row.slashValues.join("/");
+      } 
+      else if (row.isDimension) {
+        formattedValue = `${row.length} x ${row.width} x ${row.height}${row.unit ? " " + row.unit : ""}`;
+      } 
+      else if (row.isIPRating) {
+        formattedValue = `IP${row.ipFirst}${row.ipSecond}`;
+      } 
+      else {
+        formattedValue = `${row.value}${row.unit ? " " + row.unit : ""}`;
+      }
+
+      return {
+        ...row,
+        value: formattedValue
+      };
+    }),
+
+    units: spec.units,
+    isActive: true,
+    updatedAt: serverTimestamp(),
+  },
+  { merge: true },
+);
+
+
       });
 
       await batch.commit();
@@ -1582,7 +1609,7 @@ export default function EditProductPage() {
   if (loading) return null;
 
   return (
-    <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
+    <div className="h-dvh overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
       <SidebarTrigger className="hidden md:flex" />
 
       <h1 className="text-2xl font-bold">

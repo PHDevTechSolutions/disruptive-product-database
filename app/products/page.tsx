@@ -15,6 +15,9 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // ===== DYNAMIC FILTER STATE =====
+  const [filters, setFilters] = useState<Record<string, string[]>>({});
+
   useEffect(() => {
     if (!userId) {
       router.push("/login");
@@ -38,11 +41,164 @@ export default function ProductsPage() {
         })
       : "-";
 
+  // ===== FILTER OPTION BUILDERS =====
+
+  const sisterCompanies = Array.from(
+    new Set(products.map((p) => p.sisterCompanyName).filter(Boolean))
+  );
+
+  const classifications = Array.from(
+    new Set(products.map((p) => p.classificationName).filter(Boolean))
+  );
+
+  const categories = Array.from(
+    new Set(
+      products.map((p) => p.categoryTypes?.[0]?.categoryTypeName).filter(Boolean)
+    )
+  );
+
+  const productTypes = Array.from(
+    new Set(
+      products.map((p) => p.productTypes?.[0]?.productTypeName).filter(Boolean)
+    )
+  );
+
+  const suppliers = Array.from(
+    new Set(products.map((p) => p.supplier?.company).filter(Boolean))
+  );
+
+  // ===== TECHNICAL SPECIFICATION FILTERS =====
+  const technicalSpecs: Record<string, Set<string>> = {};
+
+products.forEach((p) => {
+  p.technicalSpecifications?.forEach((group: any) => {
+    const title = group.title;
+
+    if (!technicalSpecs[title]) {
+      technicalSpecs[title] = new Set();
+    }
+
+    group.specs?.forEach((spec: any) => {
+      if (spec.value) {
+        technicalSpecs[title].add(spec.value);
+      }
+    });
+  });
+});
+
+
+  // ===== PRICING FILTERS =====
+  const pricingFilters = {
+    "Unit Cost": Array.from(
+      new Set(products.map((p) => p.logistics?.unitCost).filter(Boolean))
+    ),
+    "Landed Cost": Array.from(
+      new Set(products.map((p) => p.logistics?.landedCost).filter(Boolean))
+    ),
+    Warranty: Array.from(
+      new Set(
+        products.map((p) =>
+          p.logistics?.warranty
+            ? `${p.logistics.warranty.value} ${p.logistics.warranty.unit}`
+            : null
+        ).filter(Boolean)
+      )
+    ),
+  };
+
+  // ===== APPLY FILTER LOGIC =====
+  const filteredProducts = products.filter((p) => {
+    if (
+      filters["Sister Company"]?.length &&
+      !filters["Sister Company"].includes(p.sisterCompanyName)
+    )
+      return false;
+
+    if (
+      filters["Classification Type"]?.length &&
+      !filters["Classification Type"].includes(p.classificationName)
+    )
+      return false;
+
+    if (
+      filters["Category Type"]?.length &&
+      !filters["Category Type"].includes(
+        p.categoryTypes?.[0]?.categoryTypeName
+      )
+    )
+      return false;
+
+    if (
+      filters["Product Type"]?.length &&
+      !filters["Product Type"].includes(
+        p.productTypes?.[0]?.productTypeName
+      )
+    )
+      return false;
+
+    if (
+      filters["Supplier / Company"]?.length &&
+      !filters["Supplier / Company"].includes(p.supplier?.company)
+    )
+      return false;
+
+    // Technical Specs
+    for (const [title, values] of Object.entries(filters)) {
+      if (!technicalSpecs[title]) continue;
+
+      const productValues: string[] = [];
+
+      p.technicalSpecifications?.forEach((group: any) => {
+        if (group.title === title) {
+          group.specs?.forEach((spec: any) => {
+            if (spec.value) productValues.push(spec.value);
+
+            if (spec.isIPRating) {
+              productValues.push(
+                `IP${spec.ipFirst || ""}${spec.ipSecond || ""}`
+              );
+            }
+
+            if (spec.isSlashing) {
+              productValues.push(...spec.slashValues);
+            }
+          });
+        }
+      });
+
+      if (
+        values.length &&
+        !values.some((v) => productValues.includes(v))
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const toggleFilter = (title: string, value: string) => {
+    setFilters((prev) => {
+      const current = prev[title] || [];
+      const exists = current.includes(value);
+
+      return {
+        ...prev,
+        [title]: exists
+          ? current.filter((v) => v !== value)
+          : [...current, value],
+      };
+    });
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+  };
+
   return (
     <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
       <SidebarTrigger className="hidden md:flex" />
 
-      {/* HEADER */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-semibold">Products</h1>
 
@@ -51,7 +207,6 @@ export default function ProductsPage() {
         </Button>
       </div>
 
-      {/* CONTENT */}
       {loading ? (
         <p className="text-center text-muted-foreground">Loading products...</p>
       ) : products.length === 0 ? (
@@ -59,103 +214,192 @@ export default function ProductsPage() {
           No products available
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((p) => {
-            const cat = p.categoryTypes?.[0];
-            const prod = p.productTypes?.[0];
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-6">
+          {/* PRODUCT GRID */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map((p) => {
+              const cat = p.categoryTypes?.[0];
+              const prod = p.productTypes?.[0];
 
-            return (
-              <div
-                key={p.id}
-                className="border rounded-lg shadow-sm bg-card flex flex-col overflow-hidden"
-              >
-                {/* IMAGE */}
-                <div className="h-[200px] bg-muted flex items-center justify-center">
-                  {p.mainImage?.url ? (
-                    <img
-                      src={p.mainImage.url}
-                      className="h-full w-full object-cover"
+              return (
+                <div
+                  key={p.id}
+                  className="border rounded-lg shadow-sm bg-card flex flex-col overflow-hidden"
+                >
+                  <div className="h-[200px] bg-muted flex items-center justify-center">
+                    {p.mainImage?.url ? (
+                      <img
+                        src={p.mainImage.url}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">
+                        No Image
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-4 space-y-3 flex-1">
+                    <h2 className="text-lg font-bold line-clamp-2">
+                      {p.productName}
+                    </h2>
+
+                    <div className="space-y-1">
+                      <p className="text-red-600 text-sm font-semibold">
+                        SRP: {format2(p.logistics?.srp)}
+                      </p>
+
+                      <p className="text-red-600 text-xs">
+                        Unit Cost: {format2(p.logistics?.unitCost)}
+                      </p>
+
+                      <p className="text-red-600 text-xs">
+                        Landed Cost: {format2(p.logistics?.landedCost)}
+                      </p>
+                    </div>
+
+                    <div className="text-xs text-gray-500 space-y-1">
+                      <p>Classification Type: {p.classificationName || "-"}</p>
+                      <p>Category Type: {cat?.categoryTypeName || "-"}</p>
+                      <p>Product Type: {prod?.productTypeName || "-"}</p>
+                      <p>SKU: {p.sku || "-"}</p>
+                      <p>Supplier: {p.supplier?.company || "-"}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 border-t bg-muted/30 flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => router.push(`/edit-product?id=${p.id}`)}
+                    >
+                      Edit
+                    </Button>
+
+                    <AddProductDeleteProductItem
+                      productId={p.id}
+                      productName={p.productName}
+                      referenceID={userId ?? ""}
+                      onDeleted={(id) =>
+                        setProducts((prev) =>
+                          prev.filter((prod) => prod.id !== id)
+                        )
+                      }
                     />
-                  ) : (
-                    <span className="text-muted-foreground">No Image</span>
-                  )}
-                </div>
-
-                {/* DETAILS */}
-                <div className="p-4 space-y-3 flex-1">
-                  {/* MAIN PRODUCT NAME – BIG & BOLD */}
-                  <h2 className="text-lg font-bold line-clamp-2">
-                    {p.productName}
-                  </h2>
-
-                  {/* PRICING – RED FONT */}
-                  <div className="space-y-1">
-                    <p className="text-red-600 text-sm font-semibold">
-                      SRP: {format2(p.logistics?.srp)}
-                    </p>
-
-                    <p className="text-red-600 text-xs">
-                      Unit Cost: {format2(p.logistics?.unitCost)}
-                    </p>
-
-                    <p className="text-red-600 text-xs">
-                      Landed Cost: {format2(p.logistics?.landedCost)}
-                    </p>
-                  </div>
-
-                  {/* PRODUCT INFO – GREY TEXT */}
-                  <div className="text-xs text-gray-500 space-y-1">
-                    <p>
-                      Classification Type:{" "}
-                      {p.classificationName || "-"}
-                    </p>
-
-                    <p>
-                      Category Type:{" "}
-                      {cat?.categoryTypeName || "-"}
-                    </p>
-
-                    <p>
-                      Product Type:{" "}
-                      {prod?.productTypeName || "-"}
-                    </p>
-
-                    <p>SKU: {p.sku || "-"}</p>
-
-                    <p>
-                      Supplier:{" "}
-                      {p.supplier?.company || "-"}
-                    </p>
                   </div>
                 </div>
+              );
+            })}
+          </div>
 
-                {/* ACTIONS */}
-                <div className="p-3 border-t bg-muted/30 flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => router.push(`/edit-product?id=${p.id}`)}
-                  >
-                    Edit
-                  </Button>
+          {/* FILTER PANEL */}
+          <div className="border rounded-lg p-4 bg-card space-y-4">
+            <h2 className="font-semibold">Filters</h2>
 
-                  <AddProductDeleteProductItem
-                    productId={p.id}
-                    productName={p.productName}
-                    referenceID={userId ?? ""}
-                    onDeleted={(id) =>
-                      setProducts((prev) =>
-                        prev.filter((prod) => prod.id !== id),
-                      )
-                    }
-                  />
-                </div>
-              </div>
-            );
-          })}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={clearFilters}
+            >
+              Clear Filters
+            </Button>
+
+            <div className="space-y-3 max-h-[800px] overflow-y-auto">
+              <FilterSection
+                title="Sister Company"
+                items={sisterCompanies}
+                filters={filters}
+                toggleFilter={toggleFilter}
+              />
+
+              <FilterSection
+                title="Classification Type"
+                items={classifications}
+                filters={filters}
+                toggleFilter={toggleFilter}
+              />
+
+              <FilterSection
+                title="Category Type"
+                items={categories}
+                filters={filters}
+                toggleFilter={toggleFilter}
+              />
+
+              <FilterSection
+                title="Product Type"
+                items={productTypes}
+                filters={filters}
+                toggleFilter={toggleFilter}
+              />
+
+              <FilterSection
+                title="Supplier / Company"
+                items={suppliers}
+                filters={filters}
+                toggleFilter={toggleFilter}
+              />
+
+              <h3 className="font-semibold mt-4">Technical Specifications</h3>
+
+              {Object.entries(technicalSpecs).map(([title, values]) => (
+                <FilterSection
+                  key={title}
+                  title={title}
+                  items={[...values]}
+                  filters={filters}
+                  toggleFilter={toggleFilter}
+                />
+              ))}
+
+              <h3 className="font-semibold mt-4">Pricing</h3>
+
+              {Object.entries(pricingFilters).map(([title, values]) => (
+                <FilterSection
+                  key={title}
+                  title={title}
+                  items={values as string[]}
+                  filters={filters}
+                  toggleFilter={toggleFilter}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ===== REUSABLE FILTER COMPONENT =====
+function FilterSection({
+  title,
+  items,
+  filters,
+  toggleFilter,
+}: {
+  title: string;
+  items: string[];
+  filters: Record<string, string[]>;
+  toggleFilter: (title: string, value: string) => void;
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="border rounded p-2 space-y-1">
+      <p className="text-sm font-medium">{title}</p>
+
+      {items.map((item) => (
+        <label key={item} className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={filters[title]?.includes(item) || false}
+            onChange={() => toggleFilter(title, item)}
+          />
+          {item}
+        </label>
+      ))}
     </div>
   );
 }

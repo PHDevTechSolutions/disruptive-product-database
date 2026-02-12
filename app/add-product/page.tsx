@@ -795,37 +795,39 @@ export default function AddProductPage() {
       technicalSpecs.forEach((spec) => {
         const ref = spec.id ? doc(specsRef, spec.id) : doc(specsRef);
 
-        batch.set(ref, {
-          title: spec.title,
+batch.set(ref, {
+  title: spec.title,
 
-          // SAVE TEMPLATE STRUCTURE ONLY – NO VALUES
-          specs: spec.specs.map((row) => ({
-            specId: row.specId,
-            unit: row.unit,
+  specs: spec.specs.map((row) => {
+    let formattedValue = "";
 
-            isRanging: row.isRanging,
-            isSlashing: row.isSlashing,
-            isDimension: row.isDimension,
-            isIPRating: row.isIPRating,
+    if (row.isRanging) {
+      formattedValue = `${row.rangeFrom} - ${row.rangeTo}${row.unit ? " " + row.unit : ""}`;
+    } 
+    else if (row.isSlashing) {
+      formattedValue = row.slashValues.join("/");
+    } 
+    else if (row.isDimension) {
+      formattedValue = `${row.length} x ${row.width} x ${row.height}${row.unit ? " " + row.unit : ""}`;
+    } 
+    else if (row.isIPRating) {
+      formattedValue = `IP${row.ipFirst}${row.ipSecond}`;
+    } 
+    else {
+      formattedValue = `${row.value}${row.unit ? " " + row.unit : ""}`;
+    }
 
-            // Preserve array SIZE only, but NOT actual values
-            ...(row.isSlashing
-              ? { slashValues: new Array(row.slashValues.length).fill(null) }
-              : {}),
+    return {
+      ...row,
+      value: formattedValue
+    };
+  }),
 
-            ...(row.isDimension
-              ? { dimensionSlots: 3 } // just to preserve structure info
-              : {}),
+  units: spec.units,
+  isActive: true,
+  updatedAt: serverTimestamp(),
+});
 
-            ...(row.isIPRating ? { ipSlots: 2 } : {}),
-
-            ...(row.isRanging ? { rangeSlots: 2 } : {}),
-          })),
-
-          units: spec.units,
-          isActive: true,
-          updatedAt: serverTimestamp(),
-        });
       });
 
       await batch.commit();
@@ -1447,12 +1449,38 @@ export default function AddProductPage() {
           categoryTypeName: c.name,
         })),
 
-        technicalSpecifications: technicalSpecs.map((spec) => ({
-          technicalSpecificationId: spec.id || "",
-          title: spec.title,
-          specs: spec.specs,
-          units: spec.units,
-        })),
+technicalSpecifications: technicalSpecs.map((spec) => ({
+  technicalSpecificationId: spec.id || "",
+  title: spec.title,
+
+  specs: spec.specs.map((row) => {
+    let formattedValue = "";
+
+    if (row.isRanging) {
+      formattedValue = `${row.rangeFrom} - ${row.rangeTo}${row.unit ? " " + row.unit : ""}`;
+    } 
+    else if (row.isSlashing) {
+      formattedValue = row.slashValues.join("/");
+    } 
+    else if (row.isDimension) {
+      formattedValue = `${row.length} x ${row.width} x ${row.height}${row.unit ? " " + row.unit : ""}`;
+    } 
+    else if (row.isIPRating) {
+      formattedValue = `IP${row.ipFirst}${row.ipSecond}`;
+    } 
+    else {
+      formattedValue = `${row.value}${row.unit ? " " + row.unit : ""}`;
+    }
+
+    return {
+      ...row,
+      value: formattedValue
+    };
+  }),
+
+  units: spec.units,
+})),
+
 
         /* ================= PRICING / LOGISTICS ================= */
         logistics: logisticsPayload,
