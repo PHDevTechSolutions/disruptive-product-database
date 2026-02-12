@@ -8,7 +8,6 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import AddProductDeleteProductItem from "@/components/add-product-delete-product-item";
-
 import FilteringComponent from "@/components/filtering-component";
 
 export default function ProductsPage() {
@@ -32,7 +31,6 @@ export default function ProductsPage() {
 
       setProducts(list);
       setFilteredProducts(list);
-
       setLoading(false);
     });
 
@@ -48,9 +46,10 @@ export default function ProductsPage() {
       : "-";
 
   return (
-    <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
+    <div className="min-h-screen p-6 space-y-6">
       <SidebarTrigger className="hidden md:flex" />
 
+      {/* HEADER */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-semibold">Products</h1>
 
@@ -60,15 +59,17 @@ export default function ProductsPage() {
       </div>
 
       {loading ? (
-        <p className="text-center text-muted-foreground">Loading products...</p>
+        <p className="text-center text-muted-foreground">
+          Loading products...
+        </p>
       ) : products.length === 0 ? (
         <p className="text-center text-muted-foreground">
           No products available
         </p>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-6">
-          {/* PRODUCT GRID */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {/* ================= PRODUCT GRID ================= */}
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
             {filteredProducts.map((p) => {
               const cat = p.categoryTypes?.[0];
               const prod = p.productTypes?.[0];
@@ -76,50 +77,53 @@ export default function ProductsPage() {
               return (
                 <div
                   key={p.id}
-                  className="border rounded-lg shadow-sm bg-card flex flex-col overflow-hidden"
+                  className="border rounded-xl bg-card shadow-sm hover:shadow-md transition overflow-hidden flex flex-col"
                 >
-                  <div className="h-[200px] bg-muted flex items-center justify-center">
+                  {/* IMAGE */}
+                  <div className="aspect-square bg-muted overflow-hidden">
                     {p.mainImage?.url ? (
                       <img
                         src={p.mainImage.url}
-                        className="h-full w-full object-cover"
+                        className="w-full h-full object-cover"
+                        alt={p.productName}
                       />
                     ) : (
-                      <span className="text-muted-foreground">No Image</span>
+                      <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
+                        No Image
+                      </div>
                     )}
                   </div>
 
-                  <div className="p-4 space-y-3 flex-1">
-                    <h2 className="text-lg font-bold line-clamp-2">
+                  {/* CONTENT */}
+                  <div className="p-4 space-y-2">
+                    <h2 className="text-base font-semibold line-clamp-2">
                       {p.productName}
                     </h2>
 
-                    <div className="space-y-1">
-                      <p className="text-red-600 text-sm font-semibold">
-                        SRP: {format2(p.logistics?.srp)}
-                      </p>
+                    <p className="text-red-600 text-sm font-bold">
+                      ₱ {format2(p.logistics?.srp)}
+                    </p>
 
+                    <p className="text-xs text-muted-foreground">
+                      Landed Cost: ₱ {format2(p.logistics?.landedCost)}
+                    </p>
 
-                      <p className="text-red-600 text-xs">
-                        Landed Cost: {format2(p.logistics?.landedCost)}
-                      </p>
-                    </div>
-
-                    <div className="text-xs text-gray-500 space-y-1">
-                      <p>Classification Type: {p.classificationName || "-"}</p>
-                      <p>Category Type: {cat?.categoryTypeName || "-"}</p>
-                      <p>Product Type: {prod?.productTypeName || "-"}</p>
-                      <p>SKU: {p.sku || "-"}</p>
-                      <p>Supplier: {p.supplier?.company || "-"}</p>
+                    <div className="text-[11px] text-gray-500 space-y-1 pt-1">
+                      <p>{cat?.categoryTypeName || "-"}</p>
+                      <p>{prod?.productTypeName || "-"}</p>
+                      <p>{p.supplier?.company || "-"}</p>
                     </div>
                   </div>
 
-                  <div className="p-3 border-t bg-muted/30 flex gap-2">
+                  {/* ACTIONS */}
+                  <div className="p-3 border-t bg-muted/40 flex gap-2">
                     <Button
                       size="sm"
                       variant="outline"
                       className="flex-1"
-                      onClick={() => router.push(`/edit-product?id=${p.id}`)}
+                      onClick={() =>
+                        router.push(`/edit-product?id=${p.id}`)
+                      }
                     >
                       Edit
                     </Button>
@@ -140,11 +144,11 @@ export default function ProductsPage() {
             })}
           </div>
 
-          {/* FILTER PANEL COMPONENT */}
-<FilteringComponent
-  products={products}
-  onFilter={setFilteredProducts}
-/>
+          {/* ================= FILTER PANEL ================= */}
+          <FilteringComponent
+            products={products}
+            onFilter={setFilteredProducts}
+          />
         </div>
       )}
     </div>
