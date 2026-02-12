@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -579,12 +580,45 @@ export default function EditProductPage() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedSpecs = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        title: docSnap.data().title as string,
-        specs: (docSnap.data().specs || []) as TechSpecRow[],
-        units: (docSnap.data().units || []) as string[],
-      }));
+const fetchedSpecs = snapshot.docs.map((docSnap) => {
+  const data = docSnap.data();
+
+  const safeSpecs = Array.isArray(data.specs)
+    ? data.specs.map((row: any) => ({
+        specId: row.specId || "",
+        unit: row.unit || "",
+
+        isRanging: row.isRanging || false,
+        isSlashing: row.isSlashing || false,
+        isDimension: row.isDimension || false,
+        isIPRating: row.isIPRating || false,
+
+        value: row.value || "",
+
+        rangeFrom: row.rangeFrom || "",
+        rangeTo: row.rangeTo || "",
+
+        slashValues: Array.isArray(row.slashValues) && row.slashValues.length
+          ? row.slashValues
+          : [""],
+
+        length: row.length || "",
+        width: row.width || "",
+        height: row.height || "",
+
+        ipFirst: row.ipFirst || "",
+        ipSecond: row.ipSecond || "",
+      }))
+    : [{ ...emptyRow }];
+
+  return {
+    id: docSnap.id,
+    title: data.title || "",
+    specs: safeSpecs,
+    units: Array.isArray(data.units) ? data.units : [],
+  };
+});
+
 
       // 🧠 CHECK IF SAME AS CURRENT SPECS
       const current = JSON.stringify(technicalSpecs);
@@ -1700,7 +1734,7 @@ export default function EditProductPage() {
                       )}
                     </div>
 
-                    {item.specs.map((row, rIndex) => (
+                    {(item.specs || []).map((row, rIndex) => (
                       <div key={rIndex} className="space-y-2 border p-2 rounded">
                         <div className="grid grid-cols-[2fr_1fr_1fr_120px_auto] gap-2 items-center">
 
