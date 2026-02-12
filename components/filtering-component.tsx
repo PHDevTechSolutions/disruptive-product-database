@@ -66,24 +66,24 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     });
   });
 
-// ===== PRICING FILTERS =====
-const pricingFilters: Record<string, string[]> = {
-  "Landed Cost": Array.from(
-    new Set(
-      products
-        .map((p) => formatPHP(p.logistics?.landedCost, 2))
-        .filter((v) => v !== "-"),
+  // ===== PRICING FILTERS =====
+  const pricingFilters: Record<string, string[]> = {
+    "Landed Cost": Array.from(
+      new Set(
+        products
+          .map((p) => formatPHP(p.logistics?.landedCost, 2))
+          .filter((v) => v !== "-"),
+      ),
     ),
-  ),
 
-  "SRP Cost": Array.from(
-    new Set(
-      products
-        .map((p) => formatPHP(p.logistics?.srp, 0))
-        .filter((v) => v !== "-"),
+    "SRP Cost": Array.from(
+      new Set(
+        products
+          .map((p) => formatPHP(p.logistics?.srp, 0))
+          .filter((v) => v !== "-"),
+      ),
     ),
-  ),
-};
+  };
 
   pricingFilters["Calculation Type"] = Array.from(
     new Set(products.map((p) => p.logistics?.calculationType).filter(Boolean)),
@@ -166,6 +166,12 @@ const pricingFilters: Record<string, string[]> = {
       if (
         filters["Product Type"]?.length &&
         !filters["Product Type"].includes(p.productTypes?.[0]?.productTypeName)
+      )
+        return false;
+
+      if (
+        filters["Supplier"]?.length &&
+        !filters["Supplier"].includes(p.supplier?.company)
       )
         return false;
 
@@ -307,6 +313,13 @@ const pricingFilters: Record<string, string[]> = {
         <FilterSection
           title="Product Type"
           items={productTypes}
+          filters={filters}
+          toggleFilter={toggleFilter}
+        />
+
+        <FilterSection
+          title="Supplier"
+          items={suppliers}
           filters={filters}
           toggleFilter={toggleFilter}
         />
