@@ -121,6 +121,33 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     ),
   ).map(String);
 
+  pricingFilters["Warranty"] = Array.from(
+    new Set(
+      products
+        .map((p) => {
+          const w = p.logistics?.warranty;
+          if (!w || !w.value) return "";
+          return `${w.value} ${w.unit}`;
+        })
+        .filter((v): v is string => v !== ""),
+    ),
+  );
+
+  // ===== DYNAMIC SPECIFICATION MODE FILTERS =====
+  const availableModes = new Set<string>();
+
+  products.forEach((p) => {
+    p.technicalSpecifications?.forEach((group: any) => {
+      group.specs?.forEach((spec: any) => {
+        if (spec.isDimension) availableModes.add("Dimension");
+        if (spec.isRanging) availableModes.add("Ranging");
+        if (spec.isSlashing) availableModes.add("Slashing");
+        if (spec.isIPRating) availableModes.add("IP Rating");
+      });
+    });
+  });
+
+  pricingFilters["Specification Mode"] = Array.from(availableModes);
   // ===== APPLY FILTER LOGIC =====
   useEffect(() => {
     const filtered = products.filter((p) => {
@@ -160,6 +187,15 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         if (!filters["SRP Cost"].includes(srp)) return false;
       }
 
+      // ===== LOGISTICS CATEGORY FILTER =====
+      if (filters["Category"]?.length) {
+        const productCategory = p.logistics?.category || "";
+
+        if (!filters["Category"].includes(productCategory)) {
+          return false;
+        }
+      }
+
       // ===== MULTIPLE DIMENSIONS FILTER =====
       if (filters["Multiple Dimensions"]?.length) {
         const mode = p.logistics?.useArrayInput ? "Yes" : "No";
@@ -167,6 +203,38 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         if (!filters["Multiple Dimensions"].includes(mode)) {
           return false;
         }
+      }
+
+      // ===== WARRANTY FILTER =====
+      if (filters["Warranty"]?.length) {
+        const w = p.logistics?.warranty;
+
+        const productWarranty = w && w.value ? `${w.value} ${w.unit}` : null;
+
+        if (
+          !productWarranty ||
+          !filters["Warranty"].includes(productWarranty)
+        ) {
+          return false;
+        }
+      }
+
+      // ===== SPECIFICATION MODE FILTER =====
+      if (filters["Specification Mode"]?.length) {
+        const modes = filters["Specification Mode"];
+
+        const hasMatchingMode = p.technicalSpecifications?.some((group: any) =>
+          group.specs?.some((spec: any) => {
+            if (modes.includes("Dimension") && spec.isDimension) return true;
+            if (modes.includes("Ranging") && spec.isRanging) return true;
+            if (modes.includes("Slashing") && spec.isSlashing) return true;
+            if (modes.includes("IP Rating") && spec.isIPRating) return true;
+
+            return false;
+          }),
+        );
+
+        if (!hasMatchingMode) return false;
       }
 
       for (const [title, values] of Object.entries(filters)) {
