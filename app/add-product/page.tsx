@@ -797,31 +797,28 @@ export default function AddProductPage() {
           title: spec.title,
 
           // SAVE TEMPLATE STRUCTURE ONLY – NO VALUES
-specs: spec.specs.map((row) => ({
-  specId: row.specId,
-  unit: row.unit,
+          specs: spec.specs.map((row) => ({
+            specId: row.specId,
+            unit: row.unit,
 
-  isRanging: row.isRanging,
-  isSlashing: row.isSlashing,
-  isDimension: row.isDimension,
-  isIPRating: row.isIPRating,
+            isRanging: row.isRanging,
+            isSlashing: row.isSlashing,
+            isDimension: row.isDimension,
+            isIPRating: row.isIPRating,
 
-  // ONLY SAVE STRUCTURE - NO VALUES
-  value: "",
+            // Preserve array SIZE only, but NOT actual values
+            ...(row.isSlashing
+              ? { slashValues: new Array(row.slashValues.length).fill(null) }
+              : {}),
 
-  rangeFrom: "",
-  rangeTo: "",
+            ...(row.isDimension
+              ? { dimensionSlots: 3 } // just to preserve structure info
+              : {}),
 
-  slashValues: row.slashValues.map(() => ""),
+            ...(row.isIPRating ? { ipSlots: 2 } : {}),
 
-  length: "",
-  width: "",
-  height: "",
-
-  ipFirst: "",
-  ipSecond: "",
-})),
-
+            ...(row.isRanging ? { rangeSlots: 2 } : {}),
+          })),
 
           units: spec.units,
           isActive: true,
@@ -830,8 +827,6 @@ specs: spec.specs.map((row) => ({
       });
 
       await batch.commit();
-
-
 
       toast.success("Technical specifications saved successfully");
     } catch (error) {
@@ -1698,7 +1693,7 @@ specs: spec.specs.map((row) => ({
                           {/* SPECIFICATION NAME */}
                           <Input
                             placeholder="Specification"
-                            value={row.specId}
+                            value={row.specId ?? ""}
                             onChange={(e) =>
                               updateSpecField(
                                 index,
@@ -1716,7 +1711,7 @@ specs: spec.specs.map((row) => ({
                             !row.isIPRating && (
                               <Input
                                 placeholder="Value"
-                                value={row.value}
+                                value={row.value ?? ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1733,7 +1728,7 @@ specs: spec.specs.map((row) => ({
                             <div className="flex gap-1 items-center">
                               <Input
                                 placeholder="From"
-                                value={row.rangeFrom}
+                                value={row.rangeFrom ?? ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1748,7 +1743,7 @@ specs: spec.specs.map((row) => ({
 
                               <Input
                                 placeholder="To"
-                                value={row.rangeTo}
+                                value={row.rangeTo ?? ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1834,7 +1829,7 @@ specs: spec.specs.map((row) => ({
                             <div className="flex gap-1">
                               <Input
                                 placeholder="L"
-                                value={row.length}
+                                value={row.length ?? ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1846,7 +1841,7 @@ specs: spec.specs.map((row) => ({
                               />
                               <Input
                                 placeholder="W"
-                                value={row.width}
+                                value={row.width ?? ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1858,7 +1853,7 @@ specs: spec.specs.map((row) => ({
                               />
                               <Input
                                 placeholder="H"
-                                value={row.height}
+                                value={row.height ?? ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1877,7 +1872,7 @@ specs: spec.specs.map((row) => ({
                               <span>IP</span>
                               <Input
                                 placeholder="X"
-                                value={row.ipFirst}
+                                value={row.ipFirst ?? ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1889,7 +1884,7 @@ specs: spec.specs.map((row) => ({
                               />
                               <Input
                                 placeholder="Y"
-                                value={row.ipSecond}
+                                value={row.ipSecond ?? ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1927,7 +1922,7 @@ specs: spec.specs.map((row) => ({
                             <Input
                               placeholder="Unit"
                               className="w-[120px]"
-                              value={row.unit}
+                              value={row.unit ?? ""}
                               onChange={(e) =>
                                 updateSpecField(
                                   index,
@@ -2110,7 +2105,7 @@ specs: spec.specs.map((row) => ({
                     >
                       <Input
                         placeholder="Item Name"
-                        value={row.itemName}
+                        value={row.itemName ?? ""}
                         onChange={(e) =>
                           updateMultiRow(index, "itemName", e.target.value)
                         }
