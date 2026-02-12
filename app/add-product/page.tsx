@@ -806,16 +806,20 @@ specs: spec.specs.map((row) => ({
   isDimension: row.isDimension,
   isIPRating: row.isIPRating,
 
-  // SAVE ACTUAL INPUT VALUES
-  value: row.value,
-  rangeFrom: row.rangeFrom,
-  rangeTo: row.rangeTo,
-  slashValues: row.slashValues,
-  length: row.length,
-  width: row.width,
-  height: row.height,
-  ipFirst: row.ipFirst,
-  ipSecond: row.ipSecond,
+  // ONLY SAVE STRUCTURE - NO VALUES
+  value: "",
+
+  rangeFrom: "",
+  rangeTo: "",
+
+  slashValues: row.slashValues.map(() => ""),
+
+  length: "",
+  width: "",
+  height: "",
+
+  ipFirst: "",
+  ipSecond: "",
 })),
 
 
