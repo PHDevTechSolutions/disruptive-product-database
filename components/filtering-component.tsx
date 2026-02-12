@@ -58,11 +58,12 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         technicalSpecs[title] = new Set();
       }
 
-      group.specs?.forEach((spec: any) => {
-        if (spec.value) {
-          technicalSpecs[title].add(spec.value);
-        }
-      });
+group.specs?.forEach((spec: any) => {
+  if (spec.value && spec.specId) {
+    technicalSpecs[title].add(`${spec.specId}: ${spec.value}`);
+  }
+});
+
     });
   });
 
@@ -238,15 +239,17 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       for (const [title, values] of Object.entries(filters)) {
         if (!technicalSpecs[title]) continue;
 
-        const productValues: string[] = [];
+const productValues: string[] = [];
 
-        p.technicalSpecifications?.forEach((group: any) => {
-          if (group.title === title) {
-            group.specs?.forEach((spec: any) => {
-              if (spec.value) productValues.push(spec.value);
-            });
-          }
-        });
+p.technicalSpecifications?.forEach((group: any) => {
+  if (group.title === title) {
+    group.specs?.forEach((spec: any) => {
+      if (spec.value && spec.specId) {
+        productValues.push(`${spec.specId}: ${spec.value}`);
+      }
+    });
+  }
+});
 
         if (values.length && !values.some((v) => productValues.includes(v))) {
           return false;
