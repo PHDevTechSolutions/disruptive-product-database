@@ -466,7 +466,7 @@ export default function AddProductPage() {
           height: row.height || "",
 
           ipFirst: row.ipFirst || "",
-          ipSecond: row.ipSecond || ""
+          ipSecond: row.ipSecond || "",
         })),
         units: (docSnap.data().units || []) as string[],
       }));
@@ -534,65 +534,87 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: [
-              ...item.specs,
-              {
-                specId: "",
-                unit: "",
-
-                isRanging: false,
-                isSlashing: false,
-                isDimension: false,
-                isIPRating: false,
-
-                value: "",
-
-                rangeFrom: "",
-                rangeTo: "",
-
-                slashValues: [""],
-
-                length: "",
-                width: "",
-                height: "",
-
-                ipFirst: "",
-                ipSecond: "",
-              },
-            ],
-          }
-          : item,
-      ),
-    );
-  };
-
-const toggleMode = (
-  specIndex: number,
-  rowIndex: number,
-  mode: "isRanging" | "isSlashing" | "isDimension" | "isIPRating",
-) => {
-  setTechnicalSpecs((prev) =>
-    prev.map((item, i) =>
-      i === specIndex
-        ? {
-            ...item,
-            specs: item.specs.map((row, r) => {
-              if (r !== rowIndex) return row;
-
-              // If the clicked mode is already active → TURN EVERYTHING OFF
-              const isCurrentlyActive = row[mode];
-
-              if (isCurrentlyActive) {
-                return {
-                  ...row,
+              ...item,
+              specs: [
+                ...item.specs,
+                {
+                  specId: "",
+                  unit: "",
 
                   isRanging: false,
                   isSlashing: false,
                   isDimension: false,
                   isIPRating: false,
 
-                  // Clear special fields
+                  value: "",
+
+                  rangeFrom: "",
+                  rangeTo: "",
+
+                  slashValues: [""],
+
+                  length: "",
+                  width: "",
+                  height: "",
+
+                  ipFirst: "",
+                  ipSecond: "",
+                },
+              ],
+            }
+          : item,
+      ),
+    );
+  };
+
+  const toggleMode = (
+    specIndex: number,
+    rowIndex: number,
+    mode: "isRanging" | "isSlashing" | "isDimension" | "isIPRating",
+  ) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
+        i === specIndex
+          ? {
+              ...item,
+              specs: item.specs.map((row, r) => {
+                if (r !== rowIndex) return row;
+
+                // If the clicked mode is already active → TURN EVERYTHING OFF
+                const isCurrentlyActive = row[mode];
+
+                if (isCurrentlyActive) {
+                  return {
+                    ...row,
+
+                    isRanging: false,
+                    isSlashing: false,
+                    isDimension: false,
+                    isIPRating: false,
+
+                    // Clear special fields
+                    rangeFrom: "",
+                    rangeTo: "",
+                    slashValues: [""],
+                    length: "",
+                    width: "",
+                    height: "",
+                    ipFirst: "",
+                    ipSecond: "",
+                  };
+                }
+
+                // Otherwise activate ONLY the selected mode
+                return {
+                  ...row,
+
+                  isRanging: mode === "isRanging",
+                  isSlashing: mode === "isSlashing",
+                  isDimension: mode === "isDimension",
+                  isIPRating: mode === "isIPRating",
+
+                  // Auto clear value fields when switching modes
+                  value: "",
                   rangeFrom: "",
                   rangeTo: "",
                   slashValues: [""],
@@ -601,53 +623,31 @@ const toggleMode = (
                   height: "",
                   ipFirst: "",
                   ipSecond: "",
+
+                  // Auto remove unit if slashing or IP Rating
+                  unit:
+                    mode === "isSlashing" || mode === "isIPRating"
+                      ? ""
+                      : row.unit,
                 };
-              }
-
-              // Otherwise activate ONLY the selected mode
-              return {
-                ...row,
-
-                isRanging: mode === "isRanging",
-                isSlashing: mode === "isSlashing",
-                isDimension: mode === "isDimension",
-                isIPRating: mode === "isIPRating",
-
-                // Auto clear value fields when switching modes
-                value: "",
-                rangeFrom: "",
-                rangeTo: "",
-                slashValues: [""],
-                length: "",
-                width: "",
-                height: "",
-                ipFirst: "",
-                ipSecond: "",
-
-                // Auto remove unit if slashing or IP Rating
-                unit:
-                  mode === "isSlashing" || mode === "isIPRating"
-                    ? ""
-                    : row.unit,
-              };
-            }),
-          }
-        : item,
-    ),
-  );
-};
+              }),
+            }
+          : item,
+      ),
+    );
+  };
 
   const removeSpecRow = (specIndex: number, rowIndex: number) => {
     setTechnicalSpecs((prev) =>
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs:
-              item.specs.length > 1
-                ? item.specs.filter((_, r) => r !== rowIndex)
-                : item.specs,
-          }
+              ...item,
+              specs:
+                item.specs.length > 1
+                  ? item.specs.filter((_, r) => r !== rowIndex)
+                  : item.specs,
+            }
           : item,
       ),
     );
@@ -673,11 +673,11 @@ const toggleMode = (
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: item.specs.map((row, r) =>
-              r === rowIndex ? { ...row, [field]: value } : row,
-            ),
-          }
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex ? { ...row, [field]: value } : row,
+              ),
+            }
           : item,
       ),
     );
@@ -797,51 +797,37 @@ const toggleMode = (
           title: spec.title,
 
           // SAVE TEMPLATE STRUCTURE ONLY – NO VALUES
-          specs: spec.specs.map((row) => ({
-            specId: row.specId,
-            unit: row.unit,
+specs: spec.specs.map((row) => ({
+  specId: row.specId,
+  unit: row.unit,
 
-            isRanging: row.isRanging,
-            isSlashing: row.isSlashing,
-            isDimension: row.isDimension,
-            isIPRating: row.isIPRating
-          })),
+  isRanging: row.isRanging,
+  isSlashing: row.isSlashing,
+  isDimension: row.isDimension,
+  isIPRating: row.isIPRating,
+
+  // SAVE ACTUAL INPUT VALUES
+  value: row.value,
+  rangeFrom: row.rangeFrom,
+  rangeTo: row.rangeTo,
+  slashValues: row.slashValues,
+  length: row.length,
+  width: row.width,
+  height: row.height,
+  ipFirst: row.ipFirst,
+  ipSecond: row.ipSecond,
+})),
+
 
           units: spec.units,
           isActive: true,
           updatedAt: serverTimestamp(),
         });
-
       });
 
       await batch.commit();
 
-      // CLEAR ALL INSTANCE VALUES IN LOCAL STATE AFTER TEMPLATE SAVE
-      setTechnicalSpecs(prev =>
-        prev.map(spec => ({
-          ...spec,
-          specs: spec.specs.map(row => ({
-            specId: row.specId,
-            unit: row.unit,
 
-            isRanging: row.isRanging,
-            isSlashing: row.isSlashing,
-            isDimension: row.isDimension,
-            isIPRating: row.isIPRating,
-
-            // CLEAR ALL VALUE FIELDS SA UI
-            value: "",
-            rangeFrom: "",
-            rangeTo: "",
-            slashValues: [""],
-            length: "",
-            width: "",
-            height: "",
-            ipFirst: "",
-            ipSecond: ""
-          }))
-        }))
-      );
 
       toast.success("Technical specifications saved successfully");
     } catch (error) {
@@ -952,6 +938,53 @@ const toggleMode = (
     }
 
     return data;
+  };
+
+  const addSlashValue = (specIndex: number, rowIndex: number) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
+        i === specIndex
+          ? {
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex
+                  ? {
+                      ...row,
+                      slashValues: [...row.slashValues, ""],
+                    }
+                  : row,
+              ),
+            }
+          : item,
+      ),
+    );
+  };
+
+  const removeSlashValue = (
+    specIndex: number,
+    rowIndex: number,
+    slashIndex: number,
+  ) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
+        i === specIndex
+          ? {
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex
+                  ? {
+                      ...row,
+                      slashValues:
+                        row.slashValues.length > 1
+                          ? row.slashValues.filter((_, si) => si !== slashIndex)
+                          : row.slashValues,
+                    }
+                  : row,
+              ),
+            }
+          : item,
+      ),
+    );
   };
 
   const handleImageChange = (file: File | null) => {
@@ -1294,11 +1327,11 @@ const toggleMode = (
     packaging:
       calculationType === "LIGHTS" && !useArrayInput
         ? {
-          length: length ?? 0,
-          width: width ?? 0,
-          height: height ?? 0,
-          qtyPerCarton: qtyPerCarton ?? 1,
-        }
+            length: length ?? 0,
+            width: width ?? 0,
+            height: height ?? 0,
+            qtyPerCarton: qtyPerCarton ?? 1,
+          }
         : null,
 
     qtyPerContainer: calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
@@ -1363,12 +1396,12 @@ const toggleMode = (
 
         productTypes: selectedProductType
           ? [
-            {
-              productTypeId: selectedProductType.id,
-              productTypeName: selectedProductType.name,
-              categoryTypeId: selectedProductType.categoryTypeId,
-            },
-          ]
+              {
+                productTypeId: selectedProductType.id,
+                productTypeName: selectedProductType.name,
+                categoryTypeId: selectedProductType.categoryTypeId,
+              },
+            ]
           : [],
 
         categoryTypes: selectedCategoryTypes.map((c) => ({
@@ -1588,7 +1621,11 @@ const toggleMode = (
                 <Label>Technical Specifications</Label>
 
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={addTechnicalSpec}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={addTechnicalSpec}
+                  >
                     Add Title
                   </Button>
 
@@ -1625,9 +1662,9 @@ const toggleMode = (
                         )}
 
                       {item.id &&
-                        classificationType &&
-                        selectedProductType &&
-                        selectedCategoryTypes.length === 1 ? (
+                      classificationType &&
+                      selectedProductType &&
+                      selectedCategoryTypes.length === 1 ? (
                         <AddProductDeleteTechnicalSpecification
                           classificationId={classificationType.id}
                           categoryTypeId={selectedCategoryTypes[0].id}
@@ -1649,15 +1686,22 @@ const toggleMode = (
                     </div>
 
                     {item.specs.map((row, rIndex) => (
-                      <div key={rIndex} className="space-y-2 border p-2 rounded">
+                      <div
+                        key={rIndex}
+                        className="space-y-2 border p-2 rounded"
+                      >
                         <div className="grid grid-cols-[2fr_1fr_1fr_120px_auto] gap-2 items-center">
-
                           {/* SPECIFICATION NAME */}
                           <Input
                             placeholder="Specification"
                             value={row.specId}
                             onChange={(e) =>
-                              updateSpecField(index, rIndex, "specId", e.target.value)
+                              updateSpecField(
+                                index,
+                                rIndex,
+                                "specId",
+                                e.target.value,
+                              )
                             }
                           />
 
@@ -1670,7 +1714,12 @@ const toggleMode = (
                                 placeholder="Value"
                                 value={row.value}
                                 onChange={(e) =>
-                                  updateSpecField(index, rIndex, "value", e.target.value)
+                                  updateSpecField(
+                                    index,
+                                    rIndex,
+                                    "value",
+                                    e.target.value,
+                                  )
                                 }
                               />
                             )}
@@ -1682,7 +1731,12 @@ const toggleMode = (
                                 placeholder="From"
                                 value={row.rangeFrom}
                                 onChange={(e) =>
-                                  updateSpecField(index, rIndex, "rangeFrom", e.target.value)
+                                  updateSpecField(
+                                    index,
+                                    rIndex,
+                                    "rangeFrom",
+                                    e.target.value,
+                                  )
                                 }
                               />
 
@@ -1692,18 +1746,24 @@ const toggleMode = (
                                 placeholder="To"
                                 value={row.rangeTo}
                                 onChange={(e) =>
-                                  updateSpecField(index, rIndex, "rangeTo", e.target.value)
+                                  updateSpecField(
+                                    index,
+                                    rIndex,
+                                    "rangeTo",
+                                    e.target.value,
+                                  )
                                 }
                               />
                             </div>
                           )}
 
-                          {/* SLASHING MODE */}
+                          {/* SLASHING MODE - CUSTOM FORMAT */}
                           {row.isSlashing && (
-                            <div className="flex items-center gap-1">
+                            <div className="flex flex-wrap items-center gap-1">
                               {row.slashValues.map((s, si) => (
                                 <React.Fragment key={si}>
                                   <Input
+                                    className="w-[80px]"
                                     placeholder="Value"
                                     value={s}
                                     onChange={(e) => {
@@ -1714,24 +1774,51 @@ const toggleMode = (
                                         prev.map((it, ii) =>
                                           ii === index
                                             ? {
-                                              ...it,
-                                              specs: it.specs.map((sr, ri) =>
-                                                ri === rIndex
-                                                  ? {
-                                                    ...sr,
-                                                    slashValues: newArr,
-                                                  }
-                                                  : sr,
-                                              ),
-                                            }
+                                                ...it,
+                                                specs: it.specs.map((sr, ri) =>
+                                                  ri === rIndex
+                                                    ? {
+                                                        ...sr,
+                                                        slashValues: newArr,
+                                                      }
+                                                    : sr,
+                                                ),
+                                              }
                                             : it,
                                         ),
                                       );
                                     }}
                                   />
 
+                                  {/* SHOW SLASH ONLY IF NOT LAST ITEM */}
                                   {si < row.slashValues.length - 1 && (
-                                    <span className="px-1">/</span>
+                                    <span className="px-1 font-bold">/</span>
+                                  )}
+
+                                  {/* ADD SLASH BUTTON */}
+                                  {si === row.slashValues.length - 1 && (
+                                    <div className="flex gap-1 ml-1">
+                                      <Button
+                                        size="icon"
+                                        variant="outline"
+                                        onClick={() =>
+                                          addSlashValue(index, rIndex)
+                                        }
+                                      >
+                                        <Plus className="h-4 w-4" />
+                                      </Button>
+
+                                      <Button
+                                        size="icon"
+                                        variant="outline"
+                                        disabled={row.slashValues.length === 1}
+                                        onClick={() =>
+                                          removeSlashValue(index, rIndex, si)
+                                        }
+                                      >
+                                        <Minus className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   )}
                                 </React.Fragment>
                               ))}
@@ -1745,21 +1832,36 @@ const toggleMode = (
                                 placeholder="L"
                                 value={row.length}
                                 onChange={(e) =>
-                                  updateSpecField(index, rIndex, "length", e.target.value)
+                                  updateSpecField(
+                                    index,
+                                    rIndex,
+                                    "length",
+                                    e.target.value,
+                                  )
                                 }
                               />
                               <Input
                                 placeholder="W"
                                 value={row.width}
                                 onChange={(e) =>
-                                  updateSpecField(index, rIndex, "width", e.target.value)
+                                  updateSpecField(
+                                    index,
+                                    rIndex,
+                                    "width",
+                                    e.target.value,
+                                  )
                                 }
                               />
                               <Input
                                 placeholder="H"
                                 value={row.height}
                                 onChange={(e) =>
-                                  updateSpecField(index, rIndex, "height", e.target.value)
+                                  updateSpecField(
+                                    index,
+                                    rIndex,
+                                    "height",
+                                    e.target.value,
+                                  )
                                 }
                               />
                             </div>
@@ -1773,14 +1875,24 @@ const toggleMode = (
                                 placeholder="X"
                                 value={row.ipFirst}
                                 onChange={(e) =>
-                                  updateSpecField(index, rIndex, "ipFirst", e.target.value)
+                                  updateSpecField(
+                                    index,
+                                    rIndex,
+                                    "ipFirst",
+                                    e.target.value,
+                                  )
                                 }
                               />
                               <Input
                                 placeholder="Y"
                                 value={row.ipSecond}
                                 onChange={(e) =>
-                                  updateSpecField(index, rIndex, "ipSecond", e.target.value)
+                                  updateSpecField(
+                                    index,
+                                    rIndex,
+                                    "ipSecond",
+                                    e.target.value,
+                                  )
                                 }
                               />
                             </div>
@@ -1813,7 +1925,12 @@ const toggleMode = (
                               className="w-[120px]"
                               value={row.unit}
                               onChange={(e) =>
-                                updateSpecField(index, rIndex, "unit", e.target.value)
+                                updateSpecField(
+                                  index,
+                                  rIndex,
+                                  "unit",
+                                  e.target.value,
+                                )
                               }
                             />
                           )}
@@ -1825,7 +1942,9 @@ const toggleMode = (
                             <input
                               type="checkbox"
                               checked={row.isRanging}
-                              onChange={() => toggleMode(index, rIndex, "isRanging")}
+                              onChange={() =>
+                                toggleMode(index, rIndex, "isRanging")
+                              }
                             />
                             isRanging
                           </label>
@@ -1834,7 +1953,9 @@ const toggleMode = (
                             <input
                               type="checkbox"
                               checked={row.isSlashing}
-                              onChange={() => toggleMode(index, rIndex, "isSlashing")}
+                              onChange={() =>
+                                toggleMode(index, rIndex, "isSlashing")
+                              }
                             />
                             isSlashing
                           </label>
@@ -1843,7 +1964,9 @@ const toggleMode = (
                             <input
                               type="checkbox"
                               checked={row.isDimension}
-                              onChange={() => toggleMode(index, rIndex, "isDimension")}
+                              onChange={() =>
+                                toggleMode(index, rIndex, "isDimension")
+                              }
                             />
                             isDimension
                           </label>
@@ -1852,19 +1975,19 @@ const toggleMode = (
                             <input
                               type="checkbox"
                               checked={row.isIPRating}
-                              onChange={() => toggleMode(index, rIndex, "isIPRating")}
+                              onChange={() =>
+                                toggleMode(index, rIndex, "isIPRating")
+                              }
                             />
                             isIPRating
                           </label>
                         </div>
-
                       </div>
                     ))}
                   </Card>
                 ))}
               </div>
             </div>
-
           </CardContent>
 
           {/* ================= PRICING / LOGISTICS ================= */}
