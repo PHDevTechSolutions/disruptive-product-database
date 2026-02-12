@@ -41,70 +41,132 @@ export default function ProductsPage() {
         })
       : "-";
 
+  const formatPHP = (value?: number, decimals = 2) => {
+  if (typeof value !== "number") return "-";
+
+  return value.toLocaleString("en-PH", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+};
+
   // ===== FILTER OPTION BUILDERS =====
 
   const sisterCompanies = Array.from(
-    new Set(products.map((p) => p.sisterCompanyName).filter(Boolean))
+    new Set(products.map((p) => p.sisterCompanyName).filter(Boolean)),
   );
 
   const classifications = Array.from(
-    new Set(products.map((p) => p.classificationName).filter(Boolean))
+    new Set(products.map((p) => p.classificationName).filter(Boolean)),
   );
 
   const categories = Array.from(
     new Set(
-      products.map((p) => p.categoryTypes?.[0]?.categoryTypeName).filter(Boolean)
-    )
+      products
+        .map((p) => p.categoryTypes?.[0]?.categoryTypeName)
+        .filter(Boolean),
+    ),
   );
 
   const productTypes = Array.from(
     new Set(
-      products.map((p) => p.productTypes?.[0]?.productTypeName).filter(Boolean)
-    )
+      products.map((p) => p.productTypes?.[0]?.productTypeName).filter(Boolean),
+    ),
   );
 
   const suppliers = Array.from(
-    new Set(products.map((p) => p.supplier?.company).filter(Boolean))
+    new Set(products.map((p) => p.supplier?.company).filter(Boolean)),
   );
 
   // ===== TECHNICAL SPECIFICATION FILTERS =====
   const technicalSpecs: Record<string, Set<string>> = {};
 
-products.forEach((p) => {
-  p.technicalSpecifications?.forEach((group: any) => {
-    const title = group.title;
+  products.forEach((p) => {
+    p.technicalSpecifications?.forEach((group: any) => {
+      const title = group.title;
 
-    if (!technicalSpecs[title]) {
-      technicalSpecs[title] = new Set();
-    }
-
-    group.specs?.forEach((spec: any) => {
-      if (spec.value) {
-        technicalSpecs[title].add(spec.value);
+      if (!technicalSpecs[title]) {
+        technicalSpecs[title] = new Set();
       }
+
+      group.specs?.forEach((spec: any) => {
+        if (spec.value) {
+          technicalSpecs[title].add(spec.value);
+        }
+      });
     });
   });
-});
-
 
   // ===== PRICING FILTERS =====
-  const pricingFilters = {
-    "Unit Cost": Array.from(
-      new Set(products.map((p) => p.logistics?.unitCost).filter(Boolean))
+const pricingFilters: Record<string, string[]> = {
+  "Unit Cost": Array.from(
+    new Set(
+      products
+        .map((p) => formatPHP(p.logistics?.unitCost, 2))
+        .filter((v) => v !== "-"),
     ),
-    "Landed Cost": Array.from(
-      new Set(products.map((p) => p.logistics?.landedCost).filter(Boolean))
+  ),
+
+  "Landed Cost": Array.from(
+    new Set(
+      products
+        .map((p) => formatPHP(p.logistics?.landedCost, 2))
+        .filter((v) => v !== "-"),
     ),
-    Warranty: Array.from(
-      new Set(
-        products.map((p) =>
+  ),
+
+  "SRP Cost": Array.from(
+    new Set(
+      products
+        .map((p) => formatPHP(p.logistics?.srp, 0))
+        .filter((v) => v !== "-"),
+    ),
+  ),
+
+  Warranty: Array.from(
+    new Set(
+      products
+        .map((p) =>
           p.logistics?.warranty
             ? `${p.logistics.warranty.value} ${p.logistics.warranty.unit}`
-            : null
-        ).filter(Boolean)
-      )
+            : null,
+        )
+        .filter(Boolean),
     ),
-  };
+  ) as string[],
+};
+
+
+
+  pricingFilters["Calculation Type"] = Array.from(
+  new Set(products.map((p) => p.logistics?.calculationType).filter(Boolean))
+);
+
+pricingFilters["Category"] = Array.from(
+  new Set(products.map((p) => p.logistics?.category).filter(Boolean))
+);
+
+pricingFilters["MOQ"] = Array.from(
+  new Set(
+    products
+      .map((p) => p.logistics?.moq)
+      .filter((v) => v !== undefined && v !== null)
+  )
+).map(String);
+
+pricingFilters["Multiple Dimensions"] = Array.from(
+  new Set(products.map((p) => (p.logistics?.useArrayInput ? "Yes" : "No")))
+);
+
+pricingFilters["Qty Per Container"] = Array.from(
+  new Set(
+    products
+      .map((p) => p.logistics?.qtyPerContainer)
+      .filter((v) => v !== undefined && v !== null)
+  )
+).map(String);
+
+
 
   // ===== APPLY FILTER LOGIC =====
   const filteredProducts = products.filter((p) => {
@@ -122,17 +184,13 @@ products.forEach((p) => {
 
     if (
       filters["Category Type"]?.length &&
-      !filters["Category Type"].includes(
-        p.categoryTypes?.[0]?.categoryTypeName
-      )
+      !filters["Category Type"].includes(p.categoryTypes?.[0]?.categoryTypeName)
     )
       return false;
 
     if (
       filters["Product Type"]?.length &&
-      !filters["Product Type"].includes(
-        p.productTypes?.[0]?.productTypeName
-      )
+      !filters["Product Type"].includes(p.productTypes?.[0]?.productTypeName)
     )
       return false;
 
@@ -141,6 +199,58 @@ products.forEach((p) => {
       !filters["Supplier / Company"].includes(p.supplier?.company)
     )
       return false;
+
+// ===== PRICING / LOGISTICS FILTERS =====
+
+if (
+  filters["Calculation Type"]?.length &&
+  !filters["Calculation Type"].includes(p.logistics?.calculationType)
+)
+  return false;
+
+if (
+  filters["Category"]?.length &&
+  !filters["Category"].includes(p.logistics?.category)
+)
+  return false;
+
+if (filters["MOQ"]?.length) {
+  const moqValue = String(p.logistics?.moq ?? "");
+  if (!filters["MOQ"].includes(moqValue)) return false;
+}
+
+if (filters["Multiple Dimensions"]?.length) {
+  const mode = p.logistics?.useArrayInput ? "Yes" : "No";
+  if (!filters["Multiple Dimensions"].includes(mode)) return false;
+}
+
+if (filters["Qty Per Container"]?.length) {
+  const qty = String(p.logistics?.qtyPerContainer ?? "");
+  if (!filters["Qty Per Container"].includes(qty)) return false;
+}
+
+if (filters["Unit Cost"]?.length) {
+  const uc = formatPHP(p.logistics?.unitCost, 2);
+  if (!filters["Unit Cost"].includes(uc)) return false;
+}
+
+if (filters["Landed Cost"]?.length) {
+  const lc = formatPHP(p.logistics?.landedCost, 2);
+  if (!filters["Landed Cost"].includes(lc)) return false;
+}
+
+if (filters["SRP Cost"]?.length) {
+  const srp = formatPHP(p.logistics?.srp, 0);
+  if (!filters["SRP Cost"].includes(srp)) return false;
+}
+
+
+if (filters["Warranty"]?.length) {
+  const w = p.logistics?.warranty;
+  const warrantyString = w ? `${w.value} ${w.unit}` : "";
+  if (!filters["Warranty"].includes(warrantyString)) return false;
+}
+
 
     // Technical Specs
     for (const [title, values] of Object.entries(filters)) {
@@ -155,7 +265,7 @@ products.forEach((p) => {
 
             if (spec.isIPRating) {
               productValues.push(
-                `IP${spec.ipFirst || ""}${spec.ipSecond || ""}`
+                `IP${spec.ipFirst || ""}${spec.ipSecond || ""}`,
               );
             }
 
@@ -166,10 +276,7 @@ products.forEach((p) => {
         }
       });
 
-      if (
-        values.length &&
-        !values.some((v) => productValues.includes(v))
-      ) {
+      if (values.length && !values.some((v) => productValues.includes(v))) {
         return false;
       }
     }
@@ -233,9 +340,7 @@ products.forEach((p) => {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <span className="text-muted-foreground">
-                        No Image
-                      </span>
+                      <span className="text-muted-foreground">No Image</span>
                     )}
                   </div>
 
@@ -283,7 +388,7 @@ products.forEach((p) => {
                       referenceID={userId ?? ""}
                       onDeleted={(id) =>
                         setProducts((prev) =>
-                          prev.filter((prod) => prod.id !== id)
+                          prev.filter((prod) => prod.id !== id),
                         )
                       }
                     />
@@ -297,11 +402,7 @@ products.forEach((p) => {
           <div className="border rounded-lg p-4 bg-card space-y-4">
             <h2 className="font-semibold">Filters</h2>
 
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={clearFilters}
-            >
+            <Button variant="outline" className="w-full" onClick={clearFilters}>
               Clear Filters
             </Button>
 
