@@ -66,32 +66,24 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     });
   });
 
-  // ===== PRICING FILTERS =====
-  const pricingFilters: Record<string, string[]> = {
-    "Unit Cost": Array.from(
-      new Set(
-        products
-          .map((p) => formatPHP(p.logistics?.unitCost, 2))
-          .filter((v) => v !== "-"),
-      ),
+// ===== PRICING FILTERS =====
+const pricingFilters: Record<string, string[]> = {
+  "Landed Cost": Array.from(
+    new Set(
+      products
+        .map((p) => formatPHP(p.logistics?.landedCost, 2))
+        .filter((v) => v !== "-"),
     ),
+  ),
 
-    "Landed Cost": Array.from(
-      new Set(
-        products
-          .map((p) => formatPHP(p.logistics?.landedCost, 2))
-          .filter((v) => v !== "-"),
-      ),
+  "SRP Cost": Array.from(
+    new Set(
+      products
+        .map((p) => formatPHP(p.logistics?.srp, 0))
+        .filter((v) => v !== "-"),
     ),
-
-    "SRP Cost": Array.from(
-      new Set(
-        products
-          .map((p) => formatPHP(p.logistics?.srp, 0))
-          .filter((v) => v !== "-"),
-      ),
-    ),
-  };
+  ),
+};
 
   pricingFilters["Calculation Type"] = Array.from(
     new Set(products.map((p) => p.logistics?.calculationType).filter(Boolean)),

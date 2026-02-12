@@ -99,9 +99,6 @@ export default function ProductsPage() {
                         SRP: {format2(p.logistics?.srp)}
                       </p>
 
-                      <p className="text-red-600 text-xs">
-                        Unit Cost: {format2(p.logistics?.unitCost)}
-                      </p>
 
                       <p className="text-red-600 text-xs">
                         Landed Cost: {format2(p.logistics?.landedCost)}

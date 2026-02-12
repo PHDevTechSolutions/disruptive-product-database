@@ -2241,6 +2241,38 @@ technicalSpecifications: technicalSpecs.map((spec) => ({
                   />
                 </div>
               )}
+{calculationType === "LIGHTS" && !useArrayInput && (
+  <div className="space-y-2">
+    <Label>Packaging Dimensions (CM)</Label>
+
+    <div className="grid grid-cols-4 gap-2">
+      <Input
+        type="number"
+        placeholder="L"
+        value={length || ""}
+        onChange={(e) => setLength(Number(e.target.value))}
+      />
+      <Input
+        type="number"
+        placeholder="W"
+        value={width || ""}
+        onChange={(e) => setWidth(Number(e.target.value))}
+      />
+      <Input
+        type="number"
+        placeholder="H"
+        value={height || ""}
+        onChange={(e) => setHeight(Number(e.target.value))}
+      />
+      <Input
+        type="number"
+        placeholder="Qty/Box"
+        value={qtyPerCarton || ""}
+        onChange={(e) => setQtyPerCarton(Number(e.target.value))}
+      />
+    </div>
+  </div>
+)}
 
               {/* ================= LIGHTS ONLY ================= */}
               {calculationType === "LIGHTS" && useArrayInput && (
