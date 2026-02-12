@@ -567,39 +567,75 @@ export default function AddProductPage() {
     );
   };
 
-  const toggleMode = (
-    specIndex: number,
-    rowIndex: number,
-    mode: "isRanging" | "isSlashing" | "isDimension" | "isIPRating",
-  ) => {
-    setTechnicalSpecs((prev) =>
-      prev.map((item, i) =>
-        i === specIndex
-          ? {
+const toggleMode = (
+  specIndex: number,
+  rowIndex: number,
+  mode: "isRanging" | "isSlashing" | "isDimension" | "isIPRating",
+) => {
+  setTechnicalSpecs((prev) =>
+    prev.map((item, i) =>
+      i === specIndex
+        ? {
             ...item,
-            specs: item.specs.map((row, r) =>
-              r === rowIndex
-                ? {
+            specs: item.specs.map((row, r) => {
+              if (r !== rowIndex) return row;
+
+              // If the clicked mode is already active → TURN EVERYTHING OFF
+              const isCurrentlyActive = row[mode];
+
+              if (isCurrentlyActive) {
+                return {
                   ...row,
 
-                  isRanging: mode === "isRanging",
-                  isSlashing: mode === "isSlashing",
-                  isDimension: mode === "isDimension",
-                  isIPRating: mode === "isIPRating",
+                  isRanging: false,
+                  isSlashing: false,
+                  isDimension: false,
+                  isIPRating: false,
 
-                  // AUTO CLEAR UNIT IF SLASHING OR IP RATING
-                  unit:
-                    mode === "isSlashing" || mode === "isIPRating"
-                      ? ""
-                      : row.unit,
-                }
-                : row,
-            ),
+                  // Clear special fields
+                  rangeFrom: "",
+                  rangeTo: "",
+                  slashValues: [""],
+                  length: "",
+                  width: "",
+                  height: "",
+                  ipFirst: "",
+                  ipSecond: "",
+                };
+              }
+
+              // Otherwise activate ONLY the selected mode
+              return {
+                ...row,
+
+                isRanging: mode === "isRanging",
+                isSlashing: mode === "isSlashing",
+                isDimension: mode === "isDimension",
+                isIPRating: mode === "isIPRating",
+
+                // Auto clear value fields when switching modes
+                value: "",
+                rangeFrom: "",
+                rangeTo: "",
+                slashValues: [""],
+                length: "",
+                width: "",
+                height: "",
+                ipFirst: "",
+                ipSecond: "",
+
+                // Auto remove unit if slashing or IP Rating
+                unit:
+                  mode === "isSlashing" || mode === "isIPRating"
+                    ? ""
+                    : row.unit,
+              };
+            }),
           }
-          : item,
-      ),
-    );
-  };
+        : item,
+    ),
+  );
+};
 
   const removeSpecRow = (specIndex: number, rowIndex: number) => {
     setTechnicalSpecs((prev) =>
