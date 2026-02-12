@@ -1844,7 +1844,7 @@ export default function EditProductPage() {
                             !row.isIPRating && (
                               <Input
                                 placeholder="Value"
-                                value={row.value}
+                                value={row.value || ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1861,7 +1861,7 @@ export default function EditProductPage() {
                             <div className="flex gap-1 items-center">
                               <Input
                                 placeholder="From"
-                                value={row.rangeFrom}
+                                value={row.rangeFrom || ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1876,7 +1876,7 @@ export default function EditProductPage() {
 
                               <Input
                                 placeholder="To"
-                                value={row.rangeTo}
+                                value={row.rangeTo || ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1962,7 +1962,7 @@ export default function EditProductPage() {
                             <div className="flex gap-1">
                               <Input
                                 placeholder="L"
-                                value={row.length}
+                                value={row.length || ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1974,7 +1974,7 @@ export default function EditProductPage() {
                               />
                               <Input
                                 placeholder="W"
-                                value={row.width}
+                                value={row.width || ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -1986,7 +1986,7 @@ export default function EditProductPage() {
                               />
                               <Input
                                 placeholder="H"
-                                value={row.height}
+                                value={row.height || ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -2005,7 +2005,7 @@ export default function EditProductPage() {
                               <span>IP</span>
                               <Input
                                 placeholder="X"
-                                value={row.ipFirst}
+                                value={row.ipFirst || ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -2017,7 +2017,7 @@ export default function EditProductPage() {
                               />
                               <Input
                                 placeholder="Y"
-                                value={row.ipSecond}
+                                value={row.ipSecond || ""}
                                 onChange={(e) =>
                                   updateSpecField(
                                     index,
@@ -2055,7 +2055,7 @@ export default function EditProductPage() {
                             <Input
                               placeholder="Unit"
                               className="w-[120px]"
-                              value={row.unit}
+                              value={row.unit || ""}
                               onChange={(e) =>
                                 updateSpecField(
                                   index,

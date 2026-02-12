@@ -43,6 +43,8 @@ import {
   getDocs,
   deleteDoc,
   writeBatch,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
@@ -1347,6 +1349,39 @@ export default function AddProductPage() {
     },
   };
 
+  /* ===== GENERATE UNIQUE PRODUCT REFERENCE ID ===== */
+  const generateProductReferenceID = async () => {
+    try {
+      const q = query(
+        collection(db, "products"),
+        orderBy("createdAt", "desc"),
+        limit(1),
+      );
+
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        return "PROD-SPF-00001";
+      }
+
+      const lastProduct = snapshot.docs[0].data();
+      const lastRef: string =
+        lastProduct.productReferenceID || "PROD-SPF-00000";
+
+      // Extract only the numeric part after PROD-SPF-
+      const lastNumber = parseInt(lastRef.replace("PROD-SPF-", ""), 10);
+
+      const newNumber = lastNumber + 1;
+
+      return `PROD-SPF-${newNumber.toString().padStart(5, "0")}`;
+    } catch (error) {
+      console.error("Error generating productReferenceID:", error);
+
+      // Fallback format if something goes wrong
+      return `PROD-SPF-${Date.now().toString().slice(-5)}`;
+    }
+  };
+
   const handleSaveProduct = async () => {
     if (saving) return;
     try {
@@ -1379,7 +1414,11 @@ export default function AddProductPage() {
       // ================= CLOUDINARY UPLOAD =================
 
       // MAIN IMAGE
+      const newProductReferenceID = await generateProductReferenceID();
+
       const productRef = await addDoc(collection(db, "products"), {
+        productReferenceID: newProductReferenceID,
+
         productName,
 
         sisterCompanyId: selectedSisterCompany.id,
