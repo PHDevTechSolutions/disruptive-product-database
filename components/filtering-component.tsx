@@ -324,6 +324,18 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           toggleFilter={toggleFilter}
         />
 
+{/* ===== TECHNICAL SPECIFICATIONS ===== */}
+<h3 className="font-semibold mt-4">Technical Specifications</h3>
+
+{Object.entries(technicalSpecs).map(([title, values]) => (
+  <FilterSection
+    key={title}
+    title={title}
+    items={Array.from(values)}
+    filters={filters}
+    toggleFilter={toggleFilter}
+  />
+))}
         <h3 className="font-semibold mt-4">Pricing</h3>
 
         {Object.entries(pricingFilters).map(([title, values]) => (
