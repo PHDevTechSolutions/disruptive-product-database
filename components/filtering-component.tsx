@@ -19,6 +19,40 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     });
   };
 
+  // ===== FORMAT SPEC DISPLAY (VALUE + UNIT ONLY) =====
+const formatSpecDisplay = (spec: any): string => {
+  if (!spec) return "";
+
+  // Ranging
+  if (spec.isRanging) {
+    const range = `${spec.rangeFrom} - ${spec.rangeTo}`;
+    return spec.unit ? `${range} ${spec.unit}` : range;
+  }
+
+  // Slashing
+  if (spec.isSlashing) {
+    return spec.slashValues?.join("/") || "";
+  }
+
+  // Dimension
+  if (spec.isDimension) {
+    const dim = `${spec.length} x ${spec.width} x ${spec.height}`;
+    return spec.unit ? `${dim} ${spec.unit}` : dim;
+  }
+
+  // IP Rating
+  if (spec.isIPRating) {
+    return `IP${spec.ipFirst}${spec.ipSecond}`;
+  }
+
+  // Default
+  if (spec.value) {
+    return spec.unit ? `${spec.value} ${spec.unit}` : spec.value;
+  }
+
+  return "";
+};
+
   // ===== FILTER OPTION BUILDERS =====
 
   const sisterCompanies = Array.from(
@@ -59,10 +93,13 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       }
 
 group.specs?.forEach((spec: any) => {
-  if (spec.value && spec.specId) {
-    technicalSpecs[title].add(`${spec.specId}: ${spec.value}`);
+  const display = formatSpecDisplay(spec);
+
+  if (display) {
+    technicalSpecs[title].add(display);
   }
 });
+
 
     });
   });
@@ -243,11 +280,14 @@ const productValues: string[] = [];
 
 p.technicalSpecifications?.forEach((group: any) => {
   if (group.title === title) {
-    group.specs?.forEach((spec: any) => {
-      if (spec.value && spec.specId) {
-        productValues.push(`${spec.specId}: ${spec.value}`);
-      }
-    });
+group.specs?.forEach((spec: any) => {
+  const display = formatSpecDisplay(spec);
+
+  if (display) {
+    productValues.push(display);
+  }
+});
+
   }
 });
 
