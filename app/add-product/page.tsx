@@ -795,39 +795,34 @@ export default function AddProductPage() {
       technicalSpecs.forEach((spec) => {
         const ref = spec.id ? doc(specsRef, spec.id) : doc(specsRef);
 
-batch.set(ref, {
-  title: spec.title,
+        batch.set(ref, {
+          title: spec.title,
 
-  specs: spec.specs.map((row) => {
-    let formattedValue = "";
+          specs: spec.specs.map((row) => {
+            let formattedValue = "";
 
-    if (row.isRanging) {
-      formattedValue = `${row.rangeFrom} - ${row.rangeTo}${row.unit ? " " + row.unit : ""}`;
-    } 
-    else if (row.isSlashing) {
-      formattedValue = row.slashValues.join("/");
-    } 
-    else if (row.isDimension) {
-      formattedValue = `${row.length} x ${row.width} x ${row.height}${row.unit ? " " + row.unit : ""}`;
-    } 
-    else if (row.isIPRating) {
-      formattedValue = `IP${row.ipFirst}${row.ipSecond}`;
-    } 
-    else {
-      formattedValue = `${row.value}${row.unit ? " " + row.unit : ""}`;
-    }
+            if (row.isRanging) {
+              formattedValue = `${row.rangeFrom} - ${row.rangeTo}${row.unit ? " " + row.unit : ""}`;
+            } else if (row.isSlashing) {
+              formattedValue = row.slashValues.join("/");
+            } else if (row.isDimension) {
+              formattedValue = `${row.length} x ${row.width} x ${row.height}${row.unit ? " " + row.unit : ""}`;
+            } else if (row.isIPRating) {
+              formattedValue = `IP${row.ipFirst}${row.ipSecond}`;
+            } else {
+              formattedValue = `${row.value}${row.unit ? " " + row.unit : ""}`;
+            }
 
-    return {
-      ...row,
-      value: formattedValue
-    };
-  }),
+            return {
+              ...row,
+              value: formattedValue,
+            };
+          }),
 
-  units: spec.units,
-  isActive: true,
-  updatedAt: serverTimestamp(),
-});
-
+          units: spec.units,
+          isActive: true,
+          updatedAt: serverTimestamp(),
+        });
       });
 
       await batch.commit();
@@ -1318,38 +1313,66 @@ batch.set(ref, {
   /* ---------------- Save Product ---------------- */
 
   /* ===== SAFE LOGISTICS PAYLOAD (FIRESTORE SAFE) ===== */
-  const logisticsPayload = {
-    calculationType,
-    unitCost: unitCost ?? 0,
+// ===== COMPUTE TOTAL UNIT COST FOR MULTI DIMENSIONS =====
+const totalMultiUnitCost =
+  calculationType === "LIGHTS" && useArrayInput
+    ? multiRows.reduce((sum, row) => sum + (row.unitCost || 0), 0)
+    : 0;
 
-    useArrayInput: useArrayInput,
+// ===== SAFE LOGISTICS PAYLOAD =====
+const logisticsPayload = {
+  calculationType,
 
-    multiDimensions:
-      calculationType === "LIGHTS" && useArrayInput ? multiRows : null,
+  // 🔥 FIXED: Dynamic Unit Cost
+  unitCost:
+    calculationType === "LIGHTS" && useArrayInput
+      ? totalMultiUnitCost
+      : unitCost ?? 0,
 
-    packaging:
-      calculationType === "LIGHTS" && !useArrayInput
-        ? {
-            length: length ?? 0,
-            width: width ?? 0,
-            height: height ?? 0,
-            qtyPerCarton: qtyPerCarton ?? 1,
-          }
-        : null,
+  useArrayInput: useArrayInput,
 
-    qtyPerContainer: calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
+  // MULTIPLE DIMENSIONS MODE
+  multiDimensions:
+    calculationType === "LIGHTS" && useArrayInput
+      ? multiRows.map((row) => ({
+          itemName: row.itemName ?? "",
+          unitCost: row.unitCost ?? 0,
+          length: row.length ?? 0,
+          width: row.width ?? 0,
+          height: row.height ?? 0,
+          qtyPerCarton: row.qtyPerCarton ?? 1,
+          landed: row.landed ?? 0,
+          srp: row.srp ?? 0,
+        }))
+      : null,
 
-    landedCost: landedCost ?? 0,
-    srp: srp ?? 0,
+  // SINGLE DIMENSION MODE
+  packaging:
+    calculationType === "LIGHTS" && !useArrayInput
+      ? {
+          length: length ?? 0,
+          width: width ?? 0,
+          height: height ?? 0,
+          qtyPerCarton: qtyPerCarton ?? 1,
+        }
+      : null,
 
-    category: productCategory || "To Be Evaluated",
-    moq: moq ?? 0,
+  // POLE MODE
+  qtyPerContainer:
+    calculationType === "POLE" ? qtyPerContainer ?? 1 : null,
 
-    warranty: {
-      value: warrantyValue ?? 0,
-      unit: warrantyUnit || "Years",
-    },
-  };
+  landedCost: landedCost ?? 0,
+  srp: srp ?? 0,
+
+  category: productCategory || "To Be Evaluated",
+  moq: moq ?? 0,
+
+  warranty: {
+    value: warrantyValue ?? 0,
+    unit: warrantyUnit || "Years",
+  },
+};
+
 
   /* ===== GENERATE UNIQUE PRODUCT REFERENCE ID ===== */
   const generateProductReferenceID = async () => {
@@ -1449,38 +1472,33 @@ batch.set(ref, {
           categoryTypeName: c.name,
         })),
 
-technicalSpecifications: technicalSpecs.map((spec) => ({
-  technicalSpecificationId: spec.id || "",
-  title: spec.title,
+        technicalSpecifications: technicalSpecs.map((spec) => ({
+          technicalSpecificationId: spec.id || "",
+          title: spec.title,
 
-  specs: spec.specs.map((row) => {
-    let formattedValue = "";
+          specs: spec.specs.map((row) => {
+            let formattedValue = "";
 
-    if (row.isRanging) {
-      formattedValue = `${row.rangeFrom} - ${row.rangeTo}${row.unit ? " " + row.unit : ""}`;
-    } 
-    else if (row.isSlashing) {
-      formattedValue = row.slashValues.join("/");
-    } 
-    else if (row.isDimension) {
-      formattedValue = `${row.length} x ${row.width} x ${row.height}${row.unit ? " " + row.unit : ""}`;
-    } 
-    else if (row.isIPRating) {
-      formattedValue = `IP${row.ipFirst}${row.ipSecond}`;
-    } 
-    else {
-      formattedValue = `${row.value}${row.unit ? " " + row.unit : ""}`;
-    }
+            if (row.isRanging) {
+              formattedValue = `${row.rangeFrom} - ${row.rangeTo}${row.unit ? " " + row.unit : ""}`;
+            } else if (row.isSlashing) {
+              formattedValue = row.slashValues.join("/");
+            } else if (row.isDimension) {
+              formattedValue = `${row.length} x ${row.width} x ${row.height}${row.unit ? " " + row.unit : ""}`;
+            } else if (row.isIPRating) {
+              formattedValue = `IP${row.ipFirst}${row.ipSecond}`;
+            } else {
+              formattedValue = `${row.value}${row.unit ? " " + row.unit : ""}`;
+            }
 
-    return {
-      ...row,
-      value: formattedValue
-    };
-  }),
+            return {
+              ...row,
+              value: formattedValue,
+            };
+          }),
 
-  units: spec.units,
-})),
-
+          units: spec.units,
+        })),
 
         /* ================= PRICING / LOGISTICS ================= */
         logistics: logisticsPayload,
@@ -1621,11 +1639,11 @@ technicalSpecifications: technicalSpecs.map((spec) => ({
               </CardContent>
             </Card>
             <div>
-              <Label>Product Name</Label>
+              <Label>Model No.</Label>
               <Input
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
-                placeholder="Enter product name..."
+                placeholder="Enter Model No."
               />
             </div>
             {/* ================= SUPPLIER SELECT ================= */}
@@ -2266,14 +2284,27 @@ technicalSpecifications: technicalSpecs.map((spec) => ({
 
               {/* ================= POLE ONLY ================= */}
               {calculationType === "POLE" && (
-                <div>
-                  <Label>Quantity Per Container</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={qtyPerContainer || ""}
-                    onChange={(e) => setQtyPerContainer(Number(e.target.value))}
-                  />
+                <div className="space-y-2">
+                  <div>
+                    <Label>Unit Cost (USD)</Label>
+                    <Input
+                      type="number"
+                      value={unitCost || ""}
+                      onChange={(e) => setUnitCost(Number(e.target.value))}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Quantity Per Container</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={qtyPerContainer || ""}
+                      onChange={(e) =>
+                        setQtyPerContainer(Number(e.target.value))
+                      }
+                    />
+                  </div>
                 </div>
               )}
 
