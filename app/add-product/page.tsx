@@ -2179,108 +2179,107 @@ const logisticsPayload = {
                 </div>
               )}
 
-              {calculationType === "LIGHTS" && useArrayInput && (
-                <div className="space-y-2">
-                  <Label>Multiple Packaging Dimensions</Label>
+{calculationType === "LIGHTS" && useArrayInput && (
+  <div className="space-y-3">
+    <Label>Multiple Packaging Dimensions</Label>
 
-                  {multiRows.map((row, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2"
-                    >
-                      <Input
-                        placeholder="Item Name"
-                        value={row.itemName ?? ""}
-                        onChange={(e) =>
-                          updateMultiRow(index, "itemName", e.target.value)
-                        }
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Unit Cost"
-                        value={row.unitCost || ""}
-                        onChange={(e) =>
-                          updateMultiRow(
-                            index,
-                            "unitCost",
-                            Number(e.target.value),
-                          )
-                        }
-                      />
+    {/* ===== TABLE WRAPPER ===== */}
+    <div className="space-y-2">
 
-                      <Input
-                        type="number"
-                        placeholder="L"
-                        value={row.length || ""}
-                        onChange={(e) =>
-                          updateMultiRow(
-                            index,
-                            "length",
-                            Number(e.target.value),
-                          )
-                        }
-                      />
+      {/* ===== HEADER ===== */}
+      <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px] gap-2 text-xs font-semibold text-muted-foreground">
+        <div className="px-2">Item Name</div>
+        <div className="px-2">Unit Cost (USD)</div>
+        <div className="px-2">Length (cm)</div>
+        <div className="px-2">Width (cm)</div>
+        <div className="px-2">Height (cm)</div>
+        <div className="px-2">Qty/Box</div>
+        <div className="px-2">Landed (PHP)</div>
+        <div className="px-2">SRP (PHP)</div>
+        <div className="px-2 text-center">Action</div>
+      </div>
 
-                      <Input
-                        type="number"
-                        placeholder="W"
-                        value={row.width || ""}
-                        onChange={(e) =>
-                          updateMultiRow(index, "width", Number(e.target.value))
-                        }
-                      />
+      {/* ===== ROWS ===== */}
+      {multiRows.map((row, index) => (
+        <div
+          key={index}
+          className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px] gap-2 items-center"
+        >
+          <Input
+            value={row.itemName ?? ""}
+            onChange={(e) =>
+              updateMultiRow(index, "itemName", e.target.value)
+            }
+          />
 
-                      <Input
-                        type="number"
-                        placeholder="H"
-                        value={row.height || ""}
-                        onChange={(e) =>
-                          updateMultiRow(
-                            index,
-                            "height",
-                            Number(e.target.value),
-                          )
-                        }
-                      />
+          <Input
+            type="number"
+            value={row.unitCost || ""}
+            onChange={(e) =>
+              updateMultiRow(index, "unitCost", Number(e.target.value))
+            }
+          />
 
-                      <Input
-                        type="number"
-                        placeholder="Qty/Box"
-                        value={row.qtyPerCarton || ""}
-                        onChange={(e) =>
-                          updateMultiRow(
-                            index,
-                            "qtyPerCarton",
-                            Number(e.target.value),
-                          )
-                        }
-                      />
+          <Input
+            type="number"
+            value={row.length || ""}
+            onChange={(e) =>
+              updateMultiRow(index, "length", Number(e.target.value))
+            }
+          />
 
-                      <Input disabled value={formatPHP(row.landed, 2)} />
-                      <Input disabled value={formatPHP(row.srp, 0)} />
+          <Input
+            type="number"
+            value={row.width || ""}
+            onChange={(e) =>
+              updateMultiRow(index, "width", Number(e.target.value))
+            }
+          />
 
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => addMultiRow(index)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
+          <Input
+            type="number"
+            value={row.height || ""}
+            onChange={(e) =>
+              updateMultiRow(index, "height", Number(e.target.value))
+            }
+          />
 
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          disabled={multiRows.length === 1}
-                          onClick={() => removeMultiRow(index)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+          <Input
+            type="number"
+            value={row.qtyPerCarton || ""}
+            onChange={(e) =>
+              updateMultiRow(index, "qtyPerCarton", Number(e.target.value))
+            }
+          />
+
+          <Input disabled value={formatPHP(row.landed, 2)} />
+          <Input disabled value={formatPHP(row.srp, 0)} />
+
+          <div className="flex gap-1 justify-center">
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => addMultiRow(index)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+
+            <Button
+              size="icon"
+              variant="outline"
+              disabled={multiRows.length === 1}
+              onClick={() => removeMultiRow(index)}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+
 
               {/* ================= POLE ONLY ================= */}
               {calculationType === "POLE" && (
