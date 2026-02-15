@@ -1389,6 +1389,41 @@ const logisticsPayload = {
     }
   };
 
+  const clearTechnicalSpecifications = () => {
+    setTechnicalSpecs([
+      {
+        id: "",
+        title: "",
+        specs: [
+          {
+            specId: "",
+            unit: "",
+
+            isRanging: false,
+            isSlashing: false,
+            isDimension: false,
+            isIPRating: false,
+
+            value: "",
+            rangeFrom: "",
+            rangeTo: "",
+
+            slashValues: [""],
+
+            length: "",
+            width: "",
+            height: "",
+
+            ipFirst: "",
+            ipSecond: "",
+          },
+        ],
+        units: [],
+      },
+    ]);
+  };
+
+
   const handleSaveProduct = async () => {
     if (saving) return;
     try {
@@ -1480,6 +1515,9 @@ const logisticsPayload = {
       });
 
       toast.success("Product saved successfully");
+
+      clearTechnicalSpecifications();
+
       router.push("/products");
 
       // 🚀 background upload (wag hintayin)
