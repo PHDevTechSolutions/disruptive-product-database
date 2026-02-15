@@ -587,23 +587,30 @@ export default function AddProductPage() {
 
                 if (isCurrentlyActive) {
                   return {
-                    ...row,
+  specId: row.specId || "",
+  unit: row.unit || "",
 
-                    isRanging: false,
-                    isSlashing: false,
-                    isDimension: false,
-                    isIPRating: false,
+  isRanging: row.isRanging,
+  isSlashing: row.isSlashing,
+  isDimension: row.isDimension,
+  isIPRating: row.isIPRating,
 
-                    // Clear special fields
-                    rangeFrom: "",
-                    rangeTo: "",
-                    slashValues: [""],
-                    length: "",
-                    width: "",
-                    height: "",
-                    ipFirst: "",
-                    ipSecond: "",
-                  };
+  value: "",
+  rangeFrom: "",
+  rangeTo: "",
+
+  slashValues: row.slashValues
+    ? row.slashValues.map(() => "")
+    : [""],
+
+  length: "",
+  width: "",
+  height: "",
+
+  ipFirst: "",
+  ipSecond: "",
+};
+
                 }
 
                 // Otherwise activate ONLY the selected mode
@@ -798,26 +805,31 @@ export default function AddProductPage() {
         batch.set(ref, {
           title: spec.title,
 
-          specs: spec.specs.map((row) => {
-            let formattedValue = "";
+          specs: spec.specs.map((row) => ({
+            specId: row.specId || "",
+            unit: row.unit || "",
 
-            if (row.isRanging) {
-              formattedValue = `${row.rangeFrom} - ${row.rangeTo}${row.unit ? " " + row.unit : ""}`;
-            } else if (row.isSlashing) {
-              formattedValue = row.slashValues.join("/");
-            } else if (row.isDimension) {
-              formattedValue = `${row.length} x ${row.width} x ${row.height}${row.unit ? " " + row.unit : ""}`;
-            } else if (row.isIPRating) {
-              formattedValue = `IP${row.ipFirst}${row.ipSecond}`;
-            } else {
-              formattedValue = `${row.value}${row.unit ? " " + row.unit : ""}`;
-            }
+            isRanging: row.isRanging,
+            isSlashing: row.isSlashing,
+            isDimension: row.isDimension,
+            isIPRating: row.isIPRating,
 
-            return {
-              ...row,
-              value: formattedValue,
-            };
-          }),
+            value: "",
+            rangeFrom: "",
+            rangeTo: "",
+
+            slashValues: row.slashValues
+              ? row.slashValues.map(() => "")
+              : [""],
+
+  length: "",
+  width: "",
+  height: "",
+
+  ipFirst: "",
+  ipSecond: "",
+})),
+
 
           units: spec.units,
           isActive: true,
