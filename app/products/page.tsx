@@ -149,8 +149,14 @@ export default function ProductsPage() {
                         {p.productName}
                       </h2>
 
+                      {/* SRP */}
                       <p className="text-red-600 text-sm font-bold">
                         ₱ {format2(p.logistics?.srp)}
+                      </p>
+
+                      {/* UNIT COST (USD) */}
+                      <p className="text-xs text-muted-foreground">
+                        Unit Cost (USD): {format2(p.logistics?.unitCost)}
                       </p>
 
                       <p className="text-xs text-muted-foreground">
