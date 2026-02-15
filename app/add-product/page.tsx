@@ -587,30 +587,23 @@ export default function AddProductPage() {
 
                 if (isCurrentlyActive) {
                   return {
-  specId: row.specId || "",
-  unit: row.unit || "",
+                    ...row,
 
-  isRanging: row.isRanging,
-  isSlashing: row.isSlashing,
-  isDimension: row.isDimension,
-  isIPRating: row.isIPRating,
+                    isRanging: false,
+                    isSlashing: false,
+                    isDimension: false,
+                    isIPRating: false,
 
-  value: "",
-  rangeFrom: "",
-  rangeTo: "",
-
-  slashValues: row.slashValues
-    ? row.slashValues.map(() => "")
-    : [""],
-
-  length: "",
-  width: "",
-  height: "",
-
-  ipFirst: "",
-  ipSecond: "",
-};
-
+                    // Clear special fields
+                    rangeFrom: "",
+                    rangeTo: "",
+                    slashValues: [""],
+                    length: "",
+                    width: "",
+                    height: "",
+                    ipFirst: "",
+                    ipSecond: "",
+                  };
                 }
 
                 // Otherwise activate ONLY the selected mode
@@ -806,31 +799,8 @@ export default function AddProductPage() {
           title: spec.title,
 
           specs: spec.specs.map((row) => ({
-            specId: row.specId || "",
-            unit: row.unit || "",
-
-            isRanging: row.isRanging,
-            isSlashing: row.isSlashing,
-            isDimension: row.isDimension,
-            isIPRating: row.isIPRating,
-
-            value: "",
-            rangeFrom: "",
-            rangeTo: "",
-
-            slashValues: row.slashValues
-              ? row.slashValues.map(() => "")
-              : [""],
-
-  length: "",
-  width: "",
-  height: "",
-
-  ipFirst: "",
-  ipSecond: "",
+  ...row
 })),
-
-
           units: spec.units,
           isActive: true,
           updatedAt: serverTimestamp(),
@@ -1488,29 +1458,12 @@ const logisticsPayload = {
           technicalSpecificationId: spec.id || "",
           title: spec.title,
 
-          specs: spec.specs.map((row) => {
-            let formattedValue = "";
+  specs: spec.specs.map((row) => ({
+    ...row
+  })),
 
-            if (row.isRanging) {
-              formattedValue = `${row.rangeFrom} - ${row.rangeTo}${row.unit ? " " + row.unit : ""}`;
-            } else if (row.isSlashing) {
-              formattedValue = row.slashValues.join("/");
-            } else if (row.isDimension) {
-              formattedValue = `${row.length} x ${row.width} x ${row.height}${row.unit ? " " + row.unit : ""}`;
-            } else if (row.isIPRating) {
-              formattedValue = `IP${row.ipFirst}${row.ipSecond}`;
-            } else {
-              formattedValue = `${row.value}${row.unit ? " " + row.unit : ""}`;
-            }
-
-            return {
-              ...row,
-              value: formattedValue,
-            };
-          }),
-
-          units: spec.units,
-        })),
+  units: spec.units,
+})),
 
         /* ================= PRICING / LOGISTICS ================= */
         logistics: logisticsPayload,
