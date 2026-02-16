@@ -2,6 +2,32 @@
 
 import { useState, useEffect } from "react";
 
+/* ===================================================== */
+/* CTRL+F: COMBOBOX IMPORTS START */
+/* ===================================================== */
+
+import {
+  Command,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandEmpty,
+} from "@/components/ui/command";
+
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+
+import { Button } from "@/components/ui/button";
+
+import { Check, ChevronsUpDown } from "lucide-react";
+
+/* ===================================================== */
+/* CTRL+F: COMBOBOX IMPORTS END */
+/* ===================================================== */
+
 type Props = {
   products: any[];
   onFilter: (filtered: any[]) => void;
@@ -34,14 +60,12 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       return spec.slashValues?.join("/") || "";
     }
 
-// Dimension (ARRAY FIX)
-if (spec.isDimension) {
+    // Dimension (ARRAY FIX)
+    if (spec.isDimension) {
+      const dim = spec.slashValues?.join(" x ") || "";
 
-  const dim = spec.slashValues?.join(" x ") || "";
-
-  return spec.unit ? `${dim} ${spec.unit}` : dim;
-
-}
+      return spec.unit ? `${dim} ${spec.unit}` : dim;
+    }
 
     // IP Rating
     if (spec.isIPRating) {
@@ -84,98 +108,59 @@ if (spec.isDimension) {
     new Set(products.map((p) => p.supplier?.company).filter(Boolean)),
   );
 
-// ===== TECHNICAL SPECIFICATION FILTERS (GROUPED BY TITLE + SPEC NAME) =====
+  // ===== TECHNICAL SPECIFICATION FILTERS (GROUPED BY TITLE + SPEC NAME) =====
 
-const technicalSpecs: Record<
-  string,
-  Record<string, Set<string>>
-> = {};
+  const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
 
-products.forEach((p) => {
+  products.forEach((p) => {
+    p.technicalSpecifications?.forEach((group: any) => {
+      const groupTitle = group.title;
 
-  p.technicalSpecifications?.forEach((group: any) => {
+      if (!technicalSpecs[groupTitle]) {
+        technicalSpecs[groupTitle] = {};
+      }
 
-    const groupTitle = group.title;
+      group.specs?.forEach((spec: any) => {
+        if (!spec.specId) return;
 
-    if (!technicalSpecs[groupTitle]) {
-      technicalSpecs[groupTitle] = {};
-    }
+        let rawValue = "";
 
-group.specs?.forEach((spec: any) => {
+        if (spec.isRanging) {
+          if (spec.rangeFrom || spec.rangeTo) {
+            rawValue = `${spec.rangeFrom} - ${spec.rangeTo}`;
 
-  if (!spec.specId) return;
+            if (spec.unit) rawValue += ` ${spec.unit}`;
+          }
+        } else if (spec.isSlashing) {
+          rawValue = spec.slashValues?.join("/") || "";
+        } else if (spec.isDimension) {
+          if (spec.slashValues?.length) {
+            rawValue = spec.slashValues.join(" x ");
 
-  let rawValue = "";
+            if (spec.unit) rawValue += ` ${spec.unit}`;
+          }
+        } else if (spec.isIPRating) {
+          if (spec.ipFirst || spec.ipSecond) {
+            rawValue = `IP${spec.ipFirst}${spec.ipSecond}`;
+          }
+        } else {
+          if (spec.value) {
+            rawValue = spec.unit ? `${spec.value} ${spec.unit}` : spec.value;
+          }
+        }
 
-  if (spec.isRanging) {
+        if (!rawValue) return;
 
-    if (spec.rangeFrom || spec.rangeTo) {
+        const specName = spec.specId;
 
-      rawValue = `${spec.rangeFrom} - ${spec.rangeTo}`;
+        if (!technicalSpecs[groupTitle][specName]) {
+          technicalSpecs[groupTitle][specName] = new Set();
+        }
 
-      if (spec.unit) rawValue += ` ${spec.unit}`;
-
-    }
-
-  }
-
-  else if (spec.isSlashing) {
-
-    rawValue = spec.slashValues?.join("/") || "";
-
-  }
-
-else if (spec.isDimension) {
-
-  if (spec.slashValues?.length) {
-
-    rawValue = spec.slashValues.join(" x ");
-
-    if (spec.unit) rawValue += ` ${spec.unit}`;
-
-  }
-
-}
-
-
-  else if (spec.isIPRating) {
-
-    if (spec.ipFirst || spec.ipSecond) {
-
-      rawValue = `IP${spec.ipFirst}${spec.ipSecond}`;
-
-    }
-
-  }
-
-  else {
-
-    if (spec.value) {
-
-      rawValue = spec.unit ? `${spec.value} ${spec.unit}` : spec.value;
-
-    }
-
-  }
-
-  if (!rawValue) return;
-
-  const specName = spec.specId;
-
-  if (!technicalSpecs[groupTitle][specName]) {
-
-    technicalSpecs[groupTitle][specName] = new Set();
-
-  }
-
-  technicalSpecs[groupTitle][specName].add(rawValue);
-
-});
-
+        technicalSpecs[groupTitle][specName].add(rawValue);
+      });
+    });
   });
-
-});
-
 
   // ===== PRICING FILTERS =====
   const pricingFilters: Record<string, string[]> = {
@@ -346,41 +331,31 @@ else if (spec.isDimension) {
         if (!hasMatchingMode) return false;
       }
 
-// ===== TECH SPEC FILTER LOGIC =====
+      // ===== TECH SPEC FILTER LOGIC =====
 
-for (const [filterKey, values] of Object.entries(filters)) {
+      for (const [filterKey, values] of Object.entries(filters)) {
+        if (!filterKey.includes("||")) continue;
 
-  if (!filterKey.includes("||")) continue;
+        const [groupTitle, specName] = filterKey.split("||");
 
-  const [groupTitle, specName] = filterKey.split("||");
+        const productValues: string[] = [];
 
-  const productValues: string[] = [];
+        p.technicalSpecifications?.forEach((group: any) => {
+          if (group.title !== groupTitle) return;
 
-  p.technicalSpecifications?.forEach((group: any) => {
+          group.specs?.forEach((spec: any) => {
+            if (spec.specId === specName) {
+              const display = formatSpecDisplay(spec);
 
-    if (group.title !== groupTitle) return;
+              if (display) productValues.push(display);
+            }
+          });
+        });
 
-    group.specs?.forEach((spec: any) => {
-
-      if (spec.specId === specName) {
-
-        const display = formatSpecDisplay(spec);
-
-        if (display) productValues.push(display);
-
+        if (values.length && !values.some((v) => productValues.includes(v))) {
+          return false;
+        }
       }
-
-    });
-
-  });
-
-  if (values.length && !values.some(v => productValues.includes(v))) {
-    return false;
-  }
-
-}
-
-
 
       return true;
     });
@@ -456,31 +431,22 @@ for (const [filterKey, values] of Object.entries(filters)) {
         {/* ===== TECHNICAL SPECIFICATIONS ===== */}
         <h3 className="font-semibold mt-4">Technical Specifications</h3>
 
-{Object.entries(technicalSpecs).map(([groupTitle, specs]) => (
+        {Object.entries(technicalSpecs).map(([groupTitle, specs]) => (
+          <div key={groupTitle} className="border rounded p-2 space-y-2">
+            <p className="font-semibold text-sm">{groupTitle}</p>
 
-  <div key={groupTitle} className="border rounded p-2 space-y-2">
-
-    <p className="font-semibold text-sm">
-      {groupTitle}
-    </p>
-
-    {Object.entries(specs).map(([specName, values]) => (
-
-      <FilterSection
-        key={`${groupTitle}-${specName}`}
-        title={`${groupTitle}||${specName}`}
-        label={specName}
-        items={Array.from(values)}
-        filters={filters}
-        toggleFilter={toggleFilter}
-      />
-
-    ))}
-
-  </div>
-
-))}
-
+            {Object.entries(specs).map(([specName, values]) => (
+              <FilterSection
+                key={`${groupTitle}-${specName}`}
+                title={`${groupTitle}||${specName}`}
+                label={specName}
+                items={Array.from(values)}
+                filters={filters}
+                toggleFilter={toggleFilter}
+              />
+            ))}
+          </div>
+        ))}
 
         <h3 className="font-semibold mt-4">Pricing</h3>
 
@@ -498,7 +464,6 @@ for (const [filterKey, values] of Object.entries(filters)) {
   );
 }
 
-// ===== REUSABLE FILTER COMPONENT =====
 function FilterSection({
   title,
   label,
@@ -511,40 +476,78 @@ function FilterSection({
   items: string[];
   filters: Record<string, string[]>;
   toggleFilter: (title: string, value: string) => void;
-})
-{
+}) {
 
   if (!items.length) return null;
 
+  const selected = filters[title] || [];
+
   return (
 
-    <div className="border rounded p-2 space-y-1">
+    <div className="border rounded p-2 space-y-2">
 
-      {/* SHOW label OR title */}
       <p className="text-sm font-medium">
         {label ?? title}
       </p>
 
 
-      {items.map((item) => (
+      {/* DIRECT INPUT COMBOBOX */}
 
-        <label key={item} className="flex items-center gap-2 text-xs pl-3">
+      <Command className="border rounded">
 
-          <input
-            type="checkbox"
-            checked={filters[title]?.includes(item) || false}
-            onChange={() => toggleFilter(title, item)}
-          />
+        <CommandInput placeholder="Type to search..." />
 
-          {item}
 
-        </label>
+        <CommandEmpty>
+          No results found.
+        </CommandEmpty>
 
-      ))}
+
+        <CommandGroup className="max-h-[200px] overflow-y-auto">
+
+
+          {items.map((item) => {
+
+            const isSelected = selected.includes(item);
+
+            return (
+
+              <CommandItem
+                key={item}
+                onSelect={() => toggleFilter(title, item)}
+              >
+
+                <Check
+                  className={`mr-2 h-4 w-4 ${
+                    isSelected
+                      ? "opacity-100"
+                      : "opacity-0"
+                  }`}
+                />
+
+                {item}
+
+              </CommandItem>
+
+            );
+
+          })}
+
+
+        </CommandGroup>
+
+
+      </Command>
+
 
     </div>
 
   );
 
 }
+
+
+/* ===================================================== */
+/* CTRL+F: COMBOBOX FILTER SECTION END */
+/* ===================================================== */
 
