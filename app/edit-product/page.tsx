@@ -623,7 +623,9 @@ export default function EditProductPage() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedSpecs = snapshot.docs.map((docSnap) => {
+const fetchedSpecs = snapshot.docs
+  .filter(docSnap => docSnap.data().isActive === true)
+  .map((docSnap) => {
         const data = docSnap.data();
 
         const safeSpecs = Array.isArray(data.specs)
@@ -674,46 +676,36 @@ export default function EditProductPage() {
 
       const currentProductTypeId = selectedProductType?.id || null;
 
-if (
-  hasLoadedProductSpecs.current &&
-  lastLoadedProductTypeRef.current === currentProductTypeId &&
-  JSON.stringify(technicalSpecs) === JSON.stringify(fetchedSpecs)
-) {
-  return;
-}
 
       // ✅ Allow reload when productType changes
       lastLoadedProductTypeRef.current = currentProductTypeId;
 
-      setTechnicalSpecs(
-        fetchedSpecs.length
-          ? fetchedSpecs
-          : [
-              {
-                id: "",
-                title: "",
-                specs: [emptyRow],
-                units: [],
-              },
-            ],
-      );
+
+const isEditMode = !!productId;
+
+if (!isEditMode && !hasLoadedProductSpecs.current) {
+
+  setTechnicalSpecs(
+    fetchedSpecs.length
+      ? fetchedSpecs
+      : [
+          {
+            id: "",
+            title: "",
+            specs: [emptyRow],
+            units: [],
+          },
+        ],
+  );
+
+}
+
 
       hasLoadedProductSpecs.current = true;
 
       /* Only load template if NEW product */
 
-      setTechnicalSpecs(
-        fetchedSpecs.length
-          ? fetchedSpecs
-          : [
-              {
-                id: "",
-                title: "",
-                specs: [emptyRow],
-                units: [],
-              },
-            ],
-      );
+
     });
 
     return () => unsubscribe();
@@ -1887,7 +1879,8 @@ if (
 
               <div className="max-h-[600px] overflow-y-auto pr-2 space-y-3">
                 {technicalSpecs.map((item, index) => (
-                  <Card key={index} className="p-3 space-y-3">
+<Card key={item.id || index} className="p-3 space-y-3">
+
                     <div className="flex gap-2 items-center">
                       <Input
                         placeholder="Title"
@@ -1920,15 +1913,14 @@ classificationType &&
 selectedProductType &&
 selectedCategoryTypes.length === 1 ? (
 
-  <AddProductDeleteTechnicalSpecification
-    classificationId={classificationType.id}
-    categoryTypeId={selectedCategoryTypes[0].id}
-    productTypeId={selectedProductType.id}
-    technicalSpecificationId={item.id}
-    title={item.title}
-    referenceID={user?.ReferenceID || ""}
-  />
-
+<AddProductDeleteTechnicalSpecification
+  classificationId={classificationType.id}
+  categoryTypeId={selectedCategoryTypes[0].id}
+  productTypeId={selectedProductType.id}
+  technicalSpecificationId={item.id}
+  title={item.title}
+  referenceID={user?.ReferenceID || ""}
+/>
 ) : (
 
   <Button
