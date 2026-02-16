@@ -489,6 +489,50 @@ if (isSavingSpecsRef.current) return;
     units: (docSnap.data().units || []) as string[],
   }));
 
+  // ✅ AUTO CREATE DEFAULT SPEC IF EMPTY
+if (list.length === 0) {
+
+  list.push({
+
+    id: "",
+
+    title: "",
+
+    specs: [
+      {
+
+        specId: "",
+
+        unit: "",
+
+        isRanging: false,
+        isSlashing: false,
+        isDimension: false,
+        isIPRating: false,
+
+        value: "",
+
+        rangeFrom: "",
+        rangeTo: "",
+
+        slashValues: [""],
+
+        length: "",
+        width: "",
+        height: "",
+
+        ipFirst: "",
+        ipSecond: "",
+
+      },
+    ],
+
+    units: [],
+
+  });
+
+}
+
 // ✅ LOAD FROM CACHE IF EXISTS
 if (
   selectedProductType &&
