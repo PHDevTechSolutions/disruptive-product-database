@@ -167,6 +167,8 @@ export default function EditProductPage() {
     },
   ]);
 
+  const hasLoadedProductSpecs = React.useRef(false);
+
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
@@ -333,6 +335,7 @@ export default function EditProductPage() {
   // ================== LOAD EXISTING PRODUCT (EDIT MODE) ==================
   useEffect(() => {
     if (!productId) return;
+    hasLoadedProductSpecs.current = false;
 
     const loadProduct = async () => {
       try {
@@ -380,7 +383,35 @@ export default function EditProductPage() {
               (spec: any) => ({
                 id: spec.technicalSpecificationId || "",
                 title: spec.title || "",
-                specs: Array.isArray(spec.specs) ? spec.specs : [emptyRow],
+specs: Array.isArray(spec.specs)
+  ? spec.specs.map((row: any) => ({
+      specId: row.specId || "",
+      unit: row.unit || "",
+
+      isRanging: !!row.isRanging,
+      isSlashing: !!row.isSlashing,
+      isDimension: !!row.isDimension,
+      isIPRating: !!row.isIPRating,
+
+      value: row.value || "",
+
+      rangeFrom: row.rangeFrom || "",
+      rangeTo: row.rangeTo || "",
+
+      slashValues:
+        Array.isArray(row.slashValues) && row.slashValues.length
+          ? row.slashValues
+          : [""],
+
+      length: row.length || "",
+      width: row.width || "",
+      height: row.height || "",
+
+      ipFirst: row.ipFirst || "",
+      ipSecond: row.ipSecond || "",
+    }))
+  : [emptyRow],
+
                 units: Array.isArray(spec.units) ? spec.units : [],
               }),
             );
@@ -397,6 +428,7 @@ export default function EditProductPage() {
                     },
                   ],
             );
+            hasLoadedProductSpecs.current = true;
           }
 
           // CATEGORY TYPES ARRAY
@@ -418,6 +450,18 @@ export default function EditProductPage() {
             data.productTypes.length > 0
           ) {
             const p = data.productTypes[0];
+
+            // ===== FIX: FORCE CATEGORY TYPE RESTORE BASED ON PRODUCT TYPE =====
+
+setSelectedCategoryTypes([
+  {
+    id: p.categoryTypeId,
+    name:
+      data.categoryTypes?.find(
+        (c: any) => c.categoryTypeId === p.categoryTypeId,
+      )?.categoryTypeName || "",
+  },
+]);
             setSelectedProductType({
               id: p.productTypeId,
               name: p.productTypeName,
@@ -622,20 +666,25 @@ export default function EditProductPage() {
       const incoming = JSON.stringify(fetchedSpecs);
 
       // ONLY update if DIFFERENT
-      if (current !== incoming) {
-        setTechnicalSpecs(
-          fetchedSpecs.length
-            ? fetchedSpecs
-            : [
-                {
-                  id: "",
-                  title: "",
-                  specs: [emptyRow],
-                  units: [],
-                },
-              ],
-        );
-      }
+/* 🚫 DO NOT overwrite existing product specs */
+
+if (hasLoadedProductSpecs.current) return;
+
+/* Only load template if NEW product */
+
+setTechnicalSpecs(
+  fetchedSpecs.length
+    ? fetchedSpecs
+    : [
+        {
+          id: "",
+          title: "",
+          specs: [emptyRow],
+          units: [],
+        },
+      ],
+);
+
     });
 
     return () => unsubscribe();
@@ -1553,20 +1602,30 @@ specs: spec.specs.map((row) => ({
           company: selectedSupplier.company,
         },
 
-        productTypes: selectedProductType
-          ? [
-              {
-                productTypeId: selectedProductType.id,
-                productTypeName: selectedProductType.name,
-                categoryTypeId: selectedProductType.categoryTypeId,
-              },
-            ]
-          : [],
+/* ===== FIX: ALWAYS SAVE CATEGORY TYPE & PRODUCT TYPE ===== */
 
-        categoryTypes: selectedCategoryTypes.map((c) => ({
-          categoryTypeId: c.id,
-          categoryTypeName: c.name,
-        })),
+categoryTypes:
+  selectedCategoryTypes.length > 0
+    ? selectedCategoryTypes.map((c) => ({
+        categoryTypeId: c.id || "",
+        categoryTypeName: c.name || "",
+      }))
+    : [],
+
+productTypes:
+  selectedProductType && selectedCategoryTypes.length > 0
+    ? [
+        {
+          productTypeId: selectedProductType.id || "",
+          productTypeName: selectedProductType.name || "",
+          categoryTypeId:
+            selectedProductType.categoryTypeId ||
+            selectedCategoryTypes[0].id ||
+            "",
+        },
+      ]
+    : [],
+
 
 technicalSpecifications: technicalSpecs.map((spec) => ({
   technicalSpecificationId: spec.id || "",

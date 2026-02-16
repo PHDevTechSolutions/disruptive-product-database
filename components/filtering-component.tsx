@@ -98,23 +98,75 @@ products.forEach((p) => {
       technicalSpecs[groupTitle] = {};
     }
 
-    group.specs?.forEach((spec: any) => {
+group.specs?.forEach((spec: any) => {
 
-      if (!spec.specId) return;
+  if (!spec.specId) return;
 
-      const display = formatSpecDisplay(spec);
+  let rawValue = "";
 
-      if (!display) return;
+  if (spec.isRanging) {
 
-      const specName = spec.specId;
+    if (spec.rangeFrom || spec.rangeTo) {
 
-      if (!technicalSpecs[groupTitle][specName]) {
-        technicalSpecs[groupTitle][specName] = new Set();
-      }
+      rawValue = `${spec.rangeFrom} - ${spec.rangeTo}`;
 
-      technicalSpecs[groupTitle][specName].add(display);
+      if (spec.unit) rawValue += ` ${spec.unit}`;
 
-    });
+    }
+
+  }
+
+  else if (spec.isSlashing) {
+
+    rawValue = spec.slashValues?.join("/") || "";
+
+  }
+
+  else if (spec.isDimension) {
+
+    if (spec.length || spec.width || spec.height) {
+
+      rawValue = `${spec.length} x ${spec.width} x ${spec.height}`;
+
+      if (spec.unit) rawValue += ` ${spec.unit}`;
+
+    }
+
+  }
+
+  else if (spec.isIPRating) {
+
+    if (spec.ipFirst || spec.ipSecond) {
+
+      rawValue = `IP${spec.ipFirst}${spec.ipSecond}`;
+
+    }
+
+  }
+
+  else {
+
+    if (spec.value) {
+
+      rawValue = spec.unit ? `${spec.value} ${spec.unit}` : spec.value;
+
+    }
+
+  }
+
+  if (!rawValue) return;
+
+  const specName = spec.specId;
+
+  if (!technicalSpecs[groupTitle][specName]) {
+
+    technicalSpecs[groupTitle][specName] = new Set();
+
+  }
+
+  technicalSpecs[groupTitle][specName].add(rawValue);
+
+});
 
   });
 

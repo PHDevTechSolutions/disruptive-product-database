@@ -302,6 +302,7 @@ export default function AddProductPage() {
   const [technicalSpecs, setTechnicalSpecs] = useState<
     TechnicalSpecification[]
   >([]);
+  const [productTechnicalSpecs, setProductTechnicalSpecs] = useState<TechnicalSpecification[]>([]);
 
   const [productTypeSearch, setProductTypeSearch] = useState("");
   const [newProductType, setNewProductType] = useState("");
@@ -448,28 +449,34 @@ export default function AddProductPage() {
       const list = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
         title: docSnap.data().title as string,
-        specs: (docSnap.data().specs || []).map((row: any) => ({
-          specId: row.specId || "",
-          unit: row.unit || "",
+specs: (docSnap.data().specs || []).map((row: any) => ({
 
-          isRanging: row.isRanging || false,
-          isSlashing: row.isSlashing || false,
-          isDimension: row.isDimension || false,
-          isIPRating: row.isIPRating || false,
+  specId: row.specId || "",
 
-          value: row.value || "",
-          rangeFrom: row.rangeFrom || "",
-          rangeTo: row.rangeTo || "",
+  unit: row.unit || "",
 
-          slashValues: row.slashValues || [""],
+  isRanging: row.isRanging || false,
+  isSlashing: row.isSlashing || false,
+  isDimension: row.isDimension || false,
+  isIPRating: row.isIPRating || false,
 
-          length: row.length || "",
-          width: row.width || "",
-          height: row.height || "",
+  // ✅ FORCE EMPTY UI VALUES
+  value: "",
 
-          ipFirst: row.ipFirst || "",
-          ipSecond: row.ipSecond || "",
-        })),
+  rangeFrom: "",
+  rangeTo: "",
+
+  slashValues: row.slashValues?.map(() => "") || [""],
+
+  length: "",
+  width: "",
+  height: "",
+
+  ipFirst: "",
+  ipSecond: "",
+
+})),
+
         units: (docSnap.data().units || []) as string[],
       }));
 
@@ -484,39 +491,7 @@ export default function AddProductPage() {
   ]);
 
   const addTechnicalSpec = () => {
-    setTechnicalSpecs((prev) => [
-      ...prev,
-      {
-        id: "",
-        title: "",
-        specs: [
-          {
-            specId: "",
-            unit: "",
 
-            isRanging: false,
-            isSlashing: false,
-            isDimension: false,
-            isIPRating: false,
-
-            value: "",
-
-            rangeFrom: "",
-            rangeTo: "",
-
-            slashValues: [""],
-
-            length: "",
-            width: "",
-            height: "",
-
-            ipFirst: "",
-            ipSecond: "",
-          },
-        ],
-        units: [],
-      },
-    ]);
   };
 
   const removeTechnicalSpec = (index: number) => {
@@ -792,13 +767,13 @@ export default function AddProductPage() {
 
       const batch = writeBatch(db);
 
-      technicalSpecs.forEach((spec) => {
+technicalSpecs.forEach((spec: TechnicalSpecification) => {
         const ref = spec.id ? doc(specsRef, spec.id) : doc(specsRef);
 
         batch.set(ref, {
           title: spec.title,
 
-          specs: spec.specs.map((row) => ({
+specs: spec.specs.map((row: SpecRow) => ({
   ...row
 })),
           units: spec.units,
@@ -809,7 +784,34 @@ export default function AddProductPage() {
 
       await batch.commit();
 
-      toast.success("Technical specifications saved successfully");
+      setProductTechnicalSpecs(JSON.parse(JSON.stringify(technicalSpecs)));
+toast.success("Technical specifications saved successfully");
+
+/* ===== CLEAR VALUES IN UI ONLY (KEEP STRUCTURE) ===== */
+setTechnicalSpecs((prev) =>
+  prev.map((spec) => ({
+    ...spec,
+
+    specs: spec.specs.map((row) => ({
+      ...row,
+
+      value: "",
+
+      rangeFrom: "",
+      rangeTo: "",
+
+      slashValues: row.slashValues.map(() => ""),
+
+      length: "",
+      width: "",
+      height: "",
+
+      ipFirst: "",
+      ipSecond: "",
+    })),
+  })),
+);
+
     } catch (error) {
       console.error(error);
       toast.error("Failed to save technical specifications");
@@ -1423,6 +1425,12 @@ const logisticsPayload = {
       // MAIN IMAGE
       const newProductReferenceID = await generateProductReferenceID();
 
+      // ✅ CLONE CURRENT TECH SPECS BEFORE THEY WERE CLEARED
+/* ✅ USE SAVED PRODUCT SPECS, NOT CLEARED UI */
+const specsToSave = productTechnicalSpecs.length
+  ? JSON.parse(JSON.stringify(productTechnicalSpecs))
+  : JSON.parse(JSON.stringify(technicalSpecs));
+
       const productRef = await addDoc(collection(db, "products"), {
         productReferenceID: newProductReferenceID,
 
@@ -1454,7 +1462,9 @@ const logisticsPayload = {
           categoryTypeName: c.name,
         })),
 
-        technicalSpecifications: technicalSpecs.map((spec) => ({
+technicalSpecifications: specsToSave.map((spec: TechnicalSpecification) => ({
+
+
           technicalSpecificationId: spec.id || "",
           title: spec.title,
 
