@@ -34,11 +34,14 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       return spec.slashValues?.join("/") || "";
     }
 
-    // Dimension
-    if (spec.isDimension) {
-      const dim = `${spec.length} x ${spec.width} x ${spec.height}`;
-      return spec.unit ? `${dim} ${spec.unit}` : dim;
-    }
+// Dimension (ARRAY FIX)
+if (spec.isDimension) {
+
+  const dim = spec.slashValues?.join(" x ") || "";
+
+  return spec.unit ? `${dim} ${spec.unit}` : dim;
+
+}
 
     // IP Rating
     if (spec.isIPRating) {
@@ -122,17 +125,18 @@ group.specs?.forEach((spec: any) => {
 
   }
 
-  else if (spec.isDimension) {
+else if (spec.isDimension) {
 
-    if (spec.length || spec.width || spec.height) {
+  if (spec.slashValues?.length) {
 
-      rawValue = `${spec.length} x ${spec.width} x ${spec.height}`;
+    rawValue = spec.slashValues.join(" x ");
 
-      if (spec.unit) rawValue += ` ${spec.unit}`;
-
-    }
+    if (spec.unit) rawValue += ` ${spec.unit}`;
 
   }
+
+}
+
 
   else if (spec.isIPRating) {
 

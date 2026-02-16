@@ -169,7 +169,7 @@ export default function EditProductPage() {
 
   const hasLoadedProductSpecs = React.useRef(false);
   // ✅ TRACK CURRENT PRODUCT TYPE FOR EDIT MODE
-const lastLoadedProductTypeRef = React.useRef<string | null>(null);
+  const lastLoadedProductTypeRef = React.useRef<string | null>(null);
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -385,34 +385,34 @@ const lastLoadedProductTypeRef = React.useRef<string | null>(null);
               (spec: any) => ({
                 id: spec.technicalSpecificationId || "",
                 title: spec.title || "",
-specs: Array.isArray(spec.specs)
-  ? spec.specs.map((row: any) => ({
-      specId: row.specId || "",
-      unit: row.unit || "",
+                specs: Array.isArray(spec.specs)
+                  ? spec.specs.map((row: any) => ({
+                      specId: row.specId || "",
+                      unit: row.unit || "",
 
-      isRanging: !!row.isRanging,
-      isSlashing: !!row.isSlashing,
-      isDimension: !!row.isDimension,
-      isIPRating: !!row.isIPRating,
+                      isRanging: !!row.isRanging,
+                      isSlashing: !!row.isSlashing,
+                      isDimension: !!row.isDimension,
+                      isIPRating: !!row.isIPRating,
 
-      value: row.value || "",
+                      value: row.value || "",
 
-      rangeFrom: row.rangeFrom || "",
-      rangeTo: row.rangeTo || "",
+                      rangeFrom: row.rangeFrom || "",
+                      rangeTo: row.rangeTo || "",
 
-      slashValues:
-        Array.isArray(row.slashValues) && row.slashValues.length
-          ? row.slashValues
-          : [""],
+                      slashValues:
+                        Array.isArray(row.slashValues) && row.slashValues.length
+                          ? row.slashValues
+                          : [""],
 
-      length: row.length || "",
-      width: row.width || "",
-      height: row.height || "",
+                      length: row.length || "",
+                      width: row.width || "",
+                      height: row.height || "",
 
-      ipFirst: row.ipFirst || "",
-      ipSecond: row.ipSecond || "",
-    }))
-  : [emptyRow],
+                      ipFirst: row.ipFirst || "",
+                      ipSecond: row.ipSecond || "",
+                    }))
+                  : [emptyRow],
 
                 units: Array.isArray(spec.units) ? spec.units : [],
               }),
@@ -455,15 +455,15 @@ specs: Array.isArray(spec.specs)
 
             // ===== FIX: FORCE CATEGORY TYPE RESTORE BASED ON PRODUCT TYPE =====
 
-setSelectedCategoryTypes([
-  {
-    id: p.categoryTypeId,
-    name:
-      data.categoryTypes?.find(
-        (c: any) => c.categoryTypeId === p.categoryTypeId,
-      )?.categoryTypeName || "",
-  },
-]);
+            setSelectedCategoryTypes([
+              {
+                id: p.categoryTypeId,
+                name:
+                  data.categoryTypes?.find(
+                    (c: any) => c.categoryTypeId === p.categoryTypeId,
+                  )?.categoryTypeName || "",
+              },
+            ]);
             setSelectedProductType({
               id: p.productTypeId,
               name: p.productTypeName,
@@ -668,53 +668,51 @@ setSelectedCategoryTypes([
       const incoming = JSON.stringify(fetchedSpecs);
 
       // ONLY update if DIFFERENT
-/* 🚫 DO NOT overwrite existing product specs */
+      /* 🚫 DO NOT overwrite existing product specs */
 
-/* 🚫 DO NOT overwrite existing product specs unless productType changed */
+      /* 🚫 DO NOT overwrite existing product specs unless productType changed */
 
-const currentProductTypeId = selectedProductType?.id || null;
+      const currentProductTypeId = selectedProductType?.id || null;
 
-if (
-  hasLoadedProductSpecs.current &&
-  lastLoadedProductTypeRef.current === currentProductTypeId
-) {
-  return;
-}
+      if (
+        hasLoadedProductSpecs.current &&
+        lastLoadedProductTypeRef.current === currentProductTypeId
+      ) {
+        return;
+      }
 
-// ✅ Allow reload when productType changes
-lastLoadedProductTypeRef.current = currentProductTypeId;
+      // ✅ Allow reload when productType changes
+      lastLoadedProductTypeRef.current = currentProductTypeId;
 
-setTechnicalSpecs(
-  fetchedSpecs.length
-    ? fetchedSpecs
-    : [
-        {
-          id: "",
-          title: "",
-          specs: [emptyRow],
-          units: [],
-        },
-      ],
-);
+      setTechnicalSpecs(
+        fetchedSpecs.length
+          ? fetchedSpecs
+          : [
+              {
+                id: "",
+                title: "",
+                specs: [emptyRow],
+                units: [],
+              },
+            ],
+      );
 
-hasLoadedProductSpecs.current = true;
+      hasLoadedProductSpecs.current = true;
 
+      /* Only load template if NEW product */
 
-/* Only load template if NEW product */
-
-setTechnicalSpecs(
-  fetchedSpecs.length
-    ? fetchedSpecs
-    : [
-        {
-          id: "",
-          title: "",
-          specs: [emptyRow],
-          units: [],
-        },
-      ],
-);
-
+      setTechnicalSpecs(
+        fetchedSpecs.length
+          ? fetchedSpecs
+          : [
+              {
+                id: "",
+                title: "",
+                specs: [emptyRow],
+                units: [],
+              },
+            ],
+      );
     });
 
     return () => unsubscribe();
@@ -1479,66 +1477,64 @@ setTechnicalSpecs(
   /* ---------------- Save Product ---------------- */
 
   /* ===== SAFE LOGISTICS PAYLOAD (FIRESTORE SAFE) ===== */
-// ===== COMPUTE TOTAL UNIT COST FOR MULTI DIMENSIONS =====
-const totalMultiUnitCost =
-  calculationType === "LIGHTS" && useArrayInput
-    ? multiRows.reduce((sum, row) => sum + (row.unitCost || 0), 0)
-    : 0;
-
-// ===== SAFE LOGISTICS PAYLOAD =====
-const logisticsPayload = {
-  calculationType,
-
-  // 🔥 FIXED: Dynamic Unit Cost
-  unitCost:
+  // ===== COMPUTE TOTAL UNIT COST FOR MULTI DIMENSIONS =====
+  const totalMultiUnitCost =
     calculationType === "LIGHTS" && useArrayInput
-      ? totalMultiUnitCost
-      : unitCost ?? 0,
+      ? multiRows.reduce((sum, row) => sum + (row.unitCost || 0), 0)
+      : 0;
 
-  useArrayInput: useArrayInput,
+  // ===== SAFE LOGISTICS PAYLOAD =====
+  const logisticsPayload = {
+    calculationType,
 
-  // MULTIPLE DIMENSIONS MODE
-  multiDimensions:
-    calculationType === "LIGHTS" && useArrayInput
-      ? multiRows.map((row) => ({
-          itemName: row.itemName ?? "",
-          unitCost: row.unitCost ?? 0,
-          length: row.length ?? 0,
-          width: row.width ?? 0,
-          height: row.height ?? 0,
-          qtyPerCarton: row.qtyPerCarton ?? 1,
-          landed: row.landed ?? 0,
-          srp: row.srp ?? 0,
-        }))
-      : null,
+    // 🔥 FIXED: Dynamic Unit Cost
+    unitCost:
+      calculationType === "LIGHTS" && useArrayInput
+        ? totalMultiUnitCost
+        : (unitCost ?? 0),
 
-  // SINGLE DIMENSION MODE
-  packaging:
-    calculationType === "LIGHTS" && !useArrayInput
-      ? {
-          length: length ?? 0,
-          width: width ?? 0,
-          height: height ?? 0,
-          qtyPerCarton: qtyPerCarton ?? 1,
-        }
-      : null,
+    useArrayInput: useArrayInput,
 
-  // POLE MODE
-  qtyPerContainer:
-    calculationType === "POLE" ? qtyPerContainer ?? 1 : null,
+    // MULTIPLE DIMENSIONS MODE
+    multiDimensions:
+      calculationType === "LIGHTS" && useArrayInput
+        ? multiRows.map((row) => ({
+            itemName: row.itemName ?? "",
+            unitCost: row.unitCost ?? 0,
+            length: row.length ?? 0,
+            width: row.width ?? 0,
+            height: row.height ?? 0,
+            qtyPerCarton: row.qtyPerCarton ?? 1,
+            landed: row.landed ?? 0,
+            srp: row.srp ?? 0,
+          }))
+        : null,
 
-  landedCost: landedCost ?? 0,
-  srp: srp ?? 0,
+    // SINGLE DIMENSION MODE
+    packaging:
+      calculationType === "LIGHTS" && !useArrayInput
+        ? {
+            length: length ?? 0,
+            width: width ?? 0,
+            height: height ?? 0,
+            qtyPerCarton: qtyPerCarton ?? 1,
+          }
+        : null,
 
-  category: productCategory || "To Be Evaluated",
-  moq: moq ?? 0,
+    // POLE MODE
+    qtyPerContainer: calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
 
-  warranty: {
-    value: warrantyValue ?? 0,
-    unit: warrantyUnit || "Years",
-  },
-};
+    landedCost: landedCost ?? 0,
+    srp: srp ?? 0,
 
+    category: productCategory || "To Be Evaluated",
+    moq: moq ?? 0,
+
+    warranty: {
+      value: warrantyValue ?? 0,
+      unit: warrantyUnit || "Years",
+    },
+  };
 
   const syncSpecsToProductType = async () => {
     if (!classificationType) return;
@@ -1564,19 +1560,17 @@ const logisticsPayload = {
       technicalSpecs.forEach((spec) => {
         const ref = spec.id ? doc(specsRef, spec.id) : doc(specsRef);
 
-batch.set(ref, {
-  title: spec.title,
+        batch.set(ref, {
+          title: spec.title,
 
-specs: spec.specs.map((row) => ({
-  ...row
-})),
+          specs: spec.specs.map((row) => ({
+            ...row,
+          })),
 
-
-  units: spec.units,
-  isActive: true,
-  updatedAt: serverTimestamp(),
-});
-
+          units: spec.units,
+          isActive: true,
+          updatedAt: serverTimestamp(),
+        });
       });
 
       await batch.commit();
@@ -1632,42 +1626,40 @@ specs: spec.specs.map((row) => ({
           company: selectedSupplier.company,
         },
 
-/* ===== FIX: ALWAYS SAVE CATEGORY TYPE & PRODUCT TYPE ===== */
+        /* ===== FIX: ALWAYS SAVE CATEGORY TYPE & PRODUCT TYPE ===== */
 
-categoryTypes:
-  selectedCategoryTypes.length > 0
-    ? selectedCategoryTypes.map((c) => ({
-        categoryTypeId: c.id || "",
-        categoryTypeName: c.name || "",
-      }))
-    : [],
+        categoryTypes:
+          selectedCategoryTypes.length > 0
+            ? selectedCategoryTypes.map((c) => ({
+                categoryTypeId: c.id || "",
+                categoryTypeName: c.name || "",
+              }))
+            : [],
 
-productTypes:
-  selectedProductType && selectedCategoryTypes.length > 0
-    ? [
-        {
-          productTypeId: selectedProductType.id || "",
-          productTypeName: selectedProductType.name || "",
-          categoryTypeId:
-            selectedProductType.categoryTypeId ||
-            selectedCategoryTypes[0].id ||
-            "",
-        },
-      ]
-    : [],
+        productTypes:
+          selectedProductType && selectedCategoryTypes.length > 0
+            ? [
+                {
+                  productTypeId: selectedProductType.id || "",
+                  productTypeName: selectedProductType.name || "",
+                  categoryTypeId:
+                    selectedProductType.categoryTypeId ||
+                    selectedCategoryTypes[0].id ||
+                    "",
+                },
+              ]
+            : [],
 
+        technicalSpecifications: technicalSpecs.map((spec) => ({
+          technicalSpecificationId: spec.id || "",
+          title: spec.title,
 
-technicalSpecifications: technicalSpecs.map((spec) => ({
-  technicalSpecificationId: spec.id || "",
-  title: spec.title,
+          specs: spec.specs.map((row) => ({
+            ...row,
+          })),
 
-specs: spec.specs.map((row) => ({
-  ...row
-})),
-
-
-  units: spec.units,
-})),
+          units: spec.units,
+        })),
 
         logistics: logisticsPayload,
 
@@ -2081,45 +2073,72 @@ specs: spec.specs.map((row) => ({
                             </div>
                           )}
 
-                          {/* DIMENSION MODE */}
                           {row.isDimension && (
-                            <div className="flex gap-1">
-                              <Input
-                                placeholder="L"
-                                value={row.length || ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "length",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                placeholder="W"
-                                value={row.width || ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "width",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                placeholder="H"
-                                value={row.height || ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "height",
-                                    e.target.value,
-                                  )
-                                }
-                              />
+                            <div className="flex flex-wrap items-center gap-1">
+                              {(row.slashValues || [""]).map((dim, di) => (
+                                <React.Fragment key={di}>
+                                  <Input
+                                    className="w-[70px]"
+                                    placeholder="Value"
+                                    value={dim}
+                                    onChange={(e) => {
+                                      const newArr = [
+                                        ...(row.slashValues || [""]),
+                                      ];
+                                      newArr[di] = e.target.value;
+
+                                      setTechnicalSpecs((prev) =>
+                                        prev.map((it, ii) =>
+                                          ii === index
+                                            ? {
+                                                ...it,
+                                                specs: it.specs.map((sr, ri) =>
+                                                  ri === rIndex
+                                                    ? {
+                                                        ...sr,
+                                                        slashValues: newArr,
+                                                      }
+                                                    : sr,
+                                                ),
+                                              }
+                                            : it,
+                                        ),
+                                      );
+                                    }}
+                                  />
+
+                                  {/* show X between values */}
+                                  {di < row.slashValues.length - 1 && (
+                                    <span className="px-1 font-bold">x</span>
+                                  )}
+
+                                  {/* add remove buttons */}
+                                  {di === row.slashValues.length - 1 && (
+                                    <div className="flex gap-1 ml-1">
+                                      <Button
+                                        size="icon"
+                                        variant="outline"
+                                        onClick={() =>
+                                          addSlashValue(index, rIndex)
+                                        }
+                                      >
+                                        <Plus className="h-4 w-4" />
+                                      </Button>
+
+                                      <Button
+                                        size="icon"
+                                        variant="outline"
+                                        disabled={row.slashValues.length === 1}
+                                        onClick={() =>
+                                          removeSlashValue(index, rIndex, di)
+                                        }
+                                      >
+                                        <Minus className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </React.Fragment>
+                              ))}
                             </div>
                           )}
 
@@ -2313,141 +2332,158 @@ specs: spec.specs.map((row) => ({
                   />
                 </div>
               )}
-{calculationType === "LIGHTS" && !useArrayInput && (
-  <div className="space-y-2">
-    <Label>Packaging Dimensions (CM)</Label>
+              {calculationType === "LIGHTS" && !useArrayInput && (
+                <div className="space-y-2">
+                  <Label>Packaging Dimensions (CM)</Label>
 
-    <div className="grid grid-cols-4 gap-2">
-      <Input
-        type="number"
-        placeholder="L"
-        value={length || ""}
-        onChange={(e) => setLength(Number(e.target.value))}
-      />
-      <Input
-        type="number"
-        placeholder="W"
-        value={width || ""}
-        onChange={(e) => setWidth(Number(e.target.value))}
-      />
-      <Input
-        type="number"
-        placeholder="H"
-        value={height || ""}
-        onChange={(e) => setHeight(Number(e.target.value))}
-      />
-      <Input
-        type="number"
-        placeholder="Qty/Box"
-        value={qtyPerCarton || ""}
-        onChange={(e) => setQtyPerCarton(Number(e.target.value))}
-      />
-    </div>
-  </div>
-)}
+                  <div className="grid grid-cols-4 gap-2">
+                    <Input
+                      type="number"
+                      placeholder="L"
+                      value={length || ""}
+                      onChange={(e) => setLength(Number(e.target.value))}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="W"
+                      value={width || ""}
+                      onChange={(e) => setWidth(Number(e.target.value))}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="H"
+                      value={height || ""}
+                      onChange={(e) => setHeight(Number(e.target.value))}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Qty/Box"
+                      value={qtyPerCarton || ""}
+                      onChange={(e) => setQtyPerCarton(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* ================= LIGHTS ONLY ================= */}
-{calculationType === "LIGHTS" && useArrayInput && (
-  <div className="space-y-3">
-    <Label>Multiple Packaging Dimensions</Label>
+              {calculationType === "LIGHTS" && useArrayInput && (
+                <div className="space-y-3">
+                  <Label>Multiple Packaging Dimensions</Label>
 
-    {/* ===== TABLE WRAPPER ===== */}
-    <div className="space-y-2">
+                  {/* ===== TABLE WRAPPER ===== */}
+                  <div className="space-y-2">
+                    {/* ===== HEADER ===== */}
+                    <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px] gap-2 text-xs font-semibold text-muted-foreground">
+                      <div className="px-2">Item Name</div>
+                      <div className="px-2">Unit Cost (USD)</div>
+                      <div className="px-2">Length (cm)</div>
+                      <div className="px-2">Width (cm)</div>
+                      <div className="px-2">Height (cm)</div>
+                      <div className="px-2">Qty/Box</div>
+                      <div className="px-2">Landed (PHP)</div>
+                      <div className="px-2">SRP (PHP)</div>
+                      <div className="px-2 text-center">Action</div>
+                    </div>
 
-      {/* ===== HEADER ===== */}
-      <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px] gap-2 text-xs font-semibold text-muted-foreground">
-        <div className="px-2">Item Name</div>
-        <div className="px-2">Unit Cost (USD)</div>
-        <div className="px-2">Length (cm)</div>
-        <div className="px-2">Width (cm)</div>
-        <div className="px-2">Height (cm)</div>
-        <div className="px-2">Qty/Box</div>
-        <div className="px-2">Landed (PHP)</div>
-        <div className="px-2">SRP (PHP)</div>
-        <div className="px-2 text-center">Action</div>
-      </div>
+                    {/* ===== ROWS ===== */}
+                    {multiRows.map((row, index) => (
+                      <div
+                        key={index}
+                        className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px] gap-2 items-center"
+                      >
+                        <Input
+                          value={row.itemName ?? ""}
+                          onChange={(e) =>
+                            updateMultiRow(index, "itemName", e.target.value)
+                          }
+                        />
 
-      {/* ===== ROWS ===== */}
-      {multiRows.map((row, index) => (
-        <div
-          key={index}
-          className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px] gap-2 items-center"
-        >
-          <Input
-            value={row.itemName ?? ""}
-            onChange={(e) =>
-              updateMultiRow(index, "itemName", e.target.value)
-            }
-          />
+                        <Input
+                          type="number"
+                          value={row.unitCost || ""}
+                          onChange={(e) =>
+                            updateMultiRow(
+                              index,
+                              "unitCost",
+                              Number(e.target.value),
+                            )
+                          }
+                        />
 
-          <Input
-            type="number"
-            value={row.unitCost || ""}
-            onChange={(e) =>
-              updateMultiRow(index, "unitCost", Number(e.target.value))
-            }
-          />
+                        <Input
+                          type="number"
+                          value={row.length || ""}
+                          onChange={(e) =>
+                            updateMultiRow(
+                              index,
+                              "length",
+                              Number(e.target.value),
+                            )
+                          }
+                        />
 
-          <Input
-            type="number"
-            value={row.length || ""}
-            onChange={(e) =>
-              updateMultiRow(index, "length", Number(e.target.value))
-            }
-          />
+                        <Input
+                          type="number"
+                          value={row.width || ""}
+                          onChange={(e) =>
+                            updateMultiRow(
+                              index,
+                              "width",
+                              Number(e.target.value),
+                            )
+                          }
+                        />
 
-          <Input
-            type="number"
-            value={row.width || ""}
-            onChange={(e) =>
-              updateMultiRow(index, "width", Number(e.target.value))
-            }
-          />
+                        <Input
+                          type="number"
+                          value={row.height || ""}
+                          onChange={(e) =>
+                            updateMultiRow(
+                              index,
+                              "height",
+                              Number(e.target.value),
+                            )
+                          }
+                        />
 
-          <Input
-            type="number"
-            value={row.height || ""}
-            onChange={(e) =>
-              updateMultiRow(index, "height", Number(e.target.value))
-            }
-          />
+                        <Input
+                          type="number"
+                          value={row.qtyPerCarton || ""}
+                          onChange={(e) =>
+                            updateMultiRow(
+                              index,
+                              "qtyPerCarton",
+                              Number(e.target.value),
+                            )
+                          }
+                        />
 
-          <Input
-            type="number"
-            value={row.qtyPerCarton || ""}
-            onChange={(e) =>
-              updateMultiRow(index, "qtyPerCarton", Number(e.target.value))
-            }
-          />
+                        <Input disabled value={formatPHP(row.landed, 2)} />
+                        <Input disabled value={formatPHP(row.srp, 0)} />
 
-          <Input disabled value={formatPHP(row.landed, 2)} />
-          <Input disabled value={formatPHP(row.srp, 0)} />
+                        <div className="flex gap-1 justify-center">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            onClick={() => addMultiRow(index)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
 
-          <div className="flex gap-1 justify-center">
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => addMultiRow(index)}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-
-            <Button
-              size="icon"
-              variant="outline"
-              disabled={multiRows.length === 1}
-              onClick={() => removeMultiRow(index)}
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-
-
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            disabled={multiRows.length === 1}
+                            onClick={() => removeMultiRow(index)}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* ================= POLE ONLY ================= */}
               {calculationType === "POLE" && (
