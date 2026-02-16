@@ -168,6 +168,8 @@ export default function EditProductPage() {
   ]);
 
   const hasLoadedProductSpecs = React.useRef(false);
+  // ✅ TRACK CURRENT PRODUCT TYPE FOR EDIT MODE
+const lastLoadedProductTypeRef = React.useRef<string | null>(null);
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -668,7 +670,35 @@ setSelectedCategoryTypes([
       // ONLY update if DIFFERENT
 /* 🚫 DO NOT overwrite existing product specs */
 
-if (hasLoadedProductSpecs.current) return;
+/* 🚫 DO NOT overwrite existing product specs unless productType changed */
+
+const currentProductTypeId = selectedProductType?.id || null;
+
+if (
+  hasLoadedProductSpecs.current &&
+  lastLoadedProductTypeRef.current === currentProductTypeId
+) {
+  return;
+}
+
+// ✅ Allow reload when productType changes
+lastLoadedProductTypeRef.current = currentProductTypeId;
+
+setTechnicalSpecs(
+  fetchedSpecs.length
+    ? fetchedSpecs
+    : [
+        {
+          id: "",
+          title: "",
+          specs: [emptyRow],
+          units: [],
+        },
+      ],
+);
+
+hasLoadedProductSpecs.current = true;
+
 
 /* Only load template if NEW product */
 
