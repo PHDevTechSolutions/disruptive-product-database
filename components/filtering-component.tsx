@@ -451,7 +451,7 @@ function FilterSection({
   toggleFilter,
 }: {
   title: string;
-  label?: string; // ✅ MAKE OPTIONAL
+  label?: string;
   items: string[];
   filters: Record<string, string[]>;
   toggleFilter: (title: string, value: string) => void;
@@ -462,11 +462,13 @@ function FilterSection({
 
   return (
 
-    <div className="pl-4 space-y-1">
+    <div className="border rounded p-2 space-y-1">
 
-      <p className="text-xs font-medium">
-        {label}
+      {/* SHOW label OR title */}
+      <p className="text-sm font-medium">
+        {label ?? title}
       </p>
+
 
       {items.map((item) => (
 
