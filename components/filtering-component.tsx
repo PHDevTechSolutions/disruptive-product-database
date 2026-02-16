@@ -20,38 +20,38 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   };
 
   // ===== FORMAT SPEC DISPLAY (VALUE + UNIT ONLY) =====
-const formatSpecDisplay = (spec: any): string => {
-  if (!spec) return "";
+  const formatSpecDisplay = (spec: any): string => {
+    if (!spec) return "";
 
-  // Ranging
-  if (spec.isRanging) {
-    const range = `${spec.rangeFrom} - ${spec.rangeTo}`;
-    return spec.unit ? `${range} ${spec.unit}` : range;
-  }
+    // Ranging
+    if (spec.isRanging) {
+      const range = `${spec.rangeFrom} - ${spec.rangeTo}`;
+      return spec.unit ? `${range} ${spec.unit}` : range;
+    }
 
-  // Slashing
-  if (spec.isSlashing) {
-    return spec.slashValues?.join("/") || "";
-  }
+    // Slashing
+    if (spec.isSlashing) {
+      return spec.slashValues?.join("/") || "";
+    }
 
-  // Dimension
-  if (spec.isDimension) {
-    const dim = `${spec.length} x ${spec.width} x ${spec.height}`;
-    return spec.unit ? `${dim} ${spec.unit}` : dim;
-  }
+    // Dimension
+    if (spec.isDimension) {
+      const dim = `${spec.length} x ${spec.width} x ${spec.height}`;
+      return spec.unit ? `${dim} ${spec.unit}` : dim;
+    }
 
-  // IP Rating
-  if (spec.isIPRating) {
-    return `IP${spec.ipFirst}${spec.ipSecond}`;
-  }
+    // IP Rating
+    if (spec.isIPRating) {
+      return `IP${spec.ipFirst}${spec.ipSecond}`;
+    }
 
-  // Default
-  if (spec.value) {
-    return spec.unit ? `${spec.value} ${spec.unit}` : spec.value;
-  }
+    // Default
+    if (spec.value) {
+      return spec.unit ? `${spec.value} ${spec.unit}` : spec.value;
+    }
 
-  return "";
-};
+    return "";
+  };
 
   // ===== FILTER OPTION BUILDERS =====
 
@@ -81,28 +81,45 @@ const formatSpecDisplay = (spec: any): string => {
     new Set(products.map((p) => p.supplier?.company).filter(Boolean)),
   );
 
-  // ===== TECHNICAL SPECIFICATION FILTERS =====
-  const technicalSpecs: Record<string, Set<string>> = {};
+// ===== TECHNICAL SPECIFICATION FILTERS (GROUPED BY TITLE + SPEC NAME) =====
 
-  products.forEach((p) => {
-    p.technicalSpecifications?.forEach((group: any) => {
-      const title = group.title;
+const technicalSpecs: Record<
+  string,
+  Record<string, Set<string>>
+> = {};
 
-      if (!technicalSpecs[title]) {
-        technicalSpecs[title] = new Set();
+products.forEach((p) => {
+
+  p.technicalSpecifications?.forEach((group: any) => {
+
+    const groupTitle = group.title;
+
+    if (!technicalSpecs[groupTitle]) {
+      technicalSpecs[groupTitle] = {};
+    }
+
+    group.specs?.forEach((spec: any) => {
+
+      if (!spec.specId) return;
+
+      const display = formatSpecDisplay(spec);
+
+      if (!display) return;
+
+      const specName = spec.specId;
+
+      if (!technicalSpecs[groupTitle][specName]) {
+        technicalSpecs[groupTitle][specName] = new Set();
       }
 
-group.specs?.forEach((spec: any) => {
-  const display = formatSpecDisplay(spec);
-
-  if (display) {
-    technicalSpecs[title].add(display);
-  }
-});
-
+      technicalSpecs[groupTitle][specName].add(display);
 
     });
+
   });
+
+});
+
 
   // ===== PRICING FILTERS =====
   const pricingFilters: Record<string, string[]> = {
@@ -273,28 +290,41 @@ group.specs?.forEach((spec: any) => {
         if (!hasMatchingMode) return false;
       }
 
-      for (const [title, values] of Object.entries(filters)) {
-        if (!technicalSpecs[title]) continue;
+// ===== TECH SPEC FILTER LOGIC =====
 
-const productValues: string[] = [];
+for (const [filterKey, values] of Object.entries(filters)) {
 
-p.technicalSpecifications?.forEach((group: any) => {
-  if (group.title === title) {
-group.specs?.forEach((spec: any) => {
-  const display = formatSpecDisplay(spec);
+  if (!filterKey.includes("||")) continue;
 
-  if (display) {
-    productValues.push(display);
-  }
-});
+  const [groupTitle, specName] = filterKey.split("||");
 
-  }
-});
+  const productValues: string[] = [];
 
-        if (values.length && !values.some((v) => productValues.includes(v))) {
-          return false;
-        }
+  p.technicalSpecifications?.forEach((group: any) => {
+
+    if (group.title !== groupTitle) return;
+
+    group.specs?.forEach((spec: any) => {
+
+      if (spec.specId === specName) {
+
+        const display = formatSpecDisplay(spec);
+
+        if (display) productValues.push(display);
+
       }
+
+    });
+
+  });
+
+  if (values.length && !values.some(v => productValues.includes(v))) {
+    return false;
+  }
+
+}
+
+
 
       return true;
     });
@@ -367,18 +397,35 @@ group.specs?.forEach((spec: any) => {
           toggleFilter={toggleFilter}
         />
 
-{/* ===== TECHNICAL SPECIFICATIONS ===== */}
-<h3 className="font-semibold mt-4">Technical Specifications</h3>
+        {/* ===== TECHNICAL SPECIFICATIONS ===== */}
+        <h3 className="font-semibold mt-4">Technical Specifications</h3>
 
-{Object.entries(technicalSpecs).map(([title, values]) => (
-  <FilterSection
-    key={title}
-    title={title}
-    items={Array.from(values)}
-    filters={filters}
-    toggleFilter={toggleFilter}
-  />
+{Object.entries(technicalSpecs).map(([groupTitle, specs]) => (
+
+  <div key={groupTitle} className="border rounded p-2 space-y-2">
+
+    <p className="font-semibold text-sm">
+      {groupTitle}
+    </p>
+
+    {Object.entries(specs).map(([specName, values]) => (
+
+      <FilterSection
+        key={`${groupTitle}-${specName}`}
+        title={`${groupTitle}||${specName}`}
+        label={specName}
+        items={Array.from(values)}
+        filters={filters}
+        toggleFilter={toggleFilter}
+      />
+
+    ))}
+
+  </div>
+
 ))}
+
+
         <h3 className="font-semibold mt-4">Pricing</h3>
 
         {Object.entries(pricingFilters).map(([title, values]) => (
@@ -398,31 +445,48 @@ group.specs?.forEach((spec: any) => {
 // ===== REUSABLE FILTER COMPONENT =====
 function FilterSection({
   title,
+  label,
   items,
   filters,
   toggleFilter,
 }: {
   title: string;
+  label?: string; // ✅ MAKE OPTIONAL
   items: string[];
   filters: Record<string, string[]>;
   toggleFilter: (title: string, value: string) => void;
-}) {
+})
+{
+
   if (!items.length) return null;
 
   return (
-    <div className="border rounded p-2 space-y-1">
-      <p className="text-sm font-medium">{title}</p>
+
+    <div className="pl-4 space-y-1">
+
+      <p className="text-xs font-medium">
+        {label}
+      </p>
 
       {items.map((item) => (
-        <label key={item} className="flex items-center gap-2 text-xs">
+
+        <label key={item} className="flex items-center gap-2 text-xs pl-3">
+
           <input
             type="checkbox"
             checked={filters[title]?.includes(item) || false}
             onChange={() => toggleFilter(title, item)}
           />
+
           {item}
+
         </label>
+
       ))}
+
     </div>
+
   );
+
 }
+
