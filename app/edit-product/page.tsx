@@ -674,12 +674,13 @@ export default function EditProductPage() {
 
       const currentProductTypeId = selectedProductType?.id || null;
 
-      if (
-        hasLoadedProductSpecs.current &&
-        lastLoadedProductTypeRef.current === currentProductTypeId
-      ) {
-        return;
-      }
+if (
+  hasLoadedProductSpecs.current &&
+  lastLoadedProductTypeRef.current === currentProductTypeId &&
+  JSON.stringify(technicalSpecs) === JSON.stringify(fetchedSpecs)
+) {
+  return;
+}
 
       // ✅ Allow reload when productType changes
       lastLoadedProductTypeRef.current = currentProductTypeId;
@@ -1909,28 +1910,45 @@ export default function EditProductPage() {
                           />
                         )}
 
-                      {item.id &&
-                      classificationType &&
-                      selectedProductType &&
-                      selectedCategoryTypes.length === 1 ? (
-                        <AddProductDeleteTechnicalSpecification
-                          classificationId={classificationType.id}
-                          categoryTypeId={selectedCategoryTypes[0].id}
-                          productTypeId={selectedProductType.id}
-                          technicalSpecificationId={item.id}
-                          title={item.title}
-                          referenceID={user?.ReferenceID || ""}
-                        />
-                      ) : (
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          disabled={technicalSpecs.length === 1}
-                          onClick={() => removeTechnicalSpec(index)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      )}
+{/* ===================================================== */}
+{/* DELETE TECH SPEC — EDIT PAGE REALTIME FIX */}
+{/* CTRL+F: DELETE TECH SPEC EDIT PAGE REALTIME FIX */}
+{/* ===================================================== */}
+
+{item.id &&
+classificationType &&
+selectedProductType &&
+selectedCategoryTypes.length === 1 ? (
+
+  <AddProductDeleteTechnicalSpecification
+    classificationId={classificationType.id}
+    categoryTypeId={selectedCategoryTypes[0].id}
+    productTypeId={selectedProductType.id}
+    technicalSpecificationId={item.id}
+    title={item.title}
+    referenceID={user?.ReferenceID || ""}
+  />
+
+) : (
+
+  <Button
+    size="icon"
+    variant="outline"
+    disabled={technicalSpecs.length === 1}
+    onClick={() => {
+
+      /* ✅ LOCAL DELETE FOR EDIT PAGE */
+      setTechnicalSpecs(prev =>
+        prev.filter((_, i) => i !== index)
+      )
+
+    }}
+  >
+    <Minus className="h-4 w-4" />
+  </Button>
+
+)}
+
                     </div>
 
                     {(item.specs || []).map((row, rIndex) => (
