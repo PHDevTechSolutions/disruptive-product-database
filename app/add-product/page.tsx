@@ -441,59 +441,112 @@ export default function AddProductPage() {
 
     const categoryTypeId = selectedCategoryTypes[0].id;
 
-    const q = query(
-      collection(
-        db,
-        "classificationTypes",
-        classificationType.id,
-        "categoryTypes",
-        categoryTypeId,
-        "productTypes",
-        selectedProductType.id,
-        "technicalSpecifications",
-      ),
-      where("isActive", "==", true),
-    );
+const q = query(
+  collection(
+    db,
+    "classificationTypes",
+    classificationType.id,
+    "categoryTypes",
+    categoryTypeId,
+    "productTypes",
+    selectedProductType.id,
+    "technicalSpecifications",
+  ),
+);
 
 const unsubscribe = onSnapshot(q, (snapshot) => {
   // ✅ PREVENT LOOP DURING SAVE
   if (isSavingSpecsRef.current) return;
 
-  const list: TechnicalSpecification[] = snapshot.docs.map((docSnap) => ({
+const list: TechnicalSpecification[] = snapshot.docs
+  .filter(docSnap => docSnap.data().isActive !== false)
+  .map((docSnap) => {
+  const firestoreData = docSnap.data();
+
+  // 🔥 CHECK CACHE FIRST
+  const cached =
+    selectedProductType &&
+    technicalSpecsCacheRef.current[selectedProductType.id]?.find(
+      (s) => s.id === docSnap.id,
+    );
+
+if (cached) {
+  const firestoreSpecs = firestoreData.specs || [];
+
+  // ✅ KEEP EXISTING VALUES
+  const mergedSpecs = firestoreSpecs.map((fsRow: any) => {
+    const existing = cached.specs.find(
+      (c) => c.specId === fsRow.specId
+    );
+
+    return existing
+      ? existing // keep user input
+      : {
+          specId: fsRow.specId || "",
+          unit: fsRow.unit || "",
+
+          isRanging: fsRow.isRanging || false,
+          isSlashing: fsRow.isSlashing || false,
+          isDimension: fsRow.isDimension || false,
+          isIPRating: fsRow.isIPRating || false,
+
+          value: "",
+          rangeFrom: "",
+          rangeTo: "",
+          slashValues: [""],
+          length: "",
+          width: "",
+          height: "",
+          ipFirst: "",
+          ipSecond: "",
+        };
+  });
+
+  return {
+    ...cached,
+    specs: mergedSpecs,
+  };
+}
+
+
+  // ✅ NEW OR STRUCTURE CHANGE → use firestore structure
+  return {
     id: docSnap.id,
 
-    title: (docSnap.data().title as string) || "",
+    title: firestoreData.title || "",
 
-specs: (docSnap.data().specs || []).map((row: any) => ({
-  specId: row.specId || "",
+    specs: (firestoreData.specs || []).map((row: any) => ({
+      specId: row.specId || "",
+      unit: row.unit || "",
 
-  unit: row.unit || "",
+      isRanging: row.isRanging || false,
+      isSlashing: row.isSlashing || false,
+      isDimension: row.isDimension || false,
+      isIPRating: row.isIPRating || false,
 
-  isRanging: row.isRanging || false,
-  isSlashing: row.isSlashing || false,
-  isDimension: row.isDimension || false,
-  isIPRating: row.isIPRating || false,
+      // ❌ DO NOT LOAD VALUE REALTIME
+      value: "",
 
-  value: "",
+      rangeFrom: "",
+      rangeTo: "",
 
-  rangeFrom: "",
-  rangeTo: "",
+      slashValues:
+        Array.isArray(row.slashValues) && row.slashValues.length > 0
+          ? row.slashValues.map(() => "")
+          : [""],
 
-  slashValues:
-    Array.isArray(row.slashValues) && row.slashValues.length > 0
-      ? row.slashValues.map(() => "")
-      : [""],
+      length: "",
+      width: "",
+      height: "",
 
-  length: "",
-  width: "",
-  height: "",
+      ipFirst: "",
+      ipSecond: "",
+    })),
 
-  ipFirst: "",
-  ipSecond: "",
-})),
+    units: firestoreData.units || [],
+  };
+});
 
-    units: (docSnap.data().units || []) as string[],
-  }));
 
   // ✅ CREATE DEFAULT IF EMPTY
   if (list.length === 0) {
@@ -534,62 +587,15 @@ specs: (docSnap.data().specs || []).map((row: any) => ({
   }
 
   // ✅ LOAD FROM CACHE IF EXISTS
-  if (
-    selectedProductType &&
-    technicalSpecsCacheRef.current[selectedProductType.id]
-  ) {
-    setTechnicalSpecs(
-      technicalSpecsCacheRef.current[selectedProductType.id],
-    );
-  } else {
-    let finalSpecs = list;
+// ✅ ALWAYS USE FIRESTORE SNAPSHOT
+setTechnicalSpecs(list);
 
-    const productTypeId = selectedProductType?.id;
-
-    if (
-      productTypeId &&
-      technicalSpecsStructureRef.current[productTypeId]
-    ) {
-      const structure =
-        technicalSpecsStructureRef.current[productTypeId];
-
-      finalSpecs = structure.map((spec) => ({
-        ...spec,
-
-        specs: spec.specs.map((row) => ({
-          ...row,
-
-          // ✅ CLEAR VALUES BUT KEEP ARRAY LENGTH
-          value: "",
-
-          rangeFrom: "",
-          rangeTo: "",
-
-          slashValues:
-            Array.isArray(row.slashValues) &&
-            row.slashValues.length > 0
-              ? row.slashValues
-              : [""],
-
-          length: "",
-          width: "",
-          height: "",
-
-          ipFirst: "",
-          ipSecond: "",
-        })),
-      }));
-    }
-
-    setTechnicalSpecs(finalSpecs);
-
-    // ✅ SAVE CACHE
-    if (selectedProductType) {
-      technicalSpecsCacheRef.current[selectedProductType.id] =
-        JSON.parse(JSON.stringify(finalSpecs));
-    }
-  }
-});
+// ✅ UPDATE CACHE TO MATCH FIRESTORE
+if (selectedProductType) {
+  technicalSpecsCacheRef.current[selectedProductType.id] =
+    JSON.parse(JSON.stringify(list));
+}
+  });
 
     return () => unsubscribe();
   }, [
