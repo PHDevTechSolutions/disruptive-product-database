@@ -1,11 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-/* ===================================================== */
-/* CTRL+F: COMBOBOX IMPORTS START */
-/* ===================================================== */
-
 import {
   Command,
   CommandGroup,
@@ -13,20 +8,7 @@ import {
   CommandItem,
   CommandEmpty,
 } from "@/components/ui/command";
-
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
-
-import { Button } from "@/components/ui/button";
-
-import { Check, ChevronsUpDown } from "lucide-react";
-
-/* ===================================================== */
-/* CTRL+F: COMBOBOX IMPORTS END */
-/* ===================================================== */
+import { Check } from "lucide-react";
 
 type Props = {
   products: any[];
@@ -36,325 +18,157 @@ type Props = {
 export default function FilteringComponent({ products, onFilter }: Props) {
   const [filters, setFilters] = useState<Record<string, string[]>>({});
 
-  const formatPHP = (value?: number, decimals = 2) => {
-    if (typeof value !== "number") return "-";
+  const uniq = (arr: any[]) => Array.from(new Set(arr.filter(Boolean)));
 
-    return value.toLocaleString("en-PH", {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    });
-  };
+  const formatPHP = (v?: number, d = 2) =>
+    typeof v === "number"
+      ? v.toLocaleString("en-PH", {
+        minimumFractionDigits: d,
+        maximumFractionDigits: d,
+      })
+      : "-";
 
-  // ===== FORMAT SPEC DISPLAY (VALUE + UNIT ONLY) =====
-  const formatSpecDisplay = (spec: any): string => {
-    if (!spec) return "";
-
-    // Ranging
-    if (spec.isRanging) {
-      const range = `${spec.rangeFrom} - ${spec.rangeTo}`;
-      return spec.unit ? `${range} ${spec.unit}` : range;
-    }
-
-    // Slashing
-    if (spec.isSlashing) {
-      return spec.slashValues?.join("/") || "";
-    }
-
-    // Dimension (ARRAY FIX)
-    if (spec.isDimension) {
-      const dim = spec.slashValues?.join(" x ") || "";
-
-      return spec.unit ? `${dim} ${spec.unit}` : dim;
-    }
-
-    // IP Rating
-    if (spec.isIPRating) {
-      return `IP${spec.ipFirst}${spec.ipSecond}`;
-    }
-
-    // Default
-    if (spec.value) {
-      return spec.unit ? `${spec.value} ${spec.unit}` : spec.value;
-    }
-
+  const formatSpec = (s: any): string => {
+    if (!s) return "";
+    if (s.isRanging)
+      return `${s.rangeFrom} - ${s.rangeTo}${s.unit ? ` ${s.unit}` : ""}`;
+    if (s.isSlashing) return s.slashValues?.join("/") || "";
+    if (s.isDimension)
+      return `${s.slashValues?.join(" x ") || ""}${s.unit ? ` ${s.unit}` : ""}`;
+    if (s.isIPRating) return `IP${s.ipFirst}${s.ipSecond}`;
+    if (s.value) return s.unit ? `${s.value} ${s.unit}` : s.value;
     return "";
   };
 
-  // ===== FILTER OPTION BUILDERS =====
-
-  const sisterCompanies = Array.from(
-    new Set(products.map((p) => p.sisterCompanyName).filter(Boolean)),
+  const sisterCompanies = uniq(products.map((p) => p.sisterCompanyName));
+  const classifications = uniq(products.map((p) => p.classificationName));
+  const categories = uniq(
+    products.map((p) => p.categoryTypes?.[0]?.categoryTypeName),
   );
-
-  const classifications = Array.from(
-    new Set(products.map((p) => p.classificationName).filter(Boolean)),
+  const productTypes = uniq(
+    products.map((p) => p.productTypes?.[0]?.productTypeName),
   );
-
-  const categories = Array.from(
-    new Set(
-      products
-        .map((p) => p.categoryTypes?.[0]?.categoryTypeName)
-        .filter(Boolean),
-    ),
-  );
-
-  const productTypes = Array.from(
-    new Set(
-      products.map((p) => p.productTypes?.[0]?.productTypeName).filter(Boolean),
-    ),
-  );
-
-  const suppliers = Array.from(
-    new Set(products.map((p) => p.supplier?.company).filter(Boolean)),
-  );
-
-  // ===== TECHNICAL SPECIFICATION FILTERS (GROUPED BY TITLE + SPEC NAME) =====
+  const suppliers = uniq(products.map((p) => p.supplier?.company));
 
   const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
 
-  products.forEach((p) => {
-    p.technicalSpecifications?.forEach((group: any) => {
-      const groupTitle = group.title;
+  products.forEach((p) =>
+    p.technicalSpecifications?.forEach((g: any) =>
+      g.specs?.forEach((s: any) => {
+        if (!s.specId) return;
+        const val = formatSpec(s);
+        if (!val) return;
+        technicalSpecs[g.title] ??= {};
+        technicalSpecs[g.title][s.specId] ??= new Set();
+        technicalSpecs[g.title][s.specId].add(val);
+      }),
+    ),
+  );
 
-      if (!technicalSpecs[groupTitle]) {
-        technicalSpecs[groupTitle] = {};
-      }
-
-      group.specs?.forEach((spec: any) => {
-        if (!spec.specId) return;
-
-        let rawValue = "";
-
-        if (spec.isRanging) {
-          if (spec.rangeFrom || spec.rangeTo) {
-            rawValue = `${spec.rangeFrom} - ${spec.rangeTo}`;
-
-            if (spec.unit) rawValue += ` ${spec.unit}`;
-          }
-        } else if (spec.isSlashing) {
-          rawValue = spec.slashValues?.join("/") || "";
-        } else if (spec.isDimension) {
-          if (spec.slashValues?.length) {
-            rawValue = spec.slashValues.join(" x ");
-
-            if (spec.unit) rawValue += ` ${spec.unit}`;
-          }
-        } else if (spec.isIPRating) {
-          if (spec.ipFirst || spec.ipSecond) {
-            rawValue = `IP${spec.ipFirst}${spec.ipSecond}`;
-          }
-        } else {
-          if (spec.value) {
-            rawValue = spec.unit ? `${spec.value} ${spec.unit}` : spec.value;
-          }
-        }
-
-        if (!rawValue) return;
-
-        const specName = spec.specId;
-
-        if (!technicalSpecs[groupTitle][specName]) {
-          technicalSpecs[groupTitle][specName] = new Set();
-        }
-
-        technicalSpecs[groupTitle][specName].add(rawValue);
-      });
-    });
-  });
-
-  // ===== PRICING FILTERS =====
   const pricingFilters: Record<string, string[]> = {
-    "Landed Cost": Array.from(
-      new Set(
-        products
-          .map((p) => formatPHP(p.logistics?.landedCost, 2))
-          .filter((v) => v !== "-"),
-      ),
+    "Landed Cost": uniq(
+      products.map((p) => formatPHP(p.logistics?.landedCost, 2)),
+    ).filter((v) => v !== "-"),
+    "SRP Cost": uniq(
+      products.map((p) => formatPHP(p.logistics?.srp, 0)),
+    ).filter((v) => v !== "-"),
+    "Calculation Type": uniq(
+      products.map((p) => p.logistics?.calculationType),
     ),
-
-    "SRP Cost": Array.from(
-      new Set(
-        products
-          .map((p) => formatPHP(p.logistics?.srp, 0))
-          .filter((v) => v !== "-"),
-      ),
+    Category: uniq(products.map((p) => p.logistics?.category)),
+    MOQ: uniq(products.map((p) => p.logistics?.moq)).map(String),
+    "Multiple Dimensions": uniq(
+      products.map((p) => (p.logistics?.useArrayInput ? "Yes" : "No")),
     ),
+    "Qty Per Container": uniq(
+      products.map((p) => p.logistics?.qtyPerContainer),
+    ).map(String),
+    Warranty: uniq(
+      products.map((p) =>
+        p.logistics?.warranty?.value
+          ? `${p.logistics.warranty.value} ${p.logistics.warranty.unit}`
+          : "",
+      ),
+    ).filter(Boolean),
   };
 
-  pricingFilters["Calculation Type"] = Array.from(
-    new Set(products.map((p) => p.logistics?.calculationType).filter(Boolean)),
-  );
+  const modes = new Set<string>();
 
-  pricingFilters["Category"] = Array.from(
-    new Set(products.map((p) => p.logistics?.category).filter(Boolean)),
-  );
-
-  pricingFilters["MOQ"] = Array.from(
-    new Set(
-      products
-        .map((p) => p.logistics?.moq)
-        .filter((v) => v !== undefined && v !== null),
-    ),
-  ).map(String);
-
-  pricingFilters["Multiple Dimensions"] = Array.from(
-    new Set(products.map((p) => (p.logistics?.useArrayInput ? "Yes" : "No"))),
-  );
-
-  pricingFilters["Qty Per Container"] = Array.from(
-    new Set(
-      products
-        .map((p) => p.logistics?.qtyPerContainer)
-        .filter((v) => v !== undefined && v !== null),
-    ),
-  ).map(String);
-
-  pricingFilters["Warranty"] = Array.from(
-    new Set(
-      products
-        .map((p) => {
-          const w = p.logistics?.warranty;
-          if (!w || !w.value) return "";
-          return `${w.value} ${w.unit}`;
-        })
-        .filter((v): v is string => v !== ""),
+  products.forEach((p) =>
+    p.technicalSpecifications?.forEach((g: any) =>
+      g.specs?.forEach((s: any) => {
+        if (s.isDimension) modes.add("Dimension");
+        if (s.isRanging) modes.add("Ranging");
+        if (s.isSlashing) modes.add("Slashing");
+        if (s.isIPRating) modes.add("IP Rating");
+      }),
     ),
   );
 
-  // ===== DYNAMIC SPECIFICATION MODE FILTERS =====
-  const availableModes = new Set<string>();
+  pricingFilters["Specification Mode"] = Array.from(modes);
 
-  products.forEach((p) => {
-    p.technicalSpecifications?.forEach((group: any) => {
-      group.specs?.forEach((spec: any) => {
-        if (spec.isDimension) availableModes.add("Dimension");
-        if (spec.isRanging) availableModes.add("Ranging");
-        if (spec.isSlashing) availableModes.add("Slashing");
-        if (spec.isIPRating) availableModes.add("IP Rating");
-      });
-    });
-  });
-
-  pricingFilters["Specification Mode"] = Array.from(availableModes);
-  // ===== APPLY FILTER LOGIC =====
   useEffect(() => {
     const filtered = products.filter((p) => {
-      if (
-        filters["Sister Company"]?.length &&
-        !filters["Sister Company"].includes(p.sisterCompanyName)
-      )
-        return false;
+      const check = (k: string, v: any) =>
+        !filters[k]?.length || filters[k].includes(v);
 
-      if (
-        filters["Classification Type"]?.length &&
-        !filters["Classification Type"].includes(p.classificationName)
-      )
+      if (!check("Sister Company", p.sisterCompanyName)) return false;
+      if (!check("Classification Type", p.classificationName)) return false;
+      if (!check("Category Type", p.categoryTypes?.[0]?.categoryTypeName))
         return false;
+      if (!check("Product Type", p.productTypes?.[0]?.productTypeName))
+        return false;
+      if (!check("Supplier", p.supplier?.company)) return false;
 
+      if (!check("Landed Cost", formatPHP(p.logistics?.landedCost, 2)))
+        return false;
+      if (!check("SRP Cost", formatPHP(p.logistics?.srp, 0))) return false;
+      if (!check("Category", p.logistics?.category || "")) return false;
       if (
-        filters["Category Type"]?.length &&
-        !filters["Category Type"].includes(
-          p.categoryTypes?.[0]?.categoryTypeName,
+        !check(
+          "Multiple Dimensions",
+          p.logistics?.useArrayInput ? "Yes" : "No",
         )
       )
         return false;
 
-      if (
-        filters["Product Type"]?.length &&
-        !filters["Product Type"].includes(p.productTypes?.[0]?.productTypeName)
-      )
-        return false;
-
-      if (
-        filters["Supplier"]?.length &&
-        !filters["Supplier"].includes(p.supplier?.company)
-      )
-        return false;
-
-      if (filters["Landed Cost"]?.length) {
-        const lc = formatPHP(p.logistics?.landedCost, 2);
-        if (!filters["Landed Cost"].includes(lc)) return false;
-      }
-
-      if (filters["SRP Cost"]?.length) {
-        const srp = formatPHP(p.logistics?.srp, 0);
-        if (!filters["SRP Cost"].includes(srp)) return false;
-      }
-
-      // ===== LOGISTICS CATEGORY FILTER =====
-      if (filters["Category"]?.length) {
-        const productCategory = p.logistics?.category || "";
-
-        if (!filters["Category"].includes(productCategory)) {
-          return false;
-        }
-      }
-
-      // ===== MULTIPLE DIMENSIONS FILTER =====
-      if (filters["Multiple Dimensions"]?.length) {
-        const mode = p.logistics?.useArrayInput ? "Yes" : "No";
-
-        if (!filters["Multiple Dimensions"].includes(mode)) {
-          return false;
-        }
-      }
-
-      // ===== WARRANTY FILTER =====
       if (filters["Warranty"]?.length) {
         const w = p.logistics?.warranty;
-
-        const productWarranty = w && w.value ? `${w.value} ${w.unit}` : null;
-
-        if (
-          !productWarranty ||
-          !filters["Warranty"].includes(productWarranty)
-        ) {
-          return false;
-        }
+        const val = w?.value ? `${w.value} ${w.unit}` : null;
+        if (!val || !filters["Warranty"].includes(val)) return false;
       }
 
-      // ===== SPECIFICATION MODE FILTER =====
       if (filters["Specification Mode"]?.length) {
-        const modes = filters["Specification Mode"];
-
-        const hasMatchingMode = p.technicalSpecifications?.some((group: any) =>
-          group.specs?.some((spec: any) => {
-            if (modes.includes("Dimension") && spec.isDimension) return true;
-            if (modes.includes("Ranging") && spec.isRanging) return true;
-            if (modes.includes("Slashing") && spec.isSlashing) return true;
-            if (modes.includes("IP Rating") && spec.isIPRating) return true;
-
-            return false;
-          }),
+        const ok = p.technicalSpecifications?.some((g: any) =>
+          g.specs?.some(
+            (s: any) =>
+              (filters["Specification Mode"].includes("Dimension") &&
+                s.isDimension) ||
+              (filters["Specification Mode"].includes("Ranging") &&
+                s.isRanging) ||
+              (filters["Specification Mode"].includes("Slashing") &&
+                s.isSlashing) ||
+              (filters["Specification Mode"].includes("IP Rating") &&
+                s.isIPRating),
+          ),
         );
-
-        if (!hasMatchingMode) return false;
+        if (!ok) return false;
       }
 
-      // ===== TECH SPEC FILTER LOGIC =====
-
-      for (const [filterKey, values] of Object.entries(filters)) {
-        if (!filterKey.includes("||")) continue;
-
-        const [groupTitle, specName] = filterKey.split("||");
-
-        const productValues: string[] = [];
-
-        p.technicalSpecifications?.forEach((group: any) => {
-          if (group.title !== groupTitle) return;
-
-          group.specs?.forEach((spec: any) => {
-            if (spec.specId === specName) {
-              const display = formatSpecDisplay(spec);
-
-              if (display) productValues.push(display);
+      for (const [k, vals] of Object.entries(filters)) {
+        if (!k.includes("||")) continue;
+        const [gt, sn] = k.split("||");
+        const pv: string[] = [];
+        p.technicalSpecifications?.forEach((g: any) => {
+          if (g.title !== gt) return;
+          g.specs?.forEach((s: any) => {
+            if (s.specId === sn) {
+              const d = formatSpec(s);
+              if (d) pv.push(d);
             }
           });
         });
-
-        if (values.length && !values.some((v) => productValues.includes(v))) {
-          return false;
-        }
+        if (vals.length && !vals.some((v) => pv.includes(v))) return false;
       }
 
       return true;
@@ -363,23 +177,11 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     onFilter(filtered);
   }, [filters, products]);
 
-  const toggleFilter = (title: string, value: string) => {
-    setFilters((prev) => {
-      const current = prev[title] || [];
-      const exists = current.includes(value);
-
-      return {
-        ...prev,
-        [title]: exists
-          ? current.filter((v) => v !== value)
-          : [...current, value],
-      };
-    });
-  };
-
-  const clearFilters = () => {
-    setFilters({});
-  };
+  const toggle = (t: string, v: string) =>
+    setFilters((p) => ({
+      ...p,
+      [t]: p[t]?.includes(v) ? p[t].filter((x) => x !== v) : [...(p[t] || []), v],
+    }));
 
   return (
     <div className="border rounded-lg p-4 bg-card space-y-4">
@@ -387,62 +189,31 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
       <button
         className="border px-3 py-1 rounded text-sm"
-        onClick={clearFilters}
+        onClick={() => setFilters({})}
       >
         Clear Filters
       </button>
 
       <div className="space-y-3 max-h-[800px] overflow-y-auto">
-        <FilterSection
-          title="Sister Company"
-          items={sisterCompanies}
-          filters={filters}
-          toggleFilter={toggleFilter}
-        />
+        <Section title="Sister Company" items={sisterCompanies} f={filters} t={toggle} />
+        <Section title="Classification Type" items={classifications} f={filters} t={toggle} />
+        <Section title="Category Type" items={categories} f={filters} t={toggle} />
+        <Section title="Product Type" items={productTypes} f={filters} t={toggle} />
+        <Section title="Supplier" items={suppliers} f={filters} t={toggle} />
 
-        <FilterSection
-          title="Classification Type"
-          items={classifications}
-          filters={filters}
-          toggleFilter={toggleFilter}
-        />
-
-        <FilterSection
-          title="Category Type"
-          items={categories}
-          filters={filters}
-          toggleFilter={toggleFilter}
-        />
-
-        <FilterSection
-          title="Product Type"
-          items={productTypes}
-          filters={filters}
-          toggleFilter={toggleFilter}
-        />
-
-        <FilterSection
-          title="Supplier"
-          items={suppliers}
-          filters={filters}
-          toggleFilter={toggleFilter}
-        />
-
-        {/* ===== TECHNICAL SPECIFICATIONS ===== */}
         <h3 className="font-semibold mt-4">Technical Specifications</h3>
 
-        {Object.entries(technicalSpecs).map(([groupTitle, specs]) => (
-          <div key={groupTitle} className="border rounded p-2 space-y-2">
-            <p className="font-semibold text-sm">{groupTitle}</p>
-
-            {Object.entries(specs).map(([specName, values]) => (
-              <FilterSection
-                key={`${groupTitle}-${specName}`}
-                title={`${groupTitle}||${specName}`}
-                label={specName}
-                items={Array.from(values)}
-                filters={filters}
-                toggleFilter={toggleFilter}
+        {Object.entries(technicalSpecs).map(([gt, s]) => (
+          <div key={gt} className="border rounded p-2 space-y-2">
+            <p className="font-semibold text-sm">{gt}</p>
+            {Object.entries(s).map(([sn, vals]) => (
+              <Section
+                key={sn}
+                title={`${gt}||${sn}`}
+                label={sn}
+                items={[...vals]}
+                f={filters}
+                t={toggle}
               />
             ))}
           </div>
@@ -450,104 +221,44 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
         <h3 className="font-semibold mt-4">Pricing</h3>
 
-        {Object.entries(pricingFilters).map(([title, values]) => (
-          <FilterSection
-            key={title}
-            title={title}
-            items={values as string[]}
-            filters={filters}
-            toggleFilter={toggleFilter}
-          />
+        {Object.entries(pricingFilters).map(([k, v]) => (
+          <Section key={k} title={k} items={v} f={filters} t={toggle} />
         ))}
       </div>
     </div>
   );
 }
 
-function FilterSection({
+function Section({
   title,
   label,
   items,
-  filters,
-  toggleFilter,
-}: {
-  title: string;
-  label?: string;
-  items: string[];
-  filters: Record<string, string[]>;
-  toggleFilter: (title: string, value: string) => void;
-}) {
-
+  f,
+  t,
+}: any) {
   if (!items.length) return null;
 
-  const selected = filters[title] || [];
-
   return (
-
     <div className="border rounded p-2 space-y-2">
-
-      <p className="text-sm font-medium">
-        {label ?? title}
-      </p>
-
-
-      {/* DIRECT INPUT COMBOBOX */}
+      <p className="text-sm font-medium">{label ?? title}</p>
 
       <Command className="border rounded">
-
         <CommandInput placeholder="Type to search..." />
-
-
-        <CommandEmpty>
-          No results found.
-        </CommandEmpty>
-
+        <CommandEmpty>No results found.</CommandEmpty>
 
         <CommandGroup className="max-h-[200px] overflow-y-auto">
-
-
-          {items.map((item) => {
-
-            const isSelected = selected.includes(item);
-
-            return (
-
-              <CommandItem
-                key={item}
-                onSelect={() => toggleFilter(title, item)}
-              >
-
-                <Check
-                  className={`mr-2 h-4 w-4 ${
-                    isSelected
-                      ? "opacity-100"
-                      : "opacity-0"
+          {items.map((i: string) => (
+            <CommandItem key={i} onSelect={() => t(title, i)}>
+              <Check
+                className={`mr-2 h-4 w-4 ${
+                  f[title]?.includes(i) ? "opacity-100" : "opacity-0"
                   }`}
-                />
-
-                {item}
-
-              </CommandItem>
-
-            );
-
-          })}
-
-
+              />
+              {i}
+            </CommandItem>
+          ))}
         </CommandGroup>
-
-
       </Command>
-
-
     </div>
-
   );
-
 }
-
-
-/* ===================================================== */
-/* CTRL+F: COMBOBOX FILTER SECTION END */
-/* ===================================================== */
-
