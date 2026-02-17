@@ -69,28 +69,15 @@ type UserData = {
 };
 
 type TechSpecRow = {
-  specId: string;
-  unit: string;
 
-  isRanging: boolean;
-  isSlashing: boolean;
-  isDimension: boolean;
-  isRating: boolean;
+  specId: string;
 
   value: string;
 
-  rangeFrom: string;
-  rangeTo: string;
+  unit: string;
 
-  slashValues: string[];
-
-  length: string;
-  width: string;
-  height: string;
-
-  ipFirst: string;
-  ipSecond: string;
 };
+
 
 type TechSpec = {
   id?: string;
@@ -141,22 +128,10 @@ export default function EditProductPage() {
 
   const [productName, setProductName] = useState("");
 
-  const emptyRow: TechSpecRow = {
+  const emptyRow = {
     specId: "",
-    unit: "",
-    isRanging: false,
-    isSlashing: false,
-    isDimension: false,
-    isRating: false,
     value: "",
-    rangeFrom: "",
-    rangeTo: "",
-    slashValues: [""],
-    length: "",
-    width: "",
-    height: "",
-    ipFirst: "",
-    ipSecond: "",
+    unit: ""
   };
 
   const [technicalSpecs, setTechnicalSpecs] = useState<TechSpec[]>([
@@ -169,7 +144,7 @@ export default function EditProductPage() {
 
   const hasLoadedProductSpecs = React.useRef(false);
   // ✅ TRACK CURRENT PRODUCT TYPE FOR EDIT MODE
-  const lastLoadedProductTypeRef = React.useRef<string | null>(null);
+
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -383,52 +358,39 @@ export default function EditProductPage() {
           if (Array.isArray(data.technicalSpecifications)) {
             const mappedSpecs = data.technicalSpecifications.map(
               (spec: any) => ({
+
                 id: spec.technicalSpecificationId || "",
+
                 title: spec.title || "",
+
                 specs: Array.isArray(spec.specs)
                   ? spec.specs.map((row: any) => ({
-                      specId: row.specId || "",
-                      unit: row.unit || "",
 
-                      isRanging: !!row.isRanging,
-                      isSlashing: !!row.isSlashing,
-                      isDimension: !!row.isDimension,
-                    isRating: !!row.isRating,
+                    specId: row.specId || "",
 
-                      value: row.value || "",
+                    value: row.value || "",
 
-                      rangeFrom: row.rangeFrom || "",
-                      rangeTo: row.rangeTo || "",
+                    unit: row.unit || ""
 
-                      slashValues:
-                        Array.isArray(row.slashValues) && row.slashValues.length
-                          ? row.slashValues
-                          : [""],
-
-                      length: row.length || "",
-                      width: row.width || "",
-                      height: row.height || "",
-
-                      ipFirst: row.ipFirst || "",
-                      ipSecond: row.ipSecond || "",
-                    }))
+                  }))
                   : [emptyRow],
 
-                units: Array.isArray(spec.units) ? spec.units : [],
-              }),
+                units: []
+
+              })
             );
 
             setTechnicalSpecs(
               mappedSpecs.length
                 ? mappedSpecs
                 : [
-                    {
-                      id: "",
-                      title: "",
-                      specs: [emptyRow],
-                      units: [],
-                    },
-                  ],
+                  {
+                    id: "",
+                    title: "",
+                    specs: [emptyRow],
+                    units: [],
+                  },
+                ],
             );
             hasLoadedProductSpecs.current = true;
           }
@@ -560,20 +522,28 @@ export default function EditProductPage() {
 
   /* ================= FETCH SUPPLIERS ================= */
   useEffect(() => {
-    const q = query(collection(db, "suppliers"), where("isActive", "==", true));
+
+    const q = query(
+      collection(db, "suppliers"),
+      where("isActive", "==", true)
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const SUPPLIER_LIST = snapshot.docs.map((doc) => ({
-        supplierId: doc.id,
-        company: doc.data().company,
+
+      const list = snapshot.docs.map((docSnap) => ({
+
+        supplierId: docSnap.id,
+
+        company: docSnap.data().company
+
       }));
 
-      SUPPLIER_LIST.sort((a, b) => a.company.localeCompare(b.company));
+      setSuppliers(list);
 
-      setSuppliers(SUPPLIER_LIST);
     });
 
     return () => unsubscribe();
+
   }, []);
 
   /* ---------------- REAL-TIME SISTER COMPANIES ---------------- */
@@ -600,120 +570,136 @@ export default function EditProductPage() {
   /* ---------------- REAL-TIME CLASSIFICATIONS ---------------- */
 
   /* ---------------- REAL-TIME PRODUCT TYPES (DEPENDS ON CLASSIFICATION) ---------------- */
-
   useEffect(() => {
-    if (!classificationType) return;
-    if (!selectedProductType) return;
-    if (selectedCategoryTypes.length !== 1) return;
 
-    const categoryTypeId = selectedCategoryTypes[0].id;
+  if (!classificationType) return;
+  if (!selectedProductType) return;
+  if (selectedCategoryTypes.length !== 1) return;
 
-    const q = query(
-      collection(
-        db,
-        "classificationTypes",
-        classificationType.id,
-        "categoryTypes",
-        categoryTypeId,
-        "productTypes",
-        selectedProductType.id,
-        "technicalSpecifications",
-      ),
-      where("isActive", "==", true),
-    );
+  // ❗ IMPORTANT: only run AFTER product fully loaded
+  if (!hasLoadedProductSpecs.current) return;
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-const fetchedSpecs = snapshot.docs
-  .filter(docSnap => docSnap.data().isActive === true)
-  .map((docSnap) => {
-        const data = docSnap.data();
+  const categoryTypeId = selectedCategoryTypes[0].id;
 
-        const safeSpecs = Array.isArray(data.specs)
-          ? data.specs.map((row: any) => ({
-              specId: row.specId || "",
-              unit: row.unit || "",
+  const unsubscribe = onSnapshot(
 
-              isRanging: row.isRanging || false,
-              isSlashing: row.isSlashing || false,
-              isDimension: row.isDimension || false,
-            isRating: row.isRating || false,
+    doc(db, "products", productId!),
 
-              value: row.value || "",
+    (snap) => {
 
-              rangeFrom: row.rangeFrom || "",
-              rangeTo: row.rangeTo || "",
+      if (!snap.exists()) return;
 
-              slashValues:
-                Array.isArray(row.slashValues) && row.slashValues.length
-                  ? row.slashValues
-                  : [""],
+      const data: any = snap.data();
 
-              length: row.length || "",
-              width: row.width || "",
-              height: row.height || "",
+      // if same product type → restore original saved specs
+      if (
+        data.productTypes?.[0]?.productTypeId === selectedProductType.id
+      ) {
 
-              ipFirst: row.ipFirst || "",
-              ipSecond: row.ipSecond || "",
-            }))
-          : [{ ...emptyRow }];
+        if (Array.isArray(data.technicalSpecifications)) {
 
-        return {
-          id: docSnap.id,
-          title: data.title || "",
-          specs: safeSpecs,
-          units: Array.isArray(data.units) ? data.units : [],
-        };
-      });
+          const mappedSpecs = data.technicalSpecifications.map((spec: any) => ({
 
-      // 🧠 CHECK IF SAME AS CURRENT SPECS
-      const current = JSON.stringify(technicalSpecs);
-      const incoming = JSON.stringify(fetchedSpecs);
+            id: spec.technicalSpecificationId || "",
 
-      // ONLY update if DIFFERENT
-      /* 🚫 DO NOT overwrite existing product specs */
+            title: spec.title || "",
 
-      /* 🚫 DO NOT overwrite existing product specs unless productType changed */
+            specs: Array.isArray(spec.specs)
+              ? spec.specs.map((row: any) => ({
 
-      const currentProductTypeId = selectedProductType?.id || null;
+                specId: row.specId || "",
+                value: row.value || "",
+                unit: row.unit || ""
 
+              }))
+              : [{ specId: "", value: "", unit: "" }],
 
-      // ✅ Allow reload when productType changes
-      lastLoadedProductTypeRef.current = currentProductTypeId;
+            units: []
 
+          }));
 
-const isEditMode = !!productId;
+          setTechnicalSpecs(mappedSpecs);
 
-if (!isEditMode && !hasLoadedProductSpecs.current) {
+        }
 
-  setTechnicalSpecs(
-    fetchedSpecs.length
-      ? fetchedSpecs
-      : [
-          {
-            id: "",
-            title: "",
-            specs: [emptyRow],
-            units: [],
-          },
-        ],
+      }
+
+      else {
+
+  // load specs from classificationTypes
+
+        const q = query(
+
+          collection(
+
+            db,
+
+            "classificationTypes",
+
+            classificationType.id,
+
+            "categoryTypes",
+
+            categoryTypeId,
+
+            "productTypes",
+
+            selectedProductType.id,
+
+            "technicalSpecifications",
+
+          ),
+
+          where("isActive", "==", true),
+
+        );
+
+        getDocs(q).then((snapshot) => {
+
+          const fetchedSpecs = snapshot.docs.map((docSnap) => {
+
+            const data = docSnap.data();
+
+            return {
+
+              id: docSnap.id,
+
+              title: data.title || "",
+
+              specs: Array.isArray(data.specs)
+                ? data.specs.map((row: any) => ({
+
+                  specId: row.specId || "",
+                  value: "",
+                  unit: ""
+
+                }))
+                : [{ specId: "", value: "", unit: "" }],
+
+              units: []
+
+            };
+
+          });
+
+          setTechnicalSpecs(fetchedSpecs);
+
+        });
+
+      }
+
+    }
+
   );
 
-}
+  return () => unsubscribe();
 
+}, [
 
-      hasLoadedProductSpecs.current = true;
+  selectedProductType?.id
 
-      /* Only load template if NEW product */
+]);
 
-
-    });
-
-    return () => unsubscribe();
-  }, [
-    classificationType?.id,
-    selectedProductType?.id,
-    selectedCategoryTypes.map((c) => c.id).join(","),
-  ]);
 
   useEffect(() => {
     if (!classificationType) return;
@@ -968,11 +954,11 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
       prev.map((item, i) =>
         i === specIndex
           ? {
-              ...item,
-              specs: item.specs.map((row, r) =>
-                r === rowIndex ? { ...row, [field]: value } : row,
-              ),
-            }
+            ...item,
+            specs: item.specs.map((row, r) =>
+              r === rowIndex ? { ...row, [field]: value } : row,
+            ),
+          }
           : item,
       ),
     );
@@ -1010,133 +996,21 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
       prev.map((item, i) =>
         i === specIndex
           ? {
-              ...item,
-              specs:
-                item.specs.length > 1
-                  ? item.specs.filter((_, r) => r !== rowIndex)
-                  : item.specs,
-            }
+            ...item,
+            specs:
+              item.specs.length > 1
+                ? item.specs.filter((_, r) => r !== rowIndex)
+                : item.specs,
+          }
           : item,
       ),
     );
   };
 
-  const toggleMode = (
-    specIndex: number,
-    rowIndex: number,
-    mode: "isRanging" | "isSlashing" | "isDimension" | "isRating",
-  ) => {
-    setTechnicalSpecs((prev) =>
-      prev.map((item, i) =>
-        i === specIndex
-          ? {
-              ...item,
-              specs: item.specs.map((row, r) => {
-                if (r !== rowIndex) return row;
 
-                // If the clicked mode is already active → TURN EVERYTHING OFF
-                const isCurrentlyActive = row[mode];
 
-                if (isCurrentlyActive) {
-                  return {
-                    ...row,
 
-                    isRanging: false,
-                    isSlashing: false,
-                    isDimension: false,
-                    isRating: false,
 
-                    // Clear special fields
-                    rangeFrom: "",
-                    rangeTo: "",
-                    slashValues: [""],
-                    length: "",
-                    width: "",
-                    height: "",
-                    ipFirst: "",
-                    ipSecond: "",
-                  };
-                }
-
-                // Otherwise activate ONLY the selected mode
-                return {
-                  ...row,
-
-                  isRanging: mode === "isRanging",
-                  isSlashing: mode === "isSlashing",
-                  isDimension: mode === "isDimension",
-                  isRating: mode === "isRating",
-
-                  // Auto clear value fields when switching modes
-                  value: "",
-                  rangeFrom: "",
-                  rangeTo: "",
-                  slashValues: [""],
-                  length: "",
-                  width: "",
-                  height: "",
-                  ipFirst: "",
-                  ipSecond: "",
-
-                  // Auto remove unit if slashing or IP Rating
-                  unit:
-                    mode === "isSlashing" || mode === "isRating"
-                      ? ""
-                      : row.unit,
-                };
-              }),
-            }
-          : item,
-      ),
-    );
-  };
-
-  const addSlashValue = (specIndex: number, rowIndex: number) => {
-    setTechnicalSpecs((prev) =>
-      prev.map((item, i) =>
-        i === specIndex
-          ? {
-              ...item,
-              specs: item.specs.map((row, r) =>
-                r === rowIndex
-                  ? {
-                      ...row,
-                      slashValues: [...row.slashValues, ""],
-                    }
-                  : row,
-              ),
-            }
-          : item,
-      ),
-    );
-  };
-
-  const removeSlashValue = (
-    specIndex: number,
-    rowIndex: number,
-    slashIndex: number,
-  ) => {
-    setTechnicalSpecs((prev) =>
-      prev.map((item, i) =>
-        i === specIndex
-          ? {
-              ...item,
-              specs: item.specs.map((row, r) =>
-                r === rowIndex
-                  ? {
-                      ...row,
-                      slashValues:
-                        row.slashValues.length > 1
-                          ? row.slashValues.filter((_, si) => si !== slashIndex)
-                          : row.slashValues,
-                    }
-                  : row,
-              ),
-            }
-          : item,
-      ),
-    );
-  };
 
   const handleImageChange = (file: File | null) => {
     if (!file) return;
@@ -1181,9 +1055,9 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
       prev.map((row, i) =>
         i === index
           ? {
-              ...row, // KEEP EXISTING DATA
-              file, // ADD NEW FILE
-            }
+            ...row, // KEEP EXISTING DATA
+            file, // ADD NEW FILE
+          }
           : row,
       ),
     );
@@ -1492,26 +1366,26 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
     multiDimensions:
       calculationType === "LIGHTS" && useArrayInput
         ? multiRows.map((row) => ({
-            itemName: row.itemName ?? "",
-            unitCost: row.unitCost ?? 0,
-            length: row.length ?? 0,
-            width: row.width ?? 0,
-            height: row.height ?? 0,
-            qtyPerCarton: row.qtyPerCarton ?? 1,
-            landed: row.landed ?? 0,
-            srp: row.srp ?? 0,
-          }))
+          itemName: row.itemName ?? "",
+          unitCost: row.unitCost ?? 0,
+          length: row.length ?? 0,
+          width: row.width ?? 0,
+          height: row.height ?? 0,
+          qtyPerCarton: row.qtyPerCarton ?? 1,
+          landed: row.landed ?? 0,
+          srp: row.srp ?? 0,
+        }))
         : null,
 
     // SINGLE DIMENSION MODE
     packaging:
       calculationType === "LIGHTS" && !useArrayInput
         ? {
-            length: length ?? 0,
-            width: width ?? 0,
-            height: height ?? 0,
-            qtyPerCarton: qtyPerCarton ?? 1,
-          }
+          length: length ?? 0,
+          width: width ?? 0,
+          height: height ?? 0,
+          qtyPerCarton: qtyPerCarton ?? 1,
+        }
         : null,
 
     // POLE MODE
@@ -1556,9 +1430,13 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
         batch.set(ref, {
           title: spec.title,
 
-          specs: spec.specs.map((row) => ({
-            ...row,
-          })),
+          specs: spec.specs
+            .filter((row) => row.specId.trim() !== "")
+            .map((row) => ({
+              specId: row.specId.trim(),
+              value: row.value?.trim() || "",
+            })),
+
 
           units: spec.units,
           isActive: true,
@@ -1624,35 +1502,46 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
         categoryTypes:
           selectedCategoryTypes.length > 0
             ? selectedCategoryTypes.map((c) => ({
-                categoryTypeId: c.id || "",
-                categoryTypeName: c.name || "",
-              }))
+              categoryTypeId: c.id || "",
+              categoryTypeName: c.name || "",
+            }))
             : [],
 
         productTypes:
           selectedProductType && selectedCategoryTypes.length > 0
             ? [
-                {
-                  productTypeId: selectedProductType.id || "",
-                  productTypeName: selectedProductType.name || "",
-                  categoryTypeId:
-                    selectedProductType.categoryTypeId ||
-                    selectedCategoryTypes[0].id ||
-                    "",
-                },
-              ]
+              {
+                productTypeId: selectedProductType.id || "",
+                productTypeName: selectedProductType.name || "",
+                categoryTypeId:
+                  selectedProductType.categoryTypeId ||
+                  selectedCategoryTypes[0].id ||
+                  "",
+              },
+            ]
             : [],
 
         technicalSpecifications: technicalSpecs.map((spec) => ({
+
           technicalSpecificationId: spec.id || "",
+
           title: spec.title,
 
           specs: spec.specs.map((row) => ({
-            ...row,
+
+            specId: row.specId || "",
+
+            value: row.value || "",
+
+            unit: row.unit || ""
+
           })),
 
-          units: spec.units,
+          units: []
+
         })),
+
+
 
         logistics: logisticsPayload,
 
@@ -1879,7 +1768,7 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
 
               <div className="max-h-[600px] overflow-y-auto pr-2 space-y-3">
                 {technicalSpecs.map((item, index) => (
-<Card key={item.id || index} className="p-3 space-y-3">
+                  <Card key={item.id || index} className="p-3 space-y-3">
 
                     <div className="flex gap-2 items-center">
                       <Input
@@ -1890,56 +1779,36 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
 
                       {item.id &&
                         classificationType &&
-                        selectedCategoryTypes.length === 1 &&
-                        selectedProductType && (
-                          <AddProductEditSelectTechnicalSpecification
-                            classificationId={classificationType.id}
-                            categoryTypeId={selectedCategoryTypes[0].id}
-                            productTypeId={selectedProductType.id}
-                            technicalSpecificationId={item.id}
-                            title={item.title}
-                            specs={item.specs}
-                            units={item.units}
-                          />
-                        )}
+                        selectedProductType &&
+                        selectedCategoryTypes.length === 1 ? (
 
-{/* ===================================================== */}
-{/* DELETE TECH SPEC — EDIT PAGE REALTIME FIX */}
-{/* CTRL+F: DELETE TECH SPEC EDIT PAGE REALTIME FIX */}
-{/* ===================================================== */}
+                        <AddProductDeleteTechnicalSpecification
+                          classificationId={classificationType.id}
+                          categoryTypeId={selectedCategoryTypes[0].id}
+                          productTypeId={selectedProductType.id}
+                          technicalSpecificationId={item.id}
+                          title={item.title}
+                          referenceID={user?.ReferenceID || ""}
+                        />
+                      ) : (
 
-{item.id &&
-classificationType &&
-selectedProductType &&
-selectedCategoryTypes.length === 1 ? (
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            disabled={technicalSpecs.length === 1}
+                            onClick={() => {
 
-<AddProductDeleteTechnicalSpecification
-  classificationId={classificationType.id}
-  categoryTypeId={selectedCategoryTypes[0].id}
-  productTypeId={selectedProductType.id}
-  technicalSpecificationId={item.id}
-  title={item.title}
-  referenceID={user?.ReferenceID || ""}
-/>
-) : (
+                              /* ✅ LOCAL DELETE FOR EDIT PAGE */
+                              setTechnicalSpecs(prev =>
+                                prev.filter((_, i) => i !== index)
+                              )
 
-  <Button
-    size="icon"
-    variant="outline"
-    disabled={technicalSpecs.length === 1}
-    onClick={() => {
+                            }}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
 
-      /* ✅ LOCAL DELETE FOR EDIT PAGE */
-      setTechnicalSpecs(prev =>
-        prev.filter((_, i) => i !== index)
-      )
-
-    }}
-  >
-    <Minus className="h-4 w-4" />
-  </Button>
-
-)}
+                      )}
 
                     </div>
 
@@ -1948,7 +1817,7 @@ selectedCategoryTypes.length === 1 ? (
                         key={rIndex}
                         className="space-y-2 border p-2 rounded"
                       >
-                        <div className="grid grid-cols-[2fr_1fr_1fr_120px_auto] gap-2 items-center">
+                        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
                           {/* SPECIFICATION NAME */}
                           <Input
                             placeholder="Specification"
@@ -1963,225 +1832,19 @@ selectedCategoryTypes.length === 1 ? (
                             }
                           />
 
-                          {/* DEFAULT MODE */}
-                          {!row.isRanging &&
-                            !row.isSlashing &&
-                            !row.isDimension &&
-                            !row.isRating && (
-                              <Input
-                                placeholder="Value"
-                                value={row.value || ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "value",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            )}
+                          <Input
+                            placeholder="Value"
+                            value={row.value}
+                            onChange={(e) =>
+                              updateSpecField(
+                                index,
+                                rIndex,
+                                "value",
+                                e.target.value,
+                              )
+                            }
+                          />
 
-                          {/* RANGING MODE */}
-                          {row.isRanging && (
-                            <div className="flex gap-1 items-center">
-                              <Input
-                                placeholder="From"
-                                value={row.rangeFrom || ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "rangeFrom",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-
-                              <span>-</span>
-
-                              <Input
-                                placeholder="To"
-                                value={row.rangeTo || ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "rangeTo",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {/* SLASHING MODE - CUSTOM FORMAT */}
-                          {row.isSlashing && (
-                            <div className="flex flex-wrap items-center gap-1">
-                              {row.slashValues.map((s, si) => (
-                                <React.Fragment key={si}>
-                                  <Input
-                                    className="w-[80px]"
-                                    placeholder="Value"
-                                    value={s}
-                                    onChange={(e) => {
-                                      const newArr = [...row.slashValues];
-                                      newArr[si] = e.target.value;
-
-                                      setTechnicalSpecs((prev) =>
-                                        prev.map((it, ii) =>
-                                          ii === index
-                                            ? {
-                                                ...it,
-                                                specs: it.specs.map((sr, ri) =>
-                                                  ri === rIndex
-                                                    ? {
-                                                        ...sr,
-                                                        slashValues: newArr,
-                                                      }
-                                                    : sr,
-                                                ),
-                                              }
-                                            : it,
-                                        ),
-                                      );
-                                    }}
-                                  />
-
-                                  {/* SHOW SLASH ONLY IF NOT LAST ITEM */}
-                                  {si < row.slashValues.length - 1 && (
-                                    <span className="px-1 font-bold">/</span>
-                                  )}
-
-                                  {/* ADD SLASH BUTTON */}
-                                  {si === row.slashValues.length - 1 && (
-                                    <div className="flex gap-1 ml-1">
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        onClick={() =>
-                                          addSlashValue(index, rIndex)
-                                        }
-                                      >
-                                        <Plus className="h-4 w-4" />
-                                      </Button>
-
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        disabled={row.slashValues.length === 1}
-                                        onClick={() =>
-                                          removeSlashValue(index, rIndex, si)
-                                        }
-                                      >
-                                        <Minus className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </React.Fragment>
-                              ))}
-                            </div>
-                          )}
-
-                          {row.isDimension && (
-                            <div className="flex flex-wrap items-center gap-1">
-                              {(row.slashValues || [""]).map((dim, di) => (
-                                <React.Fragment key={di}>
-                                  <Input
-                                    className="w-[70px]"
-                                    placeholder="Value"
-                                    value={dim}
-                                    onChange={(e) => {
-                                      const newArr = [
-                                        ...(row.slashValues || [""]),
-                                      ];
-                                      newArr[di] = e.target.value;
-
-                                      setTechnicalSpecs((prev) =>
-                                        prev.map((it, ii) =>
-                                          ii === index
-                                            ? {
-                                                ...it,
-                                                specs: it.specs.map((sr, ri) =>
-                                                  ri === rIndex
-                                                    ? {
-                                                        ...sr,
-                                                        slashValues: newArr,
-                                                      }
-                                                    : sr,
-                                                ),
-                                              }
-                                            : it,
-                                        ),
-                                      );
-                                    }}
-                                  />
-
-                                  {/* show X between values */}
-                                  {di < row.slashValues.length - 1 && (
-                                    <span className="px-1 font-bold">x</span>
-                                  )}
-
-                                  {/* add remove buttons */}
-                                  {di === row.slashValues.length - 1 && (
-                                    <div className="flex gap-1 ml-1">
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        onClick={() =>
-                                          addSlashValue(index, rIndex)
-                                        }
-                                      >
-                                        <Plus className="h-4 w-4" />
-                                      </Button>
-
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        disabled={row.slashValues.length === 1}
-                                        onClick={() =>
-                                          removeSlashValue(index, rIndex, di)
-                                        }
-                                      >
-                                        <Minus className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </React.Fragment>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* IP RATING MODE */}
-                          {row.isRating && (
-                            <div className="flex gap-1 items-center">
-                              <span>IP</span>
-                              <Input
-                                placeholder="X"
-                                value={row.ipFirst || ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "ipFirst",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                placeholder="Y"
-                                value={row.ipSecond || ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "ipSecond",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-                          )}
 
                           {/* ADD / REMOVE ROW */}
                           <div className="flex gap-1">
@@ -2203,70 +1866,8 @@ selectedCategoryTypes.length === 1 ? (
                             </Button>
                           </div>
 
-                          {/* UNIT FIELD */}
-                          {!row.isSlashing && !row.isRating && (
-                            <Input
-                              placeholder="Unit"
-                              className="w-[120px]"
-                              value={row.unit || ""}
-                              onChange={(e) =>
-                                updateSpecField(
-                                  index,
-                                  rIndex,
-                                  "unit",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          )}
                         </div>
 
-                        {/* CHECKBOX MODES */}
-                        <div className="flex gap-3 text-sm mt-1">
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              checked={row.isRanging}
-                              onChange={() =>
-                                toggleMode(index, rIndex, "isRanging")
-                              }
-                            />
-                            isRanging
-                          </label>
-
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              checked={row.isSlashing}
-                              onChange={() =>
-                                toggleMode(index, rIndex, "isSlashing")
-                              }
-                            />
-                            isSlashing
-                          </label>
-
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              checked={row.isDimension}
-                              onChange={() =>
-                                toggleMode(index, rIndex, "isDimension")
-                              }
-                            />
-                            isDimension
-                          </label>
-
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              checked={row.isRating}
-                              onChange={() =>
-                                toggleMode(index, rIndex, "isRating")
-                              }
-                            />
-                            isRating
-                          </label>
-                        </div>
                       </div>
                     ))}
                   </Card>

@@ -61,7 +61,6 @@ import AddProductDeleteSisterCompany from "@/components/add-product-delete-selec
 import AddProductDeleteClassification from "@/components/add-product-delete-select-classification-type";
 import AddProductDeleteProductType from "@/components/add-product-delete-select-category-type";
 import AddProductDeleteProduct from "@/components/add-product-delete-select-product";
-import AddProductEditSelectTechnicalSpecification from "@/components/add-product-edit-select-technical-specification";
 import AddProductDeleteTechnicalSpecification from "@/components/add-product-delete-technical-specification";
 
 /* ---------------- Types ---------------- */
@@ -299,7 +298,7 @@ export default function AddProductPage() {
     id: string;
     title: string;
     specs: SpecRow[];
-    units: string[];
+
   };
 
   const [technicalSpecs, setTechnicalSpecs] = useState<
@@ -461,36 +460,36 @@ export default function AddProductPage() {
 
         specs: (docSnap.data().specs || []).map((row: any) => ({
 
-        specId: row.specId || "",
-        unit: row.unit || "",
+          specId: row.specId || "",
+          unit: row.unit || "",
 
-        isRanging: row.isRanging || false,
-        isSlashing: row.isSlashing || false,
-        isDimension: row.isDimension || false,
-        isRating: row.isRating || false,
+          isRanging: row.isRanging || false,
+          isSlashing: row.isSlashing || false,
+          isDimension: row.isDimension || false,
+          isRating: row.isRating || false,
 
 
-        /* CLEAR VALUES BUT KEEP STRUCTURE */
+          /* CLEAR VALUES BUT KEEP STRUCTURE */
 
-        value: "",
-        rangeFrom: "",
-        rangeTo: "",
+          value: "",
+          rangeFrom: "",
+          rangeTo: "",
 
-        slashValues:
-          Array.isArray(row.slashValues)
-            ? row.slashValues.map(() => "")
-            : [""],
+          slashValues:
+            Array.isArray(row.slashValues)
+              ? row.slashValues.map(() => "")
+              : [""],
 
-        length: "",
-        width: "",
-        height: "",
+          length: "",
+          width: "",
+          height: "",
 
-        ipFirst: "",
-        ipSecond: "",
+          ipFirst: "",
+          ipSecond: "",
 
-      })),
+        })),
 
-        units: docSnap.data().units || [],
+
 
       }));
 
@@ -539,7 +538,6 @@ export default function AddProductPage() {
             ipSecond: "",
           },
         ],
-        units: [],
       },
     ]);
   };
@@ -561,34 +559,34 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-              ...item,
-              specs: [
-                ...item.specs,
-                {
-                  specId: "",
-                  unit: "",
+            ...item,
+            specs: [
+              ...item.specs,
+              {
+                specId: "",
+                unit: "",
 
-                  isRanging: false,
-                  isSlashing: false,
-                  isDimension: false,
-                  isRating: false,
+                isRanging: false,
+                isSlashing: false,
+                isDimension: false,
+                isRating: false,
 
-                  value: "",
+                value: "",
 
-                  rangeFrom: "",
-                  rangeTo: "",
+                rangeFrom: "",
+                rangeTo: "",
 
-                  slashValues: [""],
+                slashValues: [""],
 
-                  length: "",
-                  width: "",
-                  height: "",
+                length: "",
+                width: "",
+                height: "",
 
-                  ipFirst: "",
-                  ipSecond: "",
-                },
-              ],
-            }
+                ipFirst: "",
+                ipSecond: "",
+              },
+            ],
+          }
           : item,
       ),
     );
@@ -603,45 +601,23 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-              ...item,
-              specs: item.specs.map((row, r) => {
-                if (r !== rowIndex) return row;
+            ...item,
+            specs: item.specs.map((row, r) => {
+              if (r !== rowIndex) return row;
 
-                // If the clicked mode is already active → TURN EVERYTHING OFF
-                const isCurrentlyActive = row[mode];
+              // If the clicked mode is already active → TURN EVERYTHING OFF
+              const isCurrentlyActive = row[mode];
 
-                if (isCurrentlyActive) {
-                  return {
-                    ...row,
-
-                    isRanging: false,
-                    isSlashing: false,
-                    isDimension: false,
-                    isRating: false,
-
-                    // Clear special fields
-                    rangeFrom: "",
-                    rangeTo: "",
-                    slashValues: [""],
-                    length: "",
-                    width: "",
-                    height: "",
-                    ipFirst: "",
-                    ipSecond: "",
-                  };
-                }
-
-                // Otherwise activate ONLY the selected mode
+              if (isCurrentlyActive) {
                 return {
                   ...row,
 
-                  isRanging: mode === "isRanging",
-                  isSlashing: mode === "isSlashing",
-                  isDimension: mode === "isDimension",
-                  isRating: mode === "isRating",
+                  isRanging: false,
+                  isSlashing: false,
+                  isDimension: false,
+                  isRating: false,
 
-                  // Auto clear value fields when switching modes
-                  value: "",
+                  // Clear special fields
                   rangeFrom: "",
                   rangeTo: "",
                   slashValues: [""],
@@ -650,15 +626,37 @@ export default function AddProductPage() {
                   height: "",
                   ipFirst: "",
                   ipSecond: "",
-
-                  // Auto remove unit if slashing or IP Rating
-                  unit:
-                    mode === "isSlashing" || mode === "isRating"
-                      ? ""
-                      : row.unit,
                 };
-              }),
-            }
+              }
+
+              // Otherwise activate ONLY the selected mode
+              return {
+                ...row,
+
+                isRanging: mode === "isRanging",
+                isSlashing: mode === "isSlashing",
+                isDimension: mode === "isDimension",
+                isRating: mode === "isRating",
+
+                // Auto clear value fields when switching modes
+                value: "",
+                rangeFrom: "",
+                rangeTo: "",
+                slashValues: [""],
+                length: "",
+                width: "",
+                height: "",
+                ipFirst: "",
+                ipSecond: "",
+
+                // Auto remove unit if slashing or IP Rating
+                unit:
+                  mode === "isSlashing" || mode === "isRating"
+                    ? ""
+                    : row.unit,
+              };
+            }),
+          }
           : item,
       ),
     );
@@ -669,12 +667,12 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-              ...item,
-              specs:
-                item.specs.length > 1
-                  ? item.specs.filter((_, r) => r !== rowIndex)
-                  : item.specs,
-            }
+            ...item,
+            specs:
+              item.specs.length > 1
+                ? item.specs.filter((_, r) => r !== rowIndex)
+                : item.specs,
+          }
           : item,
       ),
     );
@@ -700,11 +698,11 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-              ...item,
-              specs: item.specs.map((row, r) =>
-                r === rowIndex ? { ...row, [field]: value } : row,
-              ),
-            }
+            ...item,
+            specs: item.specs.map((row, r) =>
+              r === rowIndex ? { ...row, [field]: value } : row,
+            ),
+          }
           : item,
       ),
     );
@@ -797,48 +795,71 @@ export default function AddProductPage() {
   /* ===== SAVE EDITABLE SPECS BACK TO PRODUCT TYPE COLLECTION ===== */
 
   const syncSpecsToProductType = async () => {
+
     if (!classificationType) return;
     if (!selectedProductType) return;
     if (selectedCategoryTypes.length !== 1) return;
 
     try {
-      const categoryTypeId = selectedCategoryTypes[0].id;
 
-      const specsRef = collection(
-        db,
-        "classificationTypes",
-        classificationType.id,
-        "categoryTypes",
-        categoryTypeId,
-        "productTypes",
-        selectedProductType.id,
-        "technicalSpecifications",
+    const categoryTypeId = selectedCategoryTypes[0].id;
+
+    const specsRef = collection(
+      db,
+      "classificationTypes",
+      classificationType.id,
+      "categoryTypes",
+      categoryTypeId,
+      "productTypes",
+      selectedProductType.id,
+      "technicalSpecifications",
+    );
+
+    const existingSnapshot = await getDocs(specsRef);
+
+    const batch = writeBatch(db);
+
+    technicalSpecs.forEach((spec) => {
+
+      if (!spec.title.trim()) return;
+
+      // FIND EXISTING DOC WITH SAME TITLE
+      const existingDoc = existingSnapshot.docs.find(
+        (d) => d.data().title === spec.title
       );
 
-      const batch = writeBatch(db);
+      const ref = existingDoc
+        ? doc(specsRef, existingDoc.id)
+        : doc(specsRef);
 
-      technicalSpecs.forEach((spec) => {
-        const ref = spec.id ? doc(specsRef, spec.id) : doc(specsRef);
+      batch.set(ref, {
 
-        batch.set(ref, {
-          title: spec.title,
+        title: spec.title,
 
-          specs: spec.specs.map((row) => ({
-            ...row
+        specs: spec.specs
+          .filter((row) => row.specId.trim() !== "")
+          .map((row) => ({
+            specId: row.specId.trim(),
           })),
-          units: spec.units,
-          isActive: true,
-          updatedAt: serverTimestamp(),
-        });
+
+        isActive: true,
+        updatedAt: serverTimestamp(),
+
       });
 
-      await batch.commit();
+    });
 
-      toast.success("Technical specifications saved successfully");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to save technical specifications");
-    }
+    await batch.commit();
+
+    toast.success("Technical specifications saved successfully");
+
+  } catch (error) {
+
+    console.error(error);
+    toast.error("Failed to save technical specifications");
+
+  }
+
   };
 
   /* ================= NUMBER FORMATTERS ================= */
@@ -950,16 +971,16 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-              ...item,
-              specs: item.specs.map((row, r) =>
-                r === rowIndex
-                  ? {
-                      ...row,
-                      slashValues: [...row.slashValues, ""],
-                    }
-                  : row,
-              ),
-            }
+            ...item,
+            specs: item.specs.map((row, r) =>
+              r === rowIndex
+                ? {
+                  ...row,
+                  slashValues: [...row.slashValues, ""],
+                }
+                : row,
+            ),
+          }
           : item,
       ),
     );
@@ -974,19 +995,19 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-              ...item,
-              specs: item.specs.map((row, r) =>
-                r === rowIndex
-                  ? {
-                      ...row,
-                      slashValues:
-                        row.slashValues.length > 1
-                          ? row.slashValues.filter((_, si) => si !== slashIndex)
-                          : row.slashValues,
-                    }
-                  : row,
-              ),
-            }
+            ...item,
+            specs: item.specs.map((row, r) =>
+              r === rowIndex
+                ? {
+                  ...row,
+                  slashValues:
+                    row.slashValues.length > 1
+                      ? row.slashValues.filter((_, si) => si !== slashIndex)
+                      : row.slashValues,
+                }
+                : row,
+            ),
+          }
           : item,
       ),
     );
@@ -1466,12 +1487,12 @@ export default function AddProductPage() {
 
         productTypes: selectedProductType
           ? [
-              {
-                productTypeId: selectedProductType.id,
-                productTypeName: selectedProductType.name,
-                categoryTypeId: selectedProductType.categoryTypeId,
-              },
-            ]
+            {
+              productTypeId: selectedProductType.id,
+              productTypeName: selectedProductType.name,
+              categoryTypeId: selectedProductType.categoryTypeId,
+            },
+          ]
           : [],
 
         categoryTypes: selectedCategoryTypes.map((c) => ({
@@ -1479,16 +1500,20 @@ export default function AddProductPage() {
           categoryTypeName: c.name,
         })),
 
-        technicalSpecifications: technicalSpecs.map((spec) => ({
-          technicalSpecificationId: spec.id || "",
-          title: spec.title,
+        technicalSpecifications: technicalSpecs
+          .filter((spec) => spec.title.trim() !== "")
+          .map((spec) => ({
+            technicalSpecificationId: spec.id || "",
+            title: spec.title,
 
-          specs: spec.specs.map((row) => ({
-            ...row
-          })),
+    specs: spec.specs
+      .filter((row) => row.specId.trim() !== "")
+      .map((row) => ({
+        specId: row.specId.trim(),
+        value: row.value?.trim() || "",
+      })),
+  })),
 
-          units: spec.units,
-        })),
 
         /* ================= PRICING / LOGISTICS ================= */
         logistics: logisticsPayload,
@@ -1720,25 +1745,11 @@ export default function AddProductPage() {
                         onChange={(e) => updateTitle(index, e.target.value)}
                       />
 
-                      {item.id &&
-                        classificationType &&
-                        selectedCategoryTypes.length === 1 &&
-                        selectedProductType && (
-                          <AddProductEditSelectTechnicalSpecification
-                            classificationId={classificationType.id}
-                            categoryTypeId={selectedCategoryTypes[0].id}
-                            productTypeId={selectedProductType.id}
-                            technicalSpecificationId={item.id}
-                            title={item.title}
-                            specs={item.specs}
-                            units={item.units}
-                          />
-                        )}
 
                       {item.id &&
-                      classificationType &&
-                      selectedProductType &&
-                      selectedCategoryTypes.length === 1 ? (
+                        classificationType &&
+                        selectedProductType &&
+                        selectedCategoryTypes.length === 1 ? (
                         <AddProductDeleteTechnicalSpecification
                           classificationId={classificationType.id}
                           categoryTypeId={selectedCategoryTypes[0].id}
@@ -1779,24 +1790,19 @@ export default function AddProductPage() {
                             }
                           />
 
-                          {/* DEFAULT MODE */}
-                          {!row.isRanging &&
-                            !row.isSlashing &&
-                            !row.isDimension &&
-                            !row.isRating && (
-                              <Input
-                                placeholder="Value"
-                                value={row.value ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "value",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            )}
+                          <Input
+                            placeholder="Value"
+                            value={row.value ?? ""}
+                            onChange={(e) =>
+                              updateSpecField(
+                                index,
+                                rIndex,
+                                "value",
+                                e.target.value,
+                              )
+                            }
+                          />
+
 
                           {/* RANGING MODE */}
                           {row.isRanging && (
@@ -1848,16 +1854,16 @@ export default function AddProductPage() {
                                         prev.map((it, ii) =>
                                           ii === index
                                             ? {
-                                                ...it,
-                                                specs: it.specs.map((sr, ri) =>
-                                                  ri === rIndex
-                                                    ? {
-                                                        ...sr,
-                                                        slashValues: newArr,
-                                                      }
-                                                    : sr,
-                                                ),
-                                              }
+                                              ...it,
+                                              specs: it.specs.map((sr, ri) =>
+                                                ri === rIndex
+                                                  ? {
+                                                    ...sr,
+                                                    slashValues: newArr,
+                                                  }
+                                                  : sr,
+                                              ),
+                                            }
                                             : it,
                                         ),
                                       );
@@ -1992,69 +1998,6 @@ export default function AddProductPage() {
                             </Button>
                           </div>
 
-                          {/* UNIT FIELD - ALWAYS LAST */}
-                          {!row.isSlashing && !row.isRating && (
-                            <Input
-                              placeholder="Unit"
-                              className="w-[120px]"
-                              value={row.unit ?? ""}
-                              onChange={(e) =>
-                                updateSpecField(
-                                  index,
-                                  rIndex,
-                                  "unit",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          )}
-                        </div>
-
-                        {/* CHECKBOX MODES */}
-                        <div className="flex gap-3 text-sm mt-1">
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              checked={row.isRanging}
-                              onChange={() =>
-                                toggleMode(index, rIndex, "isRanging")
-                              }
-                            />
-                            isRanging
-                          </label>
-
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              checked={row.isSlashing}
-                              onChange={() =>
-                                toggleMode(index, rIndex, "isSlashing")
-                              }
-                            />
-                            isSlashing
-                          </label>
-
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              checked={row.isDimension}
-                              onChange={() =>
-                                toggleMode(index, rIndex, "isDimension")
-                              }
-                            />
-                            isDimension
-                          </label>
-
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              checked={row.isRating}
-                              onChange={() =>
-                                toggleMode(index, rIndex, "isRating")
-                              }
-                            />
-                            isRating
-                          </label>
                         </div>
                       </div>
                     ))}
