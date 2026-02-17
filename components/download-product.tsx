@@ -3,7 +3,7 @@ import *as React from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Download } from "lucide-react";
-import *as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import saveAs from "file-saver";
 type Props = { products: any[] };
@@ -11,11 +11,11 @@ export default function DownloadProduct({ products }: Props) {
   const [open, setOpen] = React.useState(false);
   const getSpecValue = (spec: any) => {
     if (!spec) return "";
-    if (spec.isRating) return `IP${spec.ipFirst}${spec.ipSecond}`;
-    if (spec.isRanging) return `${spec.rangeFrom}-${spec.rangeTo}`;
-    if (spec.isDimension) return `${spec.length} x ${spec.width} x ${spec.height}`;
-    if (spec.isSlashing) return spec.slashValues?.join(" / ");
     return spec.value || "";
+  };
+  const urlToBuffer = async (url: string) => {
+    const res = await fetch(url);
+    return await res.arrayBuffer();
   };
   const handleDownload = async () => {
     if (!products.length) return;
@@ -40,67 +40,80 @@ export default function DownloadProduct({ products }: Props) {
           g.specs?.forEach((s: any) => specGroups.get(g.title)!.add(s.specId));
         });
       });
-      const baseCols = ["Model No.", "Supplier Company"];
-      const logisticsCols = ["Unit Cost", "Landed Cost", "SRP", "MOQ", "Warranty"];
+      let maxGallery = 0;
+      groupProducts.forEach(p => {
+        if (p.gallery?.length > maxGallery) maxGallery = p.gallery.length;
+      });
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Products");
       const header1: any[] = [];
       const header2: any[] = [];
-      const merges: any[] = [];
-      let colIndex = 0;
-      baseCols.forEach(col => {
-        header1.push(col);
-        header2.push("");
-        merges.push({ s: { r: 0, c: colIndex }, e: { r: 1, c: colIndex } });
-        colIndex++;
-      });
-      specGroups.forEach((specs, group) => {
-        const start = colIndex;
-        const specArray = Array.from(specs);
-        header1.push(group);
-        header2.push(specArray[0] || "");
-        colIndex++;
-        for (let i = 1; i < specArray.length; i++) {
+      header1.push("Model No."); header2.push("");
+      header1.push("Supplier Company"); header2.push("");
+      header1.push("Main Image"); header2.push("");
+      const galleryStart = header1.length + 1;
+      if (maxGallery > 0) {
+        header1.push("Gallery");
+        header2.push("Image 1");
+        for (let i = 1; i < maxGallery; i++) {
           header1.push("");
-          header2.push(specArray[i]);
-          colIndex++;
+          header2.push(`Image ${i + 1}`);
         }
-        merges.push({ s: { r: 0, c: start }, e: { r: 0, c: colIndex - 1 } });
+      }
+      specGroups.forEach((specs, group) => {
+        const arr = Array.from(specs);
+        header1.push(group);
+        header2.push(arr[0] || "");
+        for (let i = 1; i < arr.length; i++) {
+          header1.push("");
+          header2.push(arr[i]);
+        }
       });
-      const logStart = colIndex;
+      const logisticsStart = header1.length + 1;
       header1.push("Pricing / Logistics");
+      const logisticsCols = ["Unit Cost", "Landed Cost", "SRP", "MOQ", "Warranty"];
       header2.push(logisticsCols[0]);
-      colIndex++;
       for (let i = 1; i < logisticsCols.length; i++) {
         header1.push("");
         header2.push(logisticsCols[i]);
-        colIndex++;
       }
-      merges.push({ s: { r: 0, c: logStart }, e: { r: 0, c: colIndex - 1 } });
-      const dataRows = groupProducts.map(p => {
+      ws.addRow(header1);
+      ws.addRow(header2);
+      if (maxGallery > 0) ws.mergeCells(1, galleryStart, 1, galleryStart + maxGallery - 1);
+      ws.mergeCells(1, logisticsStart, 1, logisticsStart + logisticsCols.length - 1);
+      for (let r = 0; r < groupProducts.length; r++) {
+        const p = groupProducts[r];
         const row: any[] = [];
         row.push(p.productName || "");
         row.push(p.supplier?.company || "");
+        row.push("");
+        for (let i = 0; i < maxGallery; i++) row.push("");
         specGroups.forEach((specs, group) => {
-          const specArray = Array.from(specs);
-          specArray.forEach(specId => {
-            const groupData = p.technicalSpecifications?.find((g: any) => g.title === group);
-            const spec = groupData?.specs?.find((s: any) => s.specId === specId);
-            row.push(getSpecValue(spec));
+          Array.from(specs).forEach(specId => {
+            const g = p.technicalSpecifications?.find((x: any) => x.title === group);
+            const s = g?.specs?.find((x: any) => x.specId === specId);
+            row.push(getSpecValue(s));
           });
         });
-        row.push(
-          p.logistics?.unitCost || "",
-          p.logistics?.landedCost || "",
-          p.logistics?.srp || "",
-          p.logistics?.moq || "",
-          `${p.logistics?.warranty?.value || ""} ${p.logistics?.warranty?.unit || ""}`
-        );
-        return row;
-      });
-      const ws = XLSX.utils.aoa_to_sheet([header1, header2, ...dataRows]);
-      ws["!merges"] = merges;
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Products");
-      const buffer = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+        row.push(p.logistics?.unitCost || "", p.logistics?.landedCost || "", p.logistics?.srp || "", p.logistics?.moq || "", `${p.logistics?.warranty?.value || ""} ${p.logistics?.warranty?.unit || ""}`);
+        const excelRow = ws.addRow(row);
+        excelRow.height = 80;
+        if (p.mainImage?.url) {
+          const buffer = await urlToBuffer(p.mainImage.url);
+          const ext = p.mainImage.url.split(".").pop();
+          const img = wb.addImage({ buffer, extension: ext });
+          ws.addImage(img, { tl: { col: 2, row: r + 3 }, ext: { width: 80, height: 80 } });
+        }
+        if (p.gallery?.length) {
+          for (let g = 0; g < p.gallery.length; g++) {
+            const buffer = await urlToBuffer(p.gallery[g].url);
+            const ext = p.gallery[g].url.split(".").pop();
+            const img = wb.addImage({ buffer, extension: ext });
+            ws.addImage(img, { tl: { col: 3 + g, row: r + 3 }, ext: { width: 80, height: 80 } });
+          }
+        }
+      }
+      const buffer = await wb.xlsx.writeBuffer();
       zip.folder(sister)!.folder(classification)!.folder(category)!.folder(productType)!.file("Products.xlsx", buffer);
     }
     const blob = await zip.generateAsync({ type: "blob" });
