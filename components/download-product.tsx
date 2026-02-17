@@ -14,7 +14,7 @@ export default function DownloadProduct({ products }: Props) {
     return spec.value || "";
   };
   const urlToBuffer = async (url: string) => {
-    const res = await fetch(url);
+    const res = await fetch(url, { mode: "cors" });
     return await res.arrayBuffer();
   };
   const handleDownload = async () => {
@@ -53,20 +53,16 @@ export default function DownloadProduct({ products }: Props) {
       header1.push("Main Image"); header2.push("");
       const galleryStart = header1.length + 1;
       if (maxGallery > 0) {
-        header1.push("Gallery");
-        header2.push("Image 1");
+        header1.push("Gallery"); header2.push("Image 1");
         for (let i = 1; i < maxGallery; i++) {
-          header1.push("");
-          header2.push(`Image ${i + 1}`);
+          header1.push(""); header2.push(`Image ${i + 1}`);
         }
       }
       specGroups.forEach((specs, group) => {
         const arr = Array.from(specs);
-        header1.push(group);
-        header2.push(arr[0] || "");
+        header1.push(group); header2.push(arr[0] || "");
         for (let i = 1; i < arr.length; i++) {
-          header1.push("");
-          header2.push(arr[i]);
+          header1.push(""); header2.push(arr[i]);
         }
       });
       const logisticsStart = header1.length + 1;
@@ -74,11 +70,11 @@ export default function DownloadProduct({ products }: Props) {
       const logisticsCols = ["Unit Cost", "Landed Cost", "SRP", "MOQ", "Warranty"];
       header2.push(logisticsCols[0]);
       for (let i = 1; i < logisticsCols.length; i++) {
-        header1.push("");
-        header2.push(logisticsCols[i]);
+        header1.push(""); header2.push(logisticsCols[i]);
       }
       ws.addRow(header1);
       ws.addRow(header2);
+      ws.columns?.forEach(col => { col.width = 18; });
       if (maxGallery > 0) ws.mergeCells(1, galleryStart, 1, galleryStart + maxGallery - 1);
       ws.mergeCells(1, logisticsStart, 1, logisticsStart + logisticsCols.length - 1);
       for (let r = 0; r < groupProducts.length; r++) {
@@ -87,7 +83,7 @@ export default function DownloadProduct({ products }: Props) {
         row.push(p.productName || "");
         row.push(p.supplier?.company || "");
         row.push("");
-        for (let i = 0; i < maxGallery; i++) row.push("");
+        for (let i = 0; i < maxGallery; i++)row.push("");
         specGroups.forEach((specs, group) => {
           Array.from(specs).forEach(specId => {
             const g = p.technicalSpecifications?.find((x: any) => x.title === group);
@@ -97,19 +93,19 @@ export default function DownloadProduct({ products }: Props) {
         });
         row.push(p.logistics?.unitCost || "", p.logistics?.landedCost || "", p.logistics?.srp || "", p.logistics?.moq || "", `${p.logistics?.warranty?.value || ""} ${p.logistics?.warranty?.unit || ""}`);
         const excelRow = ws.addRow(row);
-        excelRow.height = 80;
+        excelRow.height = 90;
         if (p.mainImage?.url) {
           const buffer = await urlToBuffer(p.mainImage.url);
           const ext = p.mainImage.url.split(".").pop();
           const img = wb.addImage({ buffer, extension: ext });
-          ws.addImage(img, { tl: { col: 2, row: r + 3 }, ext: { width: 80, height: 80 } });
+          ws.addImage(img, { tl: { col: 2.2, row: r + 3.15 }, ext: { width: 75, height: 75 } });
         }
         if (p.gallery?.length) {
           for (let g = 0; g < p.gallery.length; g++) {
             const buffer = await urlToBuffer(p.gallery[g].url);
             const ext = p.gallery[g].url.split(".").pop();
             const img = wb.addImage({ buffer, extension: ext });
-            ws.addImage(img, { tl: { col: 3 + g, row: r + 3 }, ext: { width: 80, height: 80 } });
+            ws.addImage(img, { tl: { col: 3 + g + 0.2, row: r + 3.15 }, ext: { width: 75, height: 75 } });
           }
         }
       }
