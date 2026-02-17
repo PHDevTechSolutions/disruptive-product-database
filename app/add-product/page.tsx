@@ -270,7 +270,7 @@ export default function AddProductPage() {
     isRanging: boolean;
     isSlashing: boolean;
     isDimension: boolean;
-    isIPRating: boolean;
+    isRating: boolean;
 
     // Default
     value: string;
@@ -301,18 +301,7 @@ export default function AddProductPage() {
 
   const [technicalSpecs, setTechnicalSpecs] = useState<
     TechnicalSpecification[]
-  >([]);
-  const isInitialSpecsLoadRef = React.useRef(true);
-  const technicalSpecsStructureRef = React.useRef<{
-    [productTypeId: string]: TechnicalSpecification[];
-  }>({});
-  const technicalSpecsCacheRef = React.useRef<{
-    [productTypeId: string]: TechnicalSpecification[];
-  }>({});
-  const isSavingSpecsRef = React.useRef(false);
-  const [productTechnicalSpecs, setProductTechnicalSpecs] = useState<
-    TechnicalSpecification[]
-  >([]);
+    >([]);
 
   const [productTypeSearch, setProductTypeSearch] = useState("");
   const [newProductType, setNewProductType] = useState("");
@@ -441,161 +430,51 @@ export default function AddProductPage() {
 
     const categoryTypeId = selectedCategoryTypes[0].id;
 
-const q = query(
-  collection(
-    db,
-    "classificationTypes",
-    classificationType.id,
-    "categoryTypes",
-    categoryTypeId,
-    "productTypes",
-    selectedProductType.id,
-    "technicalSpecifications",
-  ),
-);
-
-const unsubscribe = onSnapshot(q, (snapshot) => {
-  // ✅ PREVENT LOOP DURING SAVE
-  if (isSavingSpecsRef.current) return;
-
-const list: TechnicalSpecification[] = snapshot.docs
-  .filter(docSnap => docSnap.data().isActive !== false)
-  .map((docSnap) => {
-  const firestoreData = docSnap.data();
-
-  // 🔥 CHECK CACHE FIRST
-  const cached =
-    selectedProductType &&
-    technicalSpecsCacheRef.current[selectedProductType.id]?.find(
-      (s) => s.id === docSnap.id,
+    const q = query(
+      collection(
+        db,
+        "classificationTypes",
+        classificationType.id,
+        "categoryTypes",
+        categoryTypeId,
+        "productTypes",
+        selectedProductType.id,
+        "technicalSpecifications",
+      ),
+      where("isActive", "==", true),
     );
 
-if (cached) {
-  const firestoreSpecs = firestoreData.specs || [];
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        title: docSnap.data().title as string,
+        specs: (docSnap.data().specs || []).map((row: any) => ({
+          specId: row.specId || "",
+          unit: row.unit || "",
 
-  // ✅ KEEP EXISTING VALUES
-  const mergedSpecs = firestoreSpecs.map((fsRow: any) => {
-    const existing = cached.specs.find(
-      (c) => c.specId === fsRow.specId
-    );
+          isRanging: row.isRanging || false,
+          isSlashing: row.isSlashing || false,
+          isDimension: row.isDimension || false,
+          isRating: row.isRating || false,
 
-    return existing
-      ? existing // keep user input
-      : {
-          specId: fsRow.specId || "",
-          unit: fsRow.unit || "",
+          value: row.value || "",
+          rangeFrom: row.rangeFrom || "",
+          rangeTo: row.rangeTo || "",
 
-          isRanging: fsRow.isRanging || false,
-          isSlashing: fsRow.isSlashing || false,
-          isDimension: fsRow.isDimension || false,
-          isIPRating: fsRow.isIPRating || false,
+          slashValues: row.slashValues || [""],
 
-          value: "",
-          rangeFrom: "",
-          rangeTo: "",
-          slashValues: [""],
-          length: "",
-          width: "",
-          height: "",
-          ipFirst: "",
-          ipSecond: "",
-        };
-  });
+          length: row.length || "",
+          width: row.width || "",
+          height: row.height || "",
 
-  return {
-    ...cached,
-    specs: mergedSpecs,
-  };
-}
+          ipFirst: row.ipFirst || "",
+          ipSecond: row.ipSecond || "",
+        })),
+        units: (docSnap.data().units || []) as string[],
+      }));
 
-
-  // ✅ NEW OR STRUCTURE CHANGE → use firestore structure
-  return {
-    id: docSnap.id,
-
-    title: firestoreData.title || "",
-
-    specs: (firestoreData.specs || []).map((row: any) => ({
-      specId: row.specId || "",
-      unit: row.unit || "",
-
-      isRanging: row.isRanging || false,
-      isSlashing: row.isSlashing || false,
-      isDimension: row.isDimension || false,
-      isIPRating: row.isIPRating || false,
-
-      // ❌ DO NOT LOAD VALUE REALTIME
-      value: "",
-
-      rangeFrom: "",
-      rangeTo: "",
-
-      slashValues:
-        Array.isArray(row.slashValues) && row.slashValues.length > 0
-          ? row.slashValues.map(() => "")
-          : [""],
-
-      length: "",
-      width: "",
-      height: "",
-
-      ipFirst: "",
-      ipSecond: "",
-    })),
-
-    units: firestoreData.units || [],
-  };
-});
-
-
-  // ✅ CREATE DEFAULT IF EMPTY
-  if (list.length === 0) {
-    list.push({
-      id: "",
-
-      title: "",
-
-      specs: [
-        {
-          specId: "",
-
-          unit: "",
-
-          isRanging: false,
-          isSlashing: false,
-          isDimension: false,
-          isIPRating: false,
-
-          value: "",
-
-          rangeFrom: "",
-          rangeTo: "",
-
-          slashValues: [""],
-
-          length: "",
-          width: "",
-          height: "",
-
-          ipFirst: "",
-          ipSecond: "",
-        },
-      ],
-
-      units: [],
+      setTechnicalSpecs(list);
     });
-  }
-
-  // ✅ LOAD FROM CACHE IF EXISTS
-// ✅ ALWAYS USE FIRESTORE SNAPSHOT
-setTechnicalSpecs(list);
-
-// ✅ UPDATE CACHE TO MATCH FIRESTORE
-if (selectedProductType) {
-  technicalSpecsCacheRef.current[selectedProductType.id] =
-    JSON.parse(JSON.stringify(list));
-}
-  });
 
     return () => unsubscribe();
   }, [
@@ -605,53 +484,39 @@ if (selectedProductType) {
   ]);
 
   const addTechnicalSpec = () => {
-    const newSpec: TechnicalSpecification = {
-      id: "",
+    setTechnicalSpecs((prev) => [
+      ...prev,
+      {
+        id: "",
+        title: "",
+        specs: [
+          {
+            specId: "",
+            unit: "",
 
-      title: "",
+            isRanging: false,
+            isSlashing: false,
+            isDimension: false,
+            isRating: false,
 
-      specs: [
-        {
-          specId: "",
+            value: "",
 
-          unit: "",
+            rangeFrom: "",
+            rangeTo: "",
 
-          isRanging: false,
-          isSlashing: false,
-          isDimension: false,
-          isIPRating: false,
+            slashValues: [""],
 
-          value: "",
+            length: "",
+            width: "",
+            height: "",
 
-          rangeFrom: "",
-          rangeTo: "",
-
-          slashValues: [""],
-
-          length: "",
-          width: "",
-          height: "",
-
-          ipFirst: "",
-          ipSecond: "",
-        },
-      ],
-
-      units: [],
-    };
-
-    setTechnicalSpecs((prev) => {
-      const updated = [...prev, newSpec];
-
-      // ✅ update cache also
-      if (selectedProductType) {
-        technicalSpecsCacheRef.current[selectedProductType.id] = JSON.parse(
-          JSON.stringify(updated),
-        );
-      }
-
-      return updated;
-    });
+            ipFirst: "",
+            ipSecond: "",
+          },
+        ],
+        units: [],
+      },
+    ]);
   };
 
   const removeTechnicalSpec = (index: number) => {
@@ -681,7 +546,7 @@ if (selectedProductType) {
                   isRanging: false,
                   isSlashing: false,
                   isDimension: false,
-                  isIPRating: false,
+                  isRating: false,
 
                   value: "",
 
@@ -707,7 +572,7 @@ if (selectedProductType) {
   const toggleMode = (
     specIndex: number,
     rowIndex: number,
-    mode: "isRanging" | "isSlashing" | "isDimension" | "isIPRating",
+    mode: "isRanging" | "isSlashing" | "isDimension" | "isRating",
   ) => {
     setTechnicalSpecs((prev) =>
       prev.map((item, i) =>
@@ -727,7 +592,7 @@ if (selectedProductType) {
                     isRanging: false,
                     isSlashing: false,
                     isDimension: false,
-                    isIPRating: false,
+                    isRating: false,
 
                     // Clear special fields
                     rangeFrom: "",
@@ -748,7 +613,7 @@ if (selectedProductType) {
                   isRanging: mode === "isRanging",
                   isSlashing: mode === "isSlashing",
                   isDimension: mode === "isDimension",
-                  isIPRating: mode === "isIPRating",
+                  isRating: mode === "isRating",
 
                   // Auto clear value fields when switching modes
                   value: "",
@@ -763,7 +628,7 @@ if (selectedProductType) {
 
                   // Auto remove unit if slashing or IP Rating
                   unit:
-                    mode === "isSlashing" || mode === "isIPRating"
+                    mode === "isSlashing" || mode === "isRating"
                       ? ""
                       : row.unit,
                 };
@@ -806,8 +671,8 @@ if (selectedProductType) {
       | "ipSecond",
     value: string,
   ) => {
-    setTechnicalSpecs((prev) => {
-      const updated = prev.map((item, i) =>
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
         i === specIndex
           ? {
               ...item,
@@ -816,17 +681,8 @@ if (selectedProductType) {
               ),
             }
           : item,
-      );
-
-      // ✅ SAVE TO CACHE
-      if (selectedProductType) {
-        technicalSpecsCacheRef.current[selectedProductType.id] = JSON.parse(
-          JSON.stringify(updated),
-        );
-      }
-
-      return updated;
-    });
+      ),
+    );
   };
 
   useEffect(() => {
@@ -936,35 +792,24 @@ if (selectedProductType) {
 
       const batch = writeBatch(db);
 
-      technicalSpecs.forEach((spec: TechnicalSpecification) => {
+      technicalSpecs.forEach((spec) => {
         const ref = spec.id ? doc(specsRef, spec.id) : doc(specsRef);
 
         batch.set(ref, {
           title: spec.title,
 
-          specs: spec.specs.map((row: SpecRow) => ({
-            ...row,
+          specs: spec.specs.map((row) => ({
+            ...row
           })),
-
           units: spec.units,
           isActive: true,
           updatedAt: serverTimestamp(),
         });
       });
 
-      isSavingSpecsRef.current = true;
       await batch.commit();
 
-      setProductTechnicalSpecs(JSON.parse(JSON.stringify(technicalSpecs)));
       toast.success("Technical specifications saved successfully");
-
-      /* ===== CLEAR VALUES IN UI ONLY (KEEP STRUCTURE) ===== */
-      /* ===== KEEP VALUES AFTER SAVE ===== */
-      setTechnicalSpecs(JSON.parse(JSON.stringify(technicalSpecs)));
-
-      setTimeout(() => {
-        isSavingSpecsRef.current = false;
-      }, 500);
     } catch (error) {
       console.error(error);
       toast.error("Failed to save technical specifications");
@@ -1076,8 +921,8 @@ if (selectedProductType) {
   };
 
   const addSlashValue = (specIndex: number, rowIndex: number) => {
-    setTechnicalSpecs((prev) => {
-      const updated = prev.map((item, i) =>
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
         i === specIndex
           ? {
               ...item,
@@ -1091,17 +936,8 @@ if (selectedProductType) {
               ),
             }
           : item,
-      );
-
-      // ✅ SAVE STRUCTURE
-      if (selectedProductType) {
-        technicalSpecsStructureRef.current[selectedProductType.id] = JSON.parse(
-          JSON.stringify(updated),
-        );
-      }
-
-      return updated;
-    });
+      ),
+    );
   };
 
   const removeSlashValue = (
@@ -1109,8 +945,8 @@ if (selectedProductType) {
     rowIndex: number,
     slashIndex: number,
   ) => {
-    setTechnicalSpecs((prev) => {
-      const updated = prev.map((item, i) =>
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
         i === specIndex
           ? {
               ...item,
@@ -1127,17 +963,8 @@ if (selectedProductType) {
               ),
             }
           : item,
-      );
-
-      // ✅ SAVE STRUCTURE
-      if (selectedProductType) {
-        technicalSpecsStructureRef.current[selectedProductType.id] = JSON.parse(
-          JSON.stringify(updated),
-        );
-      }
-
-      return updated;
-    });
+      ),
+    );
   };
 
   const handleImageChange = (file: File | null) => {
@@ -1482,7 +1309,7 @@ if (selectedProductType) {
     unitCost:
       calculationType === "LIGHTS" && useArrayInput
         ? totalMultiUnitCost
-        : (unitCost ?? 0),
+        : unitCost ?? 0,
 
     useArrayInput: useArrayInput,
 
@@ -1490,30 +1317,31 @@ if (selectedProductType) {
     multiDimensions:
       calculationType === "LIGHTS" && useArrayInput
         ? multiRows.map((row) => ({
-            itemName: row.itemName ?? "",
-            unitCost: row.unitCost ?? 0,
-            length: row.length ?? 0,
-            width: row.width ?? 0,
-            height: row.height ?? 0,
-            qtyPerCarton: row.qtyPerCarton ?? 1,
-            landed: row.landed ?? 0,
-            srp: row.srp ?? 0,
-          }))
+          itemName: row.itemName ?? "",
+          unitCost: row.unitCost ?? 0,
+          length: row.length ?? 0,
+          width: row.width ?? 0,
+          height: row.height ?? 0,
+          qtyPerCarton: row.qtyPerCarton ?? 1,
+          landed: row.landed ?? 0,
+          srp: row.srp ?? 0,
+        }))
         : null,
 
     // SINGLE DIMENSION MODE
     packaging:
       calculationType === "LIGHTS" && !useArrayInput
         ? {
-            length: length ?? 0,
-            width: width ?? 0,
-            height: height ?? 0,
-            qtyPerCarton: qtyPerCarton ?? 1,
-          }
+          length: length ?? 0,
+          width: width ?? 0,
+          height: height ?? 0,
+          qtyPerCarton: qtyPerCarton ?? 1,
+        }
         : null,
 
     // POLE MODE
-    qtyPerContainer: calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
+    qtyPerContainer:
+      calculationType === "POLE" ? qtyPerContainer ?? 1 : null,
 
     landedCost: landedCost ?? 0,
     srp: srp ?? 0,
@@ -1526,6 +1354,7 @@ if (selectedProductType) {
       unit: warrantyUnit || "Years",
     },
   };
+
 
   /* ===== GENERATE UNIQUE PRODUCT REFERENCE ID ===== */
   const generateProductReferenceID = async () => {
@@ -1594,12 +1423,6 @@ if (selectedProductType) {
       // MAIN IMAGE
       const newProductReferenceID = await generateProductReferenceID();
 
-      // ✅ CLONE CURRENT TECH SPECS BEFORE THEY WERE CLEARED
-      /* ✅ USE SAVED PRODUCT SPECS, NOT CLEARED UI */
-      const specsToSave = productTechnicalSpecs.length
-        ? JSON.parse(JSON.stringify(productTechnicalSpecs))
-        : JSON.parse(JSON.stringify(technicalSpecs));
-
       const productRef = await addDoc(collection(db, "products"), {
         productReferenceID: newProductReferenceID,
 
@@ -1631,18 +1454,16 @@ if (selectedProductType) {
           categoryTypeName: c.name,
         })),
 
-        technicalSpecifications: specsToSave.map(
-          (spec: TechnicalSpecification) => ({
-            technicalSpecificationId: spec.id || "",
-            title: spec.title,
+        technicalSpecifications: technicalSpecs.map((spec) => ({
+          technicalSpecificationId: spec.id || "",
+          title: spec.title,
 
-            specs: spec.specs.map((row) => ({
-              ...row,
-            })),
+          specs: spec.specs.map((row) => ({
+            ...row
+          })),
 
-            units: spec.units,
-          }),
-        ),
+          units: spec.units,
+        })),
 
         /* ================= PRICING / LOGISTICS ================= */
         logistics: logisticsPayload,
@@ -1937,7 +1758,7 @@ if (selectedProductType) {
                           {!row.isRanging &&
                             !row.isSlashing &&
                             !row.isDimension &&
-                            !row.isIPRating && (
+                            !row.isRating && (
                               <Input
                                 placeholder="Value"
                                 value={row.value ?? ""}
@@ -2054,78 +1875,49 @@ if (selectedProductType) {
                           )}
 
                           {/* DIMENSION MODE */}
-                          {/* DIMENSION MODE - ARRAY STYLE LIKE SLASHING */}
                           {row.isDimension && (
-                            <div className="flex flex-wrap items-center gap-1">
-                              {(row.slashValues || [""]).map((dim, di) => (
-                                <React.Fragment key={di}>
-                                  <Input
-                                    className="w-[70px]"
-                                    placeholder="Value"
-                                    value={dim}
-                                    onChange={(e) => {
-                                      const newArr = [
-                                        ...(row.slashValues || [""]),
-                                      ];
-                                      newArr[di] = e.target.value;
-
-                                      setTechnicalSpecs((prev) =>
-                                        prev.map((it, ii) =>
-                                          ii === index
-                                            ? {
-                                                ...it,
-                                                specs: it.specs.map((sr, ri) =>
-                                                  ri === rIndex
-                                                    ? {
-                                                        ...sr,
-                                                        slashValues: newArr,
-                                                      }
-                                                    : sr,
-                                                ),
-                                              }
-                                            : it,
-                                        ),
-                                      );
-                                    }}
-                                  />
-
-                                  {/* SHOW X BETWEEN VALUES */}
-                                  {di < row.slashValues.length - 1 && (
-                                    <span className="px-1 font-bold">x</span>
-                                  )}
-
-                                  {/* ADD REMOVE BUTTON */}
-                                  {di === row.slashValues.length - 1 && (
-                                    <div className="flex gap-1 ml-1">
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        onClick={() =>
-                                          addSlashValue(index, rIndex)
-                                        }
-                                      >
-                                        <Plus className="h-4 w-4" />
-                                      </Button>
-
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        disabled={row.slashValues.length === 1}
-                                        onClick={() =>
-                                          removeSlashValue(index, rIndex, di)
-                                        }
-                                      >
-                                        <Minus className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </React.Fragment>
-                              ))}
+                            <div className="flex gap-1">
+                              <Input
+                                placeholder="L"
+                                value={row.length ?? ""}
+                                onChange={(e) =>
+                                  updateSpecField(
+                                    index,
+                                    rIndex,
+                                    "length",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                              <Input
+                                placeholder="W"
+                                value={row.width ?? ""}
+                                onChange={(e) =>
+                                  updateSpecField(
+                                    index,
+                                    rIndex,
+                                    "width",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                              <Input
+                                placeholder="H"
+                                value={row.height ?? ""}
+                                onChange={(e) =>
+                                  updateSpecField(
+                                    index,
+                                    rIndex,
+                                    "height",
+                                    e.target.value,
+                                  )
+                                }
+                              />
                             </div>
                           )}
 
                           {/* IP RATING MODE */}
-                          {row.isIPRating && (
+                          {row.isRating && (
                             <div className="flex gap-1 items-center">
                               <span>IP</span>
                               <Input
@@ -2176,7 +1968,7 @@ if (selectedProductType) {
                           </div>
 
                           {/* UNIT FIELD - ALWAYS LAST */}
-                          {!row.isSlashing && !row.isIPRating && (
+                          {!row.isSlashing && !row.isRating && (
                             <Input
                               placeholder="Unit"
                               className="w-[120px]"
@@ -2231,12 +2023,12 @@ if (selectedProductType) {
                           <label className="flex items-center gap-1">
                             <input
                               type="checkbox"
-                              checked={row.isIPRating}
+                              checked={row.isRating}
                               onChange={() =>
-                                toggleMode(index, rIndex, "isIPRating")
+                                toggleMode(index, rIndex, "isRating")
                               }
                             />
-                            isIPRating
+                            isRating
                           </label>
                         </div>
                       </div>
@@ -2358,6 +2150,7 @@ if (selectedProductType) {
 
                   {/* ===== TABLE WRAPPER ===== */}
                   <div className="space-y-2">
+
                     {/* ===== HEADER ===== */}
                     <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px] gap-2 text-xs font-semibold text-muted-foreground">
                       <div className="px-2">Item Name</div>
@@ -2388,11 +2181,7 @@ if (selectedProductType) {
                           type="number"
                           value={row.unitCost || ""}
                           onChange={(e) =>
-                            updateMultiRow(
-                              index,
-                              "unitCost",
-                              Number(e.target.value),
-                            )
+                            updateMultiRow(index, "unitCost", Number(e.target.value))
                           }
                         />
 
@@ -2400,11 +2189,7 @@ if (selectedProductType) {
                           type="number"
                           value={row.length || ""}
                           onChange={(e) =>
-                            updateMultiRow(
-                              index,
-                              "length",
-                              Number(e.target.value),
-                            )
+                            updateMultiRow(index, "length", Number(e.target.value))
                           }
                         />
 
@@ -2412,11 +2197,7 @@ if (selectedProductType) {
                           type="number"
                           value={row.width || ""}
                           onChange={(e) =>
-                            updateMultiRow(
-                              index,
-                              "width",
-                              Number(e.target.value),
-                            )
+                            updateMultiRow(index, "width", Number(e.target.value))
                           }
                         />
 
@@ -2424,11 +2205,7 @@ if (selectedProductType) {
                           type="number"
                           value={row.height || ""}
                           onChange={(e) =>
-                            updateMultiRow(
-                              index,
-                              "height",
-                              Number(e.target.value),
-                            )
+                            updateMultiRow(index, "height", Number(e.target.value))
                           }
                         />
 
@@ -2436,11 +2213,7 @@ if (selectedProductType) {
                           type="number"
                           value={row.qtyPerCarton || ""}
                           onChange={(e) =>
-                            updateMultiRow(
-                              index,
-                              "qtyPerCarton",
-                              Number(e.target.value),
-                            )
+                            updateMultiRow(index, "qtyPerCarton", Number(e.target.value))
                           }
                         />
 
@@ -2470,6 +2243,8 @@ if (selectedProductType) {
                   </div>
                 </div>
               )}
+
+
 
               {/* ================= POLE ONLY ================= */}
               {calculationType === "POLE" && (

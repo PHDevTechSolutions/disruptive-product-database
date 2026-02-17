@@ -26,7 +26,7 @@ type SpecRow = {
   isRanging: boolean;
   isSlashing: boolean;
   isDimension: boolean;
-  isIPRating: boolean;
+  isRating: boolean;
 
   value: string;
 
@@ -93,7 +93,7 @@ export default function AddProductEditSelectTechnicalSpecification({
             isRanging: false,
             isSlashing: false,
             isDimension: false,
-            isIPRating: false,
+            isRating: false,
           };
         }
 
@@ -102,10 +102,10 @@ export default function AddProductEditSelectTechnicalSpecification({
           isRanging: mode === "isRanging",
           isSlashing: mode === "isSlashing",
           isDimension: mode === "isDimension",
-          isIPRating: mode === "isIPRating",
+          isRating: mode === "isRating",
 
           unit:
-            mode === "isSlashing" || mode === "isIPRating"
+            mode === "isSlashing" || mode === "isRating"
               ? ""
               : row.unit,
         };
@@ -186,7 +186,7 @@ export default function AddProductEditSelectTechnicalSpecification({
               {!row.isRanging &&
                 !row.isSlashing &&
                 !row.isDimension &&
-                !row.isIPRating && (
+                !row.isRating && (
                   <Input
                     placeholder="Value"
                     value={row.value}
@@ -220,7 +220,7 @@ export default function AddProductEditSelectTechnicalSpecification({
                 </div>
               )}
 
-              {!row.isSlashing && !row.isIPRating && (
+              {!row.isSlashing && !row.isRating && (
                 <Input
                   placeholder="Unit"
                   value={row.unit}
@@ -261,10 +261,10 @@ export default function AddProductEditSelectTechnicalSpecification({
                 <label className="flex items-center gap-1">
                   <input
                     type="checkbox"
-                    checked={row.isIPRating}
-                    onChange={() => toggleMode(index, "isIPRating")}
+                    checked={row.isRating}
+                    onChange={() => toggleMode(index, "isRating")}
                   />
-                  isIPRating
+                  isRating
                 </label>
               </div>
             </div>

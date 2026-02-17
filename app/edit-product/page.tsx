@@ -75,7 +75,7 @@ type TechSpecRow = {
   isRanging: boolean;
   isSlashing: boolean;
   isDimension: boolean;
-  isIPRating: boolean;
+  isRating: boolean;
 
   value: string;
 
@@ -147,7 +147,7 @@ export default function EditProductPage() {
     isRanging: false,
     isSlashing: false,
     isDimension: false,
-    isIPRating: false,
+    isRating: false,
     value: "",
     rangeFrom: "",
     rangeTo: "",
@@ -393,7 +393,7 @@ export default function EditProductPage() {
                       isRanging: !!row.isRanging,
                       isSlashing: !!row.isSlashing,
                       isDimension: !!row.isDimension,
-                      isIPRating: !!row.isIPRating,
+                    isRating: !!row.isRating,
 
                       value: row.value || "",
 
@@ -636,7 +636,7 @@ const fetchedSpecs = snapshot.docs
               isRanging: row.isRanging || false,
               isSlashing: row.isSlashing || false,
               isDimension: row.isDimension || false,
-              isIPRating: row.isIPRating || false,
+            isRating: row.isRating || false,
 
               value: row.value || "",
 
@@ -1024,7 +1024,7 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
   const toggleMode = (
     specIndex: number,
     rowIndex: number,
-    mode: "isRanging" | "isSlashing" | "isDimension" | "isIPRating",
+    mode: "isRanging" | "isSlashing" | "isDimension" | "isRating",
   ) => {
     setTechnicalSpecs((prev) =>
       prev.map((item, i) =>
@@ -1044,7 +1044,7 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
                     isRanging: false,
                     isSlashing: false,
                     isDimension: false,
-                    isIPRating: false,
+                    isRating: false,
 
                     // Clear special fields
                     rangeFrom: "",
@@ -1065,7 +1065,7 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
                   isRanging: mode === "isRanging",
                   isSlashing: mode === "isSlashing",
                   isDimension: mode === "isDimension",
-                  isIPRating: mode === "isIPRating",
+                  isRating: mode === "isRating",
 
                   // Auto clear value fields when switching modes
                   value: "",
@@ -1080,7 +1080,7 @@ if (!isEditMode && !hasLoadedProductSpecs.current) {
 
                   // Auto remove unit if slashing or IP Rating
                   unit:
-                    mode === "isSlashing" || mode === "isIPRating"
+                    mode === "isSlashing" || mode === "isRating"
                       ? ""
                       : row.unit,
                 };
@@ -1967,7 +1967,7 @@ selectedCategoryTypes.length === 1 ? (
                           {!row.isRanging &&
                             !row.isSlashing &&
                             !row.isDimension &&
-                            !row.isIPRating && (
+                            !row.isRating && (
                               <Input
                                 placeholder="Value"
                                 value={row.value || ""}
@@ -2153,7 +2153,7 @@ selectedCategoryTypes.length === 1 ? (
                           )}
 
                           {/* IP RATING MODE */}
-                          {row.isIPRating && (
+                          {row.isRating && (
                             <div className="flex gap-1 items-center">
                               <span>IP</span>
                               <Input
@@ -2204,7 +2204,7 @@ selectedCategoryTypes.length === 1 ? (
                           </div>
 
                           {/* UNIT FIELD */}
-                          {!row.isSlashing && !row.isIPRating && (
+                          {!row.isSlashing && !row.isRating && (
                             <Input
                               placeholder="Unit"
                               className="w-[120px]"
@@ -2259,12 +2259,12 @@ selectedCategoryTypes.length === 1 ? (
                           <label className="flex items-center gap-1">
                             <input
                               type="checkbox"
-                              checked={row.isIPRating}
+                              checked={row.isRating}
                               onChange={() =>
-                                toggleMode(index, rIndex, "isIPRating")
+                                toggleMode(index, rIndex, "isRating")
                               }
                             />
-                            isIPRating
+                            isRating
                           </label>
                         </div>
                       </div>
