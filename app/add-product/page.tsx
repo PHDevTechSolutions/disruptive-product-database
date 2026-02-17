@@ -4,6 +4,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Minus, ImagePlus, Pencil } from "lucide-react";
+import { useRef } from "react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,8 @@ export default function AddProductPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
     null,
   );
+
+  const isInitialLoad = useRef(true);
 
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -422,6 +425,7 @@ export default function AddProductPage() {
   /* ===== REAL-TIME TECHNICAL SPECS (DEPENDENT ON PRODUCT TYPE) ===== */
 
   useEffect(() => {
+
     setTechnicalSpecs([]);
 
     if (!classificationType) return;
@@ -444,44 +448,65 @@ export default function AddProductPage() {
       where("isActive", "==", true),
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+
+    /* ✅ LOAD ONLY ONCE — NOT REALTIME */
+
+    getDocs(q).then((snapshot) => {
+
       const list = snapshot.docs.map((docSnap) => ({
+
         id: docSnap.id,
-        title: docSnap.data().title as string,
+
+        title: docSnap.data().title || "",
+
         specs: (docSnap.data().specs || []).map((row: any) => ({
-          specId: row.specId || "",
-          unit: row.unit || "",
 
-          isRanging: row.isRanging || false,
-          isSlashing: row.isSlashing || false,
-          isDimension: row.isDimension || false,
-          isRating: row.isRating || false,
+        specId: row.specId || "",
+        unit: row.unit || "",
 
-          value: row.value || "",
-          rangeFrom: row.rangeFrom || "",
-          rangeTo: row.rangeTo || "",
+        isRanging: row.isRanging || false,
+        isSlashing: row.isSlashing || false,
+        isDimension: row.isDimension || false,
+        isRating: row.isRating || false,
 
-          slashValues: row.slashValues || [""],
 
-          length: row.length || "",
-          width: row.width || "",
-          height: row.height || "",
+        /* CLEAR VALUES BUT KEEP STRUCTURE */
 
-          ipFirst: row.ipFirst || "",
-          ipSecond: row.ipSecond || "",
-        })),
-        units: (docSnap.data().units || []) as string[],
+        value: "",
+        rangeFrom: "",
+        rangeTo: "",
+
+        slashValues:
+          Array.isArray(row.slashValues)
+            ? row.slashValues.map(() => "")
+            : [""],
+
+        length: "",
+        width: "",
+        height: "",
+
+        ipFirst: "",
+        ipSecond: "",
+
+      })),
+
+        units: docSnap.data().units || [],
+
       }));
 
+
       setTechnicalSpecs(list);
+
+
     });
 
-    return () => unsubscribe();
+
   }, [
     classificationType?.id,
     selectedProductType?.id,
     selectedCategoryTypes.map((c) => c.id).join(","),
   ]);
+
 
   const addTechnicalSpec = () => {
     setTechnicalSpecs((prev) => [

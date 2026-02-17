@@ -11,6 +11,11 @@ import { Input } from "@/components/ui/input";
 import AddProductDeleteProductItem from "@/components/add-product-delete-product-item";
 import FilteringComponent from "@/components/filtering-component";
 
+import UploadProductModal from "@/components/upload-product";
+
+/* ✅ NEW DOWNLOAD IMPORT */
+import DownloadProduct from "@/components/download-product";
+
 export default function ProductsPage() {
   const router = useRouter();
   const { userId } = useUser();
@@ -19,7 +24,6 @@ export default function ProductsPage() {
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  /* ================= NEW STATES ================= */
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
@@ -34,7 +38,6 @@ export default function ProductsPage() {
 
     const unsub = onSnapshot(q, (snap) => {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
       setProducts(list);
       setFilteredProducts(list);
       setLoading(false);
@@ -51,7 +54,6 @@ export default function ProductsPage() {
         })
       : "-";
 
-  /* ================= SEARCH LOGIC (SAFE ADDITION) ================= */
   const searchedProducts = useMemo(() => {
     if (!searchTerm.trim()) return filteredProducts;
 
@@ -70,7 +72,6 @@ export default function ProductsPage() {
     });
   }, [searchTerm, filteredProducts]);
 
-  /* ================= PAGINATION LOGIC ================= */
   const totalPages = Math.ceil(searchedProducts.length / ITEMS_PER_PAGE);
 
   const paginatedProducts = useMemo(() => {
@@ -88,12 +89,25 @@ export default function ProductsPage() {
 
       {/* HEADER */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-semibold">Products</h1>
 
-        <Button onClick={() => router.push("/add-product")}>
-          + Add Product
-        </Button>
+        <h1 className="text-2xl font-semibold">
+          Products
+        </h1>
+
+        <div className="flex items-center gap-2">
+
+          <UploadProductModal />
+
+          <DownloadProduct products={products} />
+
+          <Button onClick={() => router.push("/add-product")}>
+            + Add Product
+          </Button>
+
+        </div>
+
       </div>
+
 
       {/* SEARCH BAR */}
       {!loading && products.length > 0 && (
@@ -106,55 +120,71 @@ export default function ProductsPage() {
         </div>
       )}
 
+
       {loading ? (
+
         <p className="text-center text-muted-foreground">
           Loading products...
         </p>
+
       ) : products.length === 0 ? (
+
         <p className="text-center text-muted-foreground">
           No products available
         </p>
+
       ) : (
+
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-6">
-          {/* ================= PRODUCT GRID ================= */}
+
+
           <div>
+
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
+
               {paginatedProducts.map((p) => {
+
                 const cat = p.categoryTypes?.[0];
                 const prod = p.productTypes?.[0];
 
                 return (
+
                   <div
                     key={p.id}
                     className="border rounded-xl bg-card shadow-sm hover:shadow-md transition overflow-hidden flex flex-col h-full"
                   >
-                    {/* IMAGE */}
+
                     <div className="aspect-square bg-muted overflow-hidden">
+
                       {p.mainImage?.url ? (
+
                         <img
                           src={p.mainImage.url}
                           className="w-full h-full object-cover"
                           alt={p.productName}
                         />
+
                       ) : (
+
                         <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
                           No Image
                         </div>
+
                       )}
+
                     </div>
 
-                    {/* CONTENT */}
+
                     <div className="p-4 space-y-2 flex-1 flex flex-col">
+
                       <h2 className="text-base font-semibold line-clamp-2">
                         {p.productName}
                       </h2>
 
-                      {/* SRP */}
                       <p className="text-red-600 text-sm font-bold">
                         ₱ {format2(p.logistics?.srp)}
                       </p>
 
-                      {/* UNIT COST (USD) */}
                       <p className="text-xs text-muted-foreground">
                         Unit Cost (USD): {format2(p.logistics?.unitCost)}
                       </p>
@@ -168,10 +198,12 @@ export default function ProductsPage() {
                         <p>{prod?.productTypeName || "-"}</p>
                         <p>{p.supplier?.company || "-"}</p>
                       </div>
+
                     </div>
 
-                    {/* ACTIONS */}
+
                     <div className="p-3 border-t bg-muted/40 flex gap-2 mt-auto">
+
                       <Button
                         size="sm"
                         variant="outline"
@@ -183,6 +215,7 @@ export default function ProductsPage() {
                         Edit
                       </Button>
 
+
                       <AddProductDeleteProductItem
                         productId={p.id}
                         productName={p.productName}
@@ -193,15 +226,22 @@ export default function ProductsPage() {
                           )
                         }
                       />
+
                     </div>
+
                   </div>
+
                 );
+
               })}
+
             </div>
 
-            {/* ================= PAGINATION ================= */}
+
             {totalPages > 1 && (
+
               <div className="flex justify-center gap-2 mt-6">
+
                 <Button
                   size="sm"
                   variant="outline"
@@ -211,9 +251,11 @@ export default function ProductsPage() {
                   Prev
                 </Button>
 
+
                 <span className="text-sm px-3 py-2">
                   Page {currentPage} of {totalPages}
                 </span>
+
 
                 <Button
                   size="sm"
@@ -223,17 +265,23 @@ export default function ProductsPage() {
                 >
                   Next
                 </Button>
+
               </div>
+
             )}
+
           </div>
 
-          {/* ================= FILTER PANEL ================= */}
+
           <FilteringComponent
             products={products}
             onFilter={setFilteredProducts}
           />
+
         </div>
+
       )}
+
     </div>
   );
 }
