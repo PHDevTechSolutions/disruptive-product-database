@@ -376,6 +376,7 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 function Section({
 
   title,
+  label,
   items,
   filters,
   toggle,
@@ -385,31 +386,24 @@ function Section({
 
   const [input, setInput] = useState("");
 
-
-
   useEffect(() => {
 
     setSearch(title, input);
 
   }, [input]);
 
-
-
   const visible =
     items.filter((i: string) =>
       i.toLowerCase().includes(input.toLowerCase()));
-
-
 
   return (
 
     <div className="border rounded p-2 space-y-2">
 
+      {/* ✅ SHOW LABEL IF EXISTS, OTHERWISE TITLE */}
       <p className="text-sm font-medium">
-        {title}
+        {label ?? title}
       </p>
-
-
 
       <Command>
 
@@ -423,8 +417,6 @@ function Section({
           No results
         </CommandEmpty>
 
-
-
         <CommandGroup>
 
           {visible.map((i: string) => (
@@ -436,8 +428,8 @@ function Section({
 
               <Check
                 className={`mr-2 h-4 w-4 ${filters[title]?.includes(i)
-                  ? "opacity-100"
-                  : "opacity-0"
+                    ? "opacity-100"
+                    : "opacity-0"
                   }`}
               />
 
@@ -456,3 +448,4 @@ function Section({
   );
 
 }
+
