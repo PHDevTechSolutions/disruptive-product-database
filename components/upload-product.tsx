@@ -127,32 +127,28 @@ export default function UploadProductModal() {
   /* ================= MAIN UPLOAD ================= */
 
   const generateProductReferenceID = async () => {
+    const snap = await getDocs(collection(db, "products"));
 
-  const snap = await getDocs(collection(db, "products"));
+    if (snap.empty) {
+      return "PROD-SPF-00001";
+    }
 
-  if (snap.empty) {
-    return "PROD-SPF-00001";
-  }
+    let max = 0;
 
-  let max = 0;
+    snap.forEach((doc) => {
+      const ref = doc.data().productReferenceID;
 
-  snap.forEach(doc => {
+      if (!ref) return;
 
-    const ref = doc.data().productReferenceID;
+      const num = parseInt(ref.replace("PROD-SPF-", ""));
 
-    if (!ref) return;
+      if (num > max) max = num;
+    });
 
-    const num = parseInt(ref.replace("PROD-SPF-", ""));
+    const next = max + 1;
 
-    if (num > max) max = num;
-
-  });
-
-  const next = max + 1;
-
-  return `PROD-SPF-${next.toString().padStart(5, "0")}`;
-
-};
+    return `PROD-SPF-${next.toString().padStart(5, "0")}`;
+  };
 
   const handleUpload = async () => {
     if (!file) {
@@ -256,12 +252,21 @@ export default function UploadProductModal() {
           if (!row.getCell(1).value) continue;
 
           const productName = row.getCell(1).value?.toString() || "";
-
-          const supplierCompany = row.getCell(2).value?.toString() || "";
-
           const mainImageUrl = row.getCell(3).value?.toString() || "";
 
-          const supplier = await findSupplier(supplierCompany);
+const supplierCompany = row.getCell(2).value?.toString() || "";
+
+const supplier = await findSupplier(supplierCompany);
+
+if (!supplier) {
+
+  toast.error(`Supplier not found: ${supplierCompany}`);
+
+  continue; // ⛔ stop uploading this product
+
+}
+
+          
 
           /* ===== GALLERY ===== */
 
@@ -353,7 +358,7 @@ export default function UploadProductModal() {
 
           await addDoc(collection(db, "products"), {
             productReferenceID: await generateProductReferenceID(),
-            
+
             productName,
 
             sisterCompanyId: sister?.sisterCompanyId || "",
