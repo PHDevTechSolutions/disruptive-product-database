@@ -16,7 +16,16 @@ import JSZip from "jszip";
 import ExcelJS from "exceljs";
 
 import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  getDocs,
+  query,
+  where,
+  doc,
+} from "firebase/firestore";
 
 import { toast } from "sonner";
 
@@ -25,9 +34,130 @@ export default function UploadProductModal() {
   const [file, setFile] = React.useState<File | null>(null);
   const [uploading, setUploading] = React.useState(false);
 
+  /* ================= FIND HELPERS ================= */
+
+  const findSupplier = async (company: string) => {
+    const snap = await getDocs(
+      query(collection(db, "suppliers"), where("company", "==", company)),
+    );
+
+    if (snap.empty) return null;
+
+    return {
+      supplierId: snap.docs[0].id,
+      company,
+    };
+  };
+
+  const findSisterCompany = async (name: string) => {
+    const snap = await getDocs(
+      query(collection(db, "sisterCompanies"), where("name", "==", name)),
+    );
+
+    if (snap.empty) return null;
+
+    return {
+      sisterCompanyId: snap.docs[0].id,
+      sisterCompanyName: name,
+    };
+  };
+
+  const findClassification = async (name: string) => {
+    const snap = await getDocs(
+      query(collection(db, "classificationTypes"), where("name", "==", name)),
+    );
+
+    if (snap.empty) return null;
+
+    return {
+      classificationId: snap.docs[0].id,
+      classificationName: name,
+    };
+  };
+
+  const findCategoryType = async (classificationId: string, name: string) => {
+    const snap = await getDocs(
+      query(
+        collection(
+          db,
+          "classificationTypes",
+          classificationId,
+          "categoryTypes",
+        ),
+        where("name", "==", name),
+      ),
+    );
+
+    if (snap.empty) return null;
+
+    return {
+      categoryTypeId: snap.docs[0].id,
+      categoryTypeName: name,
+    };
+  };
+
+  const findProductType = async (
+    classificationId: string,
+    categoryTypeId: string,
+    name: string,
+  ) => {
+    const snap = await getDocs(
+      query(
+        collection(
+          db,
+          "classificationTypes",
+          classificationId,
+          "categoryTypes",
+          categoryTypeId,
+          "productTypes",
+        ),
+        where("name", "==", name),
+      ),
+    );
+
+    if (snap.empty) return null;
+
+    return {
+      productTypeId: snap.docs[0].id,
+      productTypeName: name,
+      categoryTypeId,
+    };
+  };
+
+  /* ================= MAIN UPLOAD ================= */
+
+  const generateProductReferenceID = async () => {
+
+  const snap = await getDocs(collection(db, "products"));
+
+  if (snap.empty) {
+    return "PROD-SPF-00001";
+  }
+
+  let max = 0;
+
+  snap.forEach(doc => {
+
+    const ref = doc.data().productReferenceID;
+
+    if (!ref) return;
+
+    const num = parseInt(ref.replace("PROD-SPF-", ""));
+
+    if (num > max) max = num;
+
+  });
+
+  const next = max + 1;
+
+  return `PROD-SPF-${next.toString().padStart(5, "0")}`;
+
+};
+
   const handleUpload = async () => {
     if (!file) {
       toast.error("Please select ZIP file");
+
       return;
     }
 
@@ -35,42 +165,80 @@ export default function UploadProductModal() {
       setUploading(true);
 
       const zip = await JSZip.loadAsync(file);
-      const files = Object.keys(zip.files);
 
       let totalUploaded = 0;
 
-      for (const path of files) {
+      for (const path in zip.files) {
         if (!path.endsWith(".xlsx")) continue;
 
-        const zipFile = zip.files[path];
-        if (!zipFile) continue;
-
-        const buffer = await zipFile.async("arraybuffer");
+        const buffer = await zip.files[path].async("arraybuffer");
 
         const workbook = new ExcelJS.Workbook();
+
         await workbook.xlsx.load(buffer);
 
         const worksheet = workbook.worksheets[0];
+
         if (!worksheet) continue;
+
+        /* ===== FOLDER STRUCTURE ===== */
 
         const parts = path.split("/");
 
-        const sisterCompanyName = parts[0] || "";
-        const classificationName = parts[1] || "";
-        const categoryTypeName = parts[2] || "";
-        const productTypeName = parts[3] || "";
+        const sisterCompanyName = parts[0];
+
+        const classificationName = parts[1];
+
+        const categoryTypeName = parts[2];
+
+        const productTypeName = parts[3];
+
+        /* ===== FIND IDS ===== */
+
+        const supplierFinderCache: any = {};
+
+        const sister = await findSisterCompany(sisterCompanyName);
+
+        const classification = await findClassification(classificationName);
+
+        if (!classification) {
+          toast.error(`Classification not found: ${classificationName}`);
+
+          continue;
+        }
+
+        const category = await findCategoryType(
+          classification.classificationId,
+          categoryTypeName,
+        );
+
+        if (!category) {
+          toast.error(`Category not found: ${categoryTypeName}`);
+
+          continue;
+        }
+
+        const productType = await findProductType(
+          classification.classificationId,
+          category.categoryTypeId,
+          productTypeName,
+        );
+
+        /* ===== HEADERS ===== */
 
         const headerRow1 = worksheet.getRow(1);
+
         const headerRow2 = worksheet.getRow(2);
 
         const headers: string[] = [];
 
         headerRow2.eachCell((cell, col) => {
           const group = headerRow1.getCell(col).value?.toString() || "";
+
           const field = cell.value?.toString() || "";
 
           if (group === "Pricing / Logistics") headers.push(field);
-          else if (group === "Gallery URLs") headers.push(`Gallery ${field}`);
+          else if (group === "Gallery URLs") headers.push(`Gallery`);
           else if (
             group === "Model No." ||
             group === "Supplier Company" ||
@@ -80,13 +248,22 @@ export default function UploadProductModal() {
           else headers.push(`${group}:${field}`);
         });
 
+        /* ===== DATA ROWS ===== */
+
         for (let i = 3; i <= worksheet.rowCount; i++) {
           const row = worksheet.getRow(i);
+
           if (!row.getCell(1).value) continue;
 
           const productName = row.getCell(1).value?.toString() || "";
+
           const supplierCompany = row.getCell(2).value?.toString() || "";
+
           const mainImageUrl = row.getCell(3).value?.toString() || "";
+
+          const supplier = await findSupplier(supplierCompany);
+
+          /* ===== GALLERY ===== */
 
           const gallery: any[] = [];
 
@@ -98,87 +275,113 @@ export default function UploadProductModal() {
             if (url) {
               gallery.push({
                 url,
+
                 type: "image",
+
                 name: "uploaded",
+
                 publicId: "",
               });
             }
           });
 
-          const logistics: any = {};
+          /* ===== LOGISTICS ===== */
 
-          headers.forEach((h, index) => {
-            const value = row.getCell(index + 1).value;
-            if (!value) return;
+          const logistics: any = {
+            calculationType: "LIGHTS",
 
-            if (h === "Unit Cost") logistics.unitCost = Number(value);
-            if (h === "Landed Cost") logistics.landedCost = Number(value);
-            if (h === "SRP") logistics.srp = Number(value);
-            if (h === "MOQ") logistics.moq = Number(value);
+            unitCost: Number(
+              row.getCell(headers.indexOf("Unit Cost") + 1).value || 0,
+            ),
 
-            if (h === "Warranty") {
-              logistics.warranty = {
-                value: value.toString(),
-                unit: "",
-              };
-            }
-          });
+            landedCost: Number(
+              row.getCell(headers.indexOf("Landed Cost") + 1).value || 0,
+            ),
+
+            srp: Number(row.getCell(headers.indexOf("SRP") + 1).value || 0),
+
+            moq: Number(row.getCell(headers.indexOf("MOQ") + 1).value || 0),
+
+            useArrayInput: false,
+
+            multiDimensions: null,
+
+            packaging: null,
+
+            qtyPerContainer: null,
+
+            category: "To Be Evaluated",
+
+            warranty: {
+              value: 0,
+
+              unit: "Years",
+            },
+          };
+
+          /* ===== TECH SPECS ===== */
 
           const specMap: Record<string, any[]> = {};
 
           headers.forEach((h, index) => {
             if (!h.includes(":")) return;
 
-            const [group, specId] = h.split(":");
+            const [title, specId] = h.split(":");
+
             const value = row.getCell(index + 1).value?.toString();
 
             if (!value) return;
 
-            if (!specMap[group]) specMap[group] = [];
+            if (!specMap[title]) specMap[title] = [];
 
-            specMap[group].push({
+            specMap[title].push({
               specId,
+
               value,
             });
           });
 
-          const technicalSpecifications = Object.keys(specMap).map(
-            (title) => ({
-              title,
-              specs: specMap[title],
-            })
-          );
+          const technicalSpecifications = Object.keys(specMap).map((title) => ({
+            technicalSpecificationId: "",
+
+            title,
+
+            specs: specMap[title],
+          }));
+
+          /* ===== SAVE ===== */
 
           await addDoc(collection(db, "products"), {
+            productReferenceID: await generateProductReferenceID(),
+            
             productName,
+
+            sisterCompanyId: sister?.sisterCompanyId || "",
+
             sisterCompanyName,
+
+            classificationId: classification.classificationId,
+
             classificationName,
 
-            supplier: {
-              company: supplierCompany,
-            },
+            supplier,
 
-            categoryTypes: [
-              {
-                categoryTypeName,
-              },
-            ],
+            categoryTypes: [category],
 
-            productTypes: [
-              {
-                productTypeName,
-              },
-            ],
+            productTypes: [productType],
 
             mainImage: {
               url: mainImageUrl,
             },
 
             gallery,
+
             technicalSpecifications,
+
             logistics,
 
             mediaStatus: "done",
+
             isActive: true,
 
             createdAt: serverTimestamp(),
@@ -190,10 +393,12 @@ export default function UploadProductModal() {
 
       toast.success(`Uploaded ${totalUploaded} products`);
 
-      setFile(null);
       setOpen(false);
-    } catch (error) {
-      console.error(error);
+
+      setFile(null);
+    } catch (err) {
+      console.error(err);
+
       toast.error("Upload failed");
     } finally {
       setUploading(false);
