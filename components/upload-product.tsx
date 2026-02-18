@@ -124,6 +124,24 @@ export default function UploadProductModal() {
     };
   };
 
+  /* ================= CHECK DUPLICATE PRODUCT ================= */
+
+const isDuplicateProduct = async (
+  productName: string,
+  supplierCompany: string
+) => {
+
+  const snap = await getDocs(
+    query(
+      collection(db, "products"),
+      where("productName", "==", productName),
+      where("supplier.company", "==", supplierCompany)
+    )
+  );
+
+  return !snap.empty;
+
+};
   /* ================= MAIN UPLOAD ================= */
 
   const generateProductReferenceID = async () => {
@@ -162,7 +180,27 @@ export default function UploadProductModal() {
 
       const zip = await JSZip.loadAsync(file);
 
-      let totalUploaded = 0;
+let totalUploaded = 0;
+let totalSkipped = 0;
+
+let refCounter = 0;
+
+// get starting number ONCE
+const snap = await getDocs(collection(db, "products"));
+
+snap.forEach(doc => {
+
+  const ref = doc.data().productReferenceID;
+
+  if (!ref) return;
+
+  const num =
+    parseInt(ref.replace("PROD-SPF-", ""));
+
+  if (num > refCounter)
+    refCounter = num;
+
+});
 
       for (const path in zip.files) {
         if (!path.endsWith(".xlsx")) continue;
@@ -356,47 +394,84 @@ if (!supplier) {
 
           /* ===== SAVE ===== */
 
-          await addDoc(collection(db, "products"), {
-            productReferenceID: await generateProductReferenceID(),
+/* ===== CHECK IF DUPLICATE FIRST ===== */
 
-            productName,
+const duplicate = await isDuplicateProduct(
+  productName,
+  supplierCompany
+);
 
-            sisterCompanyId: sister?.sisterCompanyId || "",
+if (duplicate) {
 
-            sisterCompanyName,
+  totalSkipped++;
 
-            classificationId: classification.classificationId,
+  toast.warning(
+    `Skipped: "${productName}" already exists for "${supplierCompany}"`
+  );
 
-            classificationName,
+  continue;
 
-            supplier,
+}
 
-            categoryTypes: [category],
+/* ===== GENERATE NEW REFERENCE ONLY IF NEW ===== */
 
-            productTypes: [productType],
+refCounter++;
 
-            mainImage: {
-              url: mainImageUrl,
-            },
+const productReferenceID =
+  `PROD-SPF-${refCounter
+    .toString()
+    .padStart(5, "0")}`;
 
-            gallery,
 
-            technicalSpecifications,
 
-            logistics,
+/* ===== SAVE ===== */
 
-            mediaStatus: "done",
+await addDoc(collection(db, "products"), {
 
-            isActive: true,
+  productReferenceID,
 
-            createdAt: serverTimestamp(),
-          });
+  productName,
+
+  sisterCompanyId: sister?.sisterCompanyId || "",
+
+  sisterCompanyName,
+
+  classificationId: classification.classificationId,
+
+  classificationName,
+
+  supplier,
+
+  categoryTypes: [category],
+
+  productTypes: [productType],
+
+  mainImage: {
+    url: mainImageUrl,
+  },
+
+  gallery,
+
+  technicalSpecifications,
+
+  logistics,
+
+  mediaStatus: "done",
+
+  isActive: true,
+
+  createdAt: serverTimestamp(),
+
+});
+
 
           totalUploaded++;
         }
       }
 
-      toast.success(`Uploaded ${totalUploaded} products`);
+toast.success(
+  `Uploaded: ${totalUploaded} | Skipped: ${totalSkipped}`
+);
 
       setOpen(false);
 
