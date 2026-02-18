@@ -727,19 +727,25 @@ export default function EditProductPage() {
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
 
-        setProductTypes((prev) => {
-          const filtered = prev.filter((p) => p.categoryTypeId !== cat.id);
-          const updated = [...filtered, ...list];
+setProductTypes((prev) => {
+  const filtered = prev.filter((p) => p.categoryTypeId !== cat.id);
+  const updated = [...filtered, ...list];
 
-          // 🟢 IMPORTANT: restore selected product type if exists
-          setSelectedProductType((current) =>
-            current && updated.some((u) => u.id === current.id)
-              ? current
-              : null,
-          );
+  // ✅ RESTORE SELECTED PRODUCT TYPE PROPERLY
+  if (selectedProductType) {
 
-          return updated;
-        });
+    const match = updated.find(
+      (p) => p.id === selectedProductType.id
+    );
+
+    if (match) {
+      setSelectedProductType(match);
+    }
+
+  }
+
+  return updated;
+});
       });
     });
 
