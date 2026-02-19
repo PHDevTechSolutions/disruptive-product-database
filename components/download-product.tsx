@@ -110,7 +110,72 @@ export default function DownloadProduct({ products }: Props) {
 
       header1.push("Pricing / Logistics");
 
-      const logisticsCols = ["Unit Cost", "Landed Cost", "SRP", "MOQ", "Warranty"];
+
+/* ================= BUILD DYNAMIC MULTI DIMENSION HEADERS ================= */
+
+let maxMulti = 0;
+
+groupProducts.forEach(p => {
+
+  if (
+    p.logistics?.calculationType === "LIGHTS"
+    && p.logistics?.useArrayInput
+  ) {
+
+    const count =
+      p.logistics?.multiDimensions?.length || 0;
+
+    if (count > maxMulti)
+      maxMulti = count;
+
+  }
+
+});
+
+
+const logisticsCols = [
+
+  "Calculation Type",
+
+  // SINGLE
+  "Unit Cost (Lights Single)",
+  "Length",
+  "Width",
+  "Height",
+  "Qty/Carton",
+
+];
+
+
+for (let i = 1; i <= maxMulti; i++) {
+
+  logisticsCols.push(
+
+    `Item Name ${i}`,
+    `Unit Cost ${i}`,
+    `Length ${i}`,
+    `Width ${i}`,
+    `Height ${i}`,
+    `Qty/Carton ${i}`
+
+  );
+
+}
+
+
+logisticsCols.push(
+
+  "Unit Cost (Pole)",
+  "Qty/Container",
+
+  "Landed Cost",
+  "SRP",
+  "MOQ",
+  "Warranty"
+
+);
+
+
 
       header2.push(logisticsCols[0]);
 
@@ -157,13 +222,95 @@ export default function DownloadProduct({ products }: Props) {
 
         });
 
-        row.push(
-          p.logistics?.unitCost || "",
-          p.logistics?.landedCost || "",
-          p.logistics?.srp || "",
-          p.logistics?.moq || "",
-          `${p.logistics?.warranty?.value || ""} ${p.logistics?.warranty?.unit || ""}`
-        );
+/* ================= LOGISTICS VALUES ================= */
+
+const calcType = p.logistics?.calculationType || "";
+
+row.push(calcType);
+
+/* LIGHTS SINGLE */
+
+if (calcType === "LIGHTS" && !p.logistics?.useArrayInput) {
+
+  row.push(
+    p.logistics?.unitCost || "",
+    p.logistics?.packaging?.length || "",
+    p.logistics?.packaging?.width || "",
+    p.logistics?.packaging?.height || "",
+    p.logistics?.packaging?.qtyPerCarton || ""
+  );
+
+} else {
+
+  row.push("", "", "", "", "");
+
+}
+
+
+/* LIGHTS MULTI DIMENSION */
+
+if (
+  calcType === "LIGHTS"
+  && p.logistics?.useArrayInput
+) {
+
+  const multiArray =
+    p.logistics?.multiDimensions || [];
+
+  for (let i = 0; i < maxMulti; i++) {
+
+    const multi = multiArray[i];
+
+    row.push(
+
+      multi?.itemName || "",
+      multi?.unitCost || "",
+      multi?.length || "",
+      multi?.width || "",
+      multi?.height || "",
+      multi?.qtyPerCarton || ""
+
+    );
+
+  }
+
+}
+
+else {
+
+  for (let i = 0; i < maxMulti; i++) {
+
+    row.push("", "", "", "", "", "");
+
+  }
+
+}
+
+
+/* POLE */
+
+if (calcType === "POLE") {
+
+  row.push(
+    p.logistics?.unitCost || "",
+    p.logistics?.qtyPerContainer || ""
+  );
+
+} else {
+
+  row.push("", "");
+
+}
+
+
+/* COMMON */
+
+row.push(
+  p.logistics?.landedCost || "",
+  p.logistics?.srp || "",
+  p.logistics?.moq || "",
+  `${p.logistics?.warranty?.value || ""} ${p.logistics?.warranty?.unit || ""}`
+);
 
         ws.addRow(row);
 

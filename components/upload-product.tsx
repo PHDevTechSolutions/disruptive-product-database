@@ -126,22 +126,20 @@ export default function UploadProductModal() {
 
   /* ================= CHECK DUPLICATE PRODUCT ================= */
 
-const isDuplicateProduct = async (
-  productName: string,
-  supplierCompany: string
-) => {
+  const isDuplicateProduct = async (
+    productName: string,
+    supplierCompany: string,
+  ) => {
+    const snap = await getDocs(
+      query(
+        collection(db, "products"),
+        where("productName", "==", productName),
+        where("supplier.company", "==", supplierCompany),
+      ),
+    );
 
-  const snap = await getDocs(
-    query(
-      collection(db, "products"),
-      where("productName", "==", productName),
-      where("supplier.company", "==", supplierCompany)
-    )
-  );
-
-  return !snap.empty;
-
-};
+    return !snap.empty;
+  };
   /* ================= MAIN UPLOAD ================= */
 
   const generateProductReferenceID = async () => {
@@ -180,27 +178,23 @@ const isDuplicateProduct = async (
 
       const zip = await JSZip.loadAsync(file);
 
-let totalUploaded = 0;
-let totalSkipped = 0;
+      let totalUploaded = 0;
+      let totalSkipped = 0;
 
-let refCounter = 0;
+      let refCounter = 0;
 
-// get starting number ONCE
-const snap = await getDocs(collection(db, "products"));
+      // get starting number ONCE
+      const snap = await getDocs(collection(db, "products"));
 
-snap.forEach(doc => {
+      snap.forEach((doc) => {
+        const ref = doc.data().productReferenceID;
 
-  const ref = doc.data().productReferenceID;
+        if (!ref) return;
 
-  if (!ref) return;
+        const num = parseInt(ref.replace("PROD-SPF-", ""));
 
-  const num =
-    parseInt(ref.replace("PROD-SPF-", ""));
-
-  if (num > refCounter)
-    refCounter = num;
-
-});
+        if (num > refCounter) refCounter = num;
+      });
 
       for (const path in zip.files) {
         if (!path.endsWith(".xlsx")) continue;
@@ -292,19 +286,15 @@ snap.forEach(doc => {
           const productName = row.getCell(1).value?.toString() || "";
           const mainImageUrl = row.getCell(3).value?.toString() || "";
 
-const supplierCompany = row.getCell(2).value?.toString() || "";
+          const supplierCompany = row.getCell(2).value?.toString() || "";
 
-const supplier = await findSupplier(supplierCompany);
+          const supplier = await findSupplier(supplierCompany);
 
-if (!supplier) {
+          if (!supplier) {
+            toast.error(`Supplier not found: ${supplierCompany}`);
 
-  toast.error(`Supplier not found: ${supplierCompany}`);
-
-  continue; // ⛔ stop uploading this product
-
-}
-
-          
+            continue; // ⛔ stop uploading this product
+          }
 
           /* ===== GALLERY ===== */
 
@@ -330,35 +320,221 @@ if (!supplier) {
 
           /* ===== LOGISTICS ===== */
 
-          const logistics: any = {
-            calculationType: "LIGHTS",
+          /* ===== LOGISTICS (FULL SUPPORT LIGHTS SINGLE / MULTI / POLE) ===== */
 
-            unitCost: Number(
-              row.getCell(headers.indexOf("Unit Cost") + 1).value || 0,
-            ),
+          const calcType =
+            row
+              .getCell(headers.indexOf("Calculation Type") + 1)
+              .value?.toString() || "LIGHTS";
 
-            landedCost: Number(
-              row.getCell(headers.indexOf("Landed Cost") + 1).value || 0,
-            ),
+          /* ================= COMMON ================= */
 
-            srp: Number(row.getCell(headers.indexOf("SRP") + 1).value || 0),
+          const landedCost =
+            Number(row.getCell(headers.indexOf("Landed Cost") + 1).value) || 0;
 
-            moq: Number(row.getCell(headers.indexOf("MOQ") + 1).value || 0),
+          const srp =
+            Number(row.getCell(headers.indexOf("SRP") + 1).value) || 0;
 
-            useArrayInput: false,
+          const moq =
+            Number(row.getCell(headers.indexOf("MOQ") + 1).value) || 0;
 
-            multiDimensions: null,
+          /* ================= WARRANTY ================= */
 
-            packaging: null,
+          const warrantyText =
+            row.getCell(headers.indexOf("Warranty") + 1).value?.toString() ||
+            "";
 
-            qtyPerContainer: null,
+          const warrantyParts = warrantyText.split(" ");
+
+          const warrantyValue = Number(warrantyParts[0]) || 0;
+
+          const warrantyUnit = warrantyParts[1] || "Years";
+
+          /* ================= LIGHTS SINGLE ================= */
+
+          const packaging =
+            calcType === "LIGHTS" && headers.includes("Length")
+              ? {
+                  length:
+                    Number(row.getCell(headers.indexOf("Length") + 1).value) ||
+                    0,
+
+                  width:
+                    Number(row.getCell(headers.indexOf("Width") + 1).value) ||
+                    0,
+
+                  height:
+                    Number(row.getCell(headers.indexOf("Height") + 1).value) ||
+                    0,
+
+                  qtyPerCarton:
+                    Number(
+                      row.getCell(headers.indexOf("Qty/Carton") + 1).value,
+                    ) || 0,
+                }
+              : null;
+
+/* ================= MULTI DIMENSION (FIX MULTI HEADER) ================= */
+
+let multiDimensions = null;
+
+if (calcType === "LIGHTS") {
+
+  const multiArray = [];
+
+  for (let col = 0; col < headers.length; col++) {
+
+    const header = headers[col];
+
+    if (!header.startsWith("Item Name")) continue;
+
+    const index = header.replace("Item Name ", "");
+
+    const itemName =
+      row.getCell(col + 1).value?.toString() || "";
+
+    const unitCost =
+      Number(
+        row.getCell(
+          headers.indexOf(`Unit Cost ${index}`) + 1
+        ).value
+      ) || 0;
+
+    const length =
+      Number(
+        row.getCell(
+          headers.indexOf(`Length ${index}`) + 1
+        ).value
+      ) || 0;
+
+    const width =
+      Number(
+        row.getCell(
+          headers.indexOf(`Width ${index}`) + 1
+        ).value
+      ) || 0;
+
+    const height =
+      Number(
+        row.getCell(
+          headers.indexOf(`Height ${index}`) + 1
+        ).value
+      ) || 0;
+
+    const qty =
+      Number(
+        row.getCell(
+          headers.indexOf(`Qty/Carton ${index}`) + 1
+        ).value
+      ) || 0;
+
+
+    if (
+      itemName ||
+      unitCost ||
+      length ||
+      width ||
+      height ||
+      qty
+    ) {
+
+      multiArray.push({
+
+        itemName,
+
+        unitCost,
+
+        length,
+
+        width,
+
+        height,
+
+        qtyPerCarton: qty
+
+      });
+
+    }
+
+  }
+
+
+  if (multiArray.length > 0)
+    multiDimensions = multiArray;
+
+}
+
+
+
+          /* ================= POLE ================= */
+
+          const qtyPerContainer =
+            calcType === "POLE"
+              ? Number(
+                  row.getCell(headers.indexOf("Qty/Container") + 1).value,
+                ) || 0
+              : null;
+
+/* ================= UNIT COST ================= */
+
+let unitCost = 0;
+
+if (calcType === "POLE") {
+
+  unitCost =
+    Number(
+      row.getCell(headers.indexOf("Unit Cost (Pole)") + 1).value
+    ) || 0;
+
+}
+
+else if (multiDimensions) {
+
+  unitCost =
+    multiDimensions.reduce(
+      (sum, r) => sum + (r.unitCost || 0),
+      0
+    );
+
+}
+
+else {
+
+  unitCost =
+    Number(
+      row.getCell(headers.indexOf("Unit Cost (Lights Single)") + 1).value
+    ) || 0;
+
+}
+
+
+          /* ================= FINAL OBJECT ================= */
+
+          const logistics = {
+            calculationType: calcType,
+
+            unitCost,
+
+            landedCost,
+
+            srp,
+
+            moq,
+
+useArrayInput: !!multiDimensions,
+
+            multiDimensions,
+
+            packaging,
+
+            qtyPerContainer,
 
             category: "To Be Evaluated",
 
             warranty: {
-              value: 0,
+              value: warrantyValue,
 
-              unit: "Years",
+              unit: warrantyUnit,
             },
           };
 
@@ -394,84 +570,74 @@ if (!supplier) {
 
           /* ===== SAVE ===== */
 
-/* ===== CHECK IF DUPLICATE FIRST ===== */
+          /* ===== CHECK IF DUPLICATE FIRST ===== */
 
-const duplicate = await isDuplicateProduct(
-  productName,
-  supplierCompany
-);
+          const duplicate = await isDuplicateProduct(
+            productName,
+            supplierCompany,
+          );
 
-if (duplicate) {
+          if (duplicate) {
+            totalSkipped++;
 
-  totalSkipped++;
+            toast.warning(
+              `Skipped: "${productName}" already exists for "${supplierCompany}"`,
+            );
 
-  toast.warning(
-    `Skipped: "${productName}" already exists for "${supplierCompany}"`
-  );
+            continue;
+          }
 
-  continue;
+          /* ===== GENERATE NEW REFERENCE ONLY IF NEW ===== */
 
-}
+          refCounter++;
 
-/* ===== GENERATE NEW REFERENCE ONLY IF NEW ===== */
+          const productReferenceID = `PROD-SPF-${refCounter
+            .toString()
+            .padStart(5, "0")}`;
 
-refCounter++;
+          /* ===== SAVE ===== */
 
-const productReferenceID =
-  `PROD-SPF-${refCounter
-    .toString()
-    .padStart(5, "0")}`;
+          await addDoc(collection(db, "products"), {
+            productReferenceID,
 
+            productName,
 
+            sisterCompanyId: sister?.sisterCompanyId || "",
 
-/* ===== SAVE ===== */
+            sisterCompanyName,
 
-await addDoc(collection(db, "products"), {
+            classificationId: classification.classificationId,
 
-  productReferenceID,
+            classificationName,
 
-  productName,
+            supplier,
 
-  sisterCompanyId: sister?.sisterCompanyId || "",
+            categoryTypes: [category],
 
-  sisterCompanyName,
+            productTypes: [productType],
 
-  classificationId: classification.classificationId,
+            mainImage: {
+              url: mainImageUrl,
+            },
 
-  classificationName,
+            gallery,
 
-  supplier,
+            technicalSpecifications,
 
-  categoryTypes: [category],
+            logistics,
 
-  productTypes: [productType],
+            mediaStatus: "done",
 
-  mainImage: {
-    url: mainImageUrl,
-  },
+            isActive: true,
 
-  gallery,
-
-  technicalSpecifications,
-
-  logistics,
-
-  mediaStatus: "done",
-
-  isActive: true,
-
-  createdAt: serverTimestamp(),
-
-});
-
+            createdAt: serverTimestamp(),
+          });
 
           totalUploaded++;
         }
       }
 
-toast.success(
-  `Uploaded: ${totalUploaded} | Skipped: ${totalSkipped}`
-);
+      toast.success(`Uploaded: ${totalUploaded} | Skipped: ${totalSkipped}`);
 
       setOpen(false);
 
