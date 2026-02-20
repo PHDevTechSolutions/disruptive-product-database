@@ -69,15 +69,12 @@ type UserData = {
 };
 
 type TechSpecRow = {
-
   specId: string;
 
   value: string;
 
   unit: string;
-
 };
-
 
 type TechSpec = {
   id?: string;
@@ -131,7 +128,7 @@ export default function EditProductPage() {
   const emptyRow = {
     specId: "",
     value: "",
-    unit: ""
+    unit: "",
   };
 
   const [technicalSpecs, setTechnicalSpecs] = useState<TechSpec[]>([
@@ -144,7 +141,6 @@ export default function EditProductPage() {
 
   const hasLoadedProductSpecs = React.useRef(false);
   // ✅ TRACK CURRENT PRODUCT TYPE FOR EDIT MODE
-
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -358,39 +354,35 @@ export default function EditProductPage() {
           if (Array.isArray(data.technicalSpecifications)) {
             const mappedSpecs = data.technicalSpecifications.map(
               (spec: any) => ({
-
                 id: spec.technicalSpecificationId || "",
 
                 title: spec.title || "",
 
                 specs: Array.isArray(spec.specs)
                   ? spec.specs.map((row: any) => ({
+                      specId: row.specId || "",
 
-                    specId: row.specId || "",
+                      value: row.value || "",
 
-                    value: row.value || "",
-
-                    unit: row.unit || ""
-
-                  }))
+                      unit: row.unit || "",
+                    }))
                   : [emptyRow],
 
-                units: []
-
-              })
+                units: [],
+              }),
             );
 
             setTechnicalSpecs(
               mappedSpecs.length
                 ? mappedSpecs
                 : [
-                  {
-                    id: "",
-                    title: "",
-                    specs: [emptyRow],
-                    units: [],
-                  },
-                ],
+                    {
+                      id: "",
+                      title: "",
+                      specs: [emptyRow],
+                      units: [],
+                    },
+                  ],
             );
             hasLoadedProductSpecs.current = true;
           }
@@ -522,28 +514,19 @@ export default function EditProductPage() {
 
   /* ================= FETCH SUPPLIERS ================= */
   useEffect(() => {
-
-    const q = query(
-      collection(db, "suppliers"),
-      where("isActive", "==", true)
-    );
+    const q = query(collection(db, "suppliers"), where("isActive", "==", true));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-
       const list = snapshot.docs.map((docSnap) => ({
-
         supplierId: docSnap.id,
 
-        company: docSnap.data().company
-
+        company: docSnap.data().company,
       }));
 
       setSuppliers(list);
-
     });
 
     return () => unsubscribe();
-
   }, []);
 
   /* ---------------- REAL-TIME SISTER COMPANIES ---------------- */
@@ -571,135 +554,100 @@ export default function EditProductPage() {
 
   /* ---------------- REAL-TIME PRODUCT TYPES (DEPENDS ON CLASSIFICATION) ---------------- */
   useEffect(() => {
+    if (!classificationType) return;
+    if (!selectedProductType) return;
+    if (selectedCategoryTypes.length !== 1) return;
 
-  if (!classificationType) return;
-  if (!selectedProductType) return;
-  if (selectedCategoryTypes.length !== 1) return;
+    // ❗ IMPORTANT: only run AFTER product fully loaded
+    if (!hasLoadedProductSpecs.current) return;
 
-  // ❗ IMPORTANT: only run AFTER product fully loaded
-  if (!hasLoadedProductSpecs.current) return;
+    const categoryTypeId = selectedCategoryTypes[0].id;
 
-  const categoryTypeId = selectedCategoryTypes[0].id;
+    const unsubscribe = onSnapshot(
+      doc(db, "products", productId!),
 
-  const unsubscribe = onSnapshot(
+      (snap) => {
+        if (!snap.exists()) return;
 
-    doc(db, "products", productId!),
+        const data: any = snap.data();
 
-    (snap) => {
+        // if same product type → restore original saved specs
+        if (data.productTypes?.[0]?.productTypeId === selectedProductType.id) {
+          if (Array.isArray(data.technicalSpecifications)) {
+            const mappedSpecs = data.technicalSpecifications.map(
+              (spec: any) => ({
+                id: spec.technicalSpecificationId || "",
 
-      if (!snap.exists()) return;
+                title: spec.title || "",
 
-      const data: any = snap.data();
+                specs: Array.isArray(spec.specs)
+                  ? spec.specs.map((row: any) => ({
+                      specId: row.specId || "",
+                      value: row.value || "",
+                      unit: row.unit || "",
+                    }))
+                  : [{ specId: "", value: "", unit: "" }],
 
-      // if same product type → restore original saved specs
-      if (
-        data.productTypes?.[0]?.productTypeId === selectedProductType.id
-      ) {
+                units: [],
+              }),
+            );
 
-        if (Array.isArray(data.technicalSpecifications)) {
+            setTechnicalSpecs(mappedSpecs);
+          }
+        } else {
+          // load specs from classificationTypes
 
-          const mappedSpecs = data.technicalSpecifications.map((spec: any) => ({
+          const q = query(
+            collection(
+              db,
 
-            id: spec.technicalSpecificationId || "",
+              "classificationTypes",
 
-            title: spec.title || "",
+              classificationType.id,
 
-            specs: Array.isArray(spec.specs)
-              ? spec.specs.map((row: any) => ({
+              "categoryTypes",
 
-                specId: row.specId || "",
-                value: row.value || "",
-                unit: row.unit || ""
+              categoryTypeId,
 
-              }))
-              : [{ specId: "", value: "", unit: "" }],
+              "productTypes",
 
-            units: []
+              selectedProductType.id,
 
-          }));
+              "technicalSpecifications",
+            ),
 
-          setTechnicalSpecs(mappedSpecs);
+            where("isActive", "==", true),
+          );
 
-        }
+          getDocs(q).then((snapshot) => {
+            const fetchedSpecs = snapshot.docs.map((docSnap) => {
+              const data = docSnap.data();
 
-      }
+              return {
+                id: docSnap.id,
 
-      else {
+                title: data.title || "",
 
-  // load specs from classificationTypes
+                specs: Array.isArray(data.specs)
+                  ? data.specs.map((row: any) => ({
+                      specId: row.specId || "",
+                      value: "",
+                      unit: "",
+                    }))
+                  : [{ specId: "", value: "", unit: "" }],
 
-        const q = query(
+                units: [],
+              };
+            });
 
-          collection(
-
-            db,
-
-            "classificationTypes",
-
-            classificationType.id,
-
-            "categoryTypes",
-
-            categoryTypeId,
-
-            "productTypes",
-
-            selectedProductType.id,
-
-            "technicalSpecifications",
-
-          ),
-
-          where("isActive", "==", true),
-
-        );
-
-        getDocs(q).then((snapshot) => {
-
-          const fetchedSpecs = snapshot.docs.map((docSnap) => {
-
-            const data = docSnap.data();
-
-            return {
-
-              id: docSnap.id,
-
-              title: data.title || "",
-
-              specs: Array.isArray(data.specs)
-                ? data.specs.map((row: any) => ({
-
-                  specId: row.specId || "",
-                  value: "",
-                  unit: ""
-
-                }))
-                : [{ specId: "", value: "", unit: "" }],
-
-              units: []
-
-            };
-
+            setTechnicalSpecs(fetchedSpecs);
           });
+        }
+      },
+    );
 
-          setTechnicalSpecs(fetchedSpecs);
-
-        });
-
-      }
-
-    }
-
-  );
-
-  return () => unsubscribe();
-
-}, [
-
-  selectedProductType?.id
-
-]);
-
+    return () => unsubscribe();
+  }, [selectedProductType?.id]);
 
   useEffect(() => {
     if (!classificationType) return;
@@ -727,25 +675,21 @@ export default function EditProductPage() {
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
 
-setProductTypes((prev) => {
-  const filtered = prev.filter((p) => p.categoryTypeId !== cat.id);
-  const updated = [...filtered, ...list];
+        setProductTypes((prev) => {
+          const filtered = prev.filter((p) => p.categoryTypeId !== cat.id);
+          const updated = [...filtered, ...list];
 
-  // ✅ RESTORE SELECTED PRODUCT TYPE PROPERLY
-  if (selectedProductType) {
+          // ✅ RESTORE SELECTED PRODUCT TYPE PROPERLY
+          if (selectedProductType) {
+            const match = updated.find((p) => p.id === selectedProductType.id);
 
-    const match = updated.find(
-      (p) => p.id === selectedProductType.id
-    );
+            if (match) {
+              setSelectedProductType(match);
+            }
+          }
 
-    if (match) {
-      setSelectedProductType(match);
-    }
-
-  }
-
-  return updated;
-});
+          return updated;
+        });
       });
     });
 
@@ -960,11 +904,11 @@ setProductTypes((prev) => {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: item.specs.map((row, r) =>
-              r === rowIndex ? { ...row, [field]: value } : row,
-            ),
-          }
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex ? { ...row, [field]: value } : row,
+              ),
+            }
           : item,
       ),
     );
@@ -1002,21 +946,16 @@ setProductTypes((prev) => {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs:
-              item.specs.length > 1
-                ? item.specs.filter((_, r) => r !== rowIndex)
-                : item.specs,
-          }
+              ...item,
+              specs:
+                item.specs.length > 1
+                  ? item.specs.filter((_, r) => r !== rowIndex)
+                  : item.specs,
+            }
           : item,
       ),
     );
   };
-
-
-
-
-
 
   const handleImageChange = (file: File | null) => {
     if (!file) return;
@@ -1061,9 +1000,9 @@ setProductTypes((prev) => {
       prev.map((row, i) =>
         i === index
           ? {
-            ...row, // KEEP EXISTING DATA
-            file, // ADD NEW FILE
-          }
+              ...row, // KEEP EXISTING DATA
+              file, // ADD NEW FILE
+            }
           : row,
       ),
     );
@@ -1372,26 +1311,26 @@ setProductTypes((prev) => {
     multiDimensions:
       calculationType === "LIGHTS" && useArrayInput
         ? multiRows.map((row) => ({
-          itemName: row.itemName ?? "",
-          unitCost: row.unitCost ?? 0,
-          length: row.length ?? 0,
-          width: row.width ?? 0,
-          height: row.height ?? 0,
-          qtyPerCarton: row.qtyPerCarton ?? 1,
-          landed: row.landed ?? 0,
-          srp: row.srp ?? 0,
-        }))
+            itemName: row.itemName ?? "",
+            unitCost: row.unitCost ?? 0,
+            length: row.length ?? 0,
+            width: row.width ?? 0,
+            height: row.height ?? 0,
+            qtyPerCarton: row.qtyPerCarton ?? 1,
+            landed: row.landed ?? 0,
+            srp: row.srp ?? 0,
+          }))
         : null,
 
     // SINGLE DIMENSION MODE
     packaging:
       calculationType === "LIGHTS" && !useArrayInput
         ? {
-          length: length ?? 0,
-          width: width ?? 0,
-          height: height ?? 0,
-          qtyPerCarton: qtyPerCarton ?? 1,
-        }
+            length: length ?? 0,
+            width: width ?? 0,
+            height: height ?? 0,
+            qtyPerCarton: qtyPerCarton ?? 1,
+          }
         : null,
 
     // POLE MODE
@@ -1442,7 +1381,6 @@ setProductTypes((prev) => {
               specId: row.specId.trim(),
               value: row.value?.trim() || "",
             })),
-
 
           units: spec.units,
           isActive: true,
@@ -1508,46 +1446,40 @@ setProductTypes((prev) => {
         categoryTypes:
           selectedCategoryTypes.length > 0
             ? selectedCategoryTypes.map((c) => ({
-              categoryTypeId: c.id || "",
-              categoryTypeName: c.name || "",
-            }))
+                categoryTypeId: c.id || "",
+                categoryTypeName: c.name || "",
+              }))
             : [],
 
         productTypes:
           selectedProductType && selectedCategoryTypes.length > 0
             ? [
-              {
-                productTypeId: selectedProductType.id || "",
-                productTypeName: selectedProductType.name || "",
-                categoryTypeId:
-                  selectedProductType.categoryTypeId ||
-                  selectedCategoryTypes[0].id ||
-                  "",
-              },
-            ]
+                {
+                  productTypeId: selectedProductType.id || "",
+                  productTypeName: selectedProductType.name || "",
+                  categoryTypeId:
+                    selectedProductType.categoryTypeId ||
+                    selectedCategoryTypes[0].id ||
+                    "",
+                },
+              ]
             : [],
 
         technicalSpecifications: technicalSpecs.map((spec) => ({
-
           technicalSpecificationId: spec.id || "",
 
           title: spec.title,
 
           specs: spec.specs.map((row) => ({
-
             specId: row.specId || "",
 
             value: row.value || "",
 
-            unit: row.unit || ""
-
+            unit: row.unit || "",
           })),
 
-          units: []
-
+          units: [],
         })),
-
-
 
         logistics: logisticsPayload,
 
@@ -1775,7 +1707,6 @@ setProductTypes((prev) => {
               <div className="max-h-[600px] overflow-y-auto pr-2 space-y-3">
                 {technicalSpecs.map((item, index) => (
                   <Card key={item.id || index} className="p-3 space-y-3">
-
                     <div className="flex gap-2 items-center">
                       <Input
                         placeholder="Title"
@@ -1784,10 +1715,9 @@ setProductTypes((prev) => {
                       />
 
                       {item.id &&
-                        classificationType &&
-                        selectedProductType &&
-                        selectedCategoryTypes.length === 1 ? (
-
+                      classificationType &&
+                      selectedProductType &&
+                      selectedCategoryTypes.length === 1 ? (
                         <AddProductDeleteTechnicalSpecification
                           classificationId={classificationType.id}
                           categoryTypeId={selectedCategoryTypes[0].id}
@@ -1797,25 +1727,20 @@ setProductTypes((prev) => {
                           referenceID={user?.ReferenceID || ""}
                         />
                       ) : (
-
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            disabled={technicalSpecs.length === 1}
-                            onClick={() => {
-
-                              /* ✅ LOCAL DELETE FOR EDIT PAGE */
-                              setTechnicalSpecs(prev =>
-                                prev.filter((_, i) => i !== index)
-                              )
-
-                            }}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={technicalSpecs.length === 1}
+                          onClick={() => {
+                            /* ✅ LOCAL DELETE FOR EDIT PAGE */
+                            setTechnicalSpecs((prev) =>
+                              prev.filter((_, i) => i !== index),
+                            );
+                          }}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
                       )}
-
                     </div>
 
                     {(item.specs || []).map((row, rIndex) => (
@@ -1851,7 +1776,6 @@ setProductTypes((prev) => {
                             }
                           />
 
-
                           {/* ADD / REMOVE ROW */}
                           <div className="flex gap-1">
                             <Button
@@ -1871,9 +1795,7 @@ setProductTypes((prev) => {
                               <Minus className="h-4 w-4" />
                             </Button>
                           </div>
-
                         </div>
-
                       </div>
                     ))}
                   </Card>

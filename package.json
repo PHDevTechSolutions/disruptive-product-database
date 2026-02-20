@@ -53,6 +53,7 @@
     "geist": "^1.5.1",
     "i18n-iso-countries": "^7.14.0",
     "input-otp": "^1.4.2",
+    "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.1",
     "libphonenumber-js": "^1.12.35",
     "lucide-react": "^0.562.0",

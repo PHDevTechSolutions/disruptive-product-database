@@ -28,12 +28,24 @@ import {
 } from "firebase/firestore";
 
 import { toast } from "sonner";
+import { useUser } from "@/contexts/UserContext";
 
 export default function UploadProductModal() {
+  const { userId } = useUser();
+  const [userReferenceID, setUserReferenceID] = React.useState("");
   const [open, setOpen] = React.useState(false);
   const [file, setFile] = React.useState<File | null>(null);
   const [uploading, setUploading] = React.useState(false);
 
+  React.useEffect(() => {
+    if (!userId) return;
+
+    fetch(`/api/users?id=${encodeURIComponent(userId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setUserReferenceID(data.ReferenceID || "");
+      });
+  }, [userId]);
   /* ================= FIND HELPERS ================= */
 
   const findSupplier = async (company: string) => {
@@ -374,97 +386,66 @@ export default function UploadProductModal() {
                 }
               : null;
 
-/* ================= MULTI DIMENSION (FIX MULTI HEADER) ================= */
+          /* ================= MULTI DIMENSION (FIX MULTI HEADER) ================= */
 
-let multiDimensions = null;
+          let multiDimensions = null;
 
-if (calcType === "LIGHTS") {
+          if (calcType === "LIGHTS") {
+            const multiArray = [];
 
-  const multiArray = [];
+            for (let col = 0; col < headers.length; col++) {
+              const header = headers[col];
 
-  for (let col = 0; col < headers.length; col++) {
+              if (!header.startsWith("Item Name")) continue;
 
-    const header = headers[col];
+              const index = header.replace("Item Name ", "");
 
-    if (!header.startsWith("Item Name")) continue;
+              const itemName = row.getCell(col + 1).value?.toString() || "";
 
-    const index = header.replace("Item Name ", "");
+              const unitCost =
+                Number(
+                  row.getCell(headers.indexOf(`Unit Cost ${index}`) + 1).value,
+                ) || 0;
 
-    const itemName =
-      row.getCell(col + 1).value?.toString() || "";
+              const length =
+                Number(
+                  row.getCell(headers.indexOf(`Length ${index}`) + 1).value,
+                ) || 0;
 
-    const unitCost =
-      Number(
-        row.getCell(
-          headers.indexOf(`Unit Cost ${index}`) + 1
-        ).value
-      ) || 0;
+              const width =
+                Number(
+                  row.getCell(headers.indexOf(`Width ${index}`) + 1).value,
+                ) || 0;
 
-    const length =
-      Number(
-        row.getCell(
-          headers.indexOf(`Length ${index}`) + 1
-        ).value
-      ) || 0;
+              const height =
+                Number(
+                  row.getCell(headers.indexOf(`Height ${index}`) + 1).value,
+                ) || 0;
 
-    const width =
-      Number(
-        row.getCell(
-          headers.indexOf(`Width ${index}`) + 1
-        ).value
-      ) || 0;
+              const qty =
+                Number(
+                  row.getCell(headers.indexOf(`Qty/Carton ${index}`) + 1).value,
+                ) || 0;
 
-    const height =
-      Number(
-        row.getCell(
-          headers.indexOf(`Height ${index}`) + 1
-        ).value
-      ) || 0;
+              if (itemName || unitCost || length || width || height || qty) {
+                multiArray.push({
+                  itemName,
 
-    const qty =
-      Number(
-        row.getCell(
-          headers.indexOf(`Qty/Carton ${index}`) + 1
-        ).value
-      ) || 0;
+                  unitCost,
 
+                  length,
 
-    if (
-      itemName ||
-      unitCost ||
-      length ||
-      width ||
-      height ||
-      qty
-    ) {
+                  width,
 
-      multiArray.push({
+                  height,
 
-        itemName,
+                  qtyPerCarton: qty,
+                });
+              }
+            }
 
-        unitCost,
-
-        length,
-
-        width,
-
-        height,
-
-        qtyPerCarton: qty
-
-      });
-
-    }
-
-  }
-
-
-  if (multiArray.length > 0)
-    multiDimensions = multiArray;
-
-}
-
-
+            if (multiArray.length > 0) multiDimensions = multiArray;
+          }
 
           /* ================= POLE ================= */
 
@@ -475,38 +456,27 @@ if (calcType === "LIGHTS") {
                 ) || 0
               : null;
 
-/* ================= UNIT COST ================= */
+          /* ================= UNIT COST ================= */
 
-let unitCost = 0;
+          let unitCost = 0;
 
-if (calcType === "POLE") {
-
-  unitCost =
-    Number(
-      row.getCell(headers.indexOf("Unit Cost (Pole)") + 1).value
-    ) || 0;
-
-}
-
-else if (multiDimensions) {
-
-  unitCost =
-    multiDimensions.reduce(
-      (sum, r) => sum + (r.unitCost || 0),
-      0
-    );
-
-}
-
-else {
-
-  unitCost =
-    Number(
-      row.getCell(headers.indexOf("Unit Cost (Lights Single)") + 1).value
-    ) || 0;
-
-}
-
+          if (calcType === "POLE") {
+            unitCost =
+              Number(
+                row.getCell(headers.indexOf("Unit Cost (Pole)") + 1).value,
+              ) || 0;
+          } else if (multiDimensions) {
+            unitCost = multiDimensions.reduce(
+              (sum, r) => sum + (r.unitCost || 0),
+              0,
+            );
+          } else {
+            unitCost =
+              Number(
+                row.getCell(headers.indexOf("Unit Cost (Lights Single)") + 1)
+                  .value,
+              ) || 0;
+          }
 
           /* ================= FINAL OBJECT ================= */
 
@@ -521,7 +491,7 @@ else {
 
             moq,
 
-useArrayInput: !!multiDimensions,
+            useArrayInput: !!multiDimensions,
 
             multiDimensions,
 
@@ -631,6 +601,10 @@ useArrayInput: !!multiDimensions,
             isActive: true,
 
             createdAt: serverTimestamp(),
+
+            // ✅ ADD THIS
+            createdBy: userId,
+            referenceID: userReferenceID,
           });
 
           totalUploaded++;
