@@ -586,9 +586,7 @@ export default function UploadProductModal() {
 
             productTypes: [productType],
 
-            mainImage: {
-              url: mainImageUrl,
-            },
+            mainImage: { url: mainImageUrl },
 
             gallery,
 
@@ -602,8 +600,8 @@ export default function UploadProductModal() {
 
             createdAt: serverTimestamp(),
 
-            // ✅ ADD THIS
             createdBy: userId,
+
             referenceID: userReferenceID,
           });
 

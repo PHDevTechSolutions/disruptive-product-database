@@ -183,8 +183,86 @@ logisticsCols.push(
         header1.push(""); header2.push(logisticsCols[i]);
       }
 
-      ws.addRow(header1);
-      ws.addRow(header2);
+/* ===== REPLACE HEADER ADD ===== */
+
+ws.addRow(header1);
+ws.addRow(header2);
+
+/* ===== ADD EXCEL HEADER FORMATTING ===== */
+
+// HEADER COLORS
+const HEADER_COLOR_MAIN = "FF1F4E78"; // dark blue
+const HEADER_COLOR_SUB = "FF2E75B6"; // lighter blue
+
+// FORMAT ROW 1 (GROUP HEADERS)
+ws.getRow(1).eachCell((cell) => {
+
+  cell.font = {
+    bold: true,
+    color: { argb: "FFFFFFFF" },
+    size: 12,
+  };
+
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: HEADER_COLOR_MAIN },
+  };
+
+  cell.alignment = {
+    vertical: "middle",
+    horizontal: "center",
+    wrapText: true,
+  };
+
+  cell.border = {
+    top: { style: "thin" },
+    left: { style: "thin" },
+    bottom: { style: "thin" },
+    right: { style: "thin" },
+  };
+
+});
+
+// FORMAT ROW 2 (SUB HEADERS)
+ws.getRow(2).eachCell((cell) => {
+
+  cell.font = {
+    bold: true,
+    color: { argb: "FFFFFFFF" },
+    size: 11,
+  };
+
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: HEADER_COLOR_SUB },
+  };
+
+  cell.alignment = {
+    vertical: "middle",
+    horizontal: "center",
+    wrapText: true,
+  };
+
+  cell.border = {
+    top: { style: "thin" },
+    left: { style: "thin" },
+    bottom: { style: "thin" },
+    right: { style: "thin" },
+  };
+
+});
+
+// FREEZE HEADER
+ws.views = [
+  {
+    state: "frozen",
+    ySplit: 2,
+  },
+];
+
+/* ===== END HEADER FORMAT ===== */
 
       ws.columns?.forEach(col => {
         col.width = 35;
@@ -312,7 +390,30 @@ row.push(
   `${p.logistics?.warranty?.value || ""} ${p.logistics?.warranty?.unit || ""}`
 );
 
-        ws.addRow(row);
+/* ===== REPLACE DATA ROW ADD ===== */
+
+const newRow = ws.addRow(row);
+
+/* ===== ADD DATA FORMAT ===== */
+
+newRow.eachCell((cell) => {
+
+  cell.border = {
+    top: { style: "thin" },
+    left: { style: "thin" },
+    bottom: { style: "thin" },
+    right: { style: "thin" },
+  };
+
+  cell.alignment = {
+    vertical: "middle",
+    horizontal: "left",
+    wrapText: true,
+  };
+
+});
+
+/* ===== END DATA FORMAT ===== */
 
       }
 
