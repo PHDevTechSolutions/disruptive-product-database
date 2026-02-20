@@ -28,10 +28,10 @@ export default function DownloadProduct({ products }: Props) {
 
     products.forEach(p => {
 
-      const sister = p.sisterCompanyName || "No Sister";
-      const classification = p.classificationName || "No Classification";
-      const category = p.categoryTypes?.[0]?.categoryTypeName || "No Category";
-      const productType = p.productTypes?.[0]?.productTypeName || "No Product";
+const sister = p.sisterCompanyName ?? "";
+const classification = p.classificationName ?? "";
+const category = p.categoryTypes?.[0]?.categoryTypeName ?? "";
+const productType = p.productTypes?.[0]?.productTypeName ?? "";
 
       const key = `${sister}|${classification}|${category}|${productType}`;
 
