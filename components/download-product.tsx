@@ -28,10 +28,15 @@ export default function DownloadProduct({ products }: Props) {
 
     products.forEach(p => {
 
-const sister = p.sisterCompanyName ?? "";
-const classification = p.classificationName ?? "";
-const category = p.categoryTypes?.[0]?.categoryTypeName ?? "";
-const productType = p.productTypes?.[0]?.productTypeName ?? "";
+      const sister = p.sisterCompanyName || "No Sister";
+      const classification = p.classificationName || "No Classification";
+const category =
+  p.categoryTypes &&
+  p.categoryTypes.length > 0 &&
+  p.categoryTypes[0]?.categoryTypeName
+    ? p.categoryTypes[0].categoryTypeName
+    : "Uncategorized";
+      const productType = p.productTypes?.[0]?.productTypeName || "No Product";
 
       const key = `${sister}|${classification}|${category}|${productType}`;
 
@@ -171,7 +176,6 @@ logisticsCols.push(
   "Landed Cost",
   "SRP",
   "MOQ",
-  "Category",
   "Warranty"
 
 );
@@ -387,13 +391,8 @@ if (calcType === "POLE") {
 row.push(
   p.logistics?.landedCost || "",
   p.logistics?.srp || "",
-p.logistics?.moq || "",
-
-/* ===== ADD CATEGORY EXPORT ===== */
-p.logistics?.category || "",
-
-`${p.logistics?.warranty?.value || ""} ${p.logistics?.warranty?.unit || ""}`
-  
+  p.logistics?.moq || "",
+  `${p.logistics?.warranty?.value || ""} ${p.logistics?.warranty?.unit || ""}`
 );
 
 /* ===== REPLACE DATA ROW ADD ===== */

@@ -247,10 +247,20 @@ export default function UploadProductModal() {
           continue;
         }
 
-        const category = await findCategoryType(
-          classification.classificationId,
-          categoryTypeName,
-        );
+const category = await findCategoryType(
+  classification.classificationId,
+  categoryTypeName,
+);
+
+if (!category) {
+
+  toast.error(`Category not found: ${categoryTypeName}`);
+
+  totalSkipped++;
+
+  continue;
+
+}
 
         if (!category) {
           toast.error(`Category not found: ${categoryTypeName}`);
@@ -349,9 +359,6 @@ export default function UploadProductModal() {
 
           const moq =
             Number(row.getCell(headers.indexOf("MOQ") + 1).value) || 0;
-          const category =
-            row.getCell(headers.indexOf("Category") + 1).value?.toString() ||
-            "To Be Evaluated";
 
           /* ================= WARRANTY ================= */
 
@@ -502,7 +509,7 @@ export default function UploadProductModal() {
 
             qtyPerContainer,
 
-            category,
+            category: "To Be Evaluated",
 
             warranty: {
               value: warrantyValue,
@@ -585,7 +592,7 @@ export default function UploadProductModal() {
 
             supplier,
 
-            categoryTypes: [category],
+categoryTypes: category ? [category] : [],
 
             productTypes: [productType],
 
