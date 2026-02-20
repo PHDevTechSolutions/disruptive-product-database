@@ -141,6 +141,7 @@ groupProducts.forEach(p => {
 const logisticsCols = [
 
   "Calculation Type",
+  "Category",
 
   // SINGLE
   "Unit Cost (Lights Single)",
@@ -310,6 +311,7 @@ ws.views = [
 const calcType = p.logistics?.calculationType || "";
 
 row.push(calcType);
+row.push(p.logistics?.category || "");
 
 /* LIGHTS SINGLE */
 

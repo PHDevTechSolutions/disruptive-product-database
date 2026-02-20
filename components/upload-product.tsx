@@ -247,20 +247,18 @@ export default function UploadProductModal() {
           continue;
         }
 
-const category = await findCategoryType(
-  classification.classificationId,
-  categoryTypeName,
-);
+        const category = await findCategoryType(
+          classification.classificationId,
+          categoryTypeName,
+        );
 
-if (!category) {
+        if (!category) {
+          toast.error(`Category not found: ${categoryTypeName}`);
 
-  toast.error(`Category not found: ${categoryTypeName}`);
+          totalSkipped++;
 
-  totalSkipped++;
-
-  continue;
-
-}
+          continue;
+        }
 
         if (!category) {
           toast.error(`Category not found: ${categoryTypeName}`);
@@ -365,6 +363,10 @@ if (!category) {
           const warrantyText =
             row.getCell(headers.indexOf("Warranty") + 1).value?.toString() ||
             "";
+
+          const category =
+            row.getCell(headers.indexOf("Category") + 1).value?.toString() ||
+            "To Be Evaluated";
 
           const warrantyParts = warrantyText.split(" ");
 
@@ -491,6 +493,9 @@ if (!category) {
           /* ================= FINAL OBJECT ================= */
 
           const logistics = {
+
+             category,
+
             calculationType: calcType,
 
             unitCost,
@@ -508,8 +513,6 @@ if (!category) {
             packaging,
 
             qtyPerContainer,
-
-            category: "To Be Evaluated",
 
             warranty: {
               value: warrantyValue,
@@ -592,7 +595,7 @@ if (!category) {
 
             supplier,
 
-categoryTypes: category ? [category] : [],
+            categoryTypes: category ? [category] : [],
 
             productTypes: [productType],
 
