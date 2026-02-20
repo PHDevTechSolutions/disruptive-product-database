@@ -349,6 +349,9 @@ export default function UploadProductModal() {
 
           const moq =
             Number(row.getCell(headers.indexOf("MOQ") + 1).value) || 0;
+          const category =
+            row.getCell(headers.indexOf("Category") + 1).value?.toString() ||
+            "To Be Evaluated";
 
           /* ================= WARRANTY ================= */
 
@@ -499,7 +502,7 @@ export default function UploadProductModal() {
 
             qtyPerContainer,
 
-            category: "To Be Evaluated",
+            category,
 
             warranty: {
               value: warrantyValue,

@@ -171,6 +171,7 @@ logisticsCols.push(
   "Landed Cost",
   "SRP",
   "MOQ",
+  "Category",
   "Warranty"
 
 );
@@ -386,8 +387,13 @@ if (calcType === "POLE") {
 row.push(
   p.logistics?.landedCost || "",
   p.logistics?.srp || "",
-  p.logistics?.moq || "",
-  `${p.logistics?.warranty?.value || ""} ${p.logistics?.warranty?.unit || ""}`
+p.logistics?.moq || "",
+
+/* ===== ADD CATEGORY EXPORT ===== */
+p.logistics?.category || "",
+
+`${p.logistics?.warranty?.value || ""} ${p.logistics?.warranty?.unit || ""}`
+  
 );
 
 /* ===== REPLACE DATA ROW ADD ===== */
