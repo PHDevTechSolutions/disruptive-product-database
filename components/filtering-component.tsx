@@ -49,6 +49,8 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     return "";
   };
 
+  /* ================= BASIC FILTER SOURCES ================= */
+
   const brands = uniq(products.map((p) => p.brandName));
 
   const classifications = uniq(products.map((p) => p.classificationName));
@@ -62,6 +64,11 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   );
 
   const suppliers = uniq(products.map((p) => p.supplier?.company));
+
+  /* ✅ NEW: PRODUCT CATEGORY FILTER (Economy / Mid-End / To Be Evaluated) */
+  const productCategories = uniq(products.map((p) => p.category));
+
+  /* ================= TECH SPECS ================= */
 
   const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
 
@@ -83,6 +90,8 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     ),
   );
 
+  /* ================= PRICING ================= */
+
   const pricingFilters: Record<string, string[]> = {
     "Landed Cost": uniq(
       products.map((p) => formatPHP(p.logistics?.landedCost, 2)),
@@ -92,6 +101,8 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       products.map((p) => formatPHP(p.logistics?.srp, 0)),
     ).filter((v) => v !== "-"),
   };
+
+  /* ================= FILTER ENGINE ================= */
 
   useEffect(() => {
     const filtered = products.filter((p) => {
@@ -118,43 +129,14 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
       if (!check("Supplier", p.supplier?.company)) return false;
 
+      /* ✅ FIXED: USE p.category NOT logistics.category */
+
+      if (!check("Category", p.category)) return false;
+
       if (!check("Landed Cost", formatPHP(p.logistics?.landedCost, 2)))
         return false;
 
       if (!check("SRP Cost", formatPHP(p.logistics?.srp, 0))) return false;
-
-      if (!check("Category", p.logistics?.category || "")) return false;
-
-      if (
-        !check("Multiple Dimensions", p.logistics?.useArrayInput ? "Yes" : "No")
-      )
-        return false;
-
-      if (filters["Warranty"]?.length) {
-        const w = p.logistics?.warranty;
-
-        const val = w?.value ? `${w.value} ${w.unit}` : null;
-
-        if (!val || !filters["Warranty"].includes(val)) return false;
-      }
-
-      if (filters["Specification Mode"]?.length) {
-        const ok = p.technicalSpecifications?.some((g: any) =>
-          g.specs?.some(
-            (s: any) =>
-              (filters["Specification Mode"].includes("Dimension") &&
-                s.isDimension) ||
-              (filters["Specification Mode"].includes("Ranging") &&
-                s.isRanging) ||
-              (filters["Specification Mode"].includes("Slashing") &&
-                s.isSlashing) ||
-              (filters["Specification Mode"].includes("IP Rating") &&
-                s.isIPRating),
-          ),
-        );
-
-        if (!ok) return false;
-      }
 
       for (const [k, vals] of Object.entries(filters)) {
         if (!k.includes("||")) continue;
@@ -184,6 +166,8 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     onFilter(filtered);
   }, [filters, searchFilters, products]);
 
+  /* ================= UI ACTIONS ================= */
+
   const toggle = (title: string, value: string) =>
     setFilters((prev) => ({
       ...prev,
@@ -197,6 +181,8 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       ...prev,
       [title]: value,
     }));
+
+  /* ================= UI ================= */
 
   return (
     <div className="border rounded-lg p-4 bg-card space-y-4">
@@ -220,9 +206,19 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           toggle={toggle}
           setSearch={setSearch}
         />
+
         <Section
           title="Classification Type"
           items={classifications}
+          filters={filters}
+          toggle={toggle}
+          setSearch={setSearch}
+        />
+
+        {/* ✅ NEW CATEGORY FILTER */}
+        <Section
+          title="Category"
+          items={productCategories}
           filters={filters}
           toggle={toggle}
           setSearch={setSearch}
@@ -252,7 +248,11 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           setSearch={setSearch}
         />
 
-        <h3 className="font-semibold mt-4">Technical Specifications</h3>
+        {/* TECH SPECS */}
+
+        <h3 className="font-semibold mt-4">
+          Technical Specifications
+        </h3>
 
         {Object.entries(technicalSpecs).map(([gt, s]) => (
           <div key={gt} className="border rounded p-2 space-y-2">
@@ -272,6 +272,8 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           </div>
         ))}
 
+        {/* PRICING */}
+
         <h3 className="font-semibold mt-4">Pricing</h3>
 
         {Object.entries(pricingFilters).map(([k, v]) => (
@@ -289,6 +291,8 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   );
 }
 
+/* ================= SECTION ================= */
+
 function Section({ title, label, items, filters, toggle, setSearch }: any) {
   const [input, setInput] = useState("");
 
@@ -302,7 +306,6 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
 
   return (
     <div className="border rounded p-2 space-y-2">
-      {/* ✅ SHOW LABEL IF EXISTS, OTHERWISE TITLE */}
       <p className="text-sm font-medium">{label ?? title}</p>
 
       <Command>
@@ -319,7 +322,9 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
             <CommandItem key={i} onSelect={() => toggle(title, i)}>
               <Check
                 className={`mr-2 h-4 w-4 ${
-                  filters[title]?.includes(i) ? "opacity-100" : "opacity-0"
+                  filters[title]?.includes(i)
+                    ? "opacity-100"
+                    : "opacity-0"
                 }`}
               />
 
