@@ -120,6 +120,7 @@ export default function EditProductPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
     null,
   );
+  const [category, setCategory] = useState("");
 
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -236,6 +237,8 @@ export default function EditProductPage() {
             setSelectedSupplier(null);
           }
 
+          // ================= CATEGORY =================
+          setCategory(data.category || "");
           // ================= BRAND =================
           if (data.brandId) {
             setSelectedBrand({
@@ -984,6 +987,11 @@ export default function EditProductPage() {
         return;
       }
 
+      if (!category) {
+        toast.error("Please select category");
+        return;
+      }
+
       if (!classificationType) {
         toast.error("Please select a classification type");
         return;
@@ -1002,6 +1010,8 @@ export default function EditProductPage() {
 
       const updatePayload: any = {
         productName,
+
+        category,
 
         brandId: selectedBrand.id,
         brandName: selectedBrand.name,
@@ -1193,6 +1203,25 @@ export default function EditProductPage() {
                   </Command>
                 </PopoverContent>
               </Popover>
+            </div>
+
+            {/* ================= CATEGORY SELECT ================= */}
+            <div className="space-y-2">
+              <Label>Category</Label>
+
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
+              >
+                <option value="">Select category...</option>
+
+                <option value="Economy">Economy</option>
+
+                <option value="Mid-End">Mid-End</option>
+
+                <option value="To Be Evaluated">To Be Evaluated</option>
+              </select>
             </div>
 
             {/* ===== TECHNICAL SPECIFICATIONS (FULL EDITOR - EDIT MODE) ===== */}

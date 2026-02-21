@@ -109,6 +109,8 @@ export default function AddProductPage() {
     null,
   );
 
+  const [category, setCategory] = useState("");
+
   const isInitialLoad = useRef(true);
 
   const [user, setUser] = useState<UserData | null>(null);
@@ -119,7 +121,6 @@ export default function AddProductPage() {
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-
 
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
@@ -135,8 +136,7 @@ export default function AddProductPage() {
     name: string;
   } | null;
 
-  const [selectedBrand, setSelectedBrand] =
-    useState<SelectedBrand>(null);
+  const [selectedBrand, setSelectedBrand] = useState<SelectedBrand>(null);
 
   const [brands, setBrands] = useState<Brand[]>([]);
   const [newBrand, setNewBrand] = useState("");
@@ -151,7 +151,6 @@ export default function AddProductPage() {
   /* ===== PRODUCT TYPE STATE ===== */
   const [newCategoryType, setNewCategoryType] = useState("");
   const [categoryTypes, setCategoryTypes] = useState<CategoryType[]>([]);
-
 
   /* ===== PRODUCT TYPE (DEPENDENT ON CATEGORY TYPE) ===== */
   type ProductType = {
@@ -200,12 +199,11 @@ export default function AddProductPage() {
     id: string;
     title: string;
     specs: SpecRow[];
-
   };
 
   const [technicalSpecs, setTechnicalSpecs] = useState<
     TechnicalSpecification[]
-    >([]);
+  >([]);
 
   const [productTypeSearch, setProductTypeSearch] = useState("");
   const [newProductType, setNewProductType] = useState("");
@@ -261,10 +259,7 @@ export default function AddProductPage() {
 
   /* ---------------- REAL-TIME SISTER COMPANIES ---------------- */
   useEffect(() => {
-    const q = query(
-      collection(db, "brands"),
-      where("isActive", "==", true),
-    );
+    const q = query(collection(db, "brands"), where("isActive", "==", true));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs
@@ -326,7 +321,6 @@ export default function AddProductPage() {
   /* ===== REAL-TIME TECHNICAL SPECS (DEPENDENT ON PRODUCT TYPE) ===== */
 
   useEffect(() => {
-
     setTechnicalSpecs([]);
 
     if (!classificationType) return;
@@ -349,19 +343,15 @@ export default function AddProductPage() {
       where("isActive", "==", true),
     );
 
-
     /* ✅ LOAD ONLY ONCE — NOT REALTIME */
 
     getDocs(q).then((snapshot) => {
-
       const list = snapshot.docs.map((docSnap) => ({
-
         id: docSnap.id,
 
         title: docSnap.data().title || "",
 
         specs: (docSnap.data().specs || []).map((row: any) => ({
-
           specId: row.specId || "",
           unit: row.unit || "",
 
@@ -370,17 +360,15 @@ export default function AddProductPage() {
           isDimension: row.isDimension || false,
           isRating: row.isRating || false,
 
-
           /* CLEAR VALUES BUT KEEP STRUCTURE */
 
           value: "",
           rangeFrom: "",
           rangeTo: "",
 
-          slashValues:
-            Array.isArray(row.slashValues)
-              ? row.slashValues.map(() => "")
-              : [""],
+          slashValues: Array.isArray(row.slashValues)
+            ? row.slashValues.map(() => "")
+            : [""],
 
           length: "",
           width: "",
@@ -388,26 +376,16 @@ export default function AddProductPage() {
 
           ipFirst: "",
           ipSecond: "",
-
         })),
-
-
-
       }));
 
-
       setTechnicalSpecs(list);
-
-
     });
-
-
   }, [
     classificationType?.id,
     selectedProductType?.id,
     selectedCategoryTypes.map((c) => c.id).join(","),
   ]);
-
 
   const addTechnicalSpec = () => {
     setTechnicalSpecs((prev) => [
@@ -461,34 +439,34 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: [
-              ...item.specs,
-              {
-                specId: "",
-                unit: "",
+              ...item,
+              specs: [
+                ...item.specs,
+                {
+                  specId: "",
+                  unit: "",
 
-                isRanging: false,
-                isSlashing: false,
-                isDimension: false,
-                isRating: false,
+                  isRanging: false,
+                  isSlashing: false,
+                  isDimension: false,
+                  isRating: false,
 
-                value: "",
+                  value: "",
 
-                rangeFrom: "",
-                rangeTo: "",
+                  rangeFrom: "",
+                  rangeTo: "",
 
-                slashValues: [""],
+                  slashValues: [""],
 
-                length: "",
-                width: "",
-                height: "",
+                  length: "",
+                  width: "",
+                  height: "",
 
-                ipFirst: "",
-                ipSecond: "",
-              },
-            ],
-          }
+                  ipFirst: "",
+                  ipSecond: "",
+                },
+              ],
+            }
           : item,
       ),
     );
@@ -503,23 +481,45 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: item.specs.map((row, r) => {
-              if (r !== rowIndex) return row;
+              ...item,
+              specs: item.specs.map((row, r) => {
+                if (r !== rowIndex) return row;
 
-              // If the clicked mode is already active → TURN EVERYTHING OFF
-              const isCurrentlyActive = row[mode];
+                // If the clicked mode is already active → TURN EVERYTHING OFF
+                const isCurrentlyActive = row[mode];
 
-              if (isCurrentlyActive) {
+                if (isCurrentlyActive) {
+                  return {
+                    ...row,
+
+                    isRanging: false,
+                    isSlashing: false,
+                    isDimension: false,
+                    isRating: false,
+
+                    // Clear special fields
+                    rangeFrom: "",
+                    rangeTo: "",
+                    slashValues: [""],
+                    length: "",
+                    width: "",
+                    height: "",
+                    ipFirst: "",
+                    ipSecond: "",
+                  };
+                }
+
+                // Otherwise activate ONLY the selected mode
                 return {
                   ...row,
 
-                  isRanging: false,
-                  isSlashing: false,
-                  isDimension: false,
-                  isRating: false,
+                  isRanging: mode === "isRanging",
+                  isSlashing: mode === "isSlashing",
+                  isDimension: mode === "isDimension",
+                  isRating: mode === "isRating",
 
-                  // Clear special fields
+                  // Auto clear value fields when switching modes
+                  value: "",
                   rangeFrom: "",
                   rangeTo: "",
                   slashValues: [""],
@@ -528,37 +528,15 @@ export default function AddProductPage() {
                   height: "",
                   ipFirst: "",
                   ipSecond: "",
+
+                  // Auto remove unit if slashing or IP Rating
+                  unit:
+                    mode === "isSlashing" || mode === "isRating"
+                      ? ""
+                      : row.unit,
                 };
-              }
-
-              // Otherwise activate ONLY the selected mode
-              return {
-                ...row,
-
-                isRanging: mode === "isRanging",
-                isSlashing: mode === "isSlashing",
-                isDimension: mode === "isDimension",
-                isRating: mode === "isRating",
-
-                // Auto clear value fields when switching modes
-                value: "",
-                rangeFrom: "",
-                rangeTo: "",
-                slashValues: [""],
-                length: "",
-                width: "",
-                height: "",
-                ipFirst: "",
-                ipSecond: "",
-
-                // Auto remove unit if slashing or IP Rating
-                unit:
-                  mode === "isSlashing" || mode === "isRating"
-                    ? ""
-                    : row.unit,
-              };
-            }),
-          }
+              }),
+            }
           : item,
       ),
     );
@@ -569,12 +547,12 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs:
-              item.specs.length > 1
-                ? item.specs.filter((_, r) => r !== rowIndex)
-                : item.specs,
-          }
+              ...item,
+              specs:
+                item.specs.length > 1
+                  ? item.specs.filter((_, r) => r !== rowIndex)
+                  : item.specs,
+            }
           : item,
       ),
     );
@@ -600,11 +578,11 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: item.specs.map((row, r) =>
-              r === rowIndex ? { ...row, [field]: value } : row,
-            ),
-          }
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex ? { ...row, [field]: value } : row,
+              ),
+            }
           : item,
       ),
     );
@@ -663,18 +641,14 @@ export default function AddProductPage() {
     return () => unsubscribe();
   }, []);
 
-
-
   /* ===== SAVE EDITABLE SPECS BACK TO PRODUCT TYPE COLLECTION ===== */
 
   const syncSpecsToProductType = async () => {
-
     if (!classificationType) return;
     if (!selectedProductType) return;
     if (selectedCategoryTypes.length !== 1) return;
 
     try {
-
       const categoryTypeId = selectedCategoryTypes[0].id;
 
       const specsRef = collection(
@@ -693,20 +667,16 @@ export default function AddProductPage() {
       const batch = writeBatch(db);
 
       technicalSpecs.forEach((spec) => {
-
         if (!spec.title.trim()) return;
 
         // FIND EXISTING DOC WITH SAME TITLE
         const existingDoc = existingSnapshot.docs.find(
-          (d) => d.data().title === spec.title
+          (d) => d.data().title === spec.title,
         );
 
-        const ref = existingDoc
-          ? doc(specsRef, existingDoc.id)
-          : doc(specsRef);
+        const ref = existingDoc ? doc(specsRef, existingDoc.id) : doc(specsRef);
 
         batch.set(ref, {
-
           title: spec.title,
 
           specs: spec.specs
@@ -717,22 +687,16 @@ export default function AddProductPage() {
 
           isActive: true,
           updatedAt: serverTimestamp(),
-
         });
-
       });
 
       await batch.commit();
 
       toast.success("Technical specifications saved successfully");
-
     } catch (error) {
-
       console.error(error);
       toast.error("Failed to save technical specifications");
-
     }
-
   };
 
   /* ================= NUMBER FORMATTERS ================= */
@@ -743,22 +707,21 @@ export default function AddProductPage() {
     });
   };
 
-
   const addSlashValue = (specIndex: number, rowIndex: number) => {
     setTechnicalSpecs((prev) =>
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: item.specs.map((row, r) =>
-              r === rowIndex
-                ? {
-                  ...row,
-                  slashValues: [...row.slashValues, ""],
-                }
-                : row,
-            ),
-          }
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex
+                  ? {
+                      ...row,
+                      slashValues: [...row.slashValues, ""],
+                    }
+                  : row,
+              ),
+            }
           : item,
       ),
     );
@@ -773,19 +736,19 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: item.specs.map((row, r) =>
-              r === rowIndex
-                ? {
-                  ...row,
-                  slashValues:
-                    row.slashValues.length > 1
-                      ? row.slashValues.filter((_, si) => si !== slashIndex)
-                      : row.slashValues,
-                }
-                : row,
-            ),
-          }
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex
+                  ? {
+                      ...row,
+                      slashValues:
+                        row.slashValues.length > 1
+                          ? row.slashValues.filter((_, si) => si !== slashIndex)
+                          : row.slashValues,
+                    }
+                  : row,
+              ),
+            }
           : item,
       ),
     );
@@ -797,7 +760,6 @@ export default function AddProductPage() {
     if (preview) URL.revokeObjectURL(preview);
     setPreview(URL.createObjectURL(file));
   };
-
 
   /* ---------------- Classification Handlers ---------------- */
   const handleAddClassification = async () => {
@@ -819,29 +781,23 @@ export default function AddProductPage() {
 
   /* ---------------- Sister Company Handlers ---------------- */
   const handleAddBrand = async () => {
-
     if (!newBrand.trim()) return;
 
     if (brands.some((s) => s.name === newBrand.trim())) {
-
       toast.error("Brand already exists");
 
       return;
-
     }
 
     await addDoc(collection(db, "brands"), {
-
       name: newBrand.trim(),
 
       isActive: true,
 
       createdAt: serverTimestamp(),
-
     });
 
     setNewBrand("");
-
   };
 
   /* ---------------- Product Type Handlers ---------------- */
@@ -942,36 +898,31 @@ export default function AddProductPage() {
     return;
   };
 
-  const uploadToCloudinary = async (file: File) => {
+const uploadToCloudinary = async (file: File) => {
+  const formData = new FormData();
 
-    const formData = new FormData();
+  formData.append("file", file);
 
-    formData.append("file", file);
+  const res = await fetch("/api/upload-product", {
+    method: "POST",
+    body: formData,
+  });
 
-    formData.append(
-      "upload_preset",
-      process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
-    );
+  if (!res.ok) {
+    throw new Error("Cloudinary upload failed");
+  }
 
-    const res = await fetch(
+  const data = await res.json();
 
-      `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+  if (!data.secure_url || !data.public_id) {
+    throw new Error("Invalid Cloudinary response");
+  }
 
-      {
-        method: "POST",
-        body: formData,
-      }
-
-    );
-
-    return await res.json();
-
-  };
+  return data;
+};
 
   const uploadProductMedia = async (productId: string) => {
-
     try {
-
       if (!mainImage) return;
 
       const result = await uploadToCloudinary(mainImage);
@@ -981,7 +932,6 @@ export default function AddProductPage() {
       }
 
       await updateDoc(doc(db, "products", productId), {
-
         mainImage: {
           name: mainImage.name,
           url: result.secure_url,
@@ -989,19 +939,12 @@ export default function AddProductPage() {
         },
 
         mediaStatus: "done",
-
       });
-
     } catch {
-
       await updateDoc(doc(db, "products", productId), {
-
         mediaStatus: "failed",
-
       });
-
     }
-
   };
   const filteredClassifications = React.useMemo(() => {
     return classificationTypes.filter((item) =>
@@ -1034,7 +977,6 @@ export default function AddProductPage() {
   }, [productTypes, productTypeSearch, selectedCategoryTypes]);
 
   /* ---------------- Save Product ---------------- */
-
 
   /* ===== GENERATE UNIQUE PRODUCT REFERENCE ID ===== */
   const generateProductReferenceID = async () => {
@@ -1083,6 +1025,11 @@ export default function AddProductPage() {
         return;
       }
 
+      if (!category) {
+        toast.error("Please select category");
+        return;
+      }
+
       if (!classificationType) {
         toast.error("Please select a classification type");
         return;
@@ -1104,10 +1051,11 @@ export default function AddProductPage() {
       const newProductReferenceID = await generateProductReferenceID();
 
       const productRef = await addDoc(collection(db, "products"), {
-
         productReferenceID: newProductReferenceID,
 
         productName,
+
+        category,
 
         brandId: selectedBrand.id,
         brandName: selectedBrand.name,
@@ -1121,11 +1069,13 @@ export default function AddProductPage() {
         },
 
         productTypes: selectedProductType
-          ? [{
-            productTypeId: selectedProductType.id,
-            productTypeName: selectedProductType.name,
-            categoryTypeId: selectedProductType.categoryTypeId,
-          }]
+          ? [
+              {
+                productTypeId: selectedProductType.id,
+                productTypeName: selectedProductType.name,
+                categoryTypeId: selectedProductType.categoryTypeId,
+              },
+            ]
           : [],
 
         categoryTypes: selectedCategoryTypes.map((c) => ({
@@ -1156,7 +1106,6 @@ export default function AddProductPage() {
         isActive: true,
 
         createdAt: serverTimestamp(),
-
       });
 
       await uploadProductMedia(productRef.id);
@@ -1164,17 +1113,12 @@ export default function AddProductPage() {
       toast.success("Product saved successfully");
 
       router.push("/products");
-
     } catch (error) {
-
       console.error(error);
 
       toast.error("Failed to save product");
-
     } finally {
-
       setSaving(false);
-
     }
   };
 
@@ -1231,7 +1175,6 @@ export default function AddProductPage() {
                 </label>
               </CardContent>
             </Card>
-
 
             <div>
               <Label>Model No.</Label>
@@ -1292,6 +1235,22 @@ export default function AddProductPage() {
               </Popover>
             </div>
 
+            {/* ================= CATEGORY SELECT ================= */}
+            <div className="space-y-2">
+              <Label>Category</Label>
+
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
+              >
+                <option value="">Select category...</option>
+                <option value="Economy">Economy</option>
+                <option value="Mid-End">Mid-End</option>
+                <option value="To Be Evaluated">To Be Evaluated</option>
+              </select>
+            </div>
+
             {/* ===== TECHNICAL SPECIFICATIONS (EDITABLE) ===== */}
 
             <div className="space-y-3">
@@ -1325,11 +1284,10 @@ export default function AddProductPage() {
                         onChange={(e) => updateTitle(index, e.target.value)}
                       />
 
-
                       {item.id &&
-                        classificationType &&
-                        selectedProductType &&
-                        selectedCategoryTypes.length === 1 ? (
+                      classificationType &&
+                      selectedProductType &&
+                      selectedCategoryTypes.length === 1 ? (
                         <AddProductDeleteTechnicalSpecification
                           classificationId={classificationType.id}
                           categoryTypeId={selectedCategoryTypes[0].id}
@@ -1383,7 +1341,6 @@ export default function AddProductPage() {
                             }
                           />
 
-
                           {/* RANGING MODE */}
                           {row.isRanging && (
                             <div className="flex gap-1 items-center">
@@ -1434,16 +1391,16 @@ export default function AddProductPage() {
                                         prev.map((it, ii) =>
                                           ii === index
                                             ? {
-                                              ...it,
-                                              specs: it.specs.map((sr, ri) =>
-                                                ri === rIndex
-                                                  ? {
-                                                    ...sr,
-                                                    slashValues: newArr,
-                                                  }
-                                                  : sr,
-                                              ),
-                                            }
+                                                ...it,
+                                                specs: it.specs.map((sr, ri) =>
+                                                  ri === rIndex
+                                                    ? {
+                                                        ...sr,
+                                                        slashValues: newArr,
+                                                      }
+                                                    : sr,
+                                                ),
+                                              }
                                             : it,
                                         ),
                                       );
@@ -1577,7 +1534,6 @@ export default function AddProductPage() {
                               <Minus className="h-4 w-4" />
                             </Button>
                           </div>
-
                         </div>
                       </div>
                     ))}
@@ -1586,29 +1542,22 @@ export default function AddProductPage() {
               </div>
             </div>
           </CardContent>
-
-
         </Card>
 
         {/* RIGHT */}
         <div className="space-y-6">
           {/* SELECT BRAND */}
           <Card>
-
             <CardHeader>
-
               <CardTitle className="text-center text-sm">
                 SELECT BRAND
               </CardTitle>
-
             </CardHeader>
 
             <CardContent className="space-y-4">
-
               {/* SEARCH */}
 
               <div className="flex items-center justify-between gap-2">
-
                 <Label>Select Brand</Label>
 
                 <Input
@@ -1617,46 +1566,33 @@ export default function AddProductPage() {
                   placeholder="Search brand..."
                   className="h-8 w-[160px]"
                 />
-
               </div>
-
 
               {/* ADD */}
 
               <div className="flex gap-2">
-
                 <Input
                   value={newBrand}
                   onChange={(e) => setNewBrand(e.target.value)}
                   placeholder="Add brand..."
                 />
 
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={handleAddBrand}
-                >
+                <Button size="icon" variant="outline" onClick={handleAddBrand}>
                   <Plus className="h-4 w-4" />
                 </Button>
-
               </div>
 
               <Separator />
 
-
               {/* LIST */}
 
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-
                 {filteredBrands.map((item) => (
-
                   <div
                     key={item.id}
                     className="flex items-center justify-between gap-2"
                   >
-
                     <div className="flex items-center space-x-2">
-
                       <input
                         type="radio"
                         name="brand"
@@ -1670,38 +1606,26 @@ export default function AddProductPage() {
                       />
 
                       <span className="text-sm">{item.name}</span>
-
                     </div>
 
-
                     <div className="flex gap-1">
-
                       <AddProductEditBrandType item={item} />
 
                       <AddProductDeleteBrand
                         item={item}
                         referenceID={user?.ReferenceID || ""}
                       />
-
                     </div>
-
                   </div>
-
                 ))}
 
-
                 {filteredBrands.length === 0 && (
-
                   <p className="text-sm text-muted-foreground text-center py-4">
                     No brands found
                   </p>
-
                 )}
-
               </div>
-
             </CardContent>
-
           </Card>
 
           {/* CLASSIFICATION */}
