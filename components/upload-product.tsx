@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+
 import {
   Dialog,
   DialogTrigger,
@@ -53,7 +54,7 @@ export default function UploadProductModal() {
 
   const [classifications, setClassifications] = React.useState<any[]>([]);
 
-  /* ================= LOAD USER ================= */
+  /* LOAD USER */
 
   React.useEffect(() => {
     if (!userId) return;
@@ -65,7 +66,7 @@ export default function UploadProductModal() {
       });
   }, [userId]);
 
-  /* ================= LOAD CLASSIFICATIONS ================= */
+  /* LOAD CLASSIFICATIONS */
 
   React.useEffect(() => {
     const load = async () => {
@@ -87,7 +88,7 @@ export default function UploadProductModal() {
     load();
   }, []);
 
-  /* ================= HELPERS ================= */
+  /* HELPERS */
 
   const findSupplier = async (company: string) => {
     const snap = await getDocs(
@@ -164,7 +165,7 @@ export default function UploadProductModal() {
     };
   };
 
-  /* ================= GENERATE REFERENCE ================= */
+  /* GENERATE PRODUCT CODE */
 
   const generateReference = async () => {
     const snap = await getDocs(collection(db, "products"));
@@ -184,7 +185,7 @@ export default function UploadProductModal() {
     return `PROD-SPF-${(max + 1).toString().padStart(5, "0")}`;
   };
 
-  /* ================= MAIN UPLOAD ================= */
+  /* MAIN UPLOAD */
 
   const handleUpload = async () => {
     if (!file || !classification) {
@@ -202,147 +203,182 @@ export default function UploadProductModal() {
 
       await workbook.xlsx.load(buffer);
 
-      const sheet = workbook.worksheets[0];
+      /* GENERATE STARTING REF ONCE */
 
-      if (!sheet) {
-        toast.error("Invalid file");
+      let refCounter = 0;
 
-        return;
-      }
+      const snap = await getDocs(collection(db, "products"));
 
-      /* ================= HEADERS ================= */
+      snap.forEach((doc) => {
+        const ref = doc.data().productReferenceID;
 
-      const header1 = sheet.getRow(1);
+        if (!ref) return;
 
-      const header2 = sheet.getRow(2);
+        const num = parseInt(ref.replace("PROD-SPF-", ""));
 
-      const headers: any[] = [];
-
-      header2.eachCell((cell, col) => {
-        const group = header1.getCell(col).value?.toString() || "";
-
-        const field = cell.value?.toString() || "";
-
-        if (!group) headers.push(field);
-        else headers.push(`${group}:${field}`);
+        if (num > refCounter) refCounter = num;
       });
 
-      /* ================= ROWS ================= */
+      /* LOOP ALL SHEETS */
 
-      for (let r = 3; r <= sheet.rowCount; r++) {
-        const row = sheet.getRow(r);
+      for (const sheet of workbook.worksheets) {
+        const sheetName = sheet.name;
 
-        if (!row.getCell(1).value) continue;
+        const header1 = sheet.getRow(1);
 
-        const brandName = row.getCell(2).value?.toString() || "";
+        const header2 = sheet.getRow(2);
 
-        const category = row.getCell(3).value?.toString() || "";
+        /* BUILD TECH HEADER MAP ONLY AFTER COLUMN 8 */
 
-        const categoryTypeName = row.getCell(4).value?.toString() || "";
+        const techHeaders: {
+          col: number;
 
-        const productTypeName = row.getCell(5).value?.toString() || "";
+          title: string;
 
-        const image = row.getCell(6).value?.toString() || "";
+          specId: string;
+        }[] = [];
 
-        const productName = row.getCell(7).value?.toString() || "";
+        header2.eachCell((cell, col) => {
+          if (col <= 8) return;
 
-        const supplierCompany = row.getCell(8).value?.toString() || "";
+          const title = header1.getCell(col).value?.toString();
 
-        /* FIND IDS */
+          const specId = cell.value?.toString();
 
-        const brand = await findBrand(brandName);
+          if (!title || !specId) return;
 
-        const supplier = await findSupplier(supplierCompany);
+          techHeaders.push({
+            col,
 
-        const categoryType = await findCategoryType(
-          classification,
-          categoryTypeName,
-        );
+            title,
 
-        const productType = await findProductType(
-          classification,
-          categoryType?.categoryTypeId || "",
-          productTypeName,
-        );
-
-        /* SPECS */
-
-        const specMap: any = {};
-
-        headers.forEach((h, index) => {
-          if (!h.includes(":")) return;
-
-          const [title, specId] = h.split(":");
-
-          const value = row.getCell(index + 1).value?.toString();
-
-          if (!value) return;
-
-          if (!specMap[title]) specMap[title] = [];
-
-          specMap[title].push({
             specId,
-            value,
           });
         });
 
-        const technicalSpecifications = Object.keys(specMap).map((title) => ({
-          technicalSpecificationId: "",
+        /* LOOP ROWS */
 
-          title,
+        for (let r = 3; r <= sheet.rowCount; r++) {
+          const row = sheet.getRow(r);
 
-          specs: specMap[title],
-        }));
+          if (!row.getCell(1).value) continue;
 
-        /* SAVE */
+          const brandName = row.getCell(2).value?.toString() || "";
 
-        const productReferenceID = await generateReference();
+          const category = row.getCell(3).value?.toString() || "";
 
-        await addDoc(collection(db, "products"), {
-          productReferenceID,
+          const categoryTypeName = row.getCell(4).value?.toString() || "";
 
-          productName,
+          const image = row.getCell(6).value?.toString() || "";
 
-          brandId: brand?.brandId || "",
+          const productName = row.getCell(7).value?.toString() || "";
 
-          brandName,
+          const supplierCompany = row.getCell(8).value?.toString() || "";
 
-          category,
+          const brand = await findBrand(brandName);
 
-          classificationId: classification,
+          const supplier = await findSupplier(supplierCompany);
 
-          classificationName:
-            classifications.find((c) => c.id === classification)?.name || "",
+          const categoryType = await findCategoryType(
+            classification,
 
-          supplier,
+            categoryTypeName,
+          );
 
-          categoryTypes: categoryType ? [categoryType] : [],
+          const productType = await findProductType(
+            classification,
 
-          productTypes: productType ? [productType] : [],
+            categoryType?.categoryTypeId || "",
 
-          mainImage: { url: image },
+            sheetName,
+          );
 
-          technicalSpecifications,
+          /* BUILD TECH SPEC MAP */
 
-          createdBy: userId,
+          const specMap: Record<string, any[]> = {};
 
-          referenceID: userReferenceID,
+          techHeaders.forEach(({ col, title, specId }) => {
+            const value = row.getCell(col).value?.toString();
 
-          isActive: true,
+            if (!value) return;
 
-          mediaStatus: "done",
+            if (!specMap[title]) specMap[title] = [];
 
-          createdAt: serverTimestamp(),
-        });
+            specMap[title].push({
+              specId,
+
+              value,
+            });
+          });
+
+          const technicalSpecifications = Object.keys(specMap).map((title) => ({
+            technicalSpecificationId: "",
+
+            title,
+
+            specs: specMap[title],
+          }));
+
+          /* GENERATE REF */
+
+          refCounter++;
+
+          const productReferenceID = `PROD-SPF-${refCounter
+
+            .toString()
+
+            .padStart(5, "0")}`;
+
+          /* SAVE */
+
+          await addDoc(collection(db, "products"), {
+            productReferenceID,
+
+            productName,
+
+            brandId: brand?.brandId || "",
+
+            brandName,
+
+            category,
+
+            classificationId: classification,
+
+            classificationName:
+              classifications.find((c) => c.id === classification)?.name || "",
+
+            supplier,
+
+            categoryTypes: categoryType ? [categoryType] : [],
+
+            productTypes: productType ? [productType] : [],
+
+            mainImage: {
+              url: image,
+            },
+
+            technicalSpecifications,
+
+            createdBy: userId,
+
+            referenceID: userReferenceID,
+
+            isActive: true,
+
+            mediaStatus: "done",
+
+            createdAt: serverTimestamp(),
+          });
+        }
       }
 
-      toast.success("Upload complete");
+      toast.success("Upload Complete");
 
       setOpen(false);
 
       setFile(null);
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
 
       toast.error("Upload failed");
     } finally {
@@ -350,7 +386,7 @@ export default function UploadProductModal() {
     }
   };
 
-  /* ================= UI ================= */
+  /* UI */
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
