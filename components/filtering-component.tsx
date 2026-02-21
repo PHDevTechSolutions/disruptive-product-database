@@ -90,18 +90,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     ),
   );
 
-  /* ================= PRICING ================= */
-
-  const pricingFilters: Record<string, string[]> = {
-    "Landed Cost": uniq(
-      products.map((p) => formatPHP(p.logistics?.landedCost, 2)),
-    ).filter((v) => v !== "-"),
-
-    "SRP Cost": uniq(
-      products.map((p) => formatPHP(p.logistics?.srp, 0)),
-    ).filter((v) => v !== "-"),
-  };
-
   /* ================= FILTER ENGINE ================= */
 
   useEffect(() => {
@@ -132,11 +120,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       /* ✅ FIXED: USE p.category NOT logistics.category */
 
       if (!check("Category", p.category)) return false;
-
-      if (!check("Landed Cost", formatPHP(p.logistics?.landedCost, 2)))
-        return false;
-
-      if (!check("SRP Cost", formatPHP(p.logistics?.srp, 0))) return false;
 
       for (const [k, vals] of Object.entries(filters)) {
         if (!k.includes("||")) continue;
@@ -250,9 +233,7 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
         {/* TECH SPECS */}
 
-        <h3 className="font-semibold mt-4">
-          Technical Specifications
-        </h3>
+        <h3 className="font-semibold mt-4">Technical Specifications</h3>
 
         {Object.entries(technicalSpecs).map(([gt, s]) => (
           <div key={gt} className="border rounded p-2 space-y-2">
@@ -270,21 +251,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
               />
             ))}
           </div>
-        ))}
-
-        {/* PRICING */}
-
-        <h3 className="font-semibold mt-4">Pricing</h3>
-
-        {Object.entries(pricingFilters).map(([k, v]) => (
-          <Section
-            key={k}
-            title={k}
-            items={v}
-            filters={filters}
-            toggle={toggle}
-            setSearch={setSearch}
-          />
         ))}
       </div>
     </div>
@@ -322,9 +288,7 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
             <CommandItem key={i} onSelect={() => toggle(title, i)}>
               <Check
                 className={`mr-2 h-4 w-4 ${
-                  filters[title]?.includes(i)
-                    ? "opacity-100"
-                    : "opacity-0"
+                  filters[title]?.includes(i) ? "opacity-100" : "opacity-0"
                 }`}
               />
 
