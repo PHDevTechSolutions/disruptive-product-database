@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 import { useUser } from "@/contexts/UserContext";
@@ -57,7 +56,6 @@ import AddProductDeleteSisterCompany from "@/components/add-product-delete-selec
 import AddProductDeleteClassification from "@/components/add-product-delete-select-classification-type";
 import AddProductDeleteProductType from "@/components/add-product-delete-select-category-type";
 import AddProductDeleteProduct from "@/components/add-product-delete-select-product";
-import AddProductEditSelectTechnicalSpecification from "@/components/add-product-edit-select-technical-specification";
 import AddProductDeleteTechnicalSpecification from "@/components/add-product-delete-technical-specification";
 
 /* ---------------- Types ---------------- */
@@ -145,13 +143,7 @@ export default function EditProductPage() {
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  type GalleryItem = {
-    type: "image" | "video";
-    file: File | null;
-    preview: string;
-  };
 
-  const [galleryMedia, setGalleryMedia] = useState<GalleryItem[]>([]);
 
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
@@ -184,100 +176,7 @@ export default function EditProductPage() {
   const [newCategoryType, setNewCategoryType] = useState("");
   const [categoryTypes, setCategoryTypes] = useState<CategoryType[]>([]);
 
-  /* ===== PRICING / LOGISTICS STATE (CTRL+F SAFE) ===== */
-  type CalculationType = "LIGHTS" | "POLE";
 
-  /* ===== ADDITIONAL LOGISTICS FIELDS ===== */
-  type ProductCategory = "Economy" | "Mid-End" | "To Be Evaluated";
-
-  /* ===== SUPPLIER DATA SHEET (FILES ARRAY) ===== */
-  type SupplierDataSheetItem = {
-    name: string;
-    url: string;
-    publicId: string;
-  };
-
-  type SupplierSheetRow = {
-    file: File | null;
-    existing?: {
-      name: string;
-      url: string;
-      publicId: string;
-    } | null;
-  };
-
-  const [supplierDataSheets, setSupplierDataSheets] = useState<
-    SupplierSheetRow[]
-  >([{ file: null }]);
-
-  const [productCategory, setProductCategory] =
-    useState<ProductCategory>("To Be Evaluated");
-
-  const [moq, setMoq] = useState<number>(0);
-
-  const [warrantyValue, setWarrantyValue] = useState<number>(0);
-  const [warrantyUnit, setWarrantyUnit] = useState<"Days" | "Months" | "Years">(
-    "Years",
-  );
-
-  const [calculationType, setCalculationType] =
-    useState<CalculationType>("LIGHTS");
-  /* ===== RESET FIELDS WHEN CALCULATION TYPE CHANGES ===== */
-  useEffect(() => {
-    if (calculationType === "POLE") {
-      // clear LIGHTS-only fields
-      setLength(0);
-      setWidth(0);
-      setHeight(0);
-      setQtyPerCarton(1);
-    }
-
-    if (calculationType === "LIGHTS") {
-      // clear POLE-only fields
-      setQtyPerContainer(1);
-    }
-  }, [calculationType]);
-  const [unitCost, setUnitCost] = useState<number>(0);
-
-  // LIGHTS
-  const [length, setLength] = useState<number>(0);
-  const [width, setWidth] = useState<number>(0);
-  const [height, setHeight] = useState<number>(0);
-  const [qtyPerCarton, setQtyPerCarton] = useState<number>(1);
-
-  // POLE
-  const [qtyPerContainer, setQtyPerContainer] = useState<number>(1);
-
-  // RESULTS
-  const [landedCost, setLandedCost] = useState<number>(0);
-  const [srp, setSrp] = useState<number>(0);
-
-  /* ===== MULTIPLE DIMENSIONS (EDIT MODE) ===== */
-  const [useArrayInput, setUseArrayInput] = useState(false);
-
-  type MultiRow = {
-    itemName: string;
-    unitCost: number;
-    length: number;
-    width: number;
-    height: number;
-    qtyPerCarton: number;
-    landed: number;
-    srp: number;
-  };
-
-  const [multiRows, setMultiRows] = useState<MultiRow[]>([
-    {
-      itemName: "",
-      unitCost: 0,
-      length: 0,
-      width: 0,
-      height: 0,
-      qtyPerCarton: 1,
-      landed: 0,
-      srp: 0,
-    },
-  ]);
 
   /* ===== PRODUCT TYPE (DEPENDENT ON CATEGORY TYPE) ===== */
   type ProductType = {
@@ -308,190 +207,157 @@ export default function EditProductPage() {
   // ================== LOAD EXISTING PRODUCT (EDIT MODE) ==================
   useEffect(() => {
     if (!productId) return;
-    hasLoadedProductSpecs.current = false;
 
-    const loadProduct = async () => {
+  hasLoadedProductSpecs.current = false;
+
+  const productRef = doc(db, "products", productId);
+
+  const unsubscribe = onSnapshot(
+    productRef,
+    (snap) => {
       try {
-        const productRef = doc(db, "products", productId);
+        if (!snap.exists()) {
+          toast.error("Product not found");
+          router.push("/products");
+          return;
+        }
 
-        const unsubscribe = onSnapshot(productRef, (snap) => {
-          if (!snap.exists()) {
-            toast.error("Product not found");
-            router.push("/products");
-            return;
-          }
+        const data: any = snap.data();
 
-          const data: any = snap.data();
+        // ================= BASIC INFO =================
+        setProductName(data.productName || "");
 
-          // BASIC INFO
-          setProductName(data.productName || "");
+        // ================= SUPPLIER =================
+        if (data.supplier) {
+          setSelectedSupplier({
+            supplierId: data.supplier.supplierId,
+            company: data.supplier.company,
+          });
+        } else {
+          setSelectedSupplier(null);
+        }
 
-          // SUPPLIER
-          if (data.supplier) {
-            setSelectedSupplier({
-              supplierId: data.supplier.supplierId,
-              company: data.supplier.company,
-            });
-          }
+        // ================= SISTER COMPANY =================
+        if (data.sisterCompanyId) {
+          setSelectedSisterCompany({
+            id: data.sisterCompanyId,
+            name: data.sisterCompanyName,
+          });
+        } else {
+          setSelectedSisterCompany(null);
+        }
 
-          // SISTER COMPANY
-          if (data.sisterCompanyId) {
-            setSelectedSisterCompany({
-              id: data.sisterCompanyId,
-              name: data.sisterCompanyName,
-            });
-          }
+        // ================= CLASSIFICATION =================
+        if (data.classificationId) {
+          setClassificationType({
+            id: data.classificationId,
+            name: data.classificationName,
+          });
+        } else {
+          setClassificationType(null);
+        }
 
-          // CLASSIFICATION
-          if (data.classificationId) {
-            setClassificationType({
-              id: data.classificationId,
-              name: data.classificationName,
-            });
-          }
-
-          // TECHNICAL SPECS ARRAY
-          if (Array.isArray(data.technicalSpecifications)) {
-            const mappedSpecs = data.technicalSpecifications.map(
-              (spec: any) => ({
-                id: spec.technicalSpecificationId || "",
-
-                title: spec.title || "",
-
-                specs: Array.isArray(spec.specs)
-                  ? spec.specs.map((row: any) => ({
-                      specId: row.specId || "",
-
-                      value: row.value || "",
-
-                      unit: row.unit || "",
-                    }))
-                  : [emptyRow],
-
-                units: [],
-              }),
-            );
-
-            setTechnicalSpecs(
-              mappedSpecs.length
-                ? mappedSpecs
+        // ================= TECHNICAL SPECIFICATIONS =================
+        if (Array.isArray(data.technicalSpecifications)) {
+          const mappedSpecs = data.technicalSpecifications.map(
+            (spec: any) => ({
+              id: spec.technicalSpecificationId || "",
+              title: spec.title || "",
+              specs: Array.isArray(spec.specs)
+                ? spec.specs.map((row: any) => ({
+                  specId: row.specId || "",
+                  value: row.value || "",
+                  unit: row.unit || "",
+                }))
                 : [
+                  {
+                    specId: "",
+                    value: "",
+                    unit: "",
+                  },
+                ],
+              units: [],
+            }),
+          );
+
+          setTechnicalSpecs(
+            mappedSpecs.length > 0
+              ? mappedSpecs
+              : [
+                {
+                  id: "",
+                  title: "",
+                  specs: [
                     {
-                      id: "",
-                      title: "",
-                      specs: [emptyRow],
-                      units: [],
+                      specId: "",
+                      value: "",
+                      unit: "",
                     },
                   ],
-            );
-            hasLoadedProductSpecs.current = true;
-          }
-
-          // CATEGORY TYPES ARRAY
-          if (
-            Array.isArray(data.categoryTypes) &&
-            data.categoryTypes.length > 0
-          ) {
-            setSelectedCategoryTypes([
-              {
-                id: data.categoryTypes[0].categoryTypeId,
-                name: data.categoryTypes[0].categoryTypeName,
-              },
-            ]);
-          }
-
-          // PRODUCT TYPES ARRAY
-          if (
-            Array.isArray(data.productTypes) &&
-            data.productTypes.length > 0
-          ) {
-            const p = data.productTypes[0];
-
-            // ===== FIX: FORCE CATEGORY TYPE RESTORE BASED ON PRODUCT TYPE =====
-
-            setSelectedCategoryTypes([
-              {
-                id: p.categoryTypeId,
-                name:
-                  data.categoryTypes?.find(
-                    (c: any) => c.categoryTypeId === p.categoryTypeId,
-                  )?.categoryTypeName || "",
-              },
-            ]);
-            setSelectedProductType({
-              id: p.productTypeId,
-              name: p.productTypeName,
-              categoryTypeId: p.categoryTypeId,
-            });
-          }
-
-          // LOGISTICS DATA
-          if (data.logistics) {
-            setCalculationType(data.logistics.calculationType || "LIGHTS");
-            setUnitCost(data.logistics.unitCost || 0);
-
-            setUseArrayInput(data.logistics.useArrayInput || false);
-
-            if (data.logistics.multiDimensions) {
-              setMultiRows(data.logistics.multiDimensions);
-            }
-
-            if (data.logistics.packaging) {
-              setLength(data.logistics.packaging.length || 0);
-              setWidth(data.logistics.packaging.width || 0);
-              setHeight(data.logistics.packaging.height || 0);
-              setQtyPerCarton(data.logistics.packaging.qtyPerCarton || 1);
-            }
-
-            setQtyPerContainer(data.logistics.qtyPerContainer || 1);
-            setProductCategory(data.logistics.category || "To Be Evaluated");
-            setMoq(data.logistics.moq || 0);
-
-            if (data.logistics.warranty) {
-              setWarrantyValue(data.logistics.warranty.value || 0);
-              setWarrantyUnit(data.logistics.warranty.unit || "Years");
-            }
-          }
-
-          // IMAGES (DISPLAY ONLY – CANNOT RELOAD FILE OBJECTS)
-
-          if (Array.isArray(data.gallery)) {
-            setGalleryMedia(
-              data.gallery.map((g: any) => ({
-                type: g.type,
-                file: null as any,
-                preview: g.url,
-              })),
-            );
-          }
-
-          if (data.mainImage?.url) {
-            setPreview(data.mainImage.url);
-          }
-
-          // LOAD EXISTING SUPPLIER DATA SHEETS
-          if (Array.isArray(data.supplierDataSheets)) {
-            setSupplierDataSheets(
-              data.supplierDataSheets.map((sheet: any) => ({
-                file: null,
-                existing: {
-                  name: sheet.name,
-                  url: sheet.url,
-                  publicId: sheet.publicId,
+                  units: [],
                 },
-              })),
-            );
-          }
-        });
+              ],
+          );
 
-        return () => unsubscribe();
-      } catch (err) {
-        console.error(err);
+          hasLoadedProductSpecs.current = true;
+        }
+
+        // ================= CATEGORY TYPES =================
+        if (Array.isArray(data.categoryTypes) && data.categoryTypes.length > 0) {
+          setSelectedCategoryTypes([
+            {
+              id: data.categoryTypes[0].categoryTypeId,
+              name: data.categoryTypes[0].categoryTypeName,
+            },
+          ]);
+        } else {
+          setSelectedCategoryTypes([]);
+        }
+
+        // ================= PRODUCT TYPES =================
+        if (Array.isArray(data.productTypes) && data.productTypes.length > 0) {
+          const p = data.productTypes[0];
+
+          setSelectedCategoryTypes([
+            {
+              id: p.categoryTypeId,
+              name:
+                data.categoryTypes?.find(
+                  (c: any) => c.categoryTypeId === p.categoryTypeId,
+                )?.categoryTypeName || "",
+            },
+          ]);
+
+          setSelectedProductType({
+            id: p.productTypeId,
+            name: p.productTypeName,
+            categoryTypeId: p.categoryTypeId,
+          });
+        } else {
+          setSelectedProductType(null);
+        }
+
+        // ================= IMAGE PREVIEW =================
+        if (data.mainImage?.url) {
+          setPreview(data.mainImage.url);
+        } else {
+          setPreview(null);
+        }
+      } catch (error) {
+        console.error("Product snapshot error:", error);
       }
-    };
+    },
+    (error) => {
+      console.error("Firestore listener error:", error);
+      toast.error("Failed to load product");
+    },
+  );
 
-    loadProduct();
-  }, [productId]);
+  // ✅ CLEANUP — VERY IMPORTANT
+  return () => {
+    unsubscribe();
+  };
+}, [productId, router]);
 
   useEffect(() => {
     if (!userId) {
@@ -582,10 +448,10 @@ export default function EditProductPage() {
 
                 specs: Array.isArray(spec.specs)
                   ? spec.specs.map((row: any) => ({
-                      specId: row.specId || "",
-                      value: row.value || "",
-                      unit: row.unit || "",
-                    }))
+                    specId: row.specId || "",
+                    value: row.value || "",
+                    unit: row.unit || "",
+                  }))
                   : [{ specId: "", value: "", unit: "" }],
 
                 units: [],
@@ -630,10 +496,10 @@ export default function EditProductPage() {
 
                 specs: Array.isArray(data.specs)
                   ? data.specs.map((row: any) => ({
-                      specId: row.specId || "",
-                      value: "",
-                      unit: "",
-                    }))
+                    specId: row.specId || "",
+                    value: "",
+                    unit: "",
+                  }))
                   : [{ specId: "", value: "", unit: "" }],
 
                 units: [],
@@ -753,36 +619,6 @@ export default function EditProductPage() {
     return () => unsubscribe();
   }, []);
 
-  /* ---------------- Helpers ---------------- */
-
-  const updateMultiRow = (index: number, field: keyof MultiRow, value: any) => {
-    setMultiRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
-    );
-  };
-
-  const addMultiRow = (index: number) => {
-    setMultiRows((prev) => {
-      const copy = [...prev];
-      copy.splice(index + 1, 0, {
-        itemName: "",
-        unitCost: 0,
-        length: 0,
-        width: 0,
-        height: 0,
-        qtyPerCarton: 1,
-        landed: 0,
-        srp: 0,
-      });
-      return copy;
-    });
-  };
-
-  const removeMultiRow = (index: number) => {
-    setMultiRows((prev) =>
-      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
-    );
-  };
 
   /* ================= NUMBER FORMATTERS ================= */
   const formatPHP = (value: number, decimals = 2) => {
@@ -791,82 +627,6 @@ export default function EditProductPage() {
       maximumFractionDigits: decimals,
     });
   };
-  /* ================= PRICING / LOGISTICS FORMULAS ================= */
-  useEffect(() => {
-    // ===== POLE LOGIC =====
-    if (calculationType === "POLE") {
-      let lc = 0;
-
-      if (qtyPerContainer > 0) {
-        lc = (unitCost * 60 + 600000 / qtyPerContainer) * 1.01;
-      }
-
-      setLandedCost(lc);
-      setSrp(lc ? Math.ceil(lc / 0.45 / 100) * 100 : 0);
-      return;
-    }
-
-    // ===== LIGHTS - MULTIPLE DIMENSIONS MODE =====
-    if (calculationType === "LIGHTS" && useArrayInput) {
-      let grandTotal = 0;
-
-      const updated = multiRows.map((row) => {
-        const cbm = (row.length * row.width * row.height) / 1_000_000;
-
-        let landed = 0;
-        let srp = 0;
-
-        if (cbm > 0 && row.qtyPerCarton > 0) {
-          const shippingPerItem = 520000 / ((65 / cbm) * row.qtyPerCarton);
-
-          landed = (row.unitCost * 60 + shippingPerItem) * 1.01;
-
-          srp = Math.ceil(landed / 0.35 / 10) * 10;
-        }
-
-        grandTotal += landed;
-
-        return { ...row, landed, srp };
-      });
-
-      setMultiRows(updated);
-
-      setLandedCost(grandTotal);
-      setSrp(grandTotal ? Math.ceil(grandTotal / 0.35 / 100) * 100 : 0);
-      return;
-    }
-
-    // ===== LIGHTS - SINGLE MODE =====
-    if (calculationType === "LIGHTS" && !useArrayInput) {
-      let lc = 0;
-
-      const cbm = (length * width * height) / 1_000_000;
-
-      if (cbm > 0 && qtyPerCarton > 0) {
-        const shippingPerItem = 520000 / ((65 / cbm) * qtyPerCarton);
-
-        lc = (unitCost * 60 + shippingPerItem) * 1.01;
-      }
-
-      setLandedCost(lc);
-      setSrp(lc ? Math.ceil(lc / 0.35 / 10) * 10 : 0);
-    }
-  }, [
-    calculationType,
-    unitCost,
-    length,
-    width,
-    height,
-    qtyPerCarton,
-    qtyPerContainer,
-    useArrayInput,
-    multiRows
-      .map(
-        (r) =>
-          `${r.unitCost}-${r.length}-${r.width}-${r.height}-${r.qtyPerCarton}`,
-      )
-      .join("|"),
-  ]);
 
   const uploadToCloudinary = async (file: File) => {
     const formData = new FormData();
@@ -904,11 +664,11 @@ export default function EditProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-              ...item,
-              specs: item.specs.map((row, r) =>
-                r === rowIndex ? { ...row, [field]: value } : row,
-              ),
-            }
+            ...item,
+            specs: item.specs.map((row, r) =>
+              r === rowIndex ? { ...row, [field]: value } : row,
+            ),
+          }
           : item,
       ),
     );
@@ -946,12 +706,12 @@ export default function EditProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-              ...item,
-              specs:
-                item.specs.length > 1
-                  ? item.specs.filter((_, r) => r !== rowIndex)
-                  : item.specs,
-            }
+            ...item,
+            specs:
+              item.specs.length > 1
+                ? item.specs.filter((_, r) => r !== rowIndex)
+                : item.specs,
+          }
           : item,
       ),
     );
@@ -964,63 +724,16 @@ export default function EditProductPage() {
     setPreview(URL.createObjectURL(file));
   };
 
-  const handleAddGalleryMedia = async (file: File | null) => {
-    if (!file) return;
 
-    const isVideo = file.type.startsWith("video/");
-    const isImage = file.type.startsWith("image/");
-
-    if (!isImage && !isVideo) {
-      toast.error("Only image or video files are allowed");
-      return;
+  useEffect(() => {
+    return () => {
+      if (preview && preview.startsWith("blob:")) {
+        URL.revokeObjectURL(preview);
     }
-
-    const previewUrl = URL.createObjectURL(file);
-
-    setGalleryMedia((prev) => [
-      ...prev,
-      {
-        type: isVideo ? "video" : "image",
-        file,
-        preview: previewUrl,
-      },
-    ]);
   };
+}, [preview]);
 
-  const handleRemoveGalleryMedia = (index: number) => {
-    setGalleryMedia((prev) => {
-      URL.revokeObjectURL(prev[index].preview);
-      return prev.filter((_, i) => i !== index);
-    });
-  };
 
-  /* ===== SUPPLIER DATA SHEET HANDLERS ===== */
-  const updateSupplierSheet = (index: number, file: File | null) => {
-    setSupplierDataSheets((prev) =>
-      prev.map((row, i) =>
-        i === index
-          ? {
-              ...row, // KEEP EXISTING DATA
-              file, // ADD NEW FILE
-            }
-          : row,
-      ),
-    );
-  };
-
-  const addSupplierSheetRow = (index: number) => {
-    setSupplierDataSheets((prev) => {
-      const copy = [...prev];
-      copy.splice(index + 1, 0, { file: null });
-      return copy;
-    });
-  };
-
-  const removeSupplierSheetRow = (index: number) => {
-    setSupplierDataSheets((prev) =>
-      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
-    );
-  };
 
   /* ---------------- Classification Handlers ---------------- */
   const handleAddClassification = async () => {
@@ -1034,7 +747,6 @@ export default function EditProductPage() {
     await addDoc(collection(db, "classificationTypes"), {
       name: newClassification.trim(),
       isActive: true,
-      createdAt: serverTimestamp(),
     });
 
     setNewClassification("");
@@ -1052,7 +764,7 @@ export default function EditProductPage() {
     await addDoc(collection(db, "sisterCompanies"), {
       name: newSisterCompany.trim(),
       isActive: true,
-      createdAt: serverTimestamp(),
+      dateUpdated: serverTimestamp(),
     });
 
     setNewSisterCompany("");
@@ -1157,103 +869,35 @@ export default function EditProductPage() {
   };
 
   const uploadProductMedia = async (productId: string) => {
+
     try {
-      const uploads: Promise<any>[] = [];
 
-      // Only upload NEW files (skip existing ones)
-      if (mainImage) {
-        uploads.push(uploadToCloudinary(mainImage));
-      }
+      if (!mainImage) return;
 
-      galleryMedia.forEach((item) => {
-        if (item.file) {
-          uploads.push(uploadToCloudinary(item.file));
-        }
+      const result = await uploadToCloudinary(mainImage);
+
+      await updateDoc(doc(db, "products", productId), {
+
+        mainImage: {
+          name: mainImage.name,
+          url: result.secure_url,
+          publicId: result.public_id,
+        },
+
+        mediaStatus: "done",
+
       });
 
-      // HUWAG mag return agad – kahit walang images, tuloy pa rin for documents
-      if (uploads.length > 0) {
-        const results = await Promise.all(uploads);
+    } catch {
 
-        let uploadedMainImage = null;
-        let galleryIndex = 0;
-
-        if (mainImage) {
-          const r = results[0];
-          uploadedMainImage = {
-            name: mainImage.name,
-            url: r.secure_url,
-            publicId: r.public_id,
-          };
-          galleryIndex = 1;
-        }
-
-        let resultCursor = galleryIndex;
-
-        const uploadedGallery = galleryMedia.map((item) => {
-          if (!item.file) {
-            return {
-              type: item.type,
-              name: "existing",
-              url: item.preview,
-              publicId: "existing",
-            };
-          }
-
-          const r = results[resultCursor];
-          resultCursor++;
-
-          return {
-            type: item.type,
-            name: item.file.name,
-            url: r.secure_url,
-            publicId: r.public_id,
-          };
-        });
-
-        await updateDoc(doc(db, "products", productId), {
-          mainImage: uploadedMainImage || null,
-          gallery: uploadedGallery,
-          mediaStatus: "done",
-        });
-      }
-
-      const finalSupplierSheets: SupplierDataSheetItem[] = [];
-
-      // 1. KEEP EXISTING FILES (that were not removed)
-      for (const row of supplierDataSheets) {
-        if (row.existing && !row.file) {
-          finalSupplierSheets.push({
-            name: row.existing.name,
-            url: row.existing.url,
-            publicId: row.existing.publicId,
-          });
-        }
-      }
-
-      // 2. UPLOAD NEW FILES (added or replaced)
-      for (const row of supplierDataSheets) {
-        if (row.file) {
-          const res = await uploadToCloudinary(row.file);
-
-          finalSupplierSheets.push({
-            name: row.file.name,
-            url: res.secure_url,
-            publicId: res.public_id,
-          });
-        }
-      }
-
-      // 3. SAVE UPDATED ARRAY (even if empty)
       await updateDoc(doc(db, "products", productId), {
-        supplierDataSheets: finalSupplierSheets,
-      });
-    } catch (error) {
-      console.error("MEDIA UPLOAD FAILED:", error);
-      await updateDoc(doc(db, "products", productId), {
+
         mediaStatus: "failed",
+
       });
+
     }
+
   };
 
   const filteredClassifications = React.useMemo(() => {
@@ -1289,64 +933,7 @@ export default function EditProductPage() {
   /* ---------------- Save Product ---------------- */
 
   /* ===== SAFE LOGISTICS PAYLOAD (FIRESTORE SAFE) ===== */
-  // ===== COMPUTE TOTAL UNIT COST FOR MULTI DIMENSIONS =====
-  const totalMultiUnitCost =
-    calculationType === "LIGHTS" && useArrayInput
-      ? multiRows.reduce((sum, row) => sum + (row.unitCost || 0), 0)
-      : 0;
 
-  // ===== SAFE LOGISTICS PAYLOAD =====
-  const logisticsPayload = {
-    calculationType,
-
-    // 🔥 FIXED: Dynamic Unit Cost
-    unitCost:
-      calculationType === "LIGHTS" && useArrayInput
-        ? totalMultiUnitCost
-        : (unitCost ?? 0),
-
-    useArrayInput: useArrayInput,
-
-    // MULTIPLE DIMENSIONS MODE
-    multiDimensions:
-      calculationType === "LIGHTS" && useArrayInput
-        ? multiRows.map((row) => ({
-            itemName: row.itemName ?? "",
-            unitCost: row.unitCost ?? 0,
-            length: row.length ?? 0,
-            width: row.width ?? 0,
-            height: row.height ?? 0,
-            qtyPerCarton: row.qtyPerCarton ?? 1,
-            landed: row.landed ?? 0,
-            srp: row.srp ?? 0,
-          }))
-        : null,
-
-    // SINGLE DIMENSION MODE
-    packaging:
-      calculationType === "LIGHTS" && !useArrayInput
-        ? {
-            length: length ?? 0,
-            width: width ?? 0,
-            height: height ?? 0,
-            qtyPerCarton: qtyPerCarton ?? 1,
-          }
-        : null,
-
-    // POLE MODE
-    qtyPerContainer: calculationType === "POLE" ? (qtyPerContainer ?? 1) : null,
-
-    landedCost: landedCost ?? 0,
-    srp: srp ?? 0,
-
-    category: productCategory || "To Be Evaluated",
-    moq: moq ?? 0,
-
-    warranty: {
-      value: warrantyValue ?? 0,
-      unit: warrantyUnit || "Years",
-    },
-  };
 
   const syncSpecsToProductType = async () => {
     if (!classificationType) return;
@@ -1446,23 +1033,23 @@ export default function EditProductPage() {
         categoryTypes:
           selectedCategoryTypes.length > 0
             ? selectedCategoryTypes.map((c) => ({
-                categoryTypeId: c.id || "",
-                categoryTypeName: c.name || "",
-              }))
+              categoryTypeId: c.id || "",
+              categoryTypeName: c.name || "",
+            }))
             : [],
 
         productTypes:
           selectedProductType && selectedCategoryTypes.length > 0
             ? [
-                {
-                  productTypeId: selectedProductType.id || "",
-                  productTypeName: selectedProductType.name || "",
-                  categoryTypeId:
-                    selectedProductType.categoryTypeId ||
-                    selectedCategoryTypes[0].id ||
-                    "",
-                },
-              ]
+              {
+                productTypeId: selectedProductType.id || "",
+                productTypeName: selectedProductType.name || "",
+                categoryTypeId:
+                  selectedProductType.categoryTypeId ||
+                  selectedCategoryTypes[0].id ||
+                  "",
+              },
+            ]
             : [],
 
         technicalSpecifications: technicalSpecs.map((spec) => ({
@@ -1481,7 +1068,6 @@ export default function EditProductPage() {
           units: [],
         })),
 
-        logistics: logisticsPayload,
 
         createdBy: userId,
         referenceID: user?.ReferenceID || null,
@@ -1490,14 +1076,9 @@ export default function EditProductPage() {
       };
 
       // ONLY reset media fields IF NEW FILES ARE ACTUALLY ADDED
-      const hasNewMainImage = !!mainImage;
-      const hasNewGalleryFiles = galleryMedia.some((g) => g.file);
-      const hasNewDocuments = supplierDataSheets.some((s) => s.file);
-
-      if (hasNewMainImage || hasNewGalleryFiles || hasNewDocuments) {
+      if (mainImage) {
         updatePayload.mediaStatus = "pending";
       }
-
       await updateDoc(productRef, updatePayload);
 
       toast.success("Product saved successfully");
@@ -1560,6 +1141,7 @@ export default function EditProductPage() {
                   )}
                   <input
                     type="file"
+                    accept="image/*"
                     className="hidden"
                     onChange={(e) =>
                       handleImageChange(e.target.files?.[0] || null)
@@ -1569,61 +1151,6 @@ export default function EditProductPage() {
               </CardContent>
             </Card>
 
-            {/* GALLERY IMAGES & VIDEOS */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-center text-sm">
-                  GALLERY IMAGES & VIDEOS
-                </CardTitle>
-              </CardHeader>
-
-              <CardContent>
-                <div className="flex gap-4 overflow-x-auto pb-2">
-                  {/* EXISTING MEDIA */}
-                  {galleryMedia.map((item, index) => (
-                    <div
-                      key={index}
-                      className="relative min-w-[160px] h-[120px] border rounded-lg overflow-hidden bg-black"
-                    >
-                      {item.type === "image" ? (
-                        <img
-                          src={item.preview}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <video
-                          src={item.preview}
-                          className="w-full h-full object-cover"
-                          controls
-                        />
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveGalleryMedia(index)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* ADD MEDIA */}
-                  <label className="min-w-[160px] h-[120px] flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer text-muted-foreground">
-                    <Plus className="h-6 w-6" />
-                    <span className="text-xs mt-1">ADD PHOTO / VIDEO</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*,video/*"
-                      onChange={(e) =>
-                        handleAddGalleryMedia(e.target.files?.[0] || null)
-                      }
-                    />
-                  </label>
-                </div>
-              </CardContent>
-            </Card>
             <div>
               <Label>Model No.</Label>
               <Input
@@ -1715,9 +1242,9 @@ export default function EditProductPage() {
                       />
 
                       {item.id &&
-                      classificationType &&
-                      selectedProductType &&
-                      selectedCategoryTypes.length === 1 ? (
+                        classificationType &&
+                        selectedProductType &&
+                        selectedCategoryTypes.length === 1 ? (
                         <AddProductDeleteTechnicalSpecification
                           classificationId={classificationType.id}
                           categoryTypeId={selectedCategoryTypes[0].id}
@@ -1804,398 +1331,6 @@ export default function EditProductPage() {
             </div>
           </CardContent>
 
-          {/* ================= PRICING / LOGISTICS ================= */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center text-sm">
-                PRICING / LOGISTICS
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              {/* CALCULATION TYPE */}
-              <div>
-                <Label>Calculation Type</Label>
-                <select
-                  className="w-full h-10 border rounded-md px-2"
-                  value={calculationType}
-                  onChange={(e) =>
-                    setCalculationType(e.target.value as CalculationType)
-                  }
-                >
-                  <option value="LIGHTS">Lights</option>
-                  <option value="POLE">Pole</option>
-                </select>
-              </div>
-
-              {/* UNIT COST */}
-              {calculationType === "LIGHTS" && (
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    checked={useArrayInput}
-                    onCheckedChange={(v) => {
-                      const newValue = !!v;
-                      setUseArrayInput(newValue);
-
-                      setUnitCost(0);
-                      setLength(0);
-                      setWidth(0);
-                      setHeight(0);
-                      setQtyPerCarton(1);
-
-                      setMultiRows([
-                        {
-                          itemName: "",
-                          unitCost: 0,
-                          length: 0,
-                          width: 0,
-                          height: 0,
-                          qtyPerCarton: 1,
-                          landed: 0,
-                          srp: 0,
-                        },
-                      ]);
-                    }}
-                  />
-                  <Label>Multiple Dimensions ?</Label>
-                </div>
-              )}
-
-              {calculationType === "LIGHTS" && !useArrayInput && (
-                <div>
-                  <Label>Unit Cost (USD)</Label>
-                  <Input
-                    type="number"
-                    value={unitCost}
-                    onChange={(e) => setUnitCost(Number(e.target.value))}
-                  />
-                </div>
-              )}
-              {calculationType === "LIGHTS" && !useArrayInput && (
-                <div className="space-y-2">
-                  <Label>Packaging Dimensions (CM)</Label>
-
-                  <div className="grid grid-cols-4 gap-2">
-                    <Input
-                      type="number"
-                      placeholder="L"
-                      value={length || ""}
-                      onChange={(e) => setLength(Number(e.target.value))}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="W"
-                      value={width || ""}
-                      onChange={(e) => setWidth(Number(e.target.value))}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="H"
-                      value={height || ""}
-                      onChange={(e) => setHeight(Number(e.target.value))}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Qty/Box"
-                      value={qtyPerCarton || ""}
-                      onChange={(e) => setQtyPerCarton(Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* ================= LIGHTS ONLY ================= */}
-              {calculationType === "LIGHTS" && useArrayInput && (
-                <div className="space-y-3">
-                  <Label>Multiple Packaging Dimensions</Label>
-
-                  {/* ===== TABLE WRAPPER ===== */}
-                  <div className="space-y-2">
-                    {/* ===== HEADER ===== */}
-                    <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px] gap-2 text-xs font-semibold text-muted-foreground">
-                      <div className="px-2">Item Name</div>
-                      <div className="px-2">Unit Cost (USD)</div>
-                      <div className="px-2">Length (cm)</div>
-                      <div className="px-2">Width (cm)</div>
-                      <div className="px-2">Height (cm)</div>
-                      <div className="px-2">Qty/Box</div>
-                      <div className="px-2">Landed (PHP)</div>
-                      <div className="px-2">SRP (PHP)</div>
-                      <div className="px-2 text-center">Action</div>
-                    </div>
-
-                    {/* ===== ROWS ===== */}
-                    {multiRows.map((row, index) => (
-                      <div
-                        key={index}
-                        className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px] gap-2 items-center"
-                      >
-                        <Input
-                          value={row.itemName ?? ""}
-                          onChange={(e) =>
-                            updateMultiRow(index, "itemName", e.target.value)
-                          }
-                        />
-
-                        <Input
-                          type="number"
-                          value={row.unitCost || ""}
-                          onChange={(e) =>
-                            updateMultiRow(
-                              index,
-                              "unitCost",
-                              Number(e.target.value),
-                            )
-                          }
-                        />
-
-                        <Input
-                          type="number"
-                          value={row.length || ""}
-                          onChange={(e) =>
-                            updateMultiRow(
-                              index,
-                              "length",
-                              Number(e.target.value),
-                            )
-                          }
-                        />
-
-                        <Input
-                          type="number"
-                          value={row.width || ""}
-                          onChange={(e) =>
-                            updateMultiRow(
-                              index,
-                              "width",
-                              Number(e.target.value),
-                            )
-                          }
-                        />
-
-                        <Input
-                          type="number"
-                          value={row.height || ""}
-                          onChange={(e) =>
-                            updateMultiRow(
-                              index,
-                              "height",
-                              Number(e.target.value),
-                            )
-                          }
-                        />
-
-                        <Input
-                          type="number"
-                          value={row.qtyPerCarton || ""}
-                          onChange={(e) =>
-                            updateMultiRow(
-                              index,
-                              "qtyPerCarton",
-                              Number(e.target.value),
-                            )
-                          }
-                        />
-
-                        <Input disabled value={formatPHP(row.landed, 2)} />
-                        <Input disabled value={formatPHP(row.srp, 0)} />
-
-                        <div className="flex gap-1 justify-center">
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            onClick={() => addMultiRow(index)}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            disabled={multiRows.length === 1}
-                            onClick={() => removeMultiRow(index)}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* ================= POLE ONLY ================= */}
-              {calculationType === "POLE" && (
-                <div className="space-y-2">
-                  <div>
-                    <Label>Unit Cost (USD)</Label>
-                    <Input
-                      type="number"
-                      value={unitCost || ""}
-                      onChange={(e) => setUnitCost(Number(e.target.value))}
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Quantity Per Container</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={qtyPerContainer || ""}
-                      onChange={(e) =>
-                        setQtyPerContainer(Number(e.target.value))
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-
-              <Separator />
-
-              {/* RESULTS */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>Landed Cost (PHP)</Label>
-                  <Input value={formatPHP(landedCost, 2)} disabled />
-                </div>
-                <div>
-                  <Label>SRP (PHP)</Label>
-                  <Input value={formatPHP(srp, 0)} disabled />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* ===== ADDITIONAL LOGISTICS INFO ===== */}
-
-              <div className="space-y-4">
-                {/* CATEGORY */}
-                <div>
-                  <Label>Category</Label>
-                  <select
-                    className="w-full h-10 border rounded-md px-2"
-                    value={productCategory}
-                    onChange={(e) =>
-                      setProductCategory(e.target.value as ProductCategory)
-                    }
-                  >
-                    <option value="Economy">Economy</option>
-                    <option value="Mid-End">Mid-End</option>
-                    <option value="To Be Evaluated">To Be Evaluated</option>
-                  </select>
-                </div>
-
-                {/* MOQ */}
-                <div>
-                  <Label>MOQ</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={moq || ""}
-                    onChange={(e) => setMoq(Number(e.target.value))}
-                    placeholder="Enter MOQ"
-                  />
-                </div>
-
-                {/* WARRANTY */}
-                <div className="grid grid-cols-[1fr_1fr] gap-2">
-                  <div>
-                    <Label>Warranty</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={warrantyValue || ""}
-                      onChange={(e) => setWarrantyValue(Number(e.target.value))}
-                      placeholder="Enter number"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Unit</Label>
-                    <select
-                      className="w-full h-10 border rounded-md px-2"
-                      value={warrantyUnit}
-                      onChange={(e) =>
-                        setWarrantyUnit(
-                          e.target.value as "Days" | "Months" | "Years",
-                        )
-                      }
-                    >
-                      <option value="Days">Days</option>
-                      <option value="Months">Months</option>
-                      <option value="Years">Years</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* ===== SUPPLIER DATA SHEET ===== */}
-                <div className="space-y-3">
-                  <Label>Supplier&apos;s Data Sheet (PDF / Docs)</Label>
-
-                  {supplierDataSheets.map((row, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-[1fr_auto] gap-2 items-center"
-                    >
-                      <div className="space-y-1">
-                        {/* SHOW EXISTING FILE IF PRESENT */}
-                        {row.existing && !row.file && (
-                          <div className="text-sm text-blue-600">
-                            Current File:
-                            <a
-                              href={row.existing.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline ml-1"
-                            >
-                              {row.existing.name}
-                            </a>
-                          </div>
-                        )}
-
-                        {/* SHOW NEWLY SELECTED FILE */}
-                        {row.file && (
-                          <div className="text-sm text-green-600">
-                            New File: {row.file.name}
-                          </div>
-                        )}
-
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={(e) =>
-                            updateSupplierSheet(
-                              index,
-                              e.target.files?.[0] || null,
-                            )
-                          }
-                        />
-                      </div>
-
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => addSupplierSheetRow(index)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          disabled={supplierDataSheets.length === 1}
-                          onClick={() => removeSupplierSheetRow(index)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </Card>
 
         {/* RIGHT */}
