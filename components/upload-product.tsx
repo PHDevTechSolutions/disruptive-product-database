@@ -10,12 +10,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+
 import { Upload } from "lucide-react";
 
-import JSZip from "jszip";
 import ExcelJS from "exceljs";
-
-import { db } from "@/lib/firebase";
 
 import {
   collection,
@@ -24,18 +30,30 @@ import {
   getDocs,
   query,
   where,
-  doc,
 } from "firebase/firestore";
 
+import { db } from "@/lib/firebase";
+
 import { toast } from "sonner";
+
 import { useUser } from "@/contexts/UserContext";
 
 export default function UploadProductModal() {
   const { userId } = useUser();
+
   const [userReferenceID, setUserReferenceID] = React.useState("");
+
   const [open, setOpen] = React.useState(false);
+
   const [file, setFile] = React.useState<File | null>(null);
+
   const [uploading, setUploading] = React.useState(false);
+
+  const [classification, setClassification] = React.useState("");
+
+  const [classifications, setClassifications] = React.useState<any[]>([]);
+
+  /* ================= LOAD USER ================= */
 
   React.useEffect(() => {
     if (!userId) return;
@@ -46,7 +64,30 @@ export default function UploadProductModal() {
         setUserReferenceID(data.ReferenceID || "");
       });
   }, [userId]);
-  /* ================= FIND HELPERS ================= */
+
+  /* ================= LOAD CLASSIFICATIONS ================= */
+
+  React.useEffect(() => {
+    const load = async () => {
+      const snap = await getDocs(
+        query(
+          collection(db, "classificationTypes"),
+          where("isActive", "==", true),
+        ),
+      );
+
+      setClassifications(
+        snap.docs.map((d) => ({
+          id: d.id,
+          name: d.data().name,
+        })),
+      );
+    };
+
+    load();
+  }, []);
+
+  /* ================= HELPERS ================= */
 
   const findSupplier = async (company: string) => {
     const snap = await getDocs(
@@ -61,29 +102,16 @@ export default function UploadProductModal() {
     };
   };
 
-  const findSisterCompany = async (name: string) => {
+  const findBrand = async (name: string) => {
     const snap = await getDocs(
-      query(collection(db, "sisterCompanies"), where("name", "==", name)),
+      query(collection(db, "brands"), where("name", "==", name)),
     );
 
     if (snap.empty) return null;
 
     return {
-      sisterCompanyId: snap.docs[0].id,
-      sisterCompanyName: name,
-    };
-  };
-
-  const findClassification = async (name: string) => {
-    const snap = await getDocs(
-      query(collection(db, "classificationTypes"), where("name", "==", name)),
-    );
-
-    if (snap.empty) return null;
-
-    return {
-      classificationId: snap.docs[0].id,
-      classificationName: name,
+      brandId: snap.docs[0].id,
+      brandName: name,
     };
   };
 
@@ -136,30 +164,10 @@ export default function UploadProductModal() {
     };
   };
 
-  /* ================= CHECK DUPLICATE PRODUCT ================= */
+  /* ================= GENERATE REFERENCE ================= */
 
-  const isDuplicateProduct = async (
-    productName: string,
-    supplierCompany: string,
-  ) => {
-    const snap = await getDocs(
-      query(
-        collection(db, "products"),
-        where("productName", "==", productName),
-        where("supplier.company", "==", supplierCompany),
-      ),
-    );
-
-    return !snap.empty;
-  };
-  /* ================= MAIN UPLOAD ================= */
-
-  const generateProductReferenceID = async () => {
+  const generateReference = async () => {
     const snap = await getDocs(collection(db, "products"));
-
-    if (snap.empty) {
-      return "PROD-SPF-00001";
-    }
 
     let max = 0;
 
@@ -173,14 +181,14 @@ export default function UploadProductModal() {
       if (num > max) max = num;
     });
 
-    const next = max + 1;
-
-    return `PROD-SPF-${next.toString().padStart(5, "0")}`;
+    return `PROD-SPF-${(max + 1).toString().padStart(5, "0")}`;
   };
 
+  /* ================= MAIN UPLOAD ================= */
+
   const handleUpload = async () => {
-    if (!file) {
-      toast.error("Please select ZIP file");
+    if (!file || !classification) {
+      toast.error("Select classification and file");
 
       return;
     }
@@ -188,453 +196,161 @@ export default function UploadProductModal() {
     try {
       setUploading(true);
 
-      const zip = await JSZip.loadAsync(file);
+      const buffer = await file.arrayBuffer();
 
-      let totalUploaded = 0;
-      let totalSkipped = 0;
+      const workbook = new ExcelJS.Workbook();
 
-      let refCounter = 0;
+      await workbook.xlsx.load(buffer);
 
-      // get starting number ONCE
-      const snap = await getDocs(collection(db, "products"));
+      const sheet = workbook.worksheets[0];
 
-      snap.forEach((doc) => {
-        const ref = doc.data().productReferenceID;
+      if (!sheet) {
+        toast.error("Invalid file");
 
-        if (!ref) return;
+        return;
+      }
 
-        const num = parseInt(ref.replace("PROD-SPF-", ""));
+      /* ================= HEADERS ================= */
 
-        if (num > refCounter) refCounter = num;
+      const header1 = sheet.getRow(1);
+
+      const header2 = sheet.getRow(2);
+
+      const headers: any[] = [];
+
+      header2.eachCell((cell, col) => {
+        const group = header1.getCell(col).value?.toString() || "";
+
+        const field = cell.value?.toString() || "";
+
+        if (!group) headers.push(field);
+        else headers.push(`${group}:${field}`);
       });
 
-      for (const path in zip.files) {
-        if (!path.endsWith(".xlsx")) continue;
+      /* ================= ROWS ================= */
 
-        const buffer = await zip.files[path].async("arraybuffer");
+      for (let r = 3; r <= sheet.rowCount; r++) {
+        const row = sheet.getRow(r);
 
-        const workbook = new ExcelJS.Workbook();
+        if (!row.getCell(1).value) continue;
 
-        await workbook.xlsx.load(buffer);
+        const brandName = row.getCell(2).value?.toString() || "";
 
-        const worksheet = workbook.worksheets[0];
+        const category = row.getCell(3).value?.toString() || "";
 
-        if (!worksheet) continue;
+        const categoryTypeName = row.getCell(4).value?.toString() || "";
 
-        /* ===== FOLDER STRUCTURE ===== */
+        const productTypeName = row.getCell(5).value?.toString() || "";
 
-        const parts = path.split("/");
+        const image = row.getCell(6).value?.toString() || "";
 
-        const sisterCompanyName = parts[0];
+        const productName = row.getCell(7).value?.toString() || "";
 
-        const classificationName = parts[1];
+        const supplierCompany = row.getCell(8).value?.toString() || "";
 
-        const categoryTypeName = parts[2];
+        /* FIND IDS */
 
-        const productTypeName = parts[3];
+        const brand = await findBrand(brandName);
 
-        /* ===== FIND IDS ===== */
+        const supplier = await findSupplier(supplierCompany);
 
-        const supplierFinderCache: any = {};
-
-        const sister = await findSisterCompany(sisterCompanyName);
-
-        const classification = await findClassification(classificationName);
-
-        if (!classification) {
-          toast.error(`Classification not found: ${classificationName}`);
-
-          continue;
-        }
-
-        const category = await findCategoryType(
-          classification.classificationId,
+        const categoryType = await findCategoryType(
+          classification,
           categoryTypeName,
         );
 
-        if (!category) {
-          toast.error(`Category not found: ${categoryTypeName}`);
-
-          totalSkipped++;
-
-          continue;
-        }
-
-        if (!category) {
-          toast.error(`Category not found: ${categoryTypeName}`);
-
-          continue;
-        }
-
         const productType = await findProductType(
-          classification.classificationId,
-          category.categoryTypeId,
+          classification,
+          categoryType?.categoryTypeId || "",
           productTypeName,
         );
 
-        /* ===== HEADERS ===== */
+        /* SPECS */
 
-        const headerRow1 = worksheet.getRow(1);
+        const specMap: any = {};
 
-        const headerRow2 = worksheet.getRow(2);
+        headers.forEach((h, index) => {
+          if (!h.includes(":")) return;
 
-        const headers: string[] = [];
+          const [title, specId] = h.split(":");
 
-        headerRow2.eachCell((cell, col) => {
-          const group = headerRow1.getCell(col).value?.toString() || "";
+          const value = row.getCell(index + 1).value?.toString();
 
-          const field = cell.value?.toString() || "";
+          if (!value) return;
 
-          if (group === "Pricing / Logistics") headers.push(field);
-          else if (group === "Gallery URLs") headers.push(`Gallery`);
-          else if (
-            group === "Model No." ||
-            group === "Supplier Company" ||
-            group === "Main Image URL"
-          )
-            headers.push(group);
-          else headers.push(`${group}:${field}`);
+          if (!specMap[title]) specMap[title] = [];
+
+          specMap[title].push({
+            specId,
+            value,
+          });
         });
 
-        /* ===== DATA ROWS ===== */
+        const technicalSpecifications = Object.keys(specMap).map((title) => ({
+          technicalSpecificationId: "",
 
-        for (let i = 3; i <= worksheet.rowCount; i++) {
-          const row = worksheet.getRow(i);
+          title,
 
-          if (!row.getCell(1).value) continue;
+          specs: specMap[title],
+        }));
 
-          const productName = row.getCell(1).value?.toString() || "";
-          const mainImageUrl = row.getCell(3).value?.toString() || "";
+        /* SAVE */
 
-          const supplierCompany = row.getCell(2).value?.toString() || "";
+        const productReferenceID = await generateReference();
 
-          const supplier = await findSupplier(supplierCompany);
+        await addDoc(collection(db, "products"), {
+          productReferenceID,
 
-          if (!supplier) {
-            toast.error(`Supplier not found: ${supplierCompany}`);
+          productName,
 
-            continue; // ⛔ stop uploading this product
-          }
+          brandId: brand?.brandId || "",
 
-          /* ===== GALLERY ===== */
+          brandName,
 
-          const gallery: any[] = [];
+          category,
 
-          headers.forEach((h, index) => {
-            if (!h.startsWith("Gallery")) return;
+          classificationId: classification,
 
-            const url = row.getCell(index + 1).value?.toString();
+          classificationName:
+            classifications.find((c) => c.id === classification)?.name || "",
 
-            if (url) {
-              gallery.push({
-                url,
+          supplier,
 
-                type: "image",
+          categoryTypes: categoryType ? [categoryType] : [],
 
-                name: "uploaded",
+          productTypes: productType ? [productType] : [],
 
-                publicId: "",
-              });
-            }
-          });
+          mainImage: { url: image },
 
-          /* ===== LOGISTICS ===== */
+          technicalSpecifications,
 
-          /* ===== LOGISTICS (FULL SUPPORT LIGHTS SINGLE / MULTI / POLE) ===== */
+          createdBy: userId,
 
-          const calcType =
-            row
-              .getCell(headers.indexOf("Calculation Type") + 1)
-              .value?.toString() || "LIGHTS";
+          referenceID: userReferenceID,
 
-          /* ================= COMMON ================= */
+          isActive: true,
 
-          const landedCost =
-            Number(row.getCell(headers.indexOf("Landed Cost") + 1).value) || 0;
+          mediaStatus: "done",
 
-          const srp =
-            Number(row.getCell(headers.indexOf("SRP") + 1).value) || 0;
-
-          const moq =
-            Number(row.getCell(headers.indexOf("MOQ") + 1).value) || 0;
-
-          /* ================= WARRANTY ================= */
-
-          const warrantyText =
-            row.getCell(headers.indexOf("Warranty") + 1).value?.toString() ||
-            "";
-
-          const category =
-            row.getCell(headers.indexOf("Category") + 1).value?.toString() ||
-            "To Be Evaluated";
-
-          const warrantyParts = warrantyText.split(" ");
-
-          const warrantyValue = Number(warrantyParts[0]) || 0;
-
-          const warrantyUnit = warrantyParts[1] || "Years";
-
-          /* ================= LIGHTS SINGLE ================= */
-
-          const packaging =
-            calcType === "LIGHTS" && headers.includes("Length")
-              ? {
-                  length:
-                    Number(row.getCell(headers.indexOf("Length") + 1).value) ||
-                    0,
-
-                  width:
-                    Number(row.getCell(headers.indexOf("Width") + 1).value) ||
-                    0,
-
-                  height:
-                    Number(row.getCell(headers.indexOf("Height") + 1).value) ||
-                    0,
-
-                  qtyPerCarton:
-                    Number(
-                      row.getCell(headers.indexOf("Qty/Carton") + 1).value,
-                    ) || 0,
-                }
-              : null;
-
-          /* ================= MULTI DIMENSION (FIX MULTI HEADER) ================= */
-
-          let multiDimensions = null;
-
-          if (calcType === "LIGHTS") {
-            const multiArray = [];
-
-            for (let col = 0; col < headers.length; col++) {
-              const header = headers[col];
-
-              if (!header.startsWith("Item Name")) continue;
-
-              const index = header.replace("Item Name ", "");
-
-              const itemName = row.getCell(col + 1).value?.toString() || "";
-
-              const unitCost =
-                Number(
-                  row.getCell(headers.indexOf(`Unit Cost ${index}`) + 1).value,
-                ) || 0;
-
-              const length =
-                Number(
-                  row.getCell(headers.indexOf(`Length ${index}`) + 1).value,
-                ) || 0;
-
-              const width =
-                Number(
-                  row.getCell(headers.indexOf(`Width ${index}`) + 1).value,
-                ) || 0;
-
-              const height =
-                Number(
-                  row.getCell(headers.indexOf(`Height ${index}`) + 1).value,
-                ) || 0;
-
-              const qty =
-                Number(
-                  row.getCell(headers.indexOf(`Qty/Carton ${index}`) + 1).value,
-                ) || 0;
-
-              if (itemName || unitCost || length || width || height || qty) {
-                multiArray.push({
-                  itemName,
-
-                  unitCost,
-
-                  length,
-
-                  width,
-
-                  height,
-
-                  qtyPerCarton: qty,
-                });
-              }
-            }
-
-            if (multiArray.length > 0) multiDimensions = multiArray;
-          }
-
-          /* ================= POLE ================= */
-
-          const qtyPerContainer =
-            calcType === "POLE"
-              ? Number(
-                  row.getCell(headers.indexOf("Qty/Container") + 1).value,
-                ) || 0
-              : null;
-
-          /* ================= UNIT COST ================= */
-
-          let unitCost = 0;
-
-          if (calcType === "POLE") {
-            unitCost =
-              Number(
-                row.getCell(headers.indexOf("Unit Cost (Pole)") + 1).value,
-              ) || 0;
-          } else if (multiDimensions) {
-            unitCost = multiDimensions.reduce(
-              (sum, r) => sum + (r.unitCost || 0),
-              0,
-            );
-          } else {
-            unitCost =
-              Number(
-                row.getCell(headers.indexOf("Unit Cost (Lights Single)") + 1)
-                  .value,
-              ) || 0;
-          }
-
-          /* ================= FINAL OBJECT ================= */
-
-          const logistics = {
-
-             category,
-
-            calculationType: calcType,
-
-            unitCost,
-
-            landedCost,
-
-            srp,
-
-            moq,
-
-            useArrayInput: !!multiDimensions,
-
-            multiDimensions,
-
-            packaging,
-
-            qtyPerContainer,
-
-            warranty: {
-              value: warrantyValue,
-
-              unit: warrantyUnit,
-            },
-          };
-
-          /* ===== TECH SPECS ===== */
-
-          const specMap: Record<string, any[]> = {};
-
-          headers.forEach((h, index) => {
-            if (!h.includes(":")) return;
-
-            const [title, specId] = h.split(":");
-
-            const value = row.getCell(index + 1).value?.toString();
-
-            if (!value) return;
-
-            if (!specMap[title]) specMap[title] = [];
-
-            specMap[title].push({
-              specId,
-
-              value,
-            });
-          });
-
-          const technicalSpecifications = Object.keys(specMap).map((title) => ({
-            technicalSpecificationId: "",
-
-            title,
-
-            specs: specMap[title],
-          }));
-
-          /* ===== SAVE ===== */
-
-          /* ===== CHECK IF DUPLICATE FIRST ===== */
-
-          const duplicate = await isDuplicateProduct(
-            productName,
-            supplierCompany,
-          );
-
-          if (duplicate) {
-            totalSkipped++;
-
-            toast.warning(
-              `Skipped: "${productName}" already exists for "${supplierCompany}"`,
-            );
-
-            continue;
-          }
-
-          /* ===== GENERATE NEW REFERENCE ONLY IF NEW ===== */
-
-          refCounter++;
-
-          const productReferenceID = `PROD-SPF-${refCounter
-            .toString()
-            .padStart(5, "0")}`;
-
-          /* ===== SAVE ===== */
-
-          await addDoc(collection(db, "products"), {
-            productReferenceID,
-
-            productName,
-
-            sisterCompanyId: sister?.sisterCompanyId || "",
-
-            sisterCompanyName,
-
-            classificationId: classification.classificationId,
-
-            classificationName,
-
-            supplier,
-
-            categoryTypes: category ? [category] : [],
-
-            productTypes: [productType],
-
-            mainImage: { url: mainImageUrl },
-
-            gallery,
-
-            technicalSpecifications,
-
-            logistics,
-
-            mediaStatus: "done",
-
-            isActive: true,
-
-            createdAt: serverTimestamp(),
-
-            createdBy: userId,
-
-            referenceID: userReferenceID,
-          });
-
-          totalUploaded++;
-        }
+          createdAt: serverTimestamp(),
+        });
       }
 
-      toast.success(`Uploaded: ${totalUploaded} | Skipped: ${totalSkipped}`);
+      toast.success("Upload complete");
 
       setOpen(false);
 
       setFile(null);
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
 
       toast.error("Upload failed");
     } finally {
       setUploading(false);
     }
   };
+
+  /* ================= UI ================= */
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -647,12 +363,26 @@ export default function UploadProductModal() {
 
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Bulk Upload Products</DialogTitle>
+          <DialogTitle>Upload Products</DialogTitle>
         </DialogHeader>
+
+        <Select onValueChange={setClassification}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Classification" />
+          </SelectTrigger>
+
+          <SelectContent>
+            {classifications.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <input
           type="file"
-          accept=".zip"
+          accept=".xlsx"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
         />
 
