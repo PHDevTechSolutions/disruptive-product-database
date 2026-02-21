@@ -92,13 +92,11 @@ export default function AddProductEditBrandType({ item }: Props) {
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[400px]">
-
         <DialogHeader>
           <DialogTitle>Edit Brand</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-2">
-
           <Label>Brand Name</Label>
 
           <Input
@@ -107,11 +105,9 @@ export default function AddProductEditBrandType({ item }: Props) {
             placeholder="Enter brand name..."
             disabled={saving}
           />
-
         </div>
 
         <DialogFooter className="gap-2">
-
           <Button
             variant="secondary"
             onClick={() => setOpen(false)}
@@ -123,11 +119,8 @@ export default function AddProductEditBrandType({ item }: Props) {
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </Button>
-
         </DialogFooter>
-
       </DialogContent>
-
     </Dialog>
   );
 }

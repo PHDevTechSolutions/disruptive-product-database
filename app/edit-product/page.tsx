@@ -147,28 +147,25 @@ export default function EditProductPage() {
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-
-
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
 
-/* ===== BRAND (REAL-TIME + SOFT DELETE) ===== */
-type Brand = {
-  id: string;
-  name: string;
-};
+  /* ===== BRAND (REAL-TIME + SOFT DELETE) ===== */
+  type Brand = {
+    id: string;
+    name: string;
+  };
 
-type SelectedBrand = {
-  id: string;
-  name: string;
-} | null;
+  type SelectedBrand = {
+    id: string;
+    name: string;
+  } | null;
 
-const [selectedBrand, setSelectedBrand] =
-  useState<SelectedBrand>(null);
+  const [selectedBrand, setSelectedBrand] = useState<SelectedBrand>(null);
 
-const [brands, setBrands] = useState<Brand[]>([]);
-const [newBrand, setNewBrand] = useState("");
-const [brandSearch, setBrandSearch] = useState("");
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [newBrand, setNewBrand] = useState("");
+  const [brandSearch, setBrandSearch] = useState("");
 
   /* ===== CLASSIFICATION (REAL-TIME + SOFT DELETE) ===== */
   const [classificationTypes, setClassificationTypes] = useState<
@@ -179,8 +176,6 @@ const [brandSearch, setBrandSearch] = useState("");
   /* ===== PRODUCT TYPE STATE ===== */
   const [newCategoryType, setNewCategoryType] = useState("");
   const [categoryTypes, setCategoryTypes] = useState<CategoryType[]>([]);
-
-
 
   /* ===== PRODUCT TYPE (DEPENDENT ON CATEGORY TYPE) ===== */
   type ProductType = {
@@ -241,15 +236,15 @@ const [brandSearch, setBrandSearch] = useState("");
             setSelectedSupplier(null);
           }
 
-// ================= BRAND =================
-if (data.brandId) {
-  setSelectedBrand({
-    id: data.brandId,
-    name: data.brandName,
-  });
-} else {
-  setSelectedBrand(null);
-}
+          // ================= BRAND =================
+          if (data.brandId) {
+            setSelectedBrand({
+              id: data.brandId,
+              name: data.brandName,
+            });
+          } else {
+            setSelectedBrand(null);
+          }
 
           // ================= CLASSIFICATION =================
           if (data.classificationId) {
@@ -269,17 +264,17 @@ if (data.brandId) {
                 title: spec.title || "",
                 specs: Array.isArray(spec.specs)
                   ? spec.specs.map((row: any) => ({
-                    specId: row.specId || "",
-                    value: row.value || "",
-                    unit: row.unit || "",
-                  }))
+                      specId: row.specId || "",
+                      value: row.value || "",
+                      unit: row.unit || "",
+                    }))
                   : [
-                    {
-                      specId: "",
-                      value: "",
-                      unit: "",
-                    },
-                  ],
+                      {
+                        specId: "",
+                        value: "",
+                        unit: "",
+                      },
+                    ],
                 units: [],
               }),
             );
@@ -288,26 +283,29 @@ if (data.brandId) {
               mappedSpecs.length > 0
                 ? mappedSpecs
                 : [
-                  {
-                    id: "",
-                    title: "",
-                    specs: [
-                      {
-                        specId: "",
-                        value: "",
-                        unit: "",
-                      },
-                    ],
-                    units: [],
-                  },
-                ],
+                    {
+                      id: "",
+                      title: "",
+                      specs: [
+                        {
+                          specId: "",
+                          value: "",
+                          unit: "",
+                        },
+                      ],
+                      units: [],
+                    },
+                  ],
             );
 
             hasLoadedProductSpecs.current = true;
           }
 
           // ================= CATEGORY TYPES =================
-          if (Array.isArray(data.categoryTypes) && data.categoryTypes.length > 0) {
+          if (
+            Array.isArray(data.categoryTypes) &&
+            data.categoryTypes.length > 0
+          ) {
             setSelectedCategoryTypes([
               {
                 id: data.categoryTypes[0].categoryTypeId,
@@ -319,7 +317,10 @@ if (data.brandId) {
           }
 
           // ================= PRODUCT TYPES =================
-          if (Array.isArray(data.productTypes) && data.productTypes.length > 0) {
+          if (
+            Array.isArray(data.productTypes) &&
+            data.productTypes.length > 0
+          ) {
             const p = data.productTypes[0];
 
             setSelectedCategoryTypes([
@@ -401,10 +402,7 @@ if (data.brandId) {
 
   /* ---------------- REAL-TIME SISTER COMPANIES ---------------- */
   useEffect(() => {
-    const q = query(
-collection(db, "brands"),
-      where("isActive", "==", true),
-    );
+    const q = query(collection(db, "brands"), where("isActive", "==", true));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs
@@ -414,7 +412,7 @@ collection(db, "brands"),
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
-setBrands(list);
+      setBrands(list);
     });
 
     return () => unsubscribe();
@@ -452,10 +450,10 @@ setBrands(list);
 
                 specs: Array.isArray(spec.specs)
                   ? spec.specs.map((row: any) => ({
-                    specId: row.specId || "",
-                    value: row.value || "",
-                    unit: row.unit || "",
-                  }))
+                      specId: row.specId || "",
+                      value: row.value || "",
+                      unit: row.unit || "",
+                    }))
                   : [{ specId: "", value: "", unit: "" }],
 
                 units: [],
@@ -500,10 +498,10 @@ setBrands(list);
 
                 specs: Array.isArray(data.specs)
                   ? data.specs.map((row: any) => ({
-                    specId: row.specId || "",
-                    value: "",
-                    unit: "",
-                  }))
+                      specId: row.specId || "",
+                      value: "",
+                      unit: "",
+                    }))
                   : [{ specId: "", value: "", unit: "" }],
 
                 units: [],
@@ -623,7 +621,6 @@ setBrands(list);
     return () => unsubscribe();
   }, []);
 
-
   /* ================= NUMBER FORMATTERS ================= */
   const formatPHP = (value: number, decimals = 2) => {
     return value.toLocaleString("en-PH", {
@@ -668,11 +665,11 @@ setBrands(list);
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: item.specs.map((row, r) =>
-              r === rowIndex ? { ...row, [field]: value } : row,
-            ),
-          }
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex ? { ...row, [field]: value } : row,
+              ),
+            }
           : item,
       ),
     );
@@ -710,12 +707,12 @@ setBrands(list);
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs:
-              item.specs.length > 1
-                ? item.specs.filter((_, r) => r !== rowIndex)
-                : item.specs,
-          }
+              ...item,
+              specs:
+                item.specs.length > 1
+                  ? item.specs.filter((_, r) => r !== rowIndex)
+                  : item.specs,
+            }
           : item,
       ),
     );
@@ -728,7 +725,6 @@ setBrands(list);
     setPreview(URL.createObjectURL(file));
   };
 
-
   useEffect(() => {
     return () => {
       if (preview && preview.startsWith("blob:")) {
@@ -736,8 +732,6 @@ setBrands(list);
       }
     };
   }, [preview]);
-
-
 
   /* ---------------- Classification Handlers ---------------- */
   const handleAddClassification = async () => {
@@ -757,22 +751,22 @@ setBrands(list);
   };
 
   /* ---------------- Sister Company Handlers ---------------- */
-const handleAddBrand = async () => {
-  if (!newBrand.trim()) return;
+  const handleAddBrand = async () => {
+    if (!newBrand.trim()) return;
 
-  if (brands.some((s) => s.name === newBrand.trim())) {
-    toast.error("Brand already exists");
-    return;
-  }
+    if (brands.some((s) => s.name === newBrand.trim())) {
+      toast.error("Brand already exists");
+      return;
+    }
 
-  await addDoc(collection(db, "brands"), {
-    name: newBrand.trim(),
-    isActive: true,
-    createdAt: serverTimestamp(),
-  });
+    await addDoc(collection(db, "brands"), {
+      name: newBrand.trim(),
+      isActive: true,
+      createdAt: serverTimestamp(),
+    });
 
-  setNewBrand("");
-};
+    setNewBrand("");
+  };
   /* ---------------- Product Type Handlers ---------------- */
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim() || !classificationType) return;
@@ -872,15 +866,12 @@ const handleAddBrand = async () => {
   };
 
   const uploadProductMedia = async (productId: string) => {
-
     try {
-
       if (!mainImage) return;
 
       const result = await uploadToCloudinary(mainImage);
 
       await updateDoc(doc(db, "products", productId), {
-
         mainImage: {
           name: mainImage.name,
           url: result.secure_url,
@@ -888,19 +879,12 @@ const handleAddBrand = async () => {
         },
 
         mediaStatus: "done",
-
       });
-
     } catch {
-
       await updateDoc(doc(db, "products", productId), {
-
         mediaStatus: "failed",
-
       });
-
     }
-
   };
 
   const filteredClassifications = React.useMemo(() => {
@@ -909,11 +893,11 @@ const handleAddBrand = async () => {
     );
   }, [classificationTypes, classificationSearch]);
 
-const filteredBrands = React.useMemo(() => {
-  return brands.filter((item) =>
-    item.name.toLowerCase().includes(brandSearch.toLowerCase()),
-  );
-}, [brands, brandSearch]);
+  const filteredBrands = React.useMemo(() => {
+    return brands.filter((item) =>
+      item.name.toLowerCase().includes(brandSearch.toLowerCase()),
+    );
+  }, [brands, brandSearch]);
 
   const filteredCategoryTypes = React.useMemo(() => {
     return categoryTypes.filter((item) =>
@@ -936,7 +920,6 @@ const filteredBrands = React.useMemo(() => {
   /* ---------------- Save Product ---------------- */
 
   /* ===== SAFE LOGISTICS PAYLOAD (FIRESTORE SAFE) ===== */
-
 
   const syncSpecsToProductType = async () => {
     if (!classificationType) return;
@@ -1006,10 +989,10 @@ const filteredBrands = React.useMemo(() => {
         return;
       }
 
-if (!selectedBrand) {
-  toast.error("Please select a brand");
-  return;
-}
+      if (!selectedBrand) {
+        toast.error("Please select a brand");
+        return;
+      }
 
       // ================= CLOUDINARY UPLOAD =================
 
@@ -1020,8 +1003,8 @@ if (!selectedBrand) {
       const updatePayload: any = {
         productName,
 
-brandId: selectedBrand.id,
-brandName: selectedBrand.name,
+        brandId: selectedBrand.id,
+        brandName: selectedBrand.name,
 
         classificationId: classificationType.id,
         classificationName: classificationType.name,
@@ -1036,23 +1019,23 @@ brandName: selectedBrand.name,
         categoryTypes:
           selectedCategoryTypes.length > 0
             ? selectedCategoryTypes.map((c) => ({
-              categoryTypeId: c.id || "",
-              categoryTypeName: c.name || "",
-            }))
+                categoryTypeId: c.id || "",
+                categoryTypeName: c.name || "",
+              }))
             : [],
 
         productTypes:
           selectedProductType && selectedCategoryTypes.length > 0
             ? [
-              {
-                productTypeId: selectedProductType.id || "",
-                productTypeName: selectedProductType.name || "",
-                categoryTypeId:
-                  selectedProductType.categoryTypeId ||
-                  selectedCategoryTypes[0].id ||
-                  "",
-              },
-            ]
+                {
+                  productTypeId: selectedProductType.id || "",
+                  productTypeName: selectedProductType.name || "",
+                  categoryTypeId:
+                    selectedProductType.categoryTypeId ||
+                    selectedCategoryTypes[0].id ||
+                    "",
+                },
+              ]
             : [],
 
         technicalSpecifications: technicalSpecs.map((spec) => ({
@@ -1070,7 +1053,6 @@ brandName: selectedBrand.name,
 
           units: [],
         })),
-
 
         createdBy: userId,
         referenceID: user?.ReferenceID || null,
@@ -1245,9 +1227,9 @@ brandName: selectedBrand.name,
                       />
 
                       {item.id &&
-                        classificationType &&
-                        selectedProductType &&
-                        selectedCategoryTypes.length === 1 ? (
+                      classificationType &&
+                      selectedProductType &&
+                      selectedCategoryTypes.length === 1 ? (
                         <AddProductDeleteTechnicalSpecification
                           classificationId={classificationType.id}
                           categoryTypeId={selectedCategoryTypes[0].id}
@@ -1333,116 +1315,85 @@ brandName: selectedBrand.name,
               </div>
             </div>
           </CardContent>
-
         </Card>
 
         {/* RIGHT */}
         <div className="space-y-6">
-{/* SELECT BRAND */}
-<Card>
+          {/* SELECT BRAND */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center text-sm">
+                SELECT BRAND
+              </CardTitle>
+            </CardHeader>
 
-<CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Select Brand</Label>
 
-<CardTitle className="text-center text-sm">
-SELECT BRAND
-</CardTitle>
+                <Input
+                  value={brandSearch}
+                  onChange={(e) => setBrandSearch(e.target.value)}
+                  placeholder="Search brand..."
+                  className="h-8 w-[160px]"
+                />
+              </div>
 
-</CardHeader>
+              <div className="flex gap-2">
+                <Input
+                  value={newBrand}
+                  onChange={(e) => setNewBrand(e.target.value)}
+                  placeholder="Add brand..."
+                />
 
-<CardContent className="space-y-4">
+                <Button size="icon" variant="outline" onClick={handleAddBrand}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
 
-<div className="flex items-center justify-between gap-2">
+              <Separator />
 
-<Label>Select Brand</Label>
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                {filteredBrands.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        name="brand"
+                        checked={selectedBrand?.id === item.id}
+                        onChange={() =>
+                          setSelectedBrand({
+                            id: item.id,
+                            name: item.name,
+                          })
+                        }
+                      />
 
-<Input
-value={brandSearch}
-onChange={(e) => setBrandSearch(e.target.value)}
-placeholder="Search brand..."
-className="h-8 w-[160px]"
-/>
+                      <span className="text-sm">{item.name}</span>
+                    </div>
 
-</div>
+                    <div className="flex gap-1">
+                      <AddProductEditBrandType item={item} />
 
+                      <AddProductDeleteBrand
+                        item={item}
+                        referenceID={user?.ReferenceID || ""}
+                      />
+                    </div>
+                  </div>
+                ))}
 
-<div className="flex gap-2">
-
-<Input
-value={newBrand}
-onChange={(e) => setNewBrand(e.target.value)}
-placeholder="Add brand..."
-/>
-
-<Button
-size="icon"
-variant="outline"
-onClick={handleAddBrand}
->
-<Plus className="h-4 w-4" />
-</Button>
-
-</div>
-
-<Separator />
-
-
-<div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-
-{filteredBrands.map((item) => (
-
-<div
-key={item.id}
-className="flex items-center justify-between gap-2"
->
-
-<div className="flex items-center space-x-2">
-
-<input
-type="radio"
-name="brand"
-checked={selectedBrand?.id === item.id}
-onChange={() =>
-setSelectedBrand({
-id: item.id,
-name: item.name,
-})
-}
-/>
-
-<span className="text-sm">{item.name}</span>
-
-</div>
-
-
-<div className="flex gap-1">
-
-<AddProductEditBrandType item={item} />
-
-<AddProductDeleteBrand
-item={item}
-referenceID={user?.ReferenceID || ""}
-/>
-
-</div>
-
-</div>
-
-))}
-
-
-{filteredBrands.length === 0 && (
-
-<p className="text-sm text-muted-foreground text-center py-4">
-No brands found
-</p>
-
-)}
-
-</div>
-
-</CardContent>
-
-</Card>
+                {filteredBrands.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No brands found
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* CLASSIFICATION */}
           <Card>
