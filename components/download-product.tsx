@@ -71,7 +71,7 @@ export default function DownloadProduct({ products }: Props) {
         });
       });
 
-      /* COMPLETE STATIC COLUMNS */
+      /* PRODUCT CODE REMOVED HERE */
 
       const staticColumns = [
         "Classification",
@@ -83,8 +83,6 @@ export default function DownloadProduct({ products }: Props) {
         "Category Type",
 
         "Product Type",
-
-        "Product Code",
 
         "Cloudinary URL",
 
@@ -188,7 +186,7 @@ export default function DownloadProduct({ products }: Props) {
 
         row.push(product.productTypes?.[0]?.productTypeName || "");
 
-        row.push(product.productReferenceID || "");
+        /* PRODUCT CODE REMOVED HERE */
 
         row.push(product.mainImage?.url || "");
 
