@@ -231,7 +231,7 @@ export default function UploadProductModal() {
         }[] = [];
 
         header2.eachCell((cell, col) => {
-          if (col <= 8) return;
+          if (col <= 7) return;
 
           const title = header1.getCell(col).value?.toString();
 
@@ -253,35 +253,14 @@ export default function UploadProductModal() {
 
           if (!row.getCell(1).value) continue;
 
-          /* NEW VALIDATION BLOCK — CTRL+F: VALIDATE CLASSIFICATION MATCH */
-
-          const excelClassification = row.getCell(1).value?.toString() || "";
-
-          const selectedClassificationName =
-            classifications.find((c) => c.id === classification)?.name || "";
-
-          if (excelClassification !== selectedClassificationName) {
-            toast.error(
-              `Upload failed: Excel Classification "${excelClassification}" does not match selected "${selectedClassificationName}".`,
-            );
-
-            setUploading(false);
-            return;
-          }
-
           /* END VALIDATION BLOCK */
 
-          const brandName = row.getCell(2).value?.toString() || "";
-
-          const category = row.getCell(3).value?.toString() || "";
-
-          const categoryTypeName = row.getCell(4).value?.toString() || "";
-
-          const image = row.getCell(6).value?.toString() || "";
-
-          const productName = row.getCell(7).value?.toString() || "";
-
-          const supplierCompany = row.getCell(8).value?.toString() || "";
+          const brandName = row.getCell(1).value?.toString() || "";
+          const category = row.getCell(2).value?.toString() || "";
+          const categoryTypeName = row.getCell(3).value?.toString() || "";
+          const image = row.getCell(5).value?.toString() || "";
+          const productName = row.getCell(6).value?.toString() || "";
+          const supplierCompany = row.getCell(7).value?.toString() || "";
 
           const brand = await findBrand(brandName);
 
@@ -292,11 +271,35 @@ export default function UploadProductModal() {
             categoryTypeName,
           );
 
+          if (!categoryType) {
+            const selectedName = classifications.find(
+              (c) => c.id === classification,
+            )?.name;
+
+            toast.error(
+              `Category Type "${categoryTypeName}" not found in "${selectedName}"`,
+            );
+
+            continue;
+          }
+
           const productType = await findProductType(
             classification,
             categoryType?.categoryTypeId || "",
             sheetName,
           );
+
+          if (!productType) {
+            const selectedName = classifications.find(
+              (c) => c.id === classification,
+            )?.name;
+
+            toast.error(
+              `Product "${productName}" with Product Type "${sheetName}" does not belong to "${selectedName}"`,
+            );
+
+            continue;
+          }
 
           const specMap: Record<string, any[]> = {};
 

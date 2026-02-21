@@ -73,23 +73,15 @@ export default function DownloadProduct({ products }: Props) {
 
       /* PRODUCT CODE REMOVED HERE */
 
-      const staticColumns = [
-        "Classification",
-
-        "Brand",
-
-        "Category",
-
-        "Category Type",
-
-        "Product Type",
-
-        "Cloudinary URL",
-
-        "Product Name",
-
-        "Supplier",
-      ];
+const staticColumns = [
+  "Brand",
+  "Category",
+  "Category Type",
+  "Product Type",
+  "Cloudinary URL",
+  "Product Name",
+  "Supplier",
+];
 
       const header1: any[] = [];
       const header2: any[] = [];
@@ -175,8 +167,6 @@ export default function DownloadProduct({ products }: Props) {
 
       sheetProducts.forEach((product) => {
         const row: any[] = [];
-
-        row.push(product.classificationName || "");
 
         row.push(product.brandName || "");
 
