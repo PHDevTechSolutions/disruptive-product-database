@@ -57,6 +57,10 @@ export default function DownloadProduct({ products }: Props) {
     header1.push("Classification");
     header2.push("");
 
+    /* ✅ NEW CATEGORY COLUMN */
+    header1.push("Category");
+    header2.push("");
+
     header1.push("Category Type");
     header2.push("");
 
@@ -72,7 +76,7 @@ export default function DownloadProduct({ products }: Props) {
     header1.push("Main Image URL");
     header2.push("");
 
-    /* TECH SPECS */
+    /* ================= TECH SPECS ================= */
 
     specGroups.forEach((specs, group) => {
       const arr = Array.from(specs);
@@ -100,6 +104,9 @@ export default function DownloadProduct({ products }: Props) {
 
       row.push(p.classificationName || "");
 
+      /* ✅ NEW CATEGORY VALUE */
+      row.push(p.category || "");
+
       row.push(p.categoryTypes?.[0]?.categoryTypeName || "");
 
       row.push(p.productTypes?.[0]?.productTypeName || "");
@@ -123,6 +130,17 @@ export default function DownloadProduct({ products }: Props) {
       });
 
       ws.addRow(row);
+    });
+
+    /* ================= AUTO WIDTH ================= */
+
+    ws.columns.forEach((col) => {
+      let maxLength = 15;
+      col.eachCell?.({ includeEmpty: true }, (cell) => {
+        const val = cell.value?.toString() || "";
+        maxLength = Math.max(maxLength, val.length + 2);
+      });
+      col.width = maxLength;
     });
 
     /* ================= SAVE ================= */
