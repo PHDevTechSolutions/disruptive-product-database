@@ -230,12 +230,12 @@ export default function UploadProductModal() {
           specId: string;
         }[] = [];
 
-        header2.eachCell((cell, col) => {
+        header1.eachCell((cell, col) => {
           if (col <= 8) return;
 
-          const title = header1.getCell(col).value?.toString();
-
           const specId = cell.value?.toString();
+
+          const title = header2.getCell(col).value?.toString();
 
           if (!title || !specId) return;
 
@@ -245,259 +245,204 @@ export default function UploadProductModal() {
             specId,
           });
         });
+        /* LOOP ROWS */
 
-/* LOOP ROWS */
+        let lastClassification = "";
+        let lastBrand = "";
+        let lastCategory = "";
+        let lastCategoryType = "";
+        let lastImage = "";
+        let lastProductName = "";
+        let lastSupplier = "";
 
-let lastClassification = "";
-let lastBrand = "";
-let lastCategory = "";
-let lastCategoryType = "";
-let lastImage = "";
-let lastProductName = "";
-let lastSupplier = "";
+        for (let r = 3; r <= sheet.rowCount; r++) {
+          const row = sheet.getRow(r);
 
-for (let r = 3; r <= sheet.rowCount; r++) {
+          /* READ WITH MERGE SUPPORT */
 
-  const row = sheet.getRow(r);
+          let excelClassification =
+            row.getCell(1).value?.toString() || lastClassification;
 
-  /* READ WITH MERGE SUPPORT */
+          if (excelClassification) lastClassification = excelClassification;
 
-  let excelClassification =
-    row.getCell(1).value?.toString() || lastClassification;
+          let brandName = row.getCell(2).value?.toString() || lastBrand;
 
-  if (excelClassification) lastClassification = excelClassification;
+          if (brandName) lastBrand = brandName;
 
+          let category = row.getCell(3).value?.toString() || lastCategory;
 
+          if (category) lastCategory = category;
 
-  let brandName =
-    row.getCell(2).value?.toString() || lastBrand;
+          let categoryTypeName =
+            row.getCell(4).value?.toString() || lastCategoryType;
 
-  if (brandName) lastBrand = brandName;
+          if (categoryTypeName) lastCategoryType = categoryTypeName;
 
+          let image = row.getCell(6).value?.toString() || lastImage;
 
+          if (image) lastImage = image;
 
-  let category =
-    row.getCell(3).value?.toString() || lastCategory;
+          let productName = row.getCell(7).value?.toString() || lastProductName;
 
-  if (category) lastCategory = category;
+          if (productName) lastProductName = productName;
 
+          let supplierCompany =
+            row.getCell(8).value?.toString() || lastSupplier;
 
+          if (supplierCompany) lastSupplier = supplierCompany;
 
-  let categoryTypeName =
-    row.getCell(4).value?.toString() || lastCategoryType;
+          /* SKIP EMPTY PRODUCT */
 
-  if (categoryTypeName) lastCategoryType = categoryTypeName;
+          if (!productName) continue;
 
+          /* VALIDATE CLASSIFICATION */
 
+          const selectedClassificationName =
+            classifications.find((c) => c.id === classification)?.name || "";
 
-  let image =
-    row.getCell(6).value?.toString() || lastImage;
+          if (excelClassification !== selectedClassificationName) {
+            toast.error(
+              `Upload failed: Excel Classification "${excelClassification}" does not match selected "${selectedClassificationName}".`,
+            );
 
-  if (image) lastImage = image;
+            setUploading(false);
 
+            return;
+          }
 
+          /* FIND RELATED DATA */
 
-  let productName =
-    row.getCell(7).value?.toString() || lastProductName;
+          const brand = await findBrand(brandName);
 
-  if (productName) lastProductName = productName;
+          const supplier = await findSupplier(supplierCompany);
 
+          const categoryType = await findCategoryType(
+            classification,
+            categoryTypeName,
+          );
 
+          if (!categoryType) {
+            toast.error(
+              `Upload failed: Category Type "${categoryTypeName}" not found.`,
+            );
 
-  let supplierCompany =
-    row.getCell(8).value?.toString() || lastSupplier;
+            continue;
+          }
 
-  if (supplierCompany) lastSupplier = supplierCompany;
+          const productType = await findProductType(
+            classification,
+            categoryType.categoryTypeId,
+            sheetName,
+          );
 
+          if (!productType) {
+            toast.error(
+              `Upload failed: Product Type "${sheetName}" not found.`,
+            );
 
+            continue;
+          }
 
-  /* SKIP EMPTY PRODUCT */
+          /* BUILD TECH SPECS */
 
-  if (!productName) continue;
+          const specMap: Record<string, any[]> = {};
 
+          techHeaders.forEach(({ col, title, specId }) => {
+            const value = row.getCell(col).value?.toString();
 
+            if (!value) return;
 
-  /* VALIDATE CLASSIFICATION */
+            if (!specMap[title]) specMap[title] = [];
 
-  const selectedClassificationName =
-    classifications.find((c) => c.id === classification)?.name || "";
+            specMap[title].push({
+              specId,
+              value,
+            });
+          });
 
-  if (excelClassification !== selectedClassificationName) {
+          const technicalSpecifications = Object.keys(specMap).map((title) => ({
+            technicalSpecificationId: "",
+            title,
+            specs: specMap[title],
+          }));
 
-    toast.error(
-      `Upload failed: Excel Classification "${excelClassification}" does not match selected "${selectedClassificationName}".`
-    );
+          /* DUPLICATE CHECK */
 
-    setUploading(false);
+          const duplicateQuery = await getDocs(
+            query(
+              collection(db, "products"),
+              where("brandName", "==", brandName),
+              where("classificationId", "==", classification),
+              where("category", "==", category),
+              where("productName", "==", productName),
+              where("supplier.company", "==", supplierCompany),
+            ),
+          );
 
-    return;
-  }
+          let duplicateFound = false;
 
+          duplicateQuery.forEach((doc) => {
+            const data = doc.data();
 
+            const existingProductTypeId =
+              data.productTypes?.[0]?.productTypeId || "";
 
-  /* FIND RELATED DATA */
+            if (existingProductTypeId === productType?.productTypeId)
+              duplicateFound = true;
+          });
 
-  const brand = await findBrand(brandName);
+          if (duplicateFound) {
+            toast.error(`Upload failed: Duplicate product "${productName}".`);
 
-  const supplier = await findSupplier(supplierCompany);
+            continue;
+          }
 
-const categoryType = await findCategoryType(
-  classification,
-  categoryTypeName
-);
+          /* GENERATE REF */
 
-if (!categoryType) {
+          refCounter++;
 
-  toast.error(
-    `Upload failed: Category Type "${categoryTypeName}" not found.`
-  );
+          const productReferenceID = `PROD-SPF-${refCounter.toString().padStart(5, "0")}`;
 
-  continue;
+          /* SAVE */
 
-}
+          await addDoc(collection(db, "products"), {
+            productReferenceID,
 
+            productName,
 
-const productType = await findProductType(
-  classification,
-  categoryType.categoryTypeId,
-  sheetName
-);
+            brandId: brand?.brandId || "",
 
-if (!productType) {
+            brandName,
 
-  toast.error(
-    `Upload failed: Product Type "${sheetName}" not found.`
-  );
+            category,
 
-  continue;
+            classificationId: classification,
 
-}
+            classificationName: selectedClassificationName,
 
+            supplier,
 
+            categoryTypes: categoryType ? [categoryType] : [],
 
-  /* BUILD TECH SPECS */
+            productTypes: productType ? [productType] : [],
 
-  const specMap: Record<string, any[]> = {};
+            mainImage: {
+              url: image,
+            },
 
-  techHeaders.forEach(({ col, title, specId }) => {
+            technicalSpecifications,
 
-    const value = row.getCell(col).value?.toString();
+            createdBy: userId,
 
-    if (!value) return;
+            referenceID: userReferenceID,
 
-    if (!specMap[title]) specMap[title] = [];
+            isActive: true,
 
-    specMap[title].push({
-      specId,
-      value,
-    });
+            mediaStatus: "done",
 
-  });
-
-
-
-  const technicalSpecifications = Object.keys(specMap).map((title) => ({
-    technicalSpecificationId: "",
-    title,
-    specs: specMap[title],
-  }));
-
-
-
-  /* DUPLICATE CHECK */
-
-  const duplicateQuery = await getDocs(
-    query(
-      collection(db, "products"),
-      where("brandName", "==", brandName),
-      where("classificationId", "==", classification),
-      where("category", "==", category),
-      where("productName", "==", productName),
-      where("supplier.company", "==", supplierCompany),
-    )
-  );
-
-
-
-  let duplicateFound = false;
-
-  duplicateQuery.forEach((doc) => {
-
-    const data = doc.data();
-
-    const existingProductTypeId =
-      data.productTypes?.[0]?.productTypeId || "";
-
-    if (existingProductTypeId === productType?.productTypeId)
-      duplicateFound = true;
-
-  });
-
-
-
-  if (duplicateFound) {
-
-    toast.error(
-      `Upload failed: Duplicate product "${productName}".`
-    );
-
-    continue;
-  }
-
-
-
-  /* GENERATE REF */
-
-  refCounter++;
-
-  const productReferenceID =
-    `PROD-SPF-${refCounter.toString().padStart(5, "0")}`;
-
-
-
-  /* SAVE */
-
-  await addDoc(collection(db, "products"), {
-
-    productReferenceID,
-
-    productName,
-
-    brandId: brand?.brandId || "",
-
-    brandName,
-
-    category,
-
-    classificationId: classification,
-
-    classificationName: selectedClassificationName,
-
-    supplier,
-
-    categoryTypes: categoryType ? [categoryType] : [],
-
-    productTypes: productType ? [productType] : [],
-
-    mainImage: {
-      url: image,
-    },
-
-    technicalSpecifications,
-
-    createdBy: userId,
-
-    referenceID: userReferenceID,
-
-    isActive: true,
-
-    mediaStatus: "done",
-
-    createdAt: serverTimestamp(),
-
-  });
-
-}
+            createdAt: serverTimestamp(),
+          });
+        }
       }
 
       toast.success("Upload Complete");

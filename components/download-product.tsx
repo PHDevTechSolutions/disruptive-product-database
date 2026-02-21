@@ -91,23 +91,35 @@ export default function DownloadProduct({ products }: Props) {
         "Supplier",
       ];
 
-      const header1: any[] = [];
-      const header2: any[] = [];
+const header1: any[] = [];
+const header2: any[] = [];
 
-      staticColumns.forEach((col) => {
-        header1.push(col);
-        header2.push("");
-      });
+// STATIC
+staticColumns.forEach((col) => {
 
-      groupMap.forEach((specs, group) => {
-        header1.push(group);
+  header1.push(col); // TOP = static
 
-        Array.from(specs).forEach((specId, i) => {
-          if (i !== 0) header1.push("");
+  header2.push(""); // BOTTOM empty
 
-          header2.push(specId);
-        });
-      });
+});
+
+// TECH SPECS
+groupMap.forEach((specs, group) => {
+
+  const specArray = Array.from(specs);
+
+  specArray.forEach((specId, index) => {
+
+    header1.push(specId); // TOP = SPEC NAME
+
+    if (index === 0)
+      header2.push(group); // BOTTOM = GROUP TITLE
+    else
+      header2.push("");
+
+  });
+
+});
 
       ws.addRow(header1);
       ws.addRow(header2);
@@ -117,7 +129,7 @@ export default function DownloadProduct({ products }: Props) {
       groupMap.forEach((specs) => {
         const colEnd = colStart + specs.size - 1;
 
-        ws.mergeCells(1, colStart, 1, colEnd);
+ws.mergeCells(2, colStart, 2, colEnd);
 
         colStart = colEnd + 1;
       });
