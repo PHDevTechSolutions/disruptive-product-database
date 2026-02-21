@@ -1,6 +1,9 @@
 "use client";
+
 import * as React from "react";
+
 import { Button } from "@/components/ui/button";
+
 import {
   Dialog,
   DialogTrigger,
@@ -9,153 +12,229 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+
 import { Download } from "lucide-react";
+
 import ExcelJS from "exceljs";
+
 import saveAs from "file-saver";
 
-type Props = { products: any[] };
+type Props = {
+  products: any[];
+};
 
 export default function DownloadProduct({ products }: Props) {
   const [open, setOpen] = React.useState(false);
 
-  const getSpecValue = (spec: any) => {
-    if (!spec) return "";
-    return spec.value || "";
-  };
+  const [classification, setClassification] = React.useState("");
+
+  /* ================= GET CLASSIFICATIONS ================= */
+
+  const classifications = Array.from(
+    new Set(products.map((p) => p.classificationName)),
+  );
+
+  /* ================= MAIN DOWNLOAD ================= */
 
   const handleDownload = async () => {
-    if (!products.length) return;
+    if (!classification) return;
 
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet("Products");
 
-    /* ================= COLLECT TECH SPECS ================= */
+    /* FILTER CLASSIFICATION */
 
-    const specGroups = new Map<string, Set<string>>();
+    const filteredProducts = products.filter(
+      (p) => p.classificationName === classification,
+    );
 
-    products.forEach((p) => {
-      p.technicalSpecifications?.forEach((g: any) => {
-        if (!specGroups.has(g.title)) specGroups.set(g.title, new Set());
+    /* GROUP BY PRODUCT TYPE → SHEETS */
 
-        g.specs?.forEach((s: any) => {
-          specGroups.get(g.title)!.add(s.specId);
+    const sheetMap = new Map<string, any[]>();
+
+    filteredProducts.forEach((p) => {
+      const productType = p.productTypes?.[0]?.productTypeName || "Others";
+
+      if (!sheetMap.has(productType)) sheetMap.set(productType, []);
+
+      sheetMap.get(productType)!.push(p);
+    });
+
+    /* ================= CREATE SHEETS ================= */
+
+    for (const [sheetName, sheetProducts] of sheetMap) {
+      const ws = wb.addWorksheet(sheetName);
+
+      /* ================= GET TECH GROUP STRUCTURE ================= */
+
+      const groupMap = new Map<string, Set<string>>();
+
+      sheetProducts.forEach((p) => {
+        p.technicalSpecifications?.forEach((group: any) => {
+          if (!groupMap.has(group.title))
+            groupMap.set(
+              group.title,
+
+              new Set(),
+            );
+
+          group.specs?.forEach((spec: any) => {
+            groupMap.get(group.title)!.add(spec.specId);
+          });
         });
       });
-    });
 
-    /* ================= HEADERS ================= */
+      /* ================= STATIC PRODUCT COLUMNS ================= */
 
-    const header1: any[] = [];
-    const header2: any[] = [];
+      const staticColumns = [
+        "Category",
 
-    header1.push("Product Reference ID");
-    header2.push("");
+        "Product Code",
 
-    header1.push("Brand");
-    header2.push("");
+        "Cloudinary URL",
 
-    header1.push("Classification");
-    header2.push("");
+        "Product Name",
 
-    /* ✅ NEW CATEGORY COLUMN */
-    header1.push("Category");
-    header2.push("");
+        "Supplier",
+      ];
 
-    header1.push("Category Type");
-    header2.push("");
+      /* ================= HEADER ROW 1 ================= */
 
-    header1.push("Product Type");
-    header2.push("");
+      const header1: any[] = [];
 
-    header1.push("Model No.");
-    header2.push("");
+      staticColumns.forEach((col) => header1.push(col));
 
-    header1.push("Supplier");
-    header2.push("");
+      groupMap.forEach((specs, group) => {
+        header1.push(group);
 
-    header1.push("Main Image URL");
-    header2.push("");
+        for (let i = 1; i < specs.size; i++) header1.push("");
+      });
 
-    /* ================= TECH SPECS ================= */
+      ws.addRow(header1);
 
-    specGroups.forEach((specs, group) => {
-      const arr = Array.from(specs);
+      /* ================= HEADER ROW 2 ================= */
 
-      header1.push(group);
-      header2.push(arr[0]);
+      const header2: any[] = [];
 
-      for (let i = 1; i < arr.length; i++) {
-        header1.push("");
-        header2.push(arr[i]);
-      }
-    });
+      staticColumns.forEach(() => header2.push(""));
 
-    ws.addRow(header1);
-    ws.addRow(header2);
+      groupMap.forEach((specs) => {
+        Array.from(specs)
 
-    /* ================= DATA ================= */
+          .forEach((specId) => header2.push(specId));
+      });
 
-    products.forEach((p) => {
-      const row: any[] = [];
+      ws.addRow(header2);
 
-      row.push(p.productReferenceID || "");
+      /* ================= MERGE GROUP HEADERS ================= */
 
-      row.push(p.brandName || "");
+      let colStart = staticColumns.length + 1;
 
-      row.push(p.classificationName || "");
+      groupMap.forEach((specs) => {
+        const colEnd = colStart + specs.size - 1;
 
-      /* ✅ NEW CATEGORY VALUE */
-      row.push(p.category || "");
+        ws.mergeCells(
+          1,
 
-      row.push(p.categoryTypes?.[0]?.categoryTypeName || "");
+          colStart,
 
-      row.push(p.productTypes?.[0]?.productTypeName || "");
+          1,
 
-      row.push(p.productName || "");
+          colEnd,
+        );
 
-      row.push(p.supplier?.company || "");
+        colStart = colEnd + 1;
+      });
 
-      row.push(p.mainImage?.url || "");
+      /* ================= DATA ================= */
 
-      specGroups.forEach((specs, group) => {
-        Array.from(specs).forEach((specId) => {
-          const g = p.technicalSpecifications?.find(
-            (x: any) => x.title === group,
+      sheetProducts.forEach((product) => {
+        const row: any[] = [];
+
+        row.push(product.category || "");
+
+        row.push(product.productReferenceID || "");
+
+        row.push(product.mainImage?.url || "");
+
+        row.push(product.productName || "");
+
+        row.push(product.supplier?.company || "");
+
+        groupMap.forEach((specs, group) => {
+          const groupData = product.technicalSpecifications?.find(
+            (g: any) => g.title === group,
           );
 
-          const s = g?.specs?.find((x: any) => x.specId === specId);
+          Array.from(specs)
 
-          row.push(getSpecValue(s));
+            .forEach((specId) => {
+              const spec = groupData?.specs?.find(
+                (s: any) => s.specId === specId,
+              );
+
+              row.push(spec?.value || "");
+            });
         });
+
+        ws.addRow(row);
       });
 
-      ws.addRow(row);
-    });
+      /* ================= AUTO WIDTH ================= */
 
-    /* ================= AUTO WIDTH ================= */
+      ws.columns.forEach((column) => {
+        let max = 15;
 
-    ws.columns.forEach((col) => {
-      let maxLength = 15;
-      col.eachCell?.({ includeEmpty: true }, (cell) => {
-        const val = cell.value?.toString() || "";
-        maxLength = Math.max(maxLength, val.length + 2);
+        column.eachCell?.(
+          { includeEmpty: true },
+
+          (cell) => {
+            const len = cell.value?.toString().length || 0;
+
+            if (len > max) max = len;
+          },
+        );
+
+        column.width = max + 2;
       });
-      col.width = maxLength;
-    });
 
-    /* ================= SAVE ================= */
+      /* FREEZE HEADER */
+
+      ws.views = [
+        {
+          state: "frozen",
+
+          ySplit: 2,
+        },
+      ];
+    }
+
+    /* ================= SAVE FILE ================= */
 
     const buffer = await wb.xlsx.writeBuffer();
 
-    saveAs(new Blob([buffer]), "Products.xlsx");
+    saveAs(
+      new Blob([buffer]),
+
+      `${classification}.xlsx`,
+    );
 
     setOpen(false);
   };
 
+  /* ================= UI ================= */
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button>
           <Download className="w-4 h-4 mr-2" />
           Download
         </Button>
@@ -163,8 +242,22 @@ export default function DownloadProduct({ products }: Props) {
 
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Download Products</DialogTitle>
+          <DialogTitle>Download Product</DialogTitle>
         </DialogHeader>
+
+        <Select onValueChange={setClassification}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Classification" />
+          </SelectTrigger>
+
+          <SelectContent>
+            {classifications.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
