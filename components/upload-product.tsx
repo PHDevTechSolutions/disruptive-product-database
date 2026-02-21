@@ -231,7 +231,7 @@ export default function UploadProductModal() {
         }[] = [];
 
         header2.eachCell((cell, col) => {
-          if (col <= 7) return;
+          if (col <= 8) return;
 
           const title = header1.getCell(col).value?.toString();
 
@@ -246,159 +246,258 @@ export default function UploadProductModal() {
           });
         });
 
-        /* LOOP ROWS */
+/* LOOP ROWS */
 
-        for (let r = 3; r <= sheet.rowCount; r++) {
-          const row = sheet.getRow(r);
+let lastClassification = "";
+let lastBrand = "";
+let lastCategory = "";
+let lastCategoryType = "";
+let lastImage = "";
+let lastProductName = "";
+let lastSupplier = "";
 
-          if (!row.getCell(1).value) continue;
+for (let r = 3; r <= sheet.rowCount; r++) {
 
-          /* END VALIDATION BLOCK */
+  const row = sheet.getRow(r);
 
-          const brandName = row.getCell(1).value?.toString() || "";
-          const category = row.getCell(2).value?.toString() || "";
-          const categoryTypeName = row.getCell(3).value?.toString() || "";
-          const image = row.getCell(5).value?.toString() || "";
-          const productName = row.getCell(6).value?.toString() || "";
-          const supplierCompany = row.getCell(7).value?.toString() || "";
+  /* READ WITH MERGE SUPPORT */
 
-          const brand = await findBrand(brandName);
+  let excelClassification =
+    row.getCell(1).value?.toString() || lastClassification;
 
-          const supplier = await findSupplier(supplierCompany);
+  if (excelClassification) lastClassification = excelClassification;
 
-          const categoryType = await findCategoryType(
-            classification,
-            categoryTypeName,
-          );
 
-          if (!categoryType) {
-            const selectedName = classifications.find(
-              (c) => c.id === classification,
-            )?.name;
 
-            toast.error(
-              `Category Type "${categoryTypeName}" not found in "${selectedName}"`,
-            );
+  let brandName =
+    row.getCell(2).value?.toString() || lastBrand;
 
-            continue;
-          }
+  if (brandName) lastBrand = brandName;
 
-          const productType = await findProductType(
-            classification,
-            categoryType?.categoryTypeId || "",
-            sheetName,
-          );
 
-          if (!productType) {
-            const selectedName = classifications.find(
-              (c) => c.id === classification,
-            )?.name;
 
-            toast.error(
-              `Product "${productName}" with Product Type "${sheetName}" does not belong to "${selectedName}"`,
-            );
+  let category =
+    row.getCell(3).value?.toString() || lastCategory;
 
-            continue;
-          }
+  if (category) lastCategory = category;
 
-          const specMap: Record<string, any[]> = {};
 
-          techHeaders.forEach(({ col, title, specId }) => {
-            const value = row.getCell(col).value?.toString();
 
-            if (!value) return;
+  let categoryTypeName =
+    row.getCell(4).value?.toString() || lastCategoryType;
 
-            if (!specMap[title]) specMap[title] = [];
+  if (categoryTypeName) lastCategoryType = categoryTypeName;
 
-            specMap[title].push({
-              specId,
-              value,
-            });
-          });
 
-          const technicalSpecifications = Object.keys(specMap).map((title) => ({
-            technicalSpecificationId: "",
-            title,
-            specs: specMap[title],
-          }));
 
-          refCounter++;
+  let image =
+    row.getCell(6).value?.toString() || lastImage;
 
-          const duplicateQuery = await getDocs(
-            query(
-              collection(db, "products"),
-              where("brandName", "==", brandName),
-              where("classificationId", "==", classification),
-              where("category", "==", category),
-              where("productName", "==", productName),
-              where("supplier.company", "==", supplierCompany),
-            ),
-          );
+  if (image) lastImage = image;
 
-          let duplicateFound = false;
 
-          duplicateQuery.forEach((doc) => {
-            const data = doc.data();
 
-            const existingProductTypeId =
-              data.productTypes?.[0]?.productTypeId || "";
+  let productName =
+    row.getCell(7).value?.toString() || lastProductName;
 
-            if (existingProductTypeId === productType?.productTypeId) {
-              duplicateFound = true;
-            }
-          });
+  if (productName) lastProductName = productName;
 
-          if (duplicateFound) {
-            toast.error(
-              `Upload failed: Duplicate product "${productName}". Same Brand, Classification, Category, Product Type, and Supplier already exists.`,
-            );
 
-            continue;
-          }
 
-          const productReferenceID = `PROD-SPF-${refCounter
-            .toString()
-            .padStart(5, "0")}`;
+  let supplierCompany =
+    row.getCell(8).value?.toString() || lastSupplier;
 
-          await addDoc(collection(db, "products"), {
-            productReferenceID,
+  if (supplierCompany) lastSupplier = supplierCompany;
 
-            productName,
 
-            brandId: brand?.brandId || "",
 
-            brandName,
+  /* SKIP EMPTY PRODUCT */
 
-            category,
+  if (!productName) continue;
 
-            classificationId: classification,
 
-            classificationName:
-              classifications.find((c) => c.id === classification)?.name || "",
 
-            supplier,
+  /* VALIDATE CLASSIFICATION */
 
-            categoryTypes: categoryType ? [categoryType] : [],
+  const selectedClassificationName =
+    classifications.find((c) => c.id === classification)?.name || "";
 
-            productTypes: productType ? [productType] : [],
+  if (excelClassification !== selectedClassificationName) {
 
-            mainImage: {
-              url: image,
-            },
+    toast.error(
+      `Upload failed: Excel Classification "${excelClassification}" does not match selected "${selectedClassificationName}".`
+    );
 
-            technicalSpecifications,
+    setUploading(false);
 
-            createdBy: userId,
+    return;
+  }
 
-            referenceID: userReferenceID,
 
-            isActive: true,
 
-            mediaStatus: "done",
+  /* FIND RELATED DATA */
 
-            createdAt: serverTimestamp(),
-          });
-        }
+  const brand = await findBrand(brandName);
+
+  const supplier = await findSupplier(supplierCompany);
+
+const categoryType = await findCategoryType(
+  classification,
+  categoryTypeName
+);
+
+if (!categoryType) {
+
+  toast.error(
+    `Upload failed: Category Type "${categoryTypeName}" not found.`
+  );
+
+  continue;
+
+}
+
+
+const productType = await findProductType(
+  classification,
+  categoryType.categoryTypeId,
+  sheetName
+);
+
+if (!productType) {
+
+  toast.error(
+    `Upload failed: Product Type "${sheetName}" not found.`
+  );
+
+  continue;
+
+}
+
+
+
+  /* BUILD TECH SPECS */
+
+  const specMap: Record<string, any[]> = {};
+
+  techHeaders.forEach(({ col, title, specId }) => {
+
+    const value = row.getCell(col).value?.toString();
+
+    if (!value) return;
+
+    if (!specMap[title]) specMap[title] = [];
+
+    specMap[title].push({
+      specId,
+      value,
+    });
+
+  });
+
+
+
+  const technicalSpecifications = Object.keys(specMap).map((title) => ({
+    technicalSpecificationId: "",
+    title,
+    specs: specMap[title],
+  }));
+
+
+
+  /* DUPLICATE CHECK */
+
+  const duplicateQuery = await getDocs(
+    query(
+      collection(db, "products"),
+      where("brandName", "==", brandName),
+      where("classificationId", "==", classification),
+      where("category", "==", category),
+      where("productName", "==", productName),
+      where("supplier.company", "==", supplierCompany),
+    )
+  );
+
+
+
+  let duplicateFound = false;
+
+  duplicateQuery.forEach((doc) => {
+
+    const data = doc.data();
+
+    const existingProductTypeId =
+      data.productTypes?.[0]?.productTypeId || "";
+
+    if (existingProductTypeId === productType?.productTypeId)
+      duplicateFound = true;
+
+  });
+
+
+
+  if (duplicateFound) {
+
+    toast.error(
+      `Upload failed: Duplicate product "${productName}".`
+    );
+
+    continue;
+  }
+
+
+
+  /* GENERATE REF */
+
+  refCounter++;
+
+  const productReferenceID =
+    `PROD-SPF-${refCounter.toString().padStart(5, "0")}`;
+
+
+
+  /* SAVE */
+
+  await addDoc(collection(db, "products"), {
+
+    productReferenceID,
+
+    productName,
+
+    brandId: brand?.brandId || "",
+
+    brandName,
+
+    category,
+
+    classificationId: classification,
+
+    classificationName: selectedClassificationName,
+
+    supplier,
+
+    categoryTypes: categoryType ? [categoryType] : [],
+
+    productTypes: productType ? [productType] : [],
+
+    mainImage: {
+      url: image,
+    },
+
+    technicalSpecifications,
+
+    createdBy: userId,
+
+    referenceID: userReferenceID,
+
+    isActive: true,
+
+    mediaStatus: "done",
+
+    createdAt: serverTimestamp(),
+
+  });
+
+}
       }
 
       toast.success("Upload Complete");
