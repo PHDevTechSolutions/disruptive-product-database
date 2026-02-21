@@ -203,8 +203,6 @@ export default function UploadProductModal() {
 
       await workbook.xlsx.load(buffer);
 
-      /* GENERATE STARTING REF ONCE */
-
       let refCounter = 0;
 
       const snap = await getDocs(collection(db, "products"));
@@ -219,8 +217,6 @@ export default function UploadProductModal() {
         if (num > refCounter) refCounter = num;
       });
 
-      /* LOOP ALL SHEETS */
-
       for (const sheet of workbook.worksheets) {
         const sheetName = sheet.name;
 
@@ -228,13 +224,9 @@ export default function UploadProductModal() {
 
         const header2 = sheet.getRow(2);
 
-        /* BUILD TECH HEADER MAP ONLY AFTER COLUMN 8 */
-
         const techHeaders: {
           col: number;
-
           title: string;
-
           specId: string;
         }[] = [];
 
@@ -249,9 +241,7 @@ export default function UploadProductModal() {
 
           techHeaders.push({
             col,
-
             title,
-
             specId,
           });
         });
@@ -262,6 +252,24 @@ export default function UploadProductModal() {
           const row = sheet.getRow(r);
 
           if (!row.getCell(1).value) continue;
+
+          /* NEW VALIDATION BLOCK — CTRL+F: VALIDATE CLASSIFICATION MATCH */
+
+          const excelClassification = row.getCell(1).value?.toString() || "";
+
+          const selectedClassificationName =
+            classifications.find((c) => c.id === classification)?.name || "";
+
+          if (excelClassification !== selectedClassificationName) {
+            toast.error(
+              `Upload failed: Excel Classification "${excelClassification}" does not match selected "${selectedClassificationName}".`,
+            );
+
+            setUploading(false);
+            return;
+          }
+
+          /* END VALIDATION BLOCK */
 
           const brandName = row.getCell(2).value?.toString() || "";
 
@@ -281,19 +289,14 @@ export default function UploadProductModal() {
 
           const categoryType = await findCategoryType(
             classification,
-
             categoryTypeName,
           );
 
           const productType = await findProductType(
             classification,
-
             categoryType?.categoryTypeId || "",
-
             sheetName,
           );
-
-          /* BUILD TECH SPEC MAP */
 
           const specMap: Record<string, any[]> = {};
 
@@ -306,30 +309,53 @@ export default function UploadProductModal() {
 
             specMap[title].push({
               specId,
-
               value,
             });
           });
 
           const technicalSpecifications = Object.keys(specMap).map((title) => ({
             technicalSpecificationId: "",
-
             title,
-
             specs: specMap[title],
           }));
 
-          /* GENERATE REF */
-
           refCounter++;
 
+          const duplicateQuery = await getDocs(
+            query(
+              collection(db, "products"),
+              where("brandName", "==", brandName),
+              where("classificationId", "==", classification),
+              where("category", "==", category),
+              where("productName", "==", productName),
+              where("supplier.company", "==", supplierCompany),
+            ),
+          );
+
+          let duplicateFound = false;
+
+          duplicateQuery.forEach((doc) => {
+            const data = doc.data();
+
+            const existingProductTypeId =
+              data.productTypes?.[0]?.productTypeId || "";
+
+            if (existingProductTypeId === productType?.productTypeId) {
+              duplicateFound = true;
+            }
+          });
+
+          if (duplicateFound) {
+            toast.error(
+              `Upload failed: Duplicate product "${productName}". Same Brand, Classification, Category, Product Type, and Supplier already exists.`,
+            );
+
+            continue;
+          }
+
           const productReferenceID = `PROD-SPF-${refCounter
-
             .toString()
-
             .padStart(5, "0")}`;
-
-          /* SAVE */
 
           await addDoc(collection(db, "products"), {
             productReferenceID,
