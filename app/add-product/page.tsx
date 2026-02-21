@@ -53,10 +53,10 @@ import { db } from "@/lib/firebase";
 import AddProductSelectType from "@/components/add-product-edit-select-classifcation-type";
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
-import AddProductEditSisterCompanyType from "@/components/add-product-edit-sister-company-type";
+import AddProductEditBrandType from "@/components/add-product-edit-sister-company-type";
 
 /* 🔹 DELETE (SOFT DELETE) COMPONENT */
-import AddProductDeleteSisterCompany from "@/components/add-product-delete-select-sister-company";
+import AddProductDeleteBrand from "@/components/add-product-delete-select-sister-company";
 import AddProductDeleteClassification from "@/components/add-product-delete-select-classification-type";
 import AddProductDeleteProductType from "@/components/add-product-delete-select-category-type";
 import AddProductDeleteProduct from "@/components/add-product-delete-select-product";
@@ -124,23 +124,23 @@ export default function AddProductPage() {
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
 
-  /* ===== SISTER COMPANY (REAL-TIME + SOFT DELETE) ===== */
-  type SisterCompany = {
+  /* ===== BRAND (REAL-TIME + SOFT DELETE) ===== */
+  type Brand = {
     id: string;
     name: string;
   };
 
-  type SelectedSisterCompany = {
+  type SelectedBrand = {
     id: string;
     name: string;
   } | null;
 
-  const [selectedSisterCompany, setSelectedSisterCompany] =
-    useState<SelectedSisterCompany>(null);
+  const [selectedBrand, setSelectedBrand] =
+    useState<SelectedBrand>(null);
 
-  const [sisterCompanies, setSisterCompanies] = useState<SisterCompany[]>([]);
-  const [newSisterCompany, setNewSisterCompany] = useState("");
-  const [sisterCompanySearch, setSisterCompanySearch] = useState("");
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [newBrand, setNewBrand] = useState("");
+  const [brandSearch, setBrandSearch] = useState("");
 
   /* ===== CLASSIFICATION (REAL-TIME + SOFT DELETE) ===== */
   const [classificationTypes, setClassificationTypes] = useState<
@@ -262,7 +262,7 @@ export default function AddProductPage() {
   /* ---------------- REAL-TIME SISTER COMPANIES ---------------- */
   useEffect(() => {
     const q = query(
-      collection(db, "sisterCompanies"),
+      collection(db, "brands"),
       where("isActive", "==", true),
     );
 
@@ -274,7 +274,7 @@ export default function AddProductPage() {
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      setSisterCompanies(list);
+      setBrands(list);
     });
 
     return () => unsubscribe();
@@ -818,21 +818,30 @@ export default function AddProductPage() {
   };
 
   /* ---------------- Sister Company Handlers ---------------- */
-  const handleAddSisterCompany = async () => {
-    if (!newSisterCompany.trim()) return;
+  const handleAddBrand = async () => {
 
-    if (sisterCompanies.some((s) => s.name === newSisterCompany.trim())) {
-      toast.error("Sister company already exists");
+    if (!newBrand.trim()) return;
+
+    if (brands.some((s) => s.name === newBrand.trim())) {
+
+      toast.error("Brand already exists");
+
       return;
+
     }
 
-    await addDoc(collection(db, "sisterCompanies"), {
-      name: newSisterCompany.trim(),
+    await addDoc(collection(db, "brands"), {
+
+      name: newBrand.trim(),
+
       isActive: true,
+
       createdAt: serverTimestamp(),
+
     });
 
-    setNewSisterCompany("");
+    setNewBrand("");
+
   };
 
   /* ---------------- Product Type Handlers ---------------- */
@@ -1000,11 +1009,11 @@ export default function AddProductPage() {
     );
   }, [classificationTypes, classificationSearch]);
 
-  const filteredSisterCompanies = React.useMemo(() => {
-    return sisterCompanies.filter((item) =>
-      item.name.toLowerCase().includes(sisterCompanySearch.toLowerCase()),
+  const filteredBrands = React.useMemo(() => {
+    return brands.filter((item) =>
+      item.name.toLowerCase().includes(brandSearch.toLowerCase()),
     );
-  }, [sisterCompanies, sisterCompanySearch]);
+  }, [brands, brandSearch]);
 
   const filteredCategoryTypes = React.useMemo(() => {
     return categoryTypes.filter((item) =>
@@ -1079,8 +1088,8 @@ export default function AddProductPage() {
         return;
       }
 
-      if (!selectedSisterCompany) {
-        toast.error("Please select a sister company");
+      if (!selectedBrand) {
+        toast.error("Please select a brand");
         return;
       }
 
@@ -1100,8 +1109,8 @@ export default function AddProductPage() {
 
         productName,
 
-        sisterCompanyId: selectedSisterCompany.id,
-        sisterCompanyName: selectedSisterCompany.name,
+        brandId: selectedBrand.id,
+        brandName: selectedBrand.name,
 
         classificationId: classificationType.id,
         classificationName: classificationType.name,
@@ -1583,86 +1592,116 @@ export default function AddProductPage() {
 
         {/* RIGHT */}
         <div className="space-y-6">
-          {/* SELECT SISTER COMPANY */}
+          {/* SELECT BRAND */}
           <Card>
+
             <CardHeader>
+
               <CardTitle className="text-center text-sm">
-                SELECT SISTER COMPANY
+                SELECT BRAND
               </CardTitle>
+
             </CardHeader>
 
             <CardContent className="space-y-4">
+
               {/* SEARCH */}
+
               <div className="flex items-center justify-between gap-2">
-                <Label>Select Sister Company</Label>
+
+                <Label>Select Brand</Label>
+
                 <Input
-                  value={sisterCompanySearch}
-                  onChange={(e) => setSisterCompanySearch(e.target.value)}
-                  placeholder="Search sister company..."
+                  value={brandSearch}
+                  onChange={(e) => setBrandSearch(e.target.value)}
+                  placeholder="Search brand..."
                   className="h-8 w-[160px]"
                 />
+
               </div>
 
+
               {/* ADD */}
+
               <div className="flex gap-2">
+
                 <Input
-                  value={newSisterCompany}
-                  onChange={(e) => setNewSisterCompany(e.target.value)}
-                  placeholder="Add sister company..."
+                  value={newBrand}
+                  onChange={(e) => setNewBrand(e.target.value)}
+                  placeholder="Add brand..."
                 />
+
                 <Button
                   size="icon"
                   variant="outline"
-                  onClick={handleAddSisterCompany}
+                  onClick={handleAddBrand}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
+
               </div>
 
               <Separator />
 
+
               {/* LIST */}
+
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {filteredSisterCompanies.map((item) => (
+
+                {filteredBrands.map((item) => (
+
                   <div
                     key={item.id}
                     className="flex items-center justify-between gap-2"
                   >
+
                     <div className="flex items-center space-x-2">
+
                       <input
                         type="radio"
-                        name="sisterCompany"
-                        checked={selectedSisterCompany?.id === item.id}
+                        name="brand"
+                        checked={selectedBrand?.id === item.id}
                         onChange={() =>
-                          setSelectedSisterCompany({
+                          setSelectedBrand({
                             id: item.id,
                             name: item.name,
                           })
                         }
                       />
+
                       <span className="text-sm">{item.name}</span>
+
                     </div>
 
-                    <div className="flex gap-1">
-                      {/* EDIT */}
-                      <AddProductEditSisterCompanyType item={item} />
 
-                      {/* DELETE */}
-                      <AddProductDeleteSisterCompany
+                    <div className="flex gap-1">
+
+                      <AddProductEditBrandType item={item} />
+
+                      <AddProductDeleteBrand
                         item={item}
                         referenceID={user?.ReferenceID || ""}
                       />
+
                     </div>
+
                   </div>
+
                 ))}
 
-                {filteredSisterCompanies.length === 0 && (
+
+                {filteredBrands.length === 0 && (
+
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    No sister companies found
+                    No brands found
                   </p>
+
                 )}
+
               </div>
+
             </CardContent>
+
           </Card>
 
           {/* CLASSIFICATION */}
