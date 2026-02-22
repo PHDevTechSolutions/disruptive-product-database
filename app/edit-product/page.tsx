@@ -1245,103 +1245,186 @@ export default function EditProductPage() {
                 </div>
               </div>
 
-              <div className="max-h-[600px] overflow-y-auto pr-2 space-y-3">
-                {technicalSpecs.map((item, index) => (
-                  <Card key={item.id || index} className="p-3 space-y-3">
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        placeholder="Title"
-                        value={item.title}
-                        onChange={(e) => updateTitle(index, e.target.value)}
-                      />
+<div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
 
-                      {item.id &&
-                      classificationType &&
-                      selectedProductType &&
-                      selectedCategoryTypes.length === 1 ? (
-                        <AddProductDeleteTechnicalSpecification
-                          classificationId={classificationType.id}
-                          categoryTypeId={selectedCategoryTypes[0].id}
-                          productTypeId={selectedProductType.id}
-                          technicalSpecificationId={item.id}
-                          title={item.title}
-                          referenceID={user?.ReferenceID || ""}
-                        />
-                      ) : (
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          disabled={technicalSpecs.length === 1}
-                          onClick={() => {
-                            /* ✅ LOCAL DELETE FOR EDIT PAGE */
-                            setTechnicalSpecs((prev) =>
-                              prev.filter((_, i) => i !== index),
-                            );
-                          }}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+  {technicalSpecs.map((item, index) => (
 
-                    {(item.specs || []).map((row, rIndex) => (
-                      <div
-                        key={rIndex}
-                        className="space-y-2 border p-2 rounded"
-                      >
-                        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
-                          {/* SPECIFICATION NAME */}
-                          <Input
-                            placeholder="Specification"
-                            value={row.specId}
-                            onChange={(e) =>
-                              updateSpecField(
-                                index,
-                                rIndex,
-                                "specId",
-                                e.target.value,
-                              )
-                            }
-                          />
+    <Card
+      key={item.id || index}
+      className="p-4 space-y-4 border-2 border-blue-200 bg-blue-50"
+    >
 
-                          <Input
-                            placeholder="Value"
-                            value={row.value}
-                            onChange={(e) =>
-                              updateSpecField(
-                                index,
-                                rIndex,
-                                "value",
-                                e.target.value,
-                              )
-                            }
-                          />
 
-                          {/* ADD / REMOVE ROW */}
-                          <div className="flex gap-1">
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() => addSpecRow(index)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
+      {/* TITLE */}
 
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              disabled={item.specs.length === 1}
-                              onClick={() => removeSpecRow(index, rIndex)}
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </Card>
-                ))}
-              </div>
+      <div className="space-y-1">
+
+        <Label className="block w-full text-center text-xs font-bold uppercase text-orange-600 tracking-widest">
+
+          TECHNICAL SPECIFICATION TITLE
+
+        </Label>
+
+
+        <div className="flex gap-2 items-center">
+
+          <Input
+            className="border-orange-300 focus-visible:ring-orange-400 bg-white"
+            placeholder="Enter title..."
+            value={item.title}
+            onChange={(e) => updateTitle(index, e.target.value)}
+          />
+
+
+          {item.id &&
+          classificationType &&
+          selectedProductType &&
+          selectedCategoryTypes.length === 1 ? (
+
+            <AddProductDeleteTechnicalSpecification
+              classificationId={classificationType.id}
+              categoryTypeId={selectedCategoryTypes[0].id}
+              productTypeId={selectedProductType.id}
+              technicalSpecificationId={item.id}
+              title={item.title}
+              referenceID={user?.ReferenceID || ""}
+            />
+
+          ) : (
+
+            <Button
+              size="icon"
+              variant="outline"
+              className="border-orange-400 text-orange-700 hover:bg-orange-100"
+              disabled={technicalSpecs.length === 1}
+              onClick={() =>
+                setTechnicalSpecs((prev) =>
+                  prev.filter((_, i) => i !== index),
+                )
+              }
+            >
+              <Minus />
+            </Button>
+
+          )}
+
+        </div>
+
+      </div>
+
+
+
+      {/* SPEC ROWS */}
+
+      {(item.specs || []).map((row, rIndex) => (
+
+        <div
+          key={rIndex}
+          className="space-y-2 border-2 border-orange-200 rounded-md p-3 bg-orange-50"
+        >
+
+
+          {/* HEADER */}
+
+          <div className="grid grid-cols-[1fr_1fr_120px] gap-2">
+
+            <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
+
+              SPECIFICATION
+
+            </Label>
+
+
+            <Label className="block w-full text-center text-xs font-bold uppercase text-orange-700 tracking-widest">
+
+              VALUE
+
+            </Label>
+
+
+            <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
+
+              ACTION
+
+            </Label>
+
+          </div>
+
+
+
+          {/* INPUT ROW */}
+
+          <div className="grid grid-cols-[1fr_1fr_120px] gap-2 items-center">
+
+
+            <Input
+              className="border-blue-300 focus-visible:ring-blue-400 bg-white"
+              placeholder="Enter specification..."
+              value={row.specId}
+              onChange={(e) =>
+                updateSpecField(
+                  index,
+                  rIndex,
+                  "specId",
+                  e.target.value,
+                )
+              }
+            />
+
+
+            <Input
+              className="border-orange-300 focus-visible:ring-orange-400 bg-white"
+              placeholder="Enter value..."
+              value={row.value}
+              onChange={(e) =>
+                updateSpecField(
+                  index,
+                  rIndex,
+                  "value",
+                  e.target.value,
+                )
+              }
+            />
+
+
+            <div className="flex gap-1 justify-center">
+
+
+              <Button
+                size="icon"
+                variant="outline"
+                className="border-blue-400 text-blue-700 hover:bg-blue-100"
+                onClick={() => addSpecRow(index)}
+              >
+                <Plus />
+              </Button>
+
+
+              <Button
+                size="icon"
+                variant="outline"
+                className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                disabled={item.specs.length === 1}
+                onClick={() => removeSpecRow(index, rIndex)}
+              >
+                <Minus />
+              </Button>
+
+
+            </div>
+
+
+          </div>
+
+        </div>
+
+      ))}
+
+    </Card>
+
+  ))}
+
+</div>
             </div>
           </CardContent>
         </Card>
