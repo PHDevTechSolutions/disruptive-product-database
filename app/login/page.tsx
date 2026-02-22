@@ -12,7 +12,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (userId) {
-      router.replace("/dashboard");
+      router.replace("/splash-screen");
     }
   }, [userId, router]);
 

@@ -2,11 +2,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -47,7 +43,7 @@ export function LoginForm({
       }
 
       setUserId(data.userId);
-      router.push("/dashboard");
+      router.push("/splash-screen");
     } catch {
       setError("Something went wrong.");
     } finally {
@@ -60,7 +56,7 @@ export function LoginForm({
       onSubmit={handleSubmit}
       className={cn(
         "w-full max-w-md rounded-2xl bg-white/90 backdrop-blur-md p-8 shadow-2xl",
-        className
+        className,
       )}
       {...props}
     >
