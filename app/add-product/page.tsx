@@ -898,28 +898,28 @@ export default function AddProductPage() {
     return;
   };
 
-const uploadToCloudinary = async (file: File) => {
-  const formData = new FormData();
+  const uploadToCloudinary = async (file: File) => {
+    const formData = new FormData();
 
-  formData.append("file", file);
+    formData.append("file", file);
 
-  const res = await fetch("/api/upload-product", {
-    method: "POST",
-    body: formData,
-  });
+    const res = await fetch("/api/upload-product", {
+      method: "POST",
+      body: formData,
+    });
 
-  if (!res.ok) {
-    throw new Error("Cloudinary upload failed");
-  }
+    if (!res.ok) {
+      throw new Error("Cloudinary upload failed");
+    }
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (!data.secure_url || !data.public_id) {
-    throw new Error("Invalid Cloudinary response");
-  }
+    if (!data.secure_url || !data.public_id) {
+      throw new Error("Invalid Cloudinary response");
+    }
 
-  return data;
-};
+    return data;
+  };
 
   const uploadProductMedia = async (productId: string) => {
     try {
@@ -1340,180 +1340,6 @@ const uploadToCloudinary = async (file: File) => {
                               )
                             }
                           />
-
-                          {/* RANGING MODE */}
-                          {row.isRanging && (
-                            <div className="flex gap-1 items-center">
-                              <Input
-                                placeholder="From"
-                                value={row.rangeFrom ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "rangeFrom",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-
-                              <span>-</span>
-
-                              <Input
-                                placeholder="To"
-                                value={row.rangeTo ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "rangeTo",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {/* SLASHING MODE - CUSTOM FORMAT */}
-                          {row.isSlashing && (
-                            <div className="flex flex-wrap items-center gap-1">
-                              {row.slashValues.map((s, si) => (
-                                <React.Fragment key={si}>
-                                  <Input
-                                    className="w-[80px]"
-                                    placeholder="Value"
-                                    value={s}
-                                    onChange={(e) => {
-                                      const newArr = [...row.slashValues];
-                                      newArr[si] = e.target.value;
-
-                                      setTechnicalSpecs((prev) =>
-                                        prev.map((it, ii) =>
-                                          ii === index
-                                            ? {
-                                                ...it,
-                                                specs: it.specs.map((sr, ri) =>
-                                                  ri === rIndex
-                                                    ? {
-                                                        ...sr,
-                                                        slashValues: newArr,
-                                                      }
-                                                    : sr,
-                                                ),
-                                              }
-                                            : it,
-                                        ),
-                                      );
-                                    }}
-                                  />
-
-                                  {/* SHOW SLASH ONLY IF NOT LAST ITEM */}
-                                  {si < row.slashValues.length - 1 && (
-                                    <span className="px-1 font-bold">/</span>
-                                  )}
-
-                                  {/* ADD SLASH BUTTON */}
-                                  {si === row.slashValues.length - 1 && (
-                                    <div className="flex gap-1 ml-1">
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        onClick={() =>
-                                          addSlashValue(index, rIndex)
-                                        }
-                                      >
-                                        <Plus className="h-4 w-4" />
-                                      </Button>
-
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        disabled={row.slashValues.length === 1}
-                                        onClick={() =>
-                                          removeSlashValue(index, rIndex, si)
-                                        }
-                                      >
-                                        <Minus className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </React.Fragment>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* DIMENSION MODE */}
-                          {row.isDimension && (
-                            <div className="flex gap-1">
-                              <Input
-                                placeholder="L"
-                                value={row.length ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "length",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                placeholder="W"
-                                value={row.width ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "width",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                placeholder="H"
-                                value={row.height ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "height",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {/* IP RATING MODE */}
-                          {row.isRating && (
-                            <div className="flex gap-1 items-center">
-                              <span>IP</span>
-                              <Input
-                                placeholder="X"
-                                value={row.ipFirst ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "ipFirst",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                placeholder="Y"
-                                value={row.ipSecond ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "ipSecond",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-                          )}
 
                           {/* ADD / REMOVE ROW */}
                           <div className="flex gap-1">
