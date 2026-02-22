@@ -35,7 +35,7 @@ export default function DownloadProduct({ products }: Props) {
     new Set(products.map((p) => p.classificationName)),
   );
 
-  const GROUP_COLORS = ["BDD7EE", "FFE699", "C6E0B4", "F8CBAD", "D9D2E9"];
+  const GROUP_COLORS = ["BDD7EE", "FFE699"];
 
   const handleDownload = async () => {
     if (!classification) return;
@@ -91,98 +91,114 @@ export default function DownloadProduct({ products }: Props) {
         "Supplier",
       ];
 
-const header1: any[] = [];
-const header2: any[] = [];
+      const header1: any[] = [];
+      const header2: any[] = [];
 
-// STATIC
-staticColumns.forEach((col) => {
+      // STATIC
+      staticColumns.forEach((col) => {
+        header1.push(col); // TOP = static
 
-  header1.push(col); // TOP = static
+        header2.push(""); // BOTTOM empty
+      });
 
-  header2.push(""); // BOTTOM empty
+      // TECH SPECS
+      groupMap.forEach((specs, group) => {
+        const specArray = Array.from(specs);
 
-});
+        specArray.forEach((specId, index) => {
+          header1.push(specId); // TOP = SPEC NAME
 
-// TECH SPECS
-groupMap.forEach((specs, group) => {
-
-  const specArray = Array.from(specs);
-
-  specArray.forEach((specId, index) => {
-
-    header1.push(specId); // TOP = SPEC NAME
-
-    if (index === 0)
-      header2.push(group); // BOTTOM = GROUP TITLE
-    else
-      header2.push("");
-
-  });
-
-});
+          if (index === 0)
+            header2.push(group); // BOTTOM = GROUP TITLE
+          else header2.push("");
+        });
+      });
 
       ws.addRow(header1);
       ws.addRow(header2);
 
+      for (let col = 1; col <= staticColumns.length; col++) {
+        const cell = ws.getRow(1).getCell(col);
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "4472C4" }, // blue like your image
+        };
+
+        cell.font = {
+          bold: true,
+          color: { argb: "FFFFFF" },
+        };
+
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: "center",
+        };
+      }
+
       let colStart = staticColumns.length + 1;
+
+      let groupIndex = 0;
 
       groupMap.forEach((specs) => {
         const colEnd = colStart + specs.size - 1;
 
-ws.mergeCells(2, colStart, 2, colEnd);
+        ws.mergeCells(2, colStart, 2, colEnd);
+
+        const color = GROUP_COLORS[groupIndex % GROUP_COLORS.length];
+
+        for (let col = colStart; col <= colEnd; col++) {
+          // ROW 1 COLOR
+          const headerCell = ws.getRow(1).getCell(col);
+
+          headerCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: color },
+          };
+
+          headerCell.font = { bold: true };
+
+          headerCell.alignment = {
+            vertical: "middle",
+            horizontal: "center",
+          };
+
+          headerCell.border = {
+            top: { style: "thin" },
+            bottom: { style: "thin" },
+            left: { style: "thin" },
+            right: { style: "thin" },
+          };
+
+          // ✅ ROW 2 COLOR (THIS IS THE FIX)
+          const groupCell = ws.getRow(2).getCell(col);
+
+          groupCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: color },
+          };
+
+          groupCell.font = { bold: true, italic: true };
+
+          groupCell.alignment = {
+            vertical: "middle",
+            horizontal: "center",
+          };
+
+          groupCell.border = {
+            top: { style: "thin" },
+            bottom: { style: "thin" },
+            left: { style: "thin" },
+            right: { style: "thin" },
+          };
+        }
+
+        groupIndex++;
 
         colStart = colEnd + 1;
-      });
-
-      ws.getRow(1).eachCell((cell, colNumber) => {
-        const groupIndex = colNumber - staticColumns.length - 1;
-
-        let color = "D9D9D9";
-
-        if (groupIndex >= 0)
-          color = GROUP_COLORS[groupIndex % GROUP_COLORS.length];
-
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: color },
-        };
-
-        cell.font = { bold: true };
-
-        cell.alignment = {
-          vertical: "middle",
-          horizontal: "center",
-        };
-
-        cell.border = {
-          top: { style: "thin" },
-          bottom: { style: "thin" },
-          left: { style: "thin" },
-          right: { style: "thin" },
-        };
-      });
-
-      ws.getRow(2).eachCell((cell) => {
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "F2F2F2" },
-        };
-
-        cell.font = { bold: true };
-
-        cell.alignment = {
-          vertical: "middle",
-          horizontal: "center",
-        };
-
-        cell.border = {
-          top: { style: "thin" },
-          bottom: { style: "thin" },
-          left: { style: "thin" },
-          right: { style: "thin" },
-        };
       });
 
       sheetProducts.forEach((product) => {
@@ -220,7 +236,15 @@ ws.mergeCells(2, colStart, 2, colEnd);
           });
         });
 
-        ws.addRow(row);
+        const newRow = ws.addRow(row);
+
+        // ✅ MIDDLE ALIGN ENTIRE ROW
+        newRow.eachCell((cell) => {
+          cell.alignment = {
+            vertical: "middle",
+            horizontal: "center",
+          };
+        });
       });
 
       const startRow = 3;
