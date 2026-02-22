@@ -657,5 +657,206 @@
   .custom-scrollbar {
     scrollbar-width: none;
   }
+/* SPLASH SCREEN */
 
+.splash-container {
+
+  position: fixed;
+  inset: 0;
+
+  width: 100vw;
+  height: 100vh;
+
+  background: white;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  cursor: pointer;
+
+  overflow: hidden;
+
+  z-index: 9999;
+
+  animation: splash-open 0.8s ease;
+}
+
+
+.splash-container.closing {
+
+  animation: splash-close 0.8s ease forwards;
+
+}
+
+
+.splash-center {
+
+  text-align: center;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+}
+
+
+.splash-logo {
+
+  margin-bottom: 20px;
+
+}
+
+
+.splash-logo-circle {
+
+  width: 80px;
+  height: 80px;
+
+  border-radius: 50%;
+
+  background: linear-gradient(135deg,#000,#444);
+
+  animation: splash-glow 2s infinite alternate;
+
+}
+
+
+.splash-title {
+
+  font-size: 32px;
+  font-weight: 600;
+
+  margin-bottom: 10px;
+
+  animation: splash-fadeUp 0.8s ease;
+
+}
+
+
+.splash-status {
+
+  font-size: 14px;
+
+  color: #666;
+
+  animation: splash-fadeUp 0.5s ease;
+
+}
+
+
+.splash-percent {
+
+  font-size: 12px;
+
+  color: #aaa;
+
+  margin-top: 5px;
+
+}
+
+
+.splash-progress-wrapper {
+
+  position: absolute;
+
+  bottom: 0;
+  left: 0;
+
+  width: 100%;
+  height: 2px;
+
+  background: #eee;
+
+}
+
+
+.splash-progress {
+
+  height: 100%;
+
+  background: black;
+
+  transition: width 0.2s;
+
+}
+
+
+.splash-skip {
+
+  position: absolute;
+
+  bottom: 24px;
+  right: 24px;
+
+}
+
+
+/* ANIMATIONS */
+
+@keyframes splash-open {
+
+  from {
+
+    opacity: 0;
+    transform: scale(1.05);
+
+  }
+
+  to {
+
+    opacity: 1;
+    transform: scale(1);
+
+  }
+
+}
+
+
+@keyframes splash-close {
+
+  to {
+
+    opacity: 0;
+    transform: scale(0.95);
+
+  }
+
+}
+
+
+@keyframes splash-fadeUp {
+
+  from {
+
+    opacity: 0;
+    transform: translateY(15px);
+
+  }
+
+  to {
+
+    opacity: 1;
+    transform: translateY(0);
+
+  }
+
+}
+
+
+@keyframes splash-glow {
+
+  from {
+
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+
+  }
+
+  to {
+
+    box-shadow: 0 0 30px rgba(0,0,0,0.4);
+
+  }
+
+}
 }

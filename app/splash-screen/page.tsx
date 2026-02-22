@@ -2,54 +2,104 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 export default function SplashScreen() {
   const router = useRouter();
 
-  const messages = [
-    "Loading dashboard...",
-    "Fetching user data...",
-    "Preparing sidebar...",
-    "Almost ready...",
+  const slides = [
+    "Initializing system...",
+    "Loading product classifications...",
+    "Preparing database...",
+    "Finalizing setup...",
   ];
 
+  const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
+  const [closing, setClosing] = useState(false);
 
-  /* rotate messages */
+  /* AUTO LOAD */
+
   useEffect(() => {
     const interval = setInterval(() => {
-      setMessageIndex((prev) =>
-        prev + 1 < messages.length ? prev + 1 : prev
-      );
-    }, 800);
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          startClose();
+          return 100;
+        }
+
+        return prev + 1;
+      });
+    }, 25);
 
     return () => clearInterval(interval);
   }, []);
 
-  /* redirect to dashboard */
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      router.replace("/dashboard");
-    }, 3000);
+  /* CLOSE */
 
-    return () => clearTimeout(timer);
-  }, [router]);
+  function startClose() {
+    setClosing(true);
+
+    setTimeout(() => {
+      router.replace("/dashboard");
+    }, 800);
+  }
+
+  /* CHANGE MESSAGE */
+
+  function handleClick() {
+    setMessageIndex((prev) =>
+      prev + 1 >= slides.length ? 0 : prev + 1
+    );
+  }
+
+  /* SKIP */
+
+  function handleSkip(e: any) {
+    e.stopPropagation();
+    startClose();
+  }
 
   return (
-    <div className="flex h-[100svh] w-full flex-col items-center justify-center">
+    <div
+      onClick={handleClick}
+      className={`splash-container ${closing ? "closing" : ""}`}
+    >
+      <div className="splash-center">
 
-      {/* spinner */}
-      <div className="mb-6 h-12 w-12 animate-spin rounded-full border-4 border-red-500 border-t-transparent" />
+        <div className="splash-logo">
+          <div className="splash-logo-circle" />
+        </div>
 
-      {/* main text */}
-      <h1 className="text-xl font-semibold">
-        Please wait
-      </h1>
+        <h1 className="splash-title">
+          Product Database
+        </h1>
 
-      {/* changing message */}
-      <p className="mt-2 text-sm text-muted-foreground">
-        {messages[messageIndex]}
-      </p>
+        <p className="splash-status">
+          {slides[messageIndex]}
+        </p>
+
+        <p className="splash-percent">
+          {progress}%
+        </p>
+
+      </div>
+
+      <div className="splash-progress-wrapper">
+        <div
+          className="splash-progress"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <Button
+        variant="ghost"
+        className="splash-skip"
+        onClick={handleSkip}
+      >
+        Skip →
+      </Button>
 
     </div>
   );
