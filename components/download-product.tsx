@@ -72,13 +72,14 @@ export default function DownloadProduct({ products }: Props) {
       });
 
       /* PRODUCT CODE REMOVED HERE */
-
       const staticColumns = [
         "Classification",
 
         "Brand",
 
-        "Category",
+        "Price Point",
+
+        "Brand Origin",
 
         "Category Type",
 
@@ -208,7 +209,9 @@ export default function DownloadProduct({ products }: Props) {
 
         row.push(product.brandName || "");
 
-        row.push(product.category || "");
+        row.push(product.pricePoint || "");
+
+        row.push(product.brandOrigin || "");
 
         row.push(product.categoryTypes?.[0]?.categoryTypeName || "");
 
