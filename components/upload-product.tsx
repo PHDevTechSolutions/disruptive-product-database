@@ -174,201 +174,201 @@ export default function UploadProductModal() {
   /* MAIN UPLOAD */
 
 const handleUpload = async () => {
-    if (!file || !classification) {
-      toast.error("Select classification and file");
-      return;
-    }
+  if (!file || !classification) {
+    toast.error("Select classification and file");
+    return;
+  }
 
-    try {
-      setUploading(true);
+  try {
+    setUploading(true);
 
-      // Load the file buffer and initialize the workbook
-      const buffer = await file.arrayBuffer();
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(buffer);
+    // Load the file buffer and initialize the workbook
+    const buffer = await file.arrayBuffer();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
 
-      let refCounter = 0;
+    let refCounter = 0;
 
-      // Get the latest reference counter from the database
-      const snap = await getDocs(collection(db, "products"));
-      snap.forEach((doc) => {
-        const ref = doc.data().productReferenceID;
-        if (!ref) return;
-        const num = parseInt(ref.replace("PROD-SPF-", ""));
-        if (num > refCounter) refCounter = num;
+    // Get the latest reference counter from the database
+    const snap = await getDocs(collection(db, "products"));
+    snap.forEach((doc) => {
+      const ref = doc.data().productReferenceID;
+      if (!ref) return;
+      const num = parseInt(ref.replace("PROD-SPF-", ""));
+      if (num > refCounter) refCounter = num;
+    });
+
+    // Process each sheet in the workbook
+    for (const sheet of workbook.worksheets) {
+      const sheetName = sheet.name;
+      const header1 = sheet.getRow(1);
+      const header2 = sheet.getRow(2);
+
+      const techHeaders: { col: number; title: string; specId: string }[] = [];
+
+      // Capture headers for technical specifications
+      header1.eachCell((cell, col) => {
+        if (col <= 8) return;
+
+        const specId = cell.value?.toString();
+        const title = header2.getCell(col).value?.toString();
+
+        if (!title || !specId) return;
+
+        techHeaders.push({ col, title, specId });
       });
 
-      // Process each sheet in the workbook
-      for (const sheet of workbook.worksheets) {
-        const sheetName = sheet.name;
-        const header1 = sheet.getRow(1);
-        const header2 = sheet.getRow(2);
+      let lastClassification = "";
+      let lastBrand = "";
+      let lastPricePoint = "";
+      let lastBrandOrigin = "";
+      let lastCategoryType = "";
+      let lastImage = "";
+      let lastProductName = "";
+      let lastSupplier = "";
 
-        const techHeaders: { col: number; title: string; specId: string }[] = [];
+      // Process each row in the sheet
+      for (let r = 3; r <= sheet.rowCount; r++) {
+        const row = sheet.getRow(r);
 
-        // Capture headers for technical specifications
-        header1.eachCell((cell, col) => {
-          if (col <= 8) return;
+        // Read values with merge support
+        let excelClassification = row.getCell(1).value?.toString() || lastClassification;
+        if (excelClassification) lastClassification = excelClassification;
 
-          const specId = cell.value?.toString();
-          const title = header2.getCell(col).value?.toString();
+        let brandName = row.getCell(2).value?.toString() || lastBrand;
+        if (brandName) lastBrand = brandName;
 
-          if (!title || !specId) return;
+        let pricePoint = row.getCell(3).value?.toString() || lastPricePoint;
+        if (pricePoint) lastPricePoint = pricePoint;
 
-          techHeaders.push({ col, title, specId });
+        let brandOrigin = row.getCell(4).value?.toString() || lastBrandOrigin;
+        if (brandOrigin) lastBrandOrigin = brandOrigin;
+
+        let categoryTypeName = row.getCell(5).value?.toString() || lastCategoryType;
+        if (categoryTypeName) lastCategoryType = categoryTypeName;
+
+        let image = row.getCell(7).value?.toString() || lastImage;
+        if (image) lastImage = image;
+
+        let productName = row.getCell(8).value?.toString() || lastProductName;
+        if (productName) lastProductName = productName;
+
+        let supplierCompany = row.getCell(9).value?.toString() || lastSupplier;
+        if (supplierCompany) lastSupplier = supplierCompany;
+
+        // Skip empty product
+        if (!productName) continue;
+
+        // Validate classification
+        const selectedClassificationName = classifications.find((c) => c.id === classification)?.name || "";
+        if (excelClassification !== selectedClassificationName) {
+          toast.error(`Upload failed: Excel Classification "${excelClassification}" does not match selected "${selectedClassificationName}".`);
+          setUploading(false);
+          return;
+        }
+
+        // Find related data from Firestore
+        const brand = await findBrand(brandName);
+        const supplier = await findSupplier(supplierCompany);
+        const categoryType = await findCategoryType(classification, categoryTypeName);
+        if (!categoryType) {
+          toast.error(`Upload failed: Category Type "${categoryTypeName}" not found.`);
+          continue;
+        }
+
+        const productType = await findProductType(classification, categoryType.categoryTypeId, sheetName);
+        if (!productType) {
+          toast.error(`Upload failed: Product Type "${sheetName}" not found.`);
+          continue;
+        }
+
+        // Build technical specifications
+        const specMap: Record<string, any[]> = {};
+
+        techHeaders.forEach(({ col, title, specId }) => {
+          const value = row.getCell(col).value?.toString() || ""; // Allow empty value for specification
+
+          if (!specMap[title]) specMap[title] = [];
+          specMap[title].push({
+            specId: uuidv4(), // Auto generate specId if not found
+            name: specId, // Use specId from the header as the name
+            value,
+            unit: "",
+          });
         });
 
-        let lastClassification = "";
-        let lastBrand = "";
-        let lastPricePoint = "";
-        let lastBrandOrigin = "";
-        let lastCategoryType = "";
-        let lastImage = "";
-        let lastProductName = "";
-        let lastSupplier = "";
+        const technicalSpecifications = Object.keys(specMap).map((title) => ({
+          technicalSpecificationId: uuidv4(), // Auto generate technicalSpecificationId
+          title,
+          specs: specMap[title],
+          units: [],
+        }));
 
-        // Process each row in the sheet
-        for (let r = 3; r <= sheet.rowCount; r++) {
-          const row = sheet.getRow(r);
+        // Duplicate check
+        const duplicateQuery = await getDocs(
+          query(
+            collection(db, "products"),
+            where("brandName", "==", brandName),
+            where("classificationId", "==", classification),
+            where("pricePoint", "==", pricePoint),
+            where("brandOrigin", "==", brandOrigin),
+            where("productName", "==", productName),
+            where("supplier.company", "==", supplierCompany),
+          )
+        );
 
-          // Read values with merge support
-          let excelClassification = row.getCell(1).value?.toString() || lastClassification;
-          if (excelClassification) lastClassification = excelClassification;
+        let duplicateFound = false;
+        duplicateQuery.forEach((doc) => {
+          const data = doc.data();
+          const existingProductTypeId = data.productTypes?.[0]?.productTypeId || "";
+          if (existingProductTypeId === productType?.productTypeId) duplicateFound = true;
+        });
 
-          let brandName = row.getCell(2).value?.toString() || lastBrand;
-          if (brandName) lastBrand = brandName;
-
-          let pricePoint = row.getCell(3).value?.toString() || lastPricePoint;
-          if (pricePoint) lastPricePoint = pricePoint;
-
-          let brandOrigin = row.getCell(4).value?.toString() || lastBrandOrigin;
-          if (brandOrigin) lastBrandOrigin = brandOrigin;
-
-          let categoryTypeName = row.getCell(5).value?.toString() || lastCategoryType;
-          if (categoryTypeName) lastCategoryType = categoryTypeName;
-
-          let image = row.getCell(7).value?.toString() || lastImage;
-          if (image) lastImage = image;
-
-          let productName = row.getCell(8).value?.toString() || lastProductName;
-          if (productName) lastProductName = productName;
-
-          let supplierCompany = row.getCell(9).value?.toString() || lastSupplier;
-          if (supplierCompany) lastSupplier = supplierCompany;
-
-          // Skip empty product
-          if (!productName) continue;
-
-          // Validate classification
-          const selectedClassificationName = classifications.find((c) => c.id === classification)?.name || "";
-          if (excelClassification !== selectedClassificationName) {
-            toast.error(`Upload failed: Excel Classification "${excelClassification}" does not match selected "${selectedClassificationName}".`);
-            setUploading(false);
-            return;
-          }
-
-          // Find related data from Firestore
-          const brand = await findBrand(brandName);
-          const supplier = await findSupplier(supplierCompany);
-          const categoryType = await findCategoryType(classification, categoryTypeName);
-          if (!categoryType) {
-            toast.error(`Upload failed: Category Type "${categoryTypeName}" not found.`);
-            continue;
-          }
-
-          const productType = await findProductType(classification, categoryType.categoryTypeId, sheetName);
-          if (!productType) {
-            toast.error(`Upload failed: Product Type "${sheetName}" not found.`);
-            continue;
-          }
-
-          // Build technical specifications
-          const specMap: Record<string, any[]> = {};
-
-          techHeaders.forEach(({ col, title, specId }) => {
-            const value = row.getCell(col).value?.toString() || ""; // Allow empty value for specification
-
-            if (!specMap[title]) specMap[title] = [];
-            specMap[title].push({
-              specId: uuidv4(), // Auto generate specId
-              name: specId, // Use specId from the header as the name
-              value,
-              unit: "",
-            });
-          });
-
-          const technicalSpecifications = Object.keys(specMap).map((title) => ({
-            technicalSpecificationId: uuidv4(), // Auto generate technicalSpecificationId
-            title,
-            specs: specMap[title],
-            units: [],
-          }));
-
-          // Duplicate check
-          const duplicateQuery = await getDocs(
-            query(
-              collection(db, "products"),
-              where("brandName", "==", brandName),
-              where("classificationId", "==", classification),
-              where("pricePoint", "==", pricePoint),
-              where("brandOrigin", "==", brandOrigin),
-              where("productName", "==", productName),
-              where("supplier.company", "==", supplierCompany),
-            )
-          );
-
-          let duplicateFound = false;
-          duplicateQuery.forEach((doc) => {
-            const data = doc.data();
-            const existingProductTypeId = data.productTypes?.[0]?.productTypeId || "";
-            if (existingProductTypeId === productType?.productTypeId) duplicateFound = true;
-          });
-
-          if (duplicateFound) {
-            toast.error(`Upload failed: Duplicate product "${productName}".`);
-            continue;
-          }
-
-          // Generate reference
-          refCounter++;
-          const productReferenceID = `PROD-SPF-${refCounter.toString().padStart(5, "0")}`;
-
-          // Save product data to Firestore
-          await addDoc(collection(db, "products"), {
-            productReferenceID,
-            productName,
-            brandId: brand?.brandId || "",
-            brandName,
-            pricePoint,
-            brandOrigin,
-            classificationId: classification,
-            classificationName: selectedClassificationName,
-            supplier,
-            categoryTypes: categoryType ? [categoryType] : [],
-            productTypes: productType ? [productType] : [],
-            mainImage: {
-              url: image,
-            },
-            technicalSpecifications,
-            createdBy: userId,
-            referenceID: userReferenceID,
-            isActive: true,
-            mediaStatus: "done",
-            createdAt: serverTimestamp(),
-          });
+        if (duplicateFound) {
+          toast.error(`Upload failed: Duplicate product "${productName}".`);
+          continue;
         }
-      }
 
-      toast.success("Upload Complete");
-      setOpen(false);
-      setFile(null);
-    } catch (err) {
-      console.error(err);
-      toast.error("Upload failed");
-    } finally {
-      setUploading(false);
+        // Generate reference
+        refCounter++;
+        const productReferenceID = `PROD-SPF-${refCounter.toString().padStart(5, "0")}`;
+
+        // Save product data to Firestore
+        await addDoc(collection(db, "products"), {
+          productReferenceID,
+          productName,
+          brandId: brand?.brandId || "",
+          brandName,
+          pricePoint,
+          brandOrigin,
+          classificationId: classification,
+          classificationName: selectedClassificationName,
+          supplier,
+          categoryTypes: categoryType ? [categoryType] : [],
+          productTypes: productType ? [productType] : [],
+          mainImage: {
+            url: image,
+          },
+          technicalSpecifications,
+          createdBy: userId,
+          referenceID: userReferenceID,
+          isActive: true,
+          mediaStatus: "done",
+          createdAt: serverTimestamp(),
+        });
+      }
     }
-  };
+
+    toast.success("Upload Complete");
+    setOpen(false);
+    setFile(null);
+  } catch (err) {
+    console.error(err);
+    toast.error("Upload failed");
+  } finally {
+    setUploading(false);
+  }
+};
 
   /* UI */
 

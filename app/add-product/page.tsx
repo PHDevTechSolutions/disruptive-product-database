@@ -1156,10 +1156,12 @@ const ref = existingDoc
     }
   };
 
-  const handleSaveProduct = async () => {
+const handleSaveProduct = async () => {
     if (saving) return;
+
     try {
       setSaving(true);
+
       if (!productName.trim()) {
         toast.error("Product name is required");
         return;
@@ -1194,31 +1196,42 @@ const ref = existingDoc
         return;
       }
 
+      // ================= CHECK FOR EXISTING TECHNICAL SPECS =================
+
+      // Collect all technical specs titles and specIds
+      const existingSpecTitles = new Set();
+      technicalSpecs.forEach((spec) => {
+        existingSpecTitles.add(spec.title); // Add the spec title to the set to prevent duplicates
+      });
+
+      // Check if any technical specification title is duplicated in the array
+      const duplicateSpecs = technicalSpecs.some((spec, index) => 
+        existingSpecTitles.has(spec.title) && index !== technicalSpecs.findIndex(s => s.title === spec.title)
+      );
+
+      if (duplicateSpecs) {
+        toast.error("Duplicate technical specifications found. Please correct them.");
+        setSaving(false);
+        return;
+      }
+
       // ================= CLOUDINARY UPLOAD =================
 
-      // MAIN IMAGE
       const newProductReferenceID = await generateProductReferenceID();
 
       const productRef = await addDoc(collection(db, "products"), {
         productReferenceID: newProductReferenceID,
-
         productName,
-
         pricePoint,
-
         brandOrigin,
-
         brandId: selectedBrand.id,
         brandName: selectedBrand.name,
-
         classificationId: classificationType.id,
         classificationName: classificationType.name,
-
         supplier: {
           supplierId: selectedSupplier.supplierId,
           company: selectedSupplier.company,
         },
-
         productTypes: selectedProductType
           ? [
               {
@@ -1228,18 +1241,16 @@ const ref = existingDoc
               },
             ]
           : [],
-
         categoryTypes: selectedCategoryTypes.map((c) => ({
           categoryTypeId: c.id,
           categoryTypeName: c.name,
         })),
-
         technicalSpecifications: technicalSpecs
-          .filter((spec) => spec.title.trim() !== "")
+          .filter((spec) => spec.title.trim() !== "") // Remove empty title specs
           .map((spec, specIndex) => ({
-            titleId: spec.id, // this should remain fixed
+            titleId: spec.id, // Keep titleId for consistency
             technicalSpecificationId: spec.id || "",
-            title: spec.title, // editable title
+            title: spec.title,
             order: specIndex,
             specs: spec.specs
               .filter((row) => row.specId.trim() !== "")
@@ -1250,17 +1261,11 @@ const ref = existingDoc
                 order: rowIndex,
               })),
           })),
-
-        mainImage: null,
-
+        mainImage: null, // Image URL will be uploaded asynchronously
         mediaStatus: "pending",
-
         createdBy: userId,
-
         referenceID: user?.ReferenceID || null,
-
         isActive: true,
-
         createdAt: serverTimestamp(),
       });
 
@@ -1271,7 +1276,6 @@ const ref = existingDoc
       router.push("/products");
     } catch (error) {
       console.error(error);
-
       toast.error("Failed to save product");
     } finally {
       setSaving(false);
