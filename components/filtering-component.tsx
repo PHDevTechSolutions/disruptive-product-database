@@ -91,8 +91,11 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   const suppliers = uniq(products.map((p) => p.supplier?.company));
 
-  /* ✅ NEW: PRODUCT CATEGORY FILTER (Economy / Mid-End / To Be Evaluated) */
-  const productCategories = uniq(products.map((p) => p.category));
+  /* ✅ PRICE POINT FILTER */
+  const pricePoints = uniq(products.map((p) => p.pricePoint));
+
+  /* ✅ BRAND ORIGIN FILTER */
+  const brandOrigins = uniq(products.map((p) => p.brandOrigin));
 
   /* ================= TECH SPECS ================= */
 
@@ -176,7 +179,9 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
       /* ✅ FIXED: USE p.category NOT logistics.category */
 
-      if (!check("Category", p.category)) return false;
+      if (!check("Price Point", p.pricePoint)) return false;
+
+      if (!check("Brand Origin", p.brandOrigin)) return false;
 
       for (const [k, vals] of Object.entries(filters)) {
         if (!k.includes("||")) continue;
@@ -261,10 +266,19 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           setSearch={setSearch}
         />
 
-        {/* ✅ NEW CATEGORY FILTER */}
+        {/* ✅ PRICE POINT FILTER */}
         <Section
-          title="Category"
-          items={productCategories}
+          title="Price Point"
+          items={pricePoints}
+          filters={filters}
+          toggle={toggle}
+          setSearch={setSearch}
+        />
+
+        {/* ✅ BRAND ORIGIN FILTER */}
+        <Section
+          title="Brand Origin"
+          items={brandOrigins}
           filters={filters}
           toggle={toggle}
           setSearch={setSearch}

@@ -109,7 +109,8 @@ export default function AddProductPage() {
     null,
   );
 
-  const [category, setCategory] = useState("");
+  const [pricePoint, setPricePoint] = useState("");
+  const [brandOrigin, setBrandOrigin] = useState("");
 
   const isInitialLoad = useRef(true);
 
@@ -1025,11 +1026,15 @@ export default function AddProductPage() {
         return;
       }
 
-      if (!category) {
-        toast.error("Please select category");
+      if (!pricePoint) {
+        toast.error("Please select price point");
         return;
       }
 
+      if (!brandOrigin) {
+        toast.error("Please select brand origin");
+        return;
+      }
       if (!classificationType) {
         toast.error("Please select a classification type");
         return;
@@ -1055,7 +1060,9 @@ export default function AddProductPage() {
 
         productName,
 
-        category,
+        pricePoint,
+
+        brandOrigin,
 
         brandId: selectedBrand.id,
         brandName: selectedBrand.name,
@@ -1235,19 +1242,39 @@ export default function AddProductPage() {
               </Popover>
             </div>
 
-            {/* ================= CATEGORY SELECT ================= */}
+            {/* ================= PRICE POINT SELECT ================= */}
             <div className="space-y-2">
-              <Label>Category</Label>
+              <Label>Price Point</Label>
 
               <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                value={pricePoint}
+                onChange={(e) => setPricePoint(e.target.value)}
                 className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
               >
-                <option value="">Select category...</option>
+                <option value="">Select price point...</option>
+
                 <option value="Economy">Economy</option>
+
                 <option value="Mid-End">Mid-End</option>
-                <option value="To Be Evaluated">To Be Evaluated</option>
+
+                <option value="High-End">High-End</option>
+              </select>
+            </div>
+
+            {/* ================= BRAND ORIGIN SELECT ================= */}
+            <div className="space-y-2">
+              <Label>Brand Origin</Label>
+
+              <select
+                value={brandOrigin}
+                onChange={(e) => setBrandOrigin(e.target.value)}
+                className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
+              >
+                <option value="">Select brand origin...</option>
+
+                <option value="China">China</option>
+
+                <option value="Non-China">Non-China</option>
               </select>
             </div>
 
@@ -1273,172 +1300,130 @@ export default function AddProductPage() {
                 </div>
               </div>
 
-{/* ---- SCROLLABLE CONTENT ONLY ---- */}
-<div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
-  {technicalSpecs.map((item, index) => (
-    <Card
-      key={index}
-      className="p-4 space-y-4 border-2 border-blue-200 bg-blue-50"
-    >
+              {/* ---- SCROLLABLE CONTENT ONLY ---- */}
+              <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
+                {technicalSpecs.map((item, index) => (
+                  <Card
+                    key={index}
+                    className="p-4 space-y-4 border-2 border-blue-200 bg-blue-50"
+                  >
+                    {/* TITLE */}
+                    <div className="space-y-1">
+                      <Label className="block w-full text-center text-xs font-bold uppercase text-orange-600 tracking-widest">
+                        TECHNICAL SPECIFICATION TITLE
+                      </Label>
 
-      {/* TITLE */}
-      <div className="space-y-1">
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          className="border-orange-300 focus-visible:ring-orange-400 bg-white"
+                          placeholder="Enter title..."
+                          value={item.title}
+                          onChange={(e) => updateTitle(index, e.target.value)}
+                        />
 
-        <Label className="block w-full text-center text-xs font-bold uppercase text-orange-600 tracking-widest">
+                        {item.id &&
+                        classificationType &&
+                        selectedProductType &&
+                        selectedCategoryTypes.length === 1 ? (
+                          <AddProductDeleteTechnicalSpecification
+                            classificationId={classificationType.id}
+                            categoryTypeId={selectedCategoryTypes[0].id}
+                            productTypeId={selectedProductType.id}
+                            technicalSpecificationId={item.id}
+                            title={item.title}
+                            referenceID={user?.ReferenceID || ""}
+                          />
+                        ) : (
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="border-orange-400 text-orange-600 hover:bg-orange-100"
+                            disabled={technicalSpecs.length === 1}
+                            onClick={() => removeTechnicalSpec(index)}
+                          >
+                            <Minus />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
 
-          TECHNICAL SPECIFICATION TITLE
+                    {/* SPECIFICATION ROW */}
+                    {item.specs.map((row, rIndex) => (
+                      <div
+                        key={rIndex}
+                        className="space-y-2 border-2 border-orange-200 rounded-md p-3 bg-orange-50"
+                      >
+                        {/* HEADER */}
+                        <div className="grid grid-cols-[2fr_1fr_120px] gap-2">
+                          <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
+                            SPECIFICATION
+                          </Label>
 
-        </Label>
+                          <Label className="block w-full text-center text-xs font-bold uppercase text-orange-700 tracking-widest">
+                            VALUE
+                          </Label>
 
+                          <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
+                            ACTION
+                          </Label>
+                        </div>
 
-        <div className="flex gap-2 items-center">
+                        {/* INPUT */}
+                        <div className="grid grid-cols-[2fr_1fr_120px] gap-2 items-center">
+                          <Input
+                            className="border-blue-300 focus-visible:ring-blue-400 bg-white"
+                            placeholder="Enter specification..."
+                            value={row.specId ?? ""}
+                            onChange={(e) =>
+                              updateSpecField(
+                                index,
+                                rIndex,
+                                "specId",
+                                e.target.value,
+                              )
+                            }
+                          />
 
-          <Input
-            className="border-orange-300 focus-visible:ring-orange-400 bg-white"
-            placeholder="Enter title..."
-            value={item.title}
-            onChange={(e) => updateTitle(index, e.target.value)}
-          />
+                          <Input
+                            className="border-orange-300 focus-visible:ring-orange-400 bg-white"
+                            placeholder="Enter value..."
+                            value={row.value ?? ""}
+                            onChange={(e) =>
+                              updateSpecField(
+                                index,
+                                rIndex,
+                                "value",
+                                e.target.value,
+                              )
+                            }
+                          />
 
-          {item.id &&
-          classificationType &&
-          selectedProductType &&
-          selectedCategoryTypes.length === 1 ? (
+                          <div className="flex gap-1 justify-center">
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="border-blue-400 text-blue-700 hover:bg-blue-100"
+                              onClick={() => addSpecRow(index)}
+                            >
+                              <Plus />
+                            </Button>
 
-            <AddProductDeleteTechnicalSpecification
-              classificationId={classificationType.id}
-              categoryTypeId={selectedCategoryTypes[0].id}
-              productTypeId={selectedProductType.id}
-              technicalSpecificationId={item.id}
-              title={item.title}
-              referenceID={user?.ReferenceID || ""}
-            />
-
-          ) : (
-
-            <Button
-              size="icon"
-              variant="outline"
-              className="border-orange-400 text-orange-600 hover:bg-orange-100"
-              disabled={technicalSpecs.length === 1}
-              onClick={() => removeTechnicalSpec(index)}
-            >
-              <Minus />
-            </Button>
-
-          )}
-
-        </div>
-      </div>
-
-
-
-      {/* SPECIFICATION ROW */}
-      {item.specs.map((row, rIndex) => (
-
-        <div
-          key={rIndex}
-          className="space-y-2 border-2 border-orange-200 rounded-md p-3 bg-orange-50"
-        >
-
-          {/* HEADER */}
-          <div className="grid grid-cols-[2fr_1fr_120px] gap-2">
-
-
-            <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
-
-              SPECIFICATION
-
-            </Label>
-
-
-            <Label className="block w-full text-center text-xs font-bold uppercase text-orange-700 tracking-widest">
-
-              VALUE
-
-            </Label>
-
-
-            <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
-
-              ACTION
-
-            </Label>
-
-
-          </div>
-
-
-
-          {/* INPUT */}
-          <div className="grid grid-cols-[2fr_1fr_120px] gap-2 items-center">
-
-
-            <Input
-              className="border-blue-300 focus-visible:ring-blue-400 bg-white"
-              placeholder="Enter specification..."
-              value={row.specId ?? ""}
-              onChange={(e) =>
-                updateSpecField(
-                  index,
-                  rIndex,
-                  "specId",
-                  e.target.value,
-                )
-              }
-            />
-
-
-            <Input
-              className="border-orange-300 focus-visible:ring-orange-400 bg-white"
-              placeholder="Enter value..."
-              value={row.value ?? ""}
-              onChange={(e) =>
-                updateSpecField(
-                  index,
-                  rIndex,
-                  "value",
-                  e.target.value,
-                )
-              }
-            />
-
-
-            <div className="flex gap-1 justify-center">
-
-              <Button
-                size="icon"
-                variant="outline"
-                className="border-blue-400 text-blue-700 hover:bg-blue-100"
-                onClick={() => addSpecRow(index)}
-              >
-                <Plus />
-              </Button>
-
-
-              <Button
-                size="icon"
-                variant="outline"
-                className="border-orange-400 text-orange-700 hover:bg-orange-100"
-                disabled={item.specs.length === 1}
-                onClick={() =>
-                  removeSpecRow(index, rIndex)
-                }
-              >
-                <Minus />
-              </Button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      ))}
-
-    </Card>
-  ))}
-</div>
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                              disabled={item.specs.length === 1}
+                              onClick={() => removeSpecRow(index, rIndex)}
+                            >
+                              <Minus />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </Card>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>

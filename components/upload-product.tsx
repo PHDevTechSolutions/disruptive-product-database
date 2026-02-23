@@ -246,13 +246,20 @@ export default function UploadProductModal() {
           });
         });
         /* LOOP ROWS */
-
         let lastClassification = "";
+
         let lastBrand = "";
-        let lastCategory = "";
+
+        let lastPricePoint = "";
+
+        let lastBrandOrigin = "";
+
         let lastCategoryType = "";
+
         let lastImage = "";
+
         let lastProductName = "";
+
         let lastSupplier = "";
 
         for (let r = 3; r <= sheet.rowCount; r++) {
@@ -269,25 +276,29 @@ export default function UploadProductModal() {
 
           if (brandName) lastBrand = brandName;
 
-          let category = row.getCell(3).value?.toString() || lastCategory;
+          let pricePoint = row.getCell(3).value?.toString() || lastPricePoint;
 
-          if (category) lastCategory = category;
+          if (pricePoint) lastPricePoint = pricePoint;
+
+          let brandOrigin = row.getCell(4).value?.toString() || lastBrandOrigin;
+
+          if (brandOrigin) lastBrandOrigin = brandOrigin;
 
           let categoryTypeName =
-            row.getCell(4).value?.toString() || lastCategoryType;
+            row.getCell(5).value?.toString() || lastCategoryType;
 
           if (categoryTypeName) lastCategoryType = categoryTypeName;
 
-          let image = row.getCell(6).value?.toString() || lastImage;
+          let image = row.getCell(7).value?.toString() || lastImage;
 
           if (image) lastImage = image;
 
-          let productName = row.getCell(7).value?.toString() || lastProductName;
+          let productName = row.getCell(8).value?.toString() || lastProductName;
 
           if (productName) lastProductName = productName;
 
           let supplierCompany =
-            row.getCell(8).value?.toString() || lastSupplier;
+            row.getCell(9).value?.toString() || lastSupplier;
 
           if (supplierCompany) lastSupplier = supplierCompany;
 
@@ -373,7 +384,8 @@ export default function UploadProductModal() {
               collection(db, "products"),
               where("brandName", "==", brandName),
               where("classificationId", "==", classification),
-              where("category", "==", category),
+              where("pricePoint", "==", pricePoint),
+              where("brandOrigin", "==", brandOrigin),
               where("productName", "==", productName),
               where("supplier.company", "==", supplierCompany),
             ),
@@ -414,7 +426,9 @@ export default function UploadProductModal() {
 
             brandName,
 
-            category,
+            pricePoint,
+
+            brandOrigin,
 
             classificationId: classification,
 
