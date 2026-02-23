@@ -785,67 +785,64 @@ export default function AddProductPage() {
 
   /* ===== SAVE EDITABLE SPECS BACK TO PRODUCT TYPE COLLECTION ===== */
 
-const syncSpecsToProductType = async () => {
-  if (!classificationType) return;
-  if (!selectedProductType) return;
-  if (selectedCategoryTypes.length !== 1) return;
+  const syncSpecsToProductType = async () => {
+    if (!classificationType) return;
+    if (!selectedProductType) return;
+    if (selectedCategoryTypes.length !== 1) return;
 
-  try {
-    const categoryTypeId = selectedCategoryTypes[0].id;
+    try {
+      const categoryTypeId = selectedCategoryTypes[0].id;
 
-    const specsRef = collection(
-      db,
-      "classificationTypes",
-      classificationType.id,
-      "categoryTypes",
-      categoryTypeId,
-      "productTypes",
-      selectedProductType.id,
-      "technicalSpecifications",
-    );
-
-    // Fetch existing technical specs in the database
-    const existingSnapshot = await getDocs(specsRef);
-
-    const batch = writeBatch(db);
-
-    // Iterate through each specification and avoid adding duplicates
-    technicalSpecs.forEach((spec, specIndex) => {
-      if (!spec.title.trim()) return; // Skip empty titles
-
-      // Check if the specification already exists by comparing IDs
-      const existingDoc = existingSnapshot.docs.find(
-        (d) => d.data().titleId === spec.id
+      const specsRef = collection(
+        db,
+        "classificationTypes",
+        classificationType.id,
+        "categoryTypes",
+        categoryTypeId,
+        "productTypes",
+        selectedProductType.id,
+        "technicalSpecifications",
       );
 
-      const ref = existingDoc
-        ? doc(specsRef, existingDoc.id) // Use the existing document reference
-        : doc(specsRef); // Create a new document if not found
+      const existingSnapshot = await getDocs(specsRef);
 
-      batch.set(ref, {
-        titleId: spec.id, // Keep the permanent titleId
-        title: spec.title, // Editable title
-        specs: spec.specs
-          .filter((row) => row.specId.trim() !== "") // Filter out empty specs
-          .map((row, rowIndex) => ({
-            specId: row.specId.trim(), // Permanent specId
-            title: row.title?.trim() || "", // Editable specification name
-            value: row.value?.trim() || "",
-            order: rowIndex, // Preserve the order
-          })),
-        isActive: true,
-        updatedAt: serverTimestamp(), // Update the timestamp
+      const batch = writeBatch(db);
+
+      technicalSpecs.forEach((spec, specIndex) => {
+        if (!spec.title.trim()) return;
+
+const existingDoc = existingSnapshot.docs.find(
+  (d) => d.data().titleId === spec.id
+);
+
+const ref = existingDoc
+  ? doc(specsRef, existingDoc.id)
+  : doc(specsRef);
+
+        batch.set(ref, {
+          titleId: spec.id, // Save the constant titleId
+          title: spec.title, // Save the editable title
+          specs: spec.specs
+            .filter((row) => row.specId.trim() !== "")
+            .map((row, rowIndex) => ({
+              specId: row.specId.trim(), // permanent specId
+              title: row.title?.trim() || "", // editable specification name
+              value: row.value?.trim() || "",
+              order: rowIndex, // Correctly assign the order here
+            })),
+          isActive: true,
+          updatedAt: serverTimestamp(),
+        });
       });
-    });
 
-    await batch.commit();
+      await batch.commit();
 
-    toast.success("Technical specifications saved successfully");
-  } catch (error) {
-    console.error(error);
-    toast.error("Failed to save technical specifications");
-  }
-};
+      toast.success("Technical specifications saved successfully");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save technical specifications");
+    }
+  };
 
   /* ================= NUMBER FORMATTERS ================= */
   const formatPHP = (value: number, decimals = 2) => {
