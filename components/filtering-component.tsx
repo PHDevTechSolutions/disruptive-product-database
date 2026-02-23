@@ -114,108 +114,97 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
         technicalSpecs[g.title][s.specId] ??= new Set();
 
-        splitValues(val).forEach((single) => {
-          technicalSpecs[g.title][s.specId].add(single);
-
-          /* ADD RANGE EXPANSION SUPPORT */
-          expandRange(single).forEach((num) => {
-            technicalSpecs[g.title][s.specId].add(num);
-          });
-        });
+splitValues(val).forEach((single) => {
+  technicalSpecs[g.title][s.specId].add(single);
+});
       }),
     ),
   );
 
   /* ================= FILTER ENGINE ================= */
 
-  useEffect(() => {
-    const filtered = products.filter((p) => {
-      const check = (key: string, value: any) => {
-        if (filters[key]?.length) {
-          return filters[key].some((filterVal) => {
-            if (!value) return false;
+useEffect(() => {
+  const filtered = products.filter((p) => {
+    const check = (key: string, value: any) => {
+      if (filters[key]?.length) {
+        return filters[key].some((filterVal) => {
+          if (!value) return false;
 
-            const valueStr = value.toString();
+          const valueStr = value.toString();
 
-            /* EXACT MATCH */
-            if (valueStr === filterVal) return true;
+          /* EXACT MATCH */
+          if (valueStr === filterVal) return true;
 
-            /* RANGE MATCH SUPPORT */
+          /* RANGE MATCH SUPPORT — FIXED FOR DECIMAL AND PLAIN TEXT */
 
-            const match = valueStr.match(/(\d+)\s*-\s*(\d+)/);
+          const match = valueStr.match(/(\d+(\.\d+)?)\s*-\s*(\d+(\.\d+)?)/);
 
-            if (match && /^\d+$/.test(filterVal)) {
-              const num = Number(filterVal);
+          if (match && !isNaN(Number(filterVal))) {
+            const num = Number(filterVal);
 
-              const from = Number(match[1]);
-              const to = Number(match[2]);
+            const from = Number(match[1]);
+            const to = Number(match[3]);
 
-              if (num >= from && num <= to) return true;
-            }
+            if (num >= from && num <= to) return true;
+          }
 
-            return false;
-          });
-        }
-
-        if (searchFilters[key])
-          return value
-            ?.toLowerCase()
-            .includes(searchFilters[key].toLowerCase());
-
-        return true;
-      };
-
-      if (!check("Brand", p.brandName)) return false;
-
-      if (!check("Classification Type", p.classificationName)) return false;
-
-      if (!check("Category Type", p.categoryTypes?.[0]?.categoryTypeName))
-        return false;
-
-      if (!check("Product Type", p.productTypes?.[0]?.productTypeName))
-        return false;
-
-      if (!check("Supplier", p.supplier?.company)) return false;
-
-      /* ✅ FIXED: USE p.category NOT logistics.category */
-
-      if (!check("Price Point", p.pricePoint)) return false;
-
-      if (!check("Brand Origin", p.brandOrigin)) return false;
-
-      for (const [k, vals] of Object.entries(filters)) {
-        if (!k.includes("||")) continue;
-
-        const [gt, sn] = k.split("||");
-
-        const pv: string[] = [];
-
-        p.technicalSpecifications?.forEach((g: any) => {
-          if (g.title !== gt) return;
-
-          g.specs?.forEach((s: any) => {
-            if (s.specId === sn) {
-              const d = formatSpec(s);
-
-              splitValues(d).forEach((v) => {
-                pv.push(v);
-
-                expandRange(v).forEach((num) => {
-                  pv.push(num);
-                });
-              });
-            }
-          });
+          return false;
         });
-
-        if (vals.length && !vals.some((v) => pv.includes(v))) return false;
       }
 
-      return true;
-    });
+      if (searchFilters[key])
+        return value
+          ?.toLowerCase()
+          .includes(searchFilters[key].toLowerCase());
 
-    onFilter(filtered);
-  }, [filters, searchFilters, products]);
+      return true;
+    };
+
+    if (!check("Brand", p.brandName)) return false;
+
+    if (!check("Classification Type", p.classificationName)) return false;
+
+    if (!check("Category Type", p.categoryTypes?.[0]?.categoryTypeName))
+      return false;
+
+    if (!check("Product Type", p.productTypes?.[0]?.productTypeName))
+      return false;
+
+    if (!check("Supplier", p.supplier?.company)) return false;
+
+    if (!check("Price Point", p.pricePoint)) return false;
+
+    if (!check("Brand Origin", p.brandOrigin)) return false;
+
+    for (const [k, vals] of Object.entries(filters)) {
+      if (!k.includes("||")) continue;
+
+      const [gt, sn] = k.split("||");
+
+      const pv: string[] = [];
+
+      p.technicalSpecifications?.forEach((g: any) => {
+        if (g.title !== gt) return;
+
+        g.specs?.forEach((s: any) => {
+          if (s.specId === sn) {
+            const d = formatSpec(s);
+
+splitValues(d).forEach((v) => {
+  pv.push(v);
+});
+          }
+        });
+      });
+
+      if (vals.length && !vals.some((v) => pv.includes(v))) return false;
+    }
+
+    return true;
+  });
+
+  onFilter(filtered);
+}, [filters, searchFilters, products]);
 
   /* ================= UI ACTIONS ================= */
 
@@ -343,37 +332,62 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
     setSearch(title, input);
   }, [input]);
 
-  const visible = items.filter((i: string) =>
-    i.toLowerCase().includes(input.toLowerCase()),
-  );
+  const visible = items.filter((i: string) => {
+    if (!input) return true;
+
+    const searchNum = Number(input);
+
+    if (!isNaN(searchNum)) {
+      const numbers = i.match(/(\d+(\.\d+)?)/g);
+
+      if (numbers && numbers.length >= 2) {
+        const from = Number(numbers[0]);
+        const to = Number(numbers[1]);
+
+        if (searchNum >= from && searchNum <= to) {
+          return true;
+        }
+      }
+    }
+
+    return i.toLowerCase().includes(input.toLowerCase());
+  });
 
   return (
     <div className="border rounded p-2 space-y-2">
       <p className="text-sm font-medium">{label ?? title}</p>
 
-      <Command>
-        <CommandInput
-          placeholder="Type to search..."
-          value={input}
-          onValueChange={setInput}
-        />
+      {/* ✅ FIX IS HERE */}
+<Command shouldFilter={false}>
 
-        <CommandEmpty>No results</CommandEmpty>
+  <CommandInput
+    placeholder="Type to search..."
+    value={input}
+    onValueChange={setInput}
+  />
 
-        <CommandGroup>
-          {visible.map((i: string) => (
-            <CommandItem key={i} onSelect={() => toggle(title, i)}>
-              <Check
-                className={`mr-2 h-4 w-4 ${
-                  filters[title]?.includes(i) ? "opacity-100" : "opacity-0"
-                }`}
-              />
+  {visible.length === 0 && (
+    <CommandEmpty>No results</CommandEmpty>
+  )}
 
-              {i}
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </Command>
+  {visible.length > 0 && (
+    <CommandGroup>
+      {visible.map((i: string) => (
+        <CommandItem key={i} onSelect={() => toggle(title, i)}>
+          <Check
+            className={`mr-2 h-4 w-4 ${
+              filters[title]?.includes(i)
+                ? "opacity-100"
+                : "opacity-0"
+            }`}
+          />
+          {i}
+        </CommandItem>
+      ))}
+    </CommandGroup>
+  )}
+
+</Command>
     </div>
   );
 }
