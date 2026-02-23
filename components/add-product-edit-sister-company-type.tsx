@@ -27,23 +27,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 /* ---------------- Types ---------------- */
-type SisterCompany = {
+type Brand = {
   id: string;
   name: string;
 };
 
 type Props = {
-  item: SisterCompany;
+  item: Brand;
 };
 
-export default function AddProductEditSisterCompanyType({ item }: Props) {
+export default function AddProductEditBrandType({ item }: Props) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(item.name);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (!value.trim()) {
-      toast.error("Sister company name cannot be empty");
+      toast.error("Brand name cannot be empty");
       return;
     }
 
@@ -55,15 +55,15 @@ export default function AddProductEditSisterCompanyType({ item }: Props) {
     setSaving(true);
 
     try {
-      // 1️⃣ Update master sister company
-      await updateDoc(doc(db, "sisterCompanies", item.id), {
+      /* 1️⃣ UPDATE MASTER BRAND */
+      await updateDoc(doc(db, "brands", item.id), {
         name: value.trim(),
       });
 
-      // 2️⃣ Update ALL products using this sister company
+      /* 2️⃣ UPDATE ALL PRODUCTS USING THIS BRAND */
       const q = query(
         collection(db, "products"),
-        where("sisterCompanyId", "==", item.id),
+        where("brandId", "==", item.id),
       );
 
       const snap = await getDocs(q);
@@ -71,15 +71,14 @@ export default function AddProductEditSisterCompanyType({ item }: Props) {
       await Promise.all(
         snap.docs.map((p) =>
           updateDoc(p.ref, {
-            sisterCompanyName: value.trim(),
+            brandName: value.trim(),
           }),
         ),
       );
 
-      toast.success("Sister company updated");
+      toast.success("Brand updated");
       setOpen(false);
     } finally {
-      // 🔕 WALANG error toast — intentionally removed
       setSaving(false);
     }
   };
@@ -94,15 +93,16 @@ export default function AddProductEditSisterCompanyType({ item }: Props) {
 
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Edit Sister Company</DialogTitle>
+          <DialogTitle>Edit Brand</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-2">
-          <Label>Sister Company Name</Label>
+          <Label>Brand Name</Label>
+
           <Input
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Enter sister company name..."
+            placeholder="Enter brand name..."
             disabled={saving}
           />
         </div>
@@ -115,6 +115,7 @@ export default function AddProductEditSisterCompanyType({ item }: Props) {
           >
             Cancel
           </Button>
+
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </Button>

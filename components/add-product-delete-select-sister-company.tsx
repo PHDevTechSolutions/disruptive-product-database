@@ -18,20 +18,17 @@ import {
 import { Button } from "@/components/ui/button";
 
 /* ---------------- Types ---------------- */
-type SisterCompany = {
+type Brand = {
   id: string;
   name: string;
 };
 
 type Props = {
-  item: SisterCompany;
-  referenceID: string; // 🔑 kung sino nag delete
+  item: Brand;
+  referenceID: string;
 };
 
-export default function AddProductDeleteSisterCompany({
-  item,
-  referenceID,
-}: Props) {
+export default function AddProductDeleteBrand({ item, referenceID }: Props) {
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -39,16 +36,19 @@ export default function AddProductDeleteSisterCompany({
     try {
       setDeleting(true);
 
-      await updateDoc(doc(db, "sisterCompanies", item.id), {
+      await updateDoc(doc(db, "brands", item.id), {
         isActive: false,
+
         deletedBy: referenceID,
+
         deletedAt: serverTimestamp(),
       });
 
-      toast.success("Sister company deleted");
+      toast.success("Brand deleted");
+
       setOpen(false);
     } catch {
-      toast.error("Failed to delete sister company");
+      toast.error("Failed to delete brand");
     } finally {
       setDeleting(false);
     }
@@ -64,13 +64,13 @@ export default function AddProductDeleteSisterCompany({
 
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Delete Sister Company</DialogTitle>
+          <DialogTitle>Delete Brand</DialogTitle>
         </DialogHeader>
 
         <p className="text-sm text-muted-foreground">
           Are you sure you want to delete{" "}
-          <span className="font-semibold">{item.name}</span>?  
-          This action can be restored later.
+          <span className="font-semibold">{item.name}</span>? This action can be
+          restored later.
         </p>
 
         <DialogFooter className="gap-2">
@@ -81,6 +81,7 @@ export default function AddProductDeleteSisterCompany({
           >
             Cancel
           </Button>
+
           <Button
             variant="destructive"
             onClick={handleDelete}

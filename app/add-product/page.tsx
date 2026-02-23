@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 import { useUser } from "@/contexts/UserContext";
@@ -54,10 +53,10 @@ import { db } from "@/lib/firebase";
 import AddProductSelectType from "@/components/add-product-edit-select-classifcation-type";
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
-import AddProductEditSisterCompanyType from "@/components/add-product-edit-sister-company-type";
+import AddProductEditBrandType from "@/components/add-product-edit-sister-company-type";
 
 /* 🔹 DELETE (SOFT DELETE) COMPONENT */
-import AddProductDeleteSisterCompany from "@/components/add-product-delete-select-sister-company";
+import AddProductDeleteBrand from "@/components/add-product-delete-select-sister-company";
 import AddProductDeleteClassification from "@/components/add-product-delete-select-classification-type";
 import AddProductDeleteProductType from "@/components/add-product-delete-select-category-type";
 import AddProductDeleteProduct from "@/components/add-product-delete-select-product";
@@ -110,6 +109,8 @@ export default function AddProductPage() {
     null,
   );
 
+  const [category, setCategory] = useState("");
+
   const isInitialLoad = useRef(true);
 
   const [user, setUser] = useState<UserData | null>(null);
@@ -121,34 +122,25 @@ export default function AddProductPage() {
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  type GalleryItem = {
-    type: "image" | "video";
-    file: File | null;
-    preview: string;
-  };
-
-  const [galleryMedia, setGalleryMedia] = useState<GalleryItem[]>([]);
-
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
 
-  /* ===== SISTER COMPANY (REAL-TIME + SOFT DELETE) ===== */
-  type SisterCompany = {
+  /* ===== BRAND (REAL-TIME + SOFT DELETE) ===== */
+  type Brand = {
     id: string;
     name: string;
   };
 
-  type SelectedSisterCompany = {
+  type SelectedBrand = {
     id: string;
     name: string;
   } | null;
 
-  const [selectedSisterCompany, setSelectedSisterCompany] =
-    useState<SelectedSisterCompany>(null);
+  const [selectedBrand, setSelectedBrand] = useState<SelectedBrand>(null);
 
-  const [sisterCompanies, setSisterCompanies] = useState<SisterCompany[]>([]);
-  const [newSisterCompany, setNewSisterCompany] = useState("");
-  const [sisterCompanySearch, setSisterCompanySearch] = useState("");
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [newBrand, setNewBrand] = useState("");
+  const [brandSearch, setBrandSearch] = useState("");
 
   /* ===== CLASSIFICATION (REAL-TIME + SOFT DELETE) ===== */
   const [classificationTypes, setClassificationTypes] = useState<
@@ -159,97 +151,6 @@ export default function AddProductPage() {
   /* ===== PRODUCT TYPE STATE ===== */
   const [newCategoryType, setNewCategoryType] = useState("");
   const [categoryTypes, setCategoryTypes] = useState<CategoryType[]>([]);
-
-  /* ===== PRICING / LOGISTICS STATE (CTRL+F SAFE) ===== */
-  type CalculationType = "LIGHTS" | "POLE";
-
-  /* ===== ADDITIONAL LOGISTICS FIELDS ===== */
-  type ProductCategory = "Economy" | "Mid-End" | "To Be Evaluated";
-
-  /* ===== SUPPLIER DATA SHEET (FILES ARRAY) ===== */
-  type SupplierDataSheetItem = {
-    name: string;
-    url: string;
-    publicId: string;
-  };
-
-  type SupplierSheetRow = {
-    file: File | null;
-  };
-
-  const [supplierDataSheets, setSupplierDataSheets] = useState<
-    SupplierSheetRow[]
-  >([{ file: null }]);
-
-  const [productCategory, setProductCategory] =
-    useState<ProductCategory>("To Be Evaluated");
-
-  const [moq, setMoq] = useState<number>(0);
-
-  const [warrantyValue, setWarrantyValue] = useState<number>(0);
-  const [warrantyUnit, setWarrantyUnit] = useState<"Days" | "Months" | "Years">(
-    "Years",
-  );
-
-  const [calculationType, setCalculationType] =
-    useState<CalculationType>("LIGHTS");
-  /* ===== RESET FIELDS WHEN CALCULATION TYPE CHANGES ===== */
-  useEffect(() => {
-    if (calculationType === "POLE") {
-      // clear LIGHTS-only fields
-      setLength(0);
-      setWidth(0);
-      setHeight(0);
-      setQtyPerCarton(1);
-    }
-
-    if (calculationType === "LIGHTS") {
-      // clear POLE-only fields
-      setQtyPerContainer(1);
-    }
-  }, [calculationType]);
-  const [unitCost, setUnitCost] = useState<number>(0);
-
-  // LIGHTS
-  const [length, setLength] = useState<number>(0);
-  const [width, setWidth] = useState<number>(0);
-  const [height, setHeight] = useState<number>(0);
-  const [qtyPerCarton, setQtyPerCarton] = useState<number>(1);
-
-  // POLE
-  const [qtyPerContainer, setQtyPerContainer] = useState<number>(1);
-
-  // RESULTS
-  const [landedCost, setLandedCost] = useState<number>(0);
-
-  /* ===== MULTIPLE DIMENSIONS (NEW FEATURE) ===== */
-  const [useArrayInput, setUseArrayInput] = useState(false);
-
-  type MultiRow = {
-    itemName: string;
-    unitCost: number;
-    length: number;
-    width: number;
-    height: number;
-    qtyPerCarton: number;
-    landed: number;
-    srp: number;
-  };
-
-  const [multiRows, setMultiRows] = useState<MultiRow[]>([
-    {
-      itemName: "",
-      unitCost: 0,
-      length: 0,
-      width: 0,
-      height: 0,
-      qtyPerCarton: 1,
-      landed: 0,
-      srp: 0,
-    },
-  ]);
-
-  const [srp, setSrp] = useState<number>(0);
 
   /* ===== PRODUCT TYPE (DEPENDENT ON CATEGORY TYPE) ===== */
   type ProductType = {
@@ -298,12 +199,11 @@ export default function AddProductPage() {
     id: string;
     title: string;
     specs: SpecRow[];
-
   };
 
   const [technicalSpecs, setTechnicalSpecs] = useState<
     TechnicalSpecification[]
-    >([]);
+  >([]);
 
   const [productTypeSearch, setProductTypeSearch] = useState("");
   const [newProductType, setNewProductType] = useState("");
@@ -359,10 +259,7 @@ export default function AddProductPage() {
 
   /* ---------------- REAL-TIME SISTER COMPANIES ---------------- */
   useEffect(() => {
-    const q = query(
-      collection(db, "sisterCompanies"),
-      where("isActive", "==", true),
-    );
+    const q = query(collection(db, "brands"), where("isActive", "==", true));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs
@@ -372,7 +269,7 @@ export default function AddProductPage() {
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      setSisterCompanies(list);
+      setBrands(list);
     });
 
     return () => unsubscribe();
@@ -424,7 +321,6 @@ export default function AddProductPage() {
   /* ===== REAL-TIME TECHNICAL SPECS (DEPENDENT ON PRODUCT TYPE) ===== */
 
   useEffect(() => {
-
     setTechnicalSpecs([]);
 
     if (!classificationType) return;
@@ -447,19 +343,15 @@ export default function AddProductPage() {
       where("isActive", "==", true),
     );
 
-
     /* ✅ LOAD ONLY ONCE — NOT REALTIME */
 
     getDocs(q).then((snapshot) => {
-
       const list = snapshot.docs.map((docSnap) => ({
-
         id: docSnap.id,
 
         title: docSnap.data().title || "",
 
         specs: (docSnap.data().specs || []).map((row: any) => ({
-
           specId: row.specId || "",
           unit: row.unit || "",
 
@@ -468,17 +360,15 @@ export default function AddProductPage() {
           isDimension: row.isDimension || false,
           isRating: row.isRating || false,
 
-
           /* CLEAR VALUES BUT KEEP STRUCTURE */
 
           value: "",
           rangeFrom: "",
           rangeTo: "",
 
-          slashValues:
-            Array.isArray(row.slashValues)
-              ? row.slashValues.map(() => "")
-              : [""],
+          slashValues: Array.isArray(row.slashValues)
+            ? row.slashValues.map(() => "")
+            : [""],
 
           length: "",
           width: "",
@@ -486,26 +376,16 @@ export default function AddProductPage() {
 
           ipFirst: "",
           ipSecond: "",
-
         })),
-
-
-
       }));
 
-
       setTechnicalSpecs(list);
-
-
     });
-
-
   }, [
     classificationType?.id,
     selectedProductType?.id,
     selectedCategoryTypes.map((c) => c.id).join(","),
   ]);
-
 
   const addTechnicalSpec = () => {
     setTechnicalSpecs((prev) => [
@@ -559,34 +439,34 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: [
-              ...item.specs,
-              {
-                specId: "",
-                unit: "",
+              ...item,
+              specs: [
+                ...item.specs,
+                {
+                  specId: "",
+                  unit: "",
 
-                isRanging: false,
-                isSlashing: false,
-                isDimension: false,
-                isRating: false,
+                  isRanging: false,
+                  isSlashing: false,
+                  isDimension: false,
+                  isRating: false,
 
-                value: "",
+                  value: "",
 
-                rangeFrom: "",
-                rangeTo: "",
+                  rangeFrom: "",
+                  rangeTo: "",
 
-                slashValues: [""],
+                  slashValues: [""],
 
-                length: "",
-                width: "",
-                height: "",
+                  length: "",
+                  width: "",
+                  height: "",
 
-                ipFirst: "",
-                ipSecond: "",
-              },
-            ],
-          }
+                  ipFirst: "",
+                  ipSecond: "",
+                },
+              ],
+            }
           : item,
       ),
     );
@@ -601,23 +481,45 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: item.specs.map((row, r) => {
-              if (r !== rowIndex) return row;
+              ...item,
+              specs: item.specs.map((row, r) => {
+                if (r !== rowIndex) return row;
 
-              // If the clicked mode is already active → TURN EVERYTHING OFF
-              const isCurrentlyActive = row[mode];
+                // If the clicked mode is already active → TURN EVERYTHING OFF
+                const isCurrentlyActive = row[mode];
 
-              if (isCurrentlyActive) {
+                if (isCurrentlyActive) {
+                  return {
+                    ...row,
+
+                    isRanging: false,
+                    isSlashing: false,
+                    isDimension: false,
+                    isRating: false,
+
+                    // Clear special fields
+                    rangeFrom: "",
+                    rangeTo: "",
+                    slashValues: [""],
+                    length: "",
+                    width: "",
+                    height: "",
+                    ipFirst: "",
+                    ipSecond: "",
+                  };
+                }
+
+                // Otherwise activate ONLY the selected mode
                 return {
                   ...row,
 
-                  isRanging: false,
-                  isSlashing: false,
-                  isDimension: false,
-                  isRating: false,
+                  isRanging: mode === "isRanging",
+                  isSlashing: mode === "isSlashing",
+                  isDimension: mode === "isDimension",
+                  isRating: mode === "isRating",
 
-                  // Clear special fields
+                  // Auto clear value fields when switching modes
+                  value: "",
                   rangeFrom: "",
                   rangeTo: "",
                   slashValues: [""],
@@ -626,37 +528,15 @@ export default function AddProductPage() {
                   height: "",
                   ipFirst: "",
                   ipSecond: "",
+
+                  // Auto remove unit if slashing or IP Rating
+                  unit:
+                    mode === "isSlashing" || mode === "isRating"
+                      ? ""
+                      : row.unit,
                 };
-              }
-
-              // Otherwise activate ONLY the selected mode
-              return {
-                ...row,
-
-                isRanging: mode === "isRanging",
-                isSlashing: mode === "isSlashing",
-                isDimension: mode === "isDimension",
-                isRating: mode === "isRating",
-
-                // Auto clear value fields when switching modes
-                value: "",
-                rangeFrom: "",
-                rangeTo: "",
-                slashValues: [""],
-                length: "",
-                width: "",
-                height: "",
-                ipFirst: "",
-                ipSecond: "",
-
-                // Auto remove unit if slashing or IP Rating
-                unit:
-                  mode === "isSlashing" || mode === "isRating"
-                    ? ""
-                    : row.unit,
-              };
-            }),
-          }
+              }),
+            }
           : item,
       ),
     );
@@ -667,12 +547,12 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs:
-              item.specs.length > 1
-                ? item.specs.filter((_, r) => r !== rowIndex)
-                : item.specs,
-          }
+              ...item,
+              specs:
+                item.specs.length > 1
+                  ? item.specs.filter((_, r) => r !== rowIndex)
+                  : item.specs,
+            }
           : item,
       ),
     );
@@ -698,11 +578,11 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: item.specs.map((row, r) =>
-              r === rowIndex ? { ...row, [field]: value } : row,
-            ),
-          }
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex ? { ...row, [field]: value } : row,
+              ),
+            }
           : item,
       ),
     );
@@ -761,105 +641,62 @@ export default function AddProductPage() {
     return () => unsubscribe();
   }, []);
 
-  /* ---------------- Helpers ---------------- */
-
-  const updateMultiRow = (index: number, field: keyof MultiRow, value: any) => {
-    setMultiRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
-    );
-  };
-
-  const addMultiRow = (index: number) => {
-    setMultiRows((prev) => {
-      const copy = [...prev];
-      copy.splice(index + 1, 0, {
-        itemName: "",
-        unitCost: 0,
-        length: 0,
-        width: 0,
-        height: 0,
-        qtyPerCarton: 1,
-        landed: 0,
-        srp: 0,
-      });
-      return copy;
-    });
-  };
-
-  const removeMultiRow = (index: number) => {
-    setMultiRows((prev) =>
-      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
-    );
-  };
-
   /* ===== SAVE EDITABLE SPECS BACK TO PRODUCT TYPE COLLECTION ===== */
 
   const syncSpecsToProductType = async () => {
-
     if (!classificationType) return;
     if (!selectedProductType) return;
     if (selectedCategoryTypes.length !== 1) return;
 
     try {
+      const categoryTypeId = selectedCategoryTypes[0].id;
 
-    const categoryTypeId = selectedCategoryTypes[0].id;
-
-    const specsRef = collection(
-      db,
-      "classificationTypes",
-      classificationType.id,
-      "categoryTypes",
-      categoryTypeId,
-      "productTypes",
-      selectedProductType.id,
-      "technicalSpecifications",
-    );
-
-    const existingSnapshot = await getDocs(specsRef);
-
-    const batch = writeBatch(db);
-
-    technicalSpecs.forEach((spec) => {
-
-      if (!spec.title.trim()) return;
-
-      // FIND EXISTING DOC WITH SAME TITLE
-      const existingDoc = existingSnapshot.docs.find(
-        (d) => d.data().title === spec.title
+      const specsRef = collection(
+        db,
+        "classificationTypes",
+        classificationType.id,
+        "categoryTypes",
+        categoryTypeId,
+        "productTypes",
+        selectedProductType.id,
+        "technicalSpecifications",
       );
 
-      const ref = existingDoc
-        ? doc(specsRef, existingDoc.id)
-        : doc(specsRef);
+      const existingSnapshot = await getDocs(specsRef);
 
-      batch.set(ref, {
+      const batch = writeBatch(db);
 
-        title: spec.title,
+      technicalSpecs.forEach((spec) => {
+        if (!spec.title.trim()) return;
 
-        specs: spec.specs
-          .filter((row) => row.specId.trim() !== "")
-          .map((row) => ({
-            specId: row.specId.trim(),
-          })),
+        // FIND EXISTING DOC WITH SAME TITLE
+        const existingDoc = existingSnapshot.docs.find(
+          (d) => d.data().title === spec.title,
+        );
 
-        isActive: true,
-        updatedAt: serverTimestamp(),
+        const ref = existingDoc ? doc(specsRef, existingDoc.id) : doc(specsRef);
 
+        batch.set(ref, {
+          title: spec.title,
+
+          specs: spec.specs
+            .filter((row) => row.specId.trim() !== "")
+            .map((row) => ({
+              specId: row.specId.trim(),
+            })),
+
+          isActive: true,
+          updatedAt: serverTimestamp(),
+        });
       });
 
-    });
+      await batch.commit();
 
-    await batch.commit();
-
-    toast.success("Technical specifications saved successfully");
-
-  } catch (error) {
-
-    console.error(error);
-    toast.error("Failed to save technical specifications");
-
-  }
-
+      toast.success("Technical specifications saved successfully");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save technical specifications");
+    }
   };
 
   /* ================= NUMBER FORMATTERS ================= */
@@ -869,118 +706,22 @@ export default function AddProductPage() {
       maximumFractionDigits: decimals,
     });
   };
-  /* ================= PRICING / LOGISTICS FORMULAS ================= */
-  useEffect(() => {
-    // ===== POLE LOGIC (EXACTLY SAME AS ORIGINAL) =====
-    if (calculationType === "POLE") {
-      let lc = 0;
-
-      if (qtyPerContainer > 0) {
-        lc = (unitCost * 60 + 600000 / qtyPerContainer) * 1.01;
-      }
-
-      setLandedCost(lc);
-      setSrp(lc ? Math.ceil(lc / 0.45 / 100) * 100 : 0);
-      return;
-    }
-
-    // ===== LIGHTS - MULTIPLE DIMENSIONS MODE =====
-    if (calculationType === "LIGHTS" && useArrayInput) {
-      let grandTotal = 0;
-
-      const updated = multiRows.map((row) => {
-        const cbm = (row.length * row.width * row.height) / 1_000_000;
-
-        let landed = 0;
-        let srp = 0;
-
-        if (cbm > 0 && row.qtyPerCarton > 0) {
-          const shippingPerItem = 520000 / ((65 / cbm) * row.qtyPerCarton);
-
-          landed = (row.unitCost * 60 + shippingPerItem) * 1.01;
-
-          srp = Math.ceil(landed / 0.35 / 10) * 10;
-        }
-
-        grandTotal += landed;
-
-        return { ...row, landed, srp };
-      });
-
-      setMultiRows(updated);
-
-      setLandedCost(grandTotal);
-      setSrp(grandTotal ? Math.ceil(grandTotal / 0.35 / 100) * 100 : 0);
-      return;
-    }
-
-    // ===== LIGHTS - SINGLE MODE (ORIGINAL LOGIC) =====
-    if (calculationType === "LIGHTS" && !useArrayInput) {
-      let lc = 0;
-
-      const cbm = (length * width * height) / 1_000_000;
-
-      if (cbm > 0 && qtyPerCarton > 0) {
-        const shippingPerItem = 520000 / ((65 / cbm) * qtyPerCarton);
-
-        lc = (unitCost * 60 + shippingPerItem) * 1.01;
-      }
-
-      setLandedCost(lc);
-      setSrp(lc ? Math.ceil(lc / 0.35 / 10) * 10 : 0);
-    }
-  }, [
-    calculationType,
-    unitCost,
-    length,
-    width,
-    height,
-    qtyPerCarton,
-    qtyPerContainer,
-    useArrayInput,
-    multiRows
-      .map(
-        (r) =>
-          `${r.unitCost}-${r.length}-${r.width}-${r.height}-${r.qtyPerCarton}`,
-      )
-      .join("|"),
-  ]);
-
-  const uploadToCloudinary = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const res = await fetch("/api/upload-product", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!res.ok) throw new Error("Cloudinary upload failed");
-
-    const data = await res.json();
-
-    if (!data.secure_url || !data.public_id) {
-      throw new Error("Invalid Cloudinary response");
-    }
-
-    return data;
-  };
 
   const addSlashValue = (specIndex: number, rowIndex: number) => {
     setTechnicalSpecs((prev) =>
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: item.specs.map((row, r) =>
-              r === rowIndex
-                ? {
-                  ...row,
-                  slashValues: [...row.slashValues, ""],
-                }
-                : row,
-            ),
-          }
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex
+                  ? {
+                      ...row,
+                      slashValues: [...row.slashValues, ""],
+                    }
+                  : row,
+              ),
+            }
           : item,
       ),
     );
@@ -995,19 +736,19 @@ export default function AddProductPage() {
       prev.map((item, i) =>
         i === specIndex
           ? {
-            ...item,
-            specs: item.specs.map((row, r) =>
-              r === rowIndex
-                ? {
-                  ...row,
-                  slashValues:
-                    row.slashValues.length > 1
-                      ? row.slashValues.filter((_, si) => si !== slashIndex)
-                      : row.slashValues,
-                }
-                : row,
-            ),
-          }
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex
+                  ? {
+                      ...row,
+                      slashValues:
+                        row.slashValues.length > 1
+                          ? row.slashValues.filter((_, si) => si !== slashIndex)
+                          : row.slashValues,
+                    }
+                  : row,
+              ),
+            }
           : item,
       ),
     );
@@ -1018,57 +759,6 @@ export default function AddProductPage() {
     setMainImage(file);
     if (preview) URL.revokeObjectURL(preview);
     setPreview(URL.createObjectURL(file));
-  };
-
-  const handleAddGalleryMedia = async (file: File | null) => {
-    if (!file) return;
-
-    const isVideo = file.type.startsWith("video/");
-    const isImage = file.type.startsWith("image/");
-
-    if (!isImage && !isVideo) {
-      toast.error("Only image or video files are allowed");
-      return;
-    }
-
-    const previewUrl = URL.createObjectURL(file);
-
-    setGalleryMedia((prev) => [
-      ...prev,
-      {
-        type: isVideo ? "video" : "image",
-        file,
-        preview: previewUrl,
-      },
-    ]);
-  };
-
-  const handleRemoveGalleryMedia = (index: number) => {
-    setGalleryMedia((prev) => {
-      URL.revokeObjectURL(prev[index].preview);
-      return prev.filter((_, i) => i !== index);
-    });
-  };
-
-  /* ===== SUPPLIER DATA SHEET HANDLERS ===== */
-  const updateSupplierSheet = (index: number, file: File | null) => {
-    setSupplierDataSheets((prev) =>
-      prev.map((row, i) => (i === index ? { file } : row)),
-    );
-  };
-
-  const addSupplierSheetRow = (index: number) => {
-    setSupplierDataSheets((prev) => {
-      const copy = [...prev];
-      copy.splice(index + 1, 0, { file: null });
-      return copy;
-    });
-  };
-
-  const removeSupplierSheetRow = (index: number) => {
-    setSupplierDataSheets((prev) =>
-      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
-    );
   };
 
   /* ---------------- Classification Handlers ---------------- */
@@ -1090,21 +780,24 @@ export default function AddProductPage() {
   };
 
   /* ---------------- Sister Company Handlers ---------------- */
-  const handleAddSisterCompany = async () => {
-    if (!newSisterCompany.trim()) return;
+  const handleAddBrand = async () => {
+    if (!newBrand.trim()) return;
 
-    if (sisterCompanies.some((s) => s.name === newSisterCompany.trim())) {
-      toast.error("Sister company already exists");
+    if (brands.some((s) => s.name === newBrand.trim())) {
+      toast.error("Brand already exists");
+
       return;
     }
 
-    await addDoc(collection(db, "sisterCompanies"), {
-      name: newSisterCompany.trim(),
+    await addDoc(collection(db, "brands"), {
+      name: newBrand.trim(),
+
       isActive: true,
+
       createdAt: serverTimestamp(),
     });
 
-    setNewSisterCompany("");
+    setNewBrand("");
   };
 
   /* ---------------- Product Type Handlers ---------------- */
@@ -1205,120 +898,65 @@ export default function AddProductPage() {
     return;
   };
 
+  const uploadToCloudinary = async (file: File) => {
+    const formData = new FormData();
+
+    formData.append("file", file);
+
+    const res = await fetch("/api/upload-product", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new Error("Cloudinary upload failed");
+    }
+
+    const data = await res.json();
+
+    if (!data.secure_url || !data.public_id) {
+      throw new Error("Invalid Cloudinary response");
+    }
+
+    return data;
+  };
+
   const uploadProductMedia = async (productId: string) => {
     try {
-      const uploads: Promise<any>[] = [];
+      if (!mainImage) return;
 
-      if (mainImage) {
-        uploads.push(uploadToCloudinary(mainImage));
+      const result = await uploadToCloudinary(mainImage);
+
+      if (!result.secure_url) {
+        throw new Error("Upload failed");
       }
-
-      for (const item of galleryMedia) {
-        if (item.file instanceof File) {
-          uploads.push(uploadToCloudinary(item.file));
-        }
-      }
-
-      if (uploads.length === 0) return;
-
-      const results = await Promise.all(uploads);
-
-      let uploadedMainImage = null;
-      let galleryIndex = 0;
-
-      if (mainImage) {
-        const r = results[0];
-        uploadedMainImage = {
-          name: mainImage.name,
-          url: r.secure_url,
-          publicId: r.public_id,
-        };
-        galleryIndex = 1;
-      }
-
-      let resultCursor = galleryIndex;
-
-      const uploadedGallery = galleryMedia.map((item) => {
-        if (!item.file) {
-          return {
-            type: item.type,
-            name: "existing",
-            url: item.preview,
-            publicId: "existing",
-          };
-        }
-
-        const r = results[resultCursor];
-        resultCursor++;
-
-        if (!r || !r.secure_url) {
-          console.error("Missing cloudinary result for item:", item);
-          return {
-            type: item.type,
-            name: item.file.name,
-            url: item.preview,
-            publicId: "upload-failed",
-          };
-        }
-
-        return {
-          type: item.type,
-          name: item.file.name,
-          url: r.secure_url,
-          publicId: r.public_id,
-        };
-      });
 
       await updateDoc(doc(db, "products", productId), {
-        mainImage: uploadedMainImage,
-        gallery: uploadedGallery,
+        mainImage: {
+          name: mainImage.name,
+          url: result.secure_url,
+          publicId: result.public_id,
+        },
+
         mediaStatus: "done",
       });
-
-      const validSupplierSheets = supplierDataSheets
-        .map((row) => row.file)
-        .filter((file): file is File => !!file);
-
-      if (validSupplierSheets.length > 0) {
-        const uploadedSupplierSheets: {
-          name: string;
-          url: string;
-          publicId: string;
-        }[] = [];
-
-        for (const file of validSupplierSheets) {
-          const res = await uploadToCloudinary(file);
-
-          uploadedSupplierSheets.push({
-            name: file.name,
-            url: res.secure_url, // already FIXED by API
-            publicId: res.public_id,
-          });
-        }
-
-        await updateDoc(doc(db, "products", productId), {
-          supplierDataSheets: uploadedSupplierSheets,
-        });
-      }
-    } catch (error) {
-      console.error("MEDIA UPLOAD FAILED:", error);
+    } catch {
       await updateDoc(doc(db, "products", productId), {
         mediaStatus: "failed",
       });
     }
   };
-
   const filteredClassifications = React.useMemo(() => {
     return classificationTypes.filter((item) =>
       item.name.toLowerCase().includes(classificationSearch.toLowerCase()),
     );
   }, [classificationTypes, classificationSearch]);
 
-  const filteredSisterCompanies = React.useMemo(() => {
-    return sisterCompanies.filter((item) =>
-      item.name.toLowerCase().includes(sisterCompanySearch.toLowerCase()),
+  const filteredBrands = React.useMemo(() => {
+    return brands.filter((item) =>
+      item.name.toLowerCase().includes(brandSearch.toLowerCase()),
     );
-  }, [sisterCompanies, sisterCompanySearch]);
+  }, [brands, brandSearch]);
 
   const filteredCategoryTypes = React.useMemo(() => {
     return categoryTypes.filter((item) =>
@@ -1339,68 +977,6 @@ export default function AddProductPage() {
   }, [productTypes, productTypeSearch, selectedCategoryTypes]);
 
   /* ---------------- Save Product ---------------- */
-
-  /* ===== SAFE LOGISTICS PAYLOAD (FIRESTORE SAFE) ===== */
-  // ===== COMPUTE TOTAL UNIT COST FOR MULTI DIMENSIONS =====
-  const totalMultiUnitCost =
-    calculationType === "LIGHTS" && useArrayInput
-      ? multiRows.reduce((sum, row) => sum + (row.unitCost || 0), 0)
-      : 0;
-
-  // ===== SAFE LOGISTICS PAYLOAD =====
-  const logisticsPayload = {
-    calculationType,
-
-    // 🔥 FIXED: Dynamic Unit Cost
-    unitCost:
-      calculationType === "LIGHTS" && useArrayInput
-        ? totalMultiUnitCost
-        : unitCost ?? 0,
-
-    useArrayInput: useArrayInput,
-
-    // MULTIPLE DIMENSIONS MODE
-    multiDimensions:
-      calculationType === "LIGHTS" && useArrayInput
-        ? multiRows.map((row) => ({
-          itemName: row.itemName ?? "",
-          unitCost: row.unitCost ?? 0,
-          length: row.length ?? 0,
-          width: row.width ?? 0,
-          height: row.height ?? 0,
-          qtyPerCarton: row.qtyPerCarton ?? 1,
-          landed: row.landed ?? 0,
-          srp: row.srp ?? 0,
-        }))
-        : null,
-
-    // SINGLE DIMENSION MODE
-    packaging:
-      calculationType === "LIGHTS" && !useArrayInput
-        ? {
-          length: length ?? 0,
-          width: width ?? 0,
-          height: height ?? 0,
-          qtyPerCarton: qtyPerCarton ?? 1,
-        }
-        : null,
-
-    // POLE MODE
-    qtyPerContainer:
-      calculationType === "POLE" ? qtyPerContainer ?? 1 : null,
-
-    landedCost: landedCost ?? 0,
-    srp: srp ?? 0,
-
-    category: productCategory || "To Be Evaluated",
-    moq: moq ?? 0,
-
-    warranty: {
-      value: warrantyValue ?? 0,
-      unit: warrantyUnit || "Years",
-    },
-  };
-
 
   /* ===== GENERATE UNIQUE PRODUCT REFERENCE ID ===== */
   const generateProductReferenceID = async () => {
@@ -1449,18 +1025,23 @@ export default function AddProductPage() {
         return;
       }
 
+      if (!category) {
+        toast.error("Please select category");
+        return;
+      }
+
       if (!classificationType) {
         toast.error("Please select a classification type");
         return;
       }
 
-      if (!selectedSisterCompany) {
-        toast.error("Please select a sister company");
+      if (!selectedBrand) {
+        toast.error("Please select a brand");
         return;
       }
 
-      if (!mainImage && galleryMedia.length === 0) {
-        toast.error("Please upload at least one image or video");
+      if (!mainImage) {
+        toast.error("Please upload main image");
         return;
       }
 
@@ -1474,8 +1055,10 @@ export default function AddProductPage() {
 
         productName,
 
-        sisterCompanyId: selectedSisterCompany.id,
-        sisterCompanyName: selectedSisterCompany.name,
+        category,
+
+        brandId: selectedBrand.id,
+        brandName: selectedBrand.name,
 
         classificationId: classificationType.id,
         classificationName: classificationType.name,
@@ -1487,12 +1070,12 @@ export default function AddProductPage() {
 
         productTypes: selectedProductType
           ? [
-            {
-              productTypeId: selectedProductType.id,
-              productTypeName: selectedProductType.name,
-              categoryTypeId: selectedProductType.categoryTypeId,
-            },
-          ]
+              {
+                productTypeId: selectedProductType.id,
+                productTypeName: selectedProductType.name,
+                categoryTypeId: selectedProductType.categoryTypeId,
+              },
+            ]
           : [],
 
         categoryTypes: selectedCategoryTypes.map((c) => ({
@@ -1505,40 +1088,35 @@ export default function AddProductPage() {
           .map((spec) => ({
             technicalSpecificationId: spec.id || "",
             title: spec.title,
+            specs: spec.specs
+              .filter((row) => row.specId.trim() !== "")
+              .map((row) => ({
+                specId: row.specId.trim(),
+                value: row.value?.trim() || "",
+              })),
+          })),
 
-    specs: spec.specs
-      .filter((row) => row.specId.trim() !== "")
-      .map((row) => ({
-        specId: row.specId.trim(),
-        value: row.value?.trim() || "",
-      })),
-  })),
-
-
-        /* ================= PRICING / LOGISTICS ================= */
-        logistics: logisticsPayload,
-
-        // placeholders muna
         mainImage: null,
-        gallery: [],
+
         mediaStatus: "pending",
 
         createdBy: userId,
         referenceID: user?.ReferenceID || null,
+
         isActive: true,
+
         createdAt: serverTimestamp(),
       });
 
-      toast.success("Product saved successfully");
-      router.push("/products");
+      await uploadProductMedia(productRef.id);
 
-      // 🚀 background upload (wag hintayin)
-      uploadProductMedia(productRef.id);
+      toast.success("Product saved successfully");
+
+      router.push("/products");
     } catch (error) {
-      console.error("SAVE PRODUCT ERROR:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save product",
-      );
+      console.error(error);
+
+      toast.error("Failed to save product");
     } finally {
       setSaving(false);
     }
@@ -1598,61 +1176,6 @@ export default function AddProductPage() {
               </CardContent>
             </Card>
 
-            {/* GALLERY IMAGES & VIDEOS */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-center text-sm">
-                  GALLERY IMAGES & VIDEOS
-                </CardTitle>
-              </CardHeader>
-
-              <CardContent>
-                <div className="flex gap-4 overflow-x-auto pb-2">
-                  {/* EXISTING MEDIA */}
-                  {galleryMedia.map((item, index) => (
-                    <div
-                      key={index}
-                      className="relative min-w-[160px] h-[120px] border rounded-lg overflow-hidden bg-black"
-                    >
-                      {item.type === "image" ? (
-                        <img
-                          src={item.preview}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <video
-                          src={item.preview}
-                          className="w-full h-full object-cover"
-                          controls
-                        />
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveGalleryMedia(index)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* ADD MEDIA */}
-                  <label className="min-w-[160px] h-[120px] flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer text-muted-foreground">
-                    <Plus className="h-6 w-6" />
-                    <span className="text-xs mt-1">ADD PHOTO / VIDEO</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*,video/*"
-                      onChange={(e) =>
-                        handleAddGalleryMedia(e.target.files?.[0] || null)
-                      }
-                    />
-                  </label>
-                </div>
-              </CardContent>
-            </Card>
             <div>
               <Label>Model No.</Label>
               <Input
@@ -1712,6 +1235,22 @@ export default function AddProductPage() {
               </Popover>
             </div>
 
+            {/* ================= CATEGORY SELECT ================= */}
+            <div className="space-y-2">
+              <Label>Category</Label>
+
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
+              >
+                <option value="">Select category...</option>
+                <option value="Economy">Economy</option>
+                <option value="Mid-End">Mid-End</option>
+                <option value="To Be Evaluated">To Be Evaluated</option>
+              </select>
+            </div>
+
             {/* ===== TECHNICAL SPECIFICATIONS (EDITABLE) ===== */}
 
             <div className="space-y-3">
@@ -1734,670 +1273,210 @@ export default function AddProductPage() {
                 </div>
               </div>
 
-              {/* ---- SCROLLABLE CONTENT ONLY ---- */}
-              <div className="max-h-[600px] overflow-y-auto pr-2 space-y-3">
-                {technicalSpecs.map((item, index) => (
-                  <Card key={index} className="p-3 space-y-3">
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        placeholder="Title"
-                        value={item.title}
-                        onChange={(e) => updateTitle(index, e.target.value)}
-                      />
+{/* ---- SCROLLABLE CONTENT ONLY ---- */}
+<div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
+  {technicalSpecs.map((item, index) => (
+    <Card
+      key={index}
+      className="p-4 space-y-4 border-2 border-blue-200 bg-blue-50"
+    >
+
+      {/* TITLE */}
+      <div className="space-y-1">
+
+        <Label className="block w-full text-center text-xs font-bold uppercase text-orange-600 tracking-widest">
+
+          TECHNICAL SPECIFICATION TITLE
+
+        </Label>
 
 
-                      {item.id &&
-                        classificationType &&
-                        selectedProductType &&
-                        selectedCategoryTypes.length === 1 ? (
-                        <AddProductDeleteTechnicalSpecification
-                          classificationId={classificationType.id}
-                          categoryTypeId={selectedCategoryTypes[0].id}
-                          productTypeId={selectedProductType.id}
-                          technicalSpecificationId={item.id}
-                          title={item.title}
-                          referenceID={user?.ReferenceID || ""}
-                        />
-                      ) : (
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          disabled={technicalSpecs.length === 1}
-                          onClick={() => removeTechnicalSpec(index)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+        <div className="flex gap-2 items-center">
 
-                    {item.specs.map((row, rIndex) => (
-                      <div
-                        key={rIndex}
-                        className="space-y-2 border p-2 rounded"
-                      >
-                        <div className="grid grid-cols-[2fr_1fr_1fr_120px_auto] gap-2 items-center">
-                          {/* SPECIFICATION NAME */}
-                          <Input
-                            placeholder="Specification"
-                            value={row.specId ?? ""}
-                            onChange={(e) =>
-                              updateSpecField(
-                                index,
-                                rIndex,
-                                "specId",
-                                e.target.value,
-                              )
-                            }
-                          />
+          <Input
+            className="border-orange-300 focus-visible:ring-orange-400 bg-white"
+            placeholder="Enter title..."
+            value={item.title}
+            onChange={(e) => updateTitle(index, e.target.value)}
+          />
 
-                          <Input
-                            placeholder="Value"
-                            value={row.value ?? ""}
-                            onChange={(e) =>
-                              updateSpecField(
-                                index,
-                                rIndex,
-                                "value",
-                                e.target.value,
-                              )
-                            }
-                          />
+          {item.id &&
+          classificationType &&
+          selectedProductType &&
+          selectedCategoryTypes.length === 1 ? (
+
+            <AddProductDeleteTechnicalSpecification
+              classificationId={classificationType.id}
+              categoryTypeId={selectedCategoryTypes[0].id}
+              productTypeId={selectedProductType.id}
+              technicalSpecificationId={item.id}
+              title={item.title}
+              referenceID={user?.ReferenceID || ""}
+            />
+
+          ) : (
+
+            <Button
+              size="icon"
+              variant="outline"
+              className="border-orange-400 text-orange-600 hover:bg-orange-100"
+              disabled={technicalSpecs.length === 1}
+              onClick={() => removeTechnicalSpec(index)}
+            >
+              <Minus />
+            </Button>
+
+          )}
+
+        </div>
+      </div>
 
 
-                          {/* RANGING MODE */}
-                          {row.isRanging && (
-                            <div className="flex gap-1 items-center">
-                              <Input
-                                placeholder="From"
-                                value={row.rangeFrom ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "rangeFrom",
-                                    e.target.value,
-                                  )
-                                }
-                              />
 
-                              <span>-</span>
+      {/* SPECIFICATION ROW */}
+      {item.specs.map((row, rIndex) => (
 
-                              <Input
-                                placeholder="To"
-                                value={row.rangeTo ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "rangeTo",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-                          )}
+        <div
+          key={rIndex}
+          className="space-y-2 border-2 border-orange-200 rounded-md p-3 bg-orange-50"
+        >
 
-                          {/* SLASHING MODE - CUSTOM FORMAT */}
-                          {row.isSlashing && (
-                            <div className="flex flex-wrap items-center gap-1">
-                              {row.slashValues.map((s, si) => (
-                                <React.Fragment key={si}>
-                                  <Input
-                                    className="w-[80px]"
-                                    placeholder="Value"
-                                    value={s}
-                                    onChange={(e) => {
-                                      const newArr = [...row.slashValues];
-                                      newArr[si] = e.target.value;
+          {/* HEADER */}
+          <div className="grid grid-cols-[2fr_1fr_120px] gap-2">
 
-                                      setTechnicalSpecs((prev) =>
-                                        prev.map((it, ii) =>
-                                          ii === index
-                                            ? {
-                                              ...it,
-                                              specs: it.specs.map((sr, ri) =>
-                                                ri === rIndex
-                                                  ? {
-                                                    ...sr,
-                                                    slashValues: newArr,
-                                                  }
-                                                  : sr,
-                                              ),
-                                            }
-                                            : it,
-                                        ),
-                                      );
-                                    }}
-                                  />
 
-                                  {/* SHOW SLASH ONLY IF NOT LAST ITEM */}
-                                  {si < row.slashValues.length - 1 && (
-                                    <span className="px-1 font-bold">/</span>
-                                  )}
+            <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
 
-                                  {/* ADD SLASH BUTTON */}
-                                  {si === row.slashValues.length - 1 && (
-                                    <div className="flex gap-1 ml-1">
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        onClick={() =>
-                                          addSlashValue(index, rIndex)
-                                        }
-                                      >
-                                        <Plus className="h-4 w-4" />
-                                      </Button>
+              SPECIFICATION
 
-                                      <Button
-                                        size="icon"
-                                        variant="outline"
-                                        disabled={row.slashValues.length === 1}
-                                        onClick={() =>
-                                          removeSlashValue(index, rIndex, si)
-                                        }
-                                      >
-                                        <Minus className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </React.Fragment>
-                              ))}
-                            </div>
-                          )}
+            </Label>
 
-                          {/* DIMENSION MODE */}
-                          {row.isDimension && (
-                            <div className="flex gap-1">
-                              <Input
-                                placeholder="L"
-                                value={row.length ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "length",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                placeholder="W"
-                                value={row.width ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "width",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                placeholder="H"
-                                value={row.height ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "height",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-                          )}
 
-                          {/* IP RATING MODE */}
-                          {row.isRating && (
-                            <div className="flex gap-1 items-center">
-                              <span>IP</span>
-                              <Input
-                                placeholder="X"
-                                value={row.ipFirst ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "ipFirst",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                placeholder="Y"
-                                value={row.ipSecond ?? ""}
-                                onChange={(e) =>
-                                  updateSpecField(
-                                    index,
-                                    rIndex,
-                                    "ipSecond",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-                          )}
+            <Label className="block w-full text-center text-xs font-bold uppercase text-orange-700 tracking-widest">
 
-                          {/* ADD / REMOVE ROW */}
-                          <div className="flex gap-1">
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() => addSpecRow(index)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
+              VALUE
 
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              disabled={item.specs.length === 1}
-                              onClick={() => removeSpecRow(index, rIndex)}
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                          </div>
+            </Label>
 
-                        </div>
-                      </div>
-                    ))}
-                  </Card>
-                ))}
-              </div>
+
+            <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
+
+              ACTION
+
+            </Label>
+
+
+          </div>
+
+
+
+          {/* INPUT */}
+          <div className="grid grid-cols-[2fr_1fr_120px] gap-2 items-center">
+
+
+            <Input
+              className="border-blue-300 focus-visible:ring-blue-400 bg-white"
+              placeholder="Enter specification..."
+              value={row.specId ?? ""}
+              onChange={(e) =>
+                updateSpecField(
+                  index,
+                  rIndex,
+                  "specId",
+                  e.target.value,
+                )
+              }
+            />
+
+
+            <Input
+              className="border-orange-300 focus-visible:ring-orange-400 bg-white"
+              placeholder="Enter value..."
+              value={row.value ?? ""}
+              onChange={(e) =>
+                updateSpecField(
+                  index,
+                  rIndex,
+                  "value",
+                  e.target.value,
+                )
+              }
+            />
+
+
+            <div className="flex gap-1 justify-center">
+
+              <Button
+                size="icon"
+                variant="outline"
+                className="border-blue-400 text-blue-700 hover:bg-blue-100"
+                onClick={() => addSpecRow(index)}
+              >
+                <Plus />
+              </Button>
+
+
+              <Button
+                size="icon"
+                variant="outline"
+                className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                disabled={item.specs.length === 1}
+                onClick={() =>
+                  removeSpecRow(index, rIndex)
+                }
+              >
+                <Minus />
+              </Button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      ))}
+
+    </Card>
+  ))}
+</div>
             </div>
           </CardContent>
-
-          {/* ================= PRICING / LOGISTICS ================= */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center text-sm">
-                PRICING / LOGISTICS
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              {/* CALCULATION TYPE */}
-              <div>
-                <Label>Calculation Type</Label>
-                <select
-                  className="w-full h-10 border rounded-md px-2"
-                  value={calculationType}
-                  onChange={(e) =>
-                    setCalculationType(e.target.value as CalculationType)
-                  }
-                >
-                  <option value="LIGHTS">Lights</option>
-                  <option value="POLE">Pole</option>
-                </select>
-              </div>
-
-              {/* UNIT COST */}
-              {calculationType === "LIGHTS" && (
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    checked={useArrayInput}
-                    onCheckedChange={(v) => {
-                      const newValue = !!v;
-                      setUseArrayInput(newValue);
-
-                      // CLEAR ALL LIGHTS FIELDS KAPAG NAGPALIT MODE
-                      setUnitCost(0);
-                      setLength(0);
-                      setWidth(0);
-                      setHeight(0);
-                      setQtyPerCarton(1);
-
-                      // RESET MULTI ROWS DIN
-                      setMultiRows([
-                        {
-                          itemName: "",
-                          unitCost: 0,
-                          length: 0,
-                          width: 0,
-                          height: 0,
-                          qtyPerCarton: 1,
-                          landed: 0,
-                          srp: 0,
-                        },
-                      ]);
-                    }}
-                  />
-
-                  <Label>Multiple Dimensions ?</Label>
-                </div>
-              )}
-              {calculationType === "LIGHTS" && !useArrayInput && (
-                <div>
-                  <Label>Unit Cost (USD)</Label>
-                  <Input
-                    type="number"
-                    value={unitCost}
-                    onChange={(e) => setUnitCost(Number(e.target.value))}
-                  />
-                </div>
-              )}
-
-              {/* ================= LIGHTS ONLY ================= */}
-
-              {calculationType === "LIGHTS" && !useArrayInput && (
-                <div className="space-y-2">
-                  <Label>Packaging Dimensions (CM)</Label>
-
-                  <div className="grid grid-cols-4 gap-2">
-                    <Input
-                      type="number"
-                      placeholder="L"
-                      value={length || ""}
-                      onChange={(e) => setLength(Number(e.target.value))}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="W"
-                      value={width || ""}
-                      onChange={(e) => setWidth(Number(e.target.value))}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="H"
-                      value={height || ""}
-                      onChange={(e) => setHeight(Number(e.target.value))}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Qty/Box"
-                      value={qtyPerCarton || ""}
-                      onChange={(e) => setQtyPerCarton(Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {calculationType === "LIGHTS" && useArrayInput && (
-                <div className="space-y-3">
-                  <Label>Multiple Packaging Dimensions</Label>
-
-                  {/* ===== TABLE WRAPPER ===== */}
-                  <div className="space-y-2">
-
-                    {/* ===== HEADER ===== */}
-                    <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px] gap-2 text-xs font-semibold text-muted-foreground">
-                      <div className="px-2">Item Name</div>
-                      <div className="px-2">Unit Cost (USD)</div>
-                      <div className="px-2">Length (cm)</div>
-                      <div className="px-2">Width (cm)</div>
-                      <div className="px-2">Height (cm)</div>
-                      <div className="px-2">Qty/Box</div>
-                      <div className="px-2">Landed (PHP)</div>
-                      <div className="px-2">SRP (PHP)</div>
-                      <div className="px-2 text-center">Action</div>
-                    </div>
-
-                    {/* ===== ROWS ===== */}
-                    {multiRows.map((row, index) => (
-                      <div
-                        key={index}
-                        className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px] gap-2 items-center"
-                      >
-                        <Input
-                          value={row.itemName ?? ""}
-                          onChange={(e) =>
-                            updateMultiRow(index, "itemName", e.target.value)
-                          }
-                        />
-
-                        <Input
-                          type="number"
-                          value={row.unitCost || ""}
-                          onChange={(e) =>
-                            updateMultiRow(index, "unitCost", Number(e.target.value))
-                          }
-                        />
-
-                        <Input
-                          type="number"
-                          value={row.length || ""}
-                          onChange={(e) =>
-                            updateMultiRow(index, "length", Number(e.target.value))
-                          }
-                        />
-
-                        <Input
-                          type="number"
-                          value={row.width || ""}
-                          onChange={(e) =>
-                            updateMultiRow(index, "width", Number(e.target.value))
-                          }
-                        />
-
-                        <Input
-                          type="number"
-                          value={row.height || ""}
-                          onChange={(e) =>
-                            updateMultiRow(index, "height", Number(e.target.value))
-                          }
-                        />
-
-                        <Input
-                          type="number"
-                          value={row.qtyPerCarton || ""}
-                          onChange={(e) =>
-                            updateMultiRow(index, "qtyPerCarton", Number(e.target.value))
-                          }
-                        />
-
-                        <Input disabled value={formatPHP(row.landed, 2)} />
-                        <Input disabled value={formatPHP(row.srp, 0)} />
-
-                        <div className="flex gap-1 justify-center">
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            onClick={() => addMultiRow(index)}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            disabled={multiRows.length === 1}
-                            onClick={() => removeMultiRow(index)}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-
-
-              {/* ================= POLE ONLY ================= */}
-              {calculationType === "POLE" && (
-                <div className="space-y-2">
-                  <div>
-                    <Label>Unit Cost (USD)</Label>
-                    <Input
-                      type="number"
-                      value={unitCost || ""}
-                      onChange={(e) => setUnitCost(Number(e.target.value))}
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Quantity Per Container</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={qtyPerContainer || ""}
-                      onChange={(e) =>
-                        setQtyPerContainer(Number(e.target.value))
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-
-              <Separator />
-
-              {/* RESULTS */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>Landed Cost (PHP)</Label>
-                  <Input value={formatPHP(landedCost, 2)} disabled />
-                </div>
-                <div>
-                  <Label>SRP (PHP)</Label>
-                  <Input value={formatPHP(srp, 0)} disabled />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* ===== ADDITIONAL LOGISTICS INFO ===== */}
-
-              <div className="space-y-4">
-                {/* CATEGORY */}
-                <div>
-                  <Label>Category</Label>
-                  <select
-                    className="w-full h-10 border rounded-md px-2"
-                    value={productCategory}
-                    onChange={(e) =>
-                      setProductCategory(e.target.value as ProductCategory)
-                    }
-                  >
-                    <option value="Economy">Economy</option>
-                    <option value="Mid-End">Mid-End</option>
-                    <option value="To Be Evaluated">To Be Evaluated</option>
-                  </select>
-                </div>
-
-                {/* MOQ */}
-                <div>
-                  <Label>MOQ</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={moq || ""}
-                    onChange={(e) => setMoq(Number(e.target.value))}
-                    placeholder="Enter MOQ"
-                  />
-                </div>
-
-                {/* WARRANTY */}
-                <div className="grid grid-cols-[1fr_1fr] gap-2">
-                  <div>
-                    <Label>Warranty</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={warrantyValue || ""}
-                      onChange={(e) => setWarrantyValue(Number(e.target.value))}
-                      placeholder="Enter number"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Unit</Label>
-                    <select
-                      className="w-full h-10 border rounded-md px-2"
-                      value={warrantyUnit}
-                      onChange={(e) =>
-                        setWarrantyUnit(
-                          e.target.value as "Days" | "Months" | "Years",
-                        )
-                      }
-                    >
-                      <option value="Days">Days</option>
-                      <option value="Months">Months</option>
-                      <option value="Years">Years</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* ===== SUPPLIER DATA SHEET ===== */}
-                <div className="space-y-3">
-                  <Label>Supplier&apos;s Data Sheet (PDF / Docs)</Label>
-
-                  {supplierDataSheets.map((row, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-[1fr_auto] gap-2 items-center"
-                    >
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) =>
-                          updateSupplierSheet(
-                            index,
-                            e.target.files?.[0] || null,
-                          )
-                        }
-                      />
-
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => addSupplierSheetRow(index)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          disabled={supplierDataSheets.length === 1}
-                          onClick={() => removeSupplierSheetRow(index)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </Card>
 
         {/* RIGHT */}
         <div className="space-y-6">
-          {/* SELECT SISTER COMPANY */}
+          {/* SELECT BRAND */}
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-sm">
-                SELECT SISTER COMPANY
+                SELECT BRAND
               </CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-4">
               {/* SEARCH */}
+
               <div className="flex items-center justify-between gap-2">
-                <Label>Select Sister Company</Label>
+                <Label>Select Brand</Label>
+
                 <Input
-                  value={sisterCompanySearch}
-                  onChange={(e) => setSisterCompanySearch(e.target.value)}
-                  placeholder="Search sister company..."
+                  value={brandSearch}
+                  onChange={(e) => setBrandSearch(e.target.value)}
+                  placeholder="Search brand..."
                   className="h-8 w-[160px]"
                 />
               </div>
 
               {/* ADD */}
+
               <div className="flex gap-2">
                 <Input
-                  value={newSisterCompany}
-                  onChange={(e) => setNewSisterCompany(e.target.value)}
-                  placeholder="Add sister company..."
+                  value={newBrand}
+                  onChange={(e) => setNewBrand(e.target.value)}
+                  placeholder="Add brand..."
                 />
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={handleAddSisterCompany}
-                >
+
+                <Button size="icon" variant="outline" onClick={handleAddBrand}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
@@ -2405,8 +1484,9 @@ export default function AddProductPage() {
               <Separator />
 
               {/* LIST */}
+
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {filteredSisterCompanies.map((item) => (
+                {filteredBrands.map((item) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between gap-2"
@@ -2414,24 +1494,23 @@ export default function AddProductPage() {
                     <div className="flex items-center space-x-2">
                       <input
                         type="radio"
-                        name="sisterCompany"
-                        checked={selectedSisterCompany?.id === item.id}
+                        name="brand"
+                        checked={selectedBrand?.id === item.id}
                         onChange={() =>
-                          setSelectedSisterCompany({
+                          setSelectedBrand({
                             id: item.id,
                             name: item.name,
                           })
                         }
                       />
+
                       <span className="text-sm">{item.name}</span>
                     </div>
 
                     <div className="flex gap-1">
-                      {/* EDIT */}
-                      <AddProductEditSisterCompanyType item={item} />
+                      <AddProductEditBrandType item={item} />
 
-                      {/* DELETE */}
-                      <AddProductDeleteSisterCompany
+                      <AddProductDeleteBrand
                         item={item}
                         referenceID={user?.ReferenceID || ""}
                       />
@@ -2439,9 +1518,9 @@ export default function AddProductPage() {
                   </div>
                 ))}
 
-                {filteredSisterCompanies.length === 0 && (
+                {filteredBrands.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    No sister companies found
+                    No brands found
                   </p>
                 )}
               </div>
