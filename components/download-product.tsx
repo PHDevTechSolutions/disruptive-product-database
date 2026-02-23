@@ -59,59 +59,60 @@ export default function DownloadProduct({ products }: Props) {
     for (const [sheetName, sheetProducts] of sheetMap) {
       const ws = wb.addWorksheet(sheetName);
 
-      const groupMap = new Map<string, Set<string>>();
+      /* ✅ FIXED GROUP MAP (uses spec name not specId) */
+
+      const groupMap = new Map<
+        string,
+        { specId: string; specName: string }[]
+      >();
 
       sheetProducts.forEach((p) => {
         p.technicalSpecifications?.forEach((group: any) => {
-          if (!groupMap.has(group.title)) groupMap.set(group.title, new Set());
+          if (!groupMap.has(group.title))
+            groupMap.set(group.title, []);
 
           group.specs?.forEach((spec: any) => {
-            groupMap.get(group.title)!.add(spec.specId);
+            const exists = groupMap
+              .get(group.title)!
+              .find((s) => s.specId === spec.specId);
+
+            if (!exists) {
+              groupMap.get(group.title)!.push({
+                specId: spec.specId,
+                specName: spec.name || spec.title || "",
+              });
+            }
           });
         });
       });
 
-      /* PRODUCT CODE REMOVED HERE */
-
       const staticColumns = [
         "Classification",
-
         "Brand",
-
         "Price Point",
-
         "Brand Origin",
-
         "Category Type",
-
         "Product Type",
-
         "Cloudinary URL",
-
         "Product Name",
-
         "Supplier",
       ];
 
       const header1: any[] = [];
       const header2: any[] = [];
 
-      // STATIC
       staticColumns.forEach((col) => {
-        header1.push(col); // TOP = static
-
-        header2.push(""); // BOTTOM empty
+        header1.push(col);
+        header2.push("");
       });
 
-      // TECH SPECS
+      /* ✅ HEADER FIX */
+
       groupMap.forEach((specs, group) => {
-        const specArray = Array.from(specs);
+        specs.forEach((spec, index) => {
+          header1.push(spec.specName);
 
-        specArray.forEach((specId, index) => {
-          header1.push(specId); // TOP = SPEC NAME
-
-          if (index === 0)
-            header2.push(group); // BOTTOM = GROUP TITLE
+          if (index === 0) header2.push(group);
           else header2.push("");
         });
       });
@@ -119,13 +120,15 @@ export default function DownloadProduct({ products }: Props) {
       ws.addRow(header1);
       ws.addRow(header2);
 
+      /* STATIC COLOR */
+
       for (let col = 1; col <= staticColumns.length; col++) {
         const cell = ws.getRow(1).getCell(col);
 
         cell.fill = {
           type: "pattern",
           pattern: "solid",
-          fgColor: { argb: "4472C4" }, // blue like your image
+          fgColor: { argb: "4472C4" },
         };
 
         cell.font = {
@@ -143,15 +146,16 @@ export default function DownloadProduct({ products }: Props) {
 
       let groupIndex = 0;
 
+      /* ✅ FIX length instead of size */
+
       groupMap.forEach((specs) => {
-        const colEnd = colStart + specs.size - 1;
+        const colEnd = colStart + specs.length - 1;
 
         ws.mergeCells(2, colStart, 2, colEnd);
 
         const color = GROUP_COLORS[groupIndex % GROUP_COLORS.length];
 
         for (let col = colStart; col <= colEnd; col++) {
-          // ROW 1 COLOR
           const headerCell = ws.getRow(1).getCell(col);
 
           headerCell.fill = {
@@ -167,14 +171,6 @@ export default function DownloadProduct({ products }: Props) {
             horizontal: "center",
           };
 
-          headerCell.border = {
-            top: { style: "thin" },
-            bottom: { style: "thin" },
-            left: { style: "thin" },
-            right: { style: "thin" },
-          };
-
-          // ✅ ROW 2 COLOR (THIS IS THE FIX)
           const groupCell = ws.getRow(2).getCell(col);
 
           groupCell.fill = {
@@ -189,13 +185,6 @@ export default function DownloadProduct({ products }: Props) {
             vertical: "middle",
             horizontal: "center",
           };
-
-          groupCell.border = {
-            top: { style: "thin" },
-            bottom: { style: "thin" },
-            left: { style: "thin" },
-            right: { style: "thin" },
-          };
         }
 
         groupIndex++;
@@ -203,37 +192,30 @@ export default function DownloadProduct({ products }: Props) {
         colStart = colEnd + 1;
       });
 
+      /* ✅ DATA */
+
       sheetProducts.forEach((product) => {
         const row: any[] = [];
 
         row.push(product.classificationName || "");
-
         row.push(product.brandName || "");
-
         row.push(product.pricePoint || "");
-
         row.push(product.brandOrigin || "");
-
         row.push(product.categoryTypes?.[0]?.categoryTypeName || "");
-
         row.push(product.productTypes?.[0]?.productTypeName || "");
-
-        /* PRODUCT CODE REMOVED HERE */
-
         row.push(product.mainImage?.url || "");
-
         row.push(product.productName || "");
-
         row.push(product.supplier?.company || "");
 
         groupMap.forEach((specs, group) => {
-          const groupData = product.technicalSpecifications?.find(
-            (g: any) => g.title === group,
-          );
+          const groupData =
+            product.technicalSpecifications?.find(
+              (g: any) => g.title === group,
+            );
 
-          Array.from(specs).forEach((specId) => {
+          specs.forEach((specInfo) => {
             const spec = groupData?.specs?.find(
-              (s: any) => s.specId === specId,
+              (s: any) => s.specId === specInfo.specId,
             );
 
             row.push(spec?.value || "");
@@ -242,7 +224,6 @@ export default function DownloadProduct({ products }: Props) {
 
         const newRow = ws.addRow(row);
 
-        // ✅ MIDDLE ALIGN ENTIRE ROW
         newRow.eachCell((cell) => {
           cell.alignment = {
             vertical: "middle",
@@ -251,53 +232,14 @@ export default function DownloadProduct({ products }: Props) {
         });
       });
 
-      const startRow = 3;
-      const endRow = ws.rowCount;
-      const totalCols = ws.columnCount;
-
-      for (let col = 1; col <= totalCols; col++) {
-        let mergeStart = startRow;
-        let lastValue = ws.getRow(startRow).getCell(col).value;
-
-        for (let row = startRow + 1; row <= endRow + 1; row++) {
-          const currentValue =
-            row <= endRow ? ws.getRow(row).getCell(col).value : null;
-
-          const isDifferent =
-            currentValue !== lastValue ||
-            currentValue === null ||
-            currentValue === "";
-
-          if (isDifferent) {
-            if (
-              row - mergeStart > 1 &&
-              lastValue !== null &&
-              lastValue !== ""
-            ) {
-              ws.mergeCells(mergeStart, col, row - 1, col);
-
-              ws.getCell(mergeStart, col).alignment = {
-                vertical: "middle",
-                horizontal: "center",
-              };
-            }
-
-            mergeStart = row;
-            lastValue = currentValue;
-          }
-        }
-      }
-
       ws.columns.forEach((column) => {
         let max = 15;
 
-        if (column.eachCell) {
-          column.eachCell({ includeEmpty: true }, (cell) => {
-            const len = cell.value ? cell.value.toString().length : 0;
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
+          const len = cell.value?.toString().length || 0;
 
-            if (len > max) max = len;
-          });
-        }
+          if (len > max) max = len;
+        });
 
         column.width = max + 4;
       });
@@ -322,6 +264,7 @@ export default function DownloadProduct({ products }: Props) {
       </DialogTrigger>
 
       <DialogContent>
+
         <DialogHeader>
           <DialogTitle>Download Product</DialogTitle>
         </DialogHeader>
@@ -341,12 +284,20 @@ export default function DownloadProduct({ products }: Props) {
         </Select>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+          >
             Cancel
           </Button>
 
-          <Button onClick={handleDownload}>Download</Button>
+          <Button onClick={handleDownload}>
+            Download
+          </Button>
+
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );

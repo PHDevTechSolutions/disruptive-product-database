@@ -4,6 +4,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Minus, ImagePlus, Pencil } from "lucide-react";
+import { GripVertical } from "lucide-react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { v4 as uuidv4 } from "uuid";
 
 import { useUser } from "@/contexts/UserContext";
 
@@ -29,6 +31,23 @@ import {
 } from "@/components/ui/popover";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+
+import { CSS } from "@dnd-kit/utilities";
 
 import {
   collection,
@@ -71,10 +90,9 @@ type UserData = {
 };
 
 type TechSpecRow = {
-  specId: string;
-
+  specId: string; // permanent ID
+  name: string; // editable title
   value: string;
-
   unit: string;
 };
 
@@ -105,6 +123,60 @@ type Supplier = {
   company: string;
 };
 
+// ================= SORTABLE SPEC ROW =================
+
+function SortableSpecRow({ id, children }: any) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex gap-2">
+      {/* DRAG HANDLE */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing flex items-center text-muted-foreground"
+      >
+        <GripVertical size={16} />
+      </div>
+
+      {/* CONTENT */}
+      <div className="flex-1">{children}</div>
+    </div>
+  );
+}
+
+// ================= SORTABLE TITLE COMPONENT =================
+
+function SortableSpecTitle({ id, children }: any) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="space-y-2">
+      {/* DRAG HANDLE */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground"
+      >
+        <GripVertical size={18} />
+      </div>
+
+      {children}
+    </div>
+  );
+}
 export default function EditProductPage() {
   const router = useRouter();
 
@@ -130,11 +202,16 @@ export default function EditProductPage() {
 
   const [productName, setProductName] = useState("");
 
-  const emptyRow = {
-    specId: "",
+  const emptyRow: TechSpecRow = {
+    specId: crypto.randomUUID(), // permanent ID
+    name: "", // editable title
     value: "",
     unit: "",
   };
+
+  // ================= DRAG SENSOR =================
+
+  const sensors = useSensors(useSensor(PointerSensor));
 
   const [technicalSpecs, setTechnicalSpecs] = useState<TechSpec[]>([
     {
@@ -267,26 +344,28 @@ export default function EditProductPage() {
 
           // ================= TECHNICAL SPECIFICATIONS =================
           if (Array.isArray(data.technicalSpecifications)) {
-            const mappedSpecs = data.technicalSpecifications.map(
-              (spec: any) => ({
-                id: spec.technicalSpecificationId || "",
+            const mappedSpecs = data.technicalSpecifications
+              .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+              .map((spec: any) => ({
+                id: spec.titleId || spec.technicalSpecificationId || "",
                 title: spec.title || "",
                 specs: Array.isArray(spec.specs)
                   ? spec.specs.map((row: any) => ({
-                      specId: row.specId || "",
+                      specId: row.specId || crypto.randomUUID(),
+                      name: row.name || row.title || "",
                       value: row.value || "",
                       unit: row.unit || "",
                     }))
                   : [
                       {
-                        specId: "",
+                        specId: crypto.randomUUID(),
+                        name: "",
                         value: "",
                         unit: "",
                       },
                     ],
                 units: [],
-              }),
-            );
+              }));
 
             setTechnicalSpecs(
               mappedSpecs.length > 0
@@ -297,7 +376,8 @@ export default function EditProductPage() {
                       title: "",
                       specs: [
                         {
-                          specId: "",
+                          specId: crypto.randomUUID(),
+                          name: "",
                           value: "",
                           unit: "",
                         },
@@ -448,10 +528,10 @@ export default function EditProductPage() {
 
         const data: any = snap.data();
 
-        // if same product type → restore original saved specs
+        // ✅ SAME PRODUCT TYPE → restore original saved specs
         if (data.productTypes?.[0]?.productTypeId === selectedProductType.id) {
           if (Array.isArray(data.technicalSpecifications)) {
-            const mappedSpecs = data.technicalSpecifications.map(
+            const mappedSpecs: TechSpec[] = data.technicalSpecifications.map(
               (spec: any) => ({
                 id: spec.technicalSpecificationId || "",
 
@@ -459,11 +539,26 @@ export default function EditProductPage() {
 
                 specs: Array.isArray(spec.specs)
                   ? spec.specs.map((row: any) => ({
-                      specId: row.specId || "",
+                      specId: row.specId || crypto.randomUUID(),
+
+                      // ✅ FIX — REQUIRED
+                      name: row.name || row.title || "",
+
                       value: row.value || "",
+
                       unit: row.unit || "",
                     }))
-                  : [{ specId: "", value: "", unit: "" }],
+                  : [
+                      {
+                        specId: crypto.randomUUID(),
+
+                        name: "",
+
+                        value: "",
+
+                        unit: "",
+                      },
+                    ],
 
                 units: [],
               }),
@@ -472,7 +567,7 @@ export default function EditProductPage() {
             setTechnicalSpecs(mappedSpecs);
           }
         } else {
-          // load specs from classificationTypes
+          // ✅ LOAD FROM classificationTypes
 
           const q = query(
             collection(
@@ -497,25 +592,52 @@ export default function EditProductPage() {
           );
 
           getDocs(q).then((snapshot) => {
-            const fetchedSpecs = snapshot.docs.map((docSnap) => {
-              const data = docSnap.data();
+            const fetchedSpecs: TechSpec[] = snapshot.docs
 
-              return {
-                id: docSnap.id,
+              .sort(
+                (a: any, b: any) =>
+                  (a.data().order ?? 0) - (b.data().order ?? 0),
+              )
 
-                title: data.title || "",
+              .map((docSnap) => {
+                const data = docSnap.data();
 
-                specs: Array.isArray(data.specs)
-                  ? data.specs.map((row: any) => ({
-                      specId: row.specId || "",
-                      value: "",
-                      unit: "",
-                    }))
-                  : [{ specId: "", value: "", unit: "" }],
+                return {
+                  id: docSnap.id,
 
-                units: [],
-              };
-            });
+                  title: data.title || "",
+
+                  specs: Array.isArray(data.specs)
+                    ? data.specs
+
+                        .sort(
+                          (a: any, b: any) => (a.order ?? 0) - (b.order ?? 0),
+                        )
+
+                        .map((row: any) => ({
+                          specId: row.specId || crypto.randomUUID(),
+
+                          name: row.name || row.title || "",
+
+                          value: row.value || "",
+
+                          unit: row.unit || "",
+                        }))
+                    : [
+                        {
+                          specId: crypto.randomUUID(),
+
+                          name: "",
+
+                          value: "",
+
+                          unit: "",
+                        },
+                      ],
+
+                  units: [],
+                };
+              });
 
             setTechnicalSpecs(fetchedSpecs);
           });
@@ -525,56 +647,6 @@ export default function EditProductPage() {
 
     return () => unsubscribe();
   }, [selectedProductType?.id]);
-
-  useEffect(() => {
-    if (!classificationType) return;
-    if (selectedCategoryTypes.length === 0) return;
-
-    const unsubscribers = selectedCategoryTypes.map((cat) => {
-      const q = query(
-        collection(
-          db,
-          "classificationTypes",
-          classificationType.id,
-          "categoryTypes",
-          cat.id,
-          "productTypes",
-        ),
-        where("isActive", "==", true),
-      );
-
-      return onSnapshot(q, (snapshot) => {
-        const list = snapshot.docs
-          .map((docSnap) => ({
-            id: docSnap.id,
-            name: docSnap.data().name as string,
-            categoryTypeId: cat.id,
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name));
-
-        setProductTypes((prev) => {
-          const filtered = prev.filter((p) => p.categoryTypeId !== cat.id);
-          const updated = [...filtered, ...list];
-
-          // ✅ RESTORE SELECTED PRODUCT TYPE PROPERLY
-          if (selectedProductType) {
-            const match = updated.find((p) => p.id === selectedProductType.id);
-
-            if (match) {
-              setSelectedProductType(match);
-            }
-          }
-
-          return updated;
-        });
-      });
-    });
-
-    return () => unsubscribers.forEach((u) => u());
-  }, [
-    selectedCategoryTypes.map((c) => c.id).join(","),
-    classificationType?.id,
-  ]);
   useEffect(() => {
     setCategoryTypes([]);
     setProductTypes([]);
@@ -609,6 +681,44 @@ export default function EditProductPage() {
 
     return () => unsubscribe();
   }, [classificationType, classificationTypes]);
+
+  useEffect(() => {
+    if (!classificationType) return;
+    if (selectedCategoryTypes.length === 0) return;
+
+    const unsubscribers = selectedCategoryTypes.map((cat) => {
+      const q = query(
+        collection(
+          db,
+          "classificationTypes",
+          classificationType.id,
+          "categoryTypes",
+          cat.id,
+          "productTypes",
+        ),
+        where("isActive", "==", true),
+      );
+
+      return onSnapshot(q, (snapshot) => {
+        const list = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          name: docSnap.data().name,
+          categoryTypeId: cat.id,
+        }));
+
+        setProductTypes((prev) => {
+          const filtered = prev.filter((p) => p.categoryTypeId !== cat.id);
+
+          return [...filtered, ...list];
+        });
+      });
+    });
+
+    return () => unsubscribers.forEach((u) => u());
+  }, [
+    classificationType?.id,
+    selectedCategoryTypes.map((c) => c.id).join(","),
+  ]);
 
   useEffect(() => {
     const q = query(
@@ -684,16 +794,24 @@ export default function EditProductPage() {
     );
   };
 
-  const addTechnicalSpec = () => {
-    setTechnicalSpecs((prev) => [
-      ...prev,
-      {
-        title: "",
-        specs: [emptyRow],
-        units: [],
-      },
-    ]);
-  };
+const addTechnicalSpec = () => {
+  setTechnicalSpecs((prev) => [
+    ...prev,
+    {
+      id: uuidv4(), // ✅ AUTO GENERATE TITLE ID
+      title: "",
+      specs: [
+        {
+          specId: uuidv4(), // ✅ AUTO GENERATE SPEC ID
+          name: "",
+          value: "",
+          unit: "",
+        },
+      ],
+      units: [],
+    },
+  ]);
+};
 
   const removeTechnicalSpec = (index: number) => {
     setTechnicalSpecs((prev) =>
@@ -701,15 +819,46 @@ export default function EditProductPage() {
     );
   };
 
-  const addSpecRow = (index: number) => {
-    setTechnicalSpecs((prev) =>
-      prev.map((item, i) =>
-        i === index
-          ? { ...item, specs: [...item.specs, { ...emptyRow }] }
-          : item,
-      ),
-    );
+  // ================= TITLE DRAG HANDLER =================
+
+  const handleTitleDragEnd = (event: any) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    setTechnicalSpecs((prev) => {
+      const oldIndex = prev.findIndex(
+        (item) => (item.id || item.title) === active.id,
+      );
+
+      const newIndex = prev.findIndex(
+        (item) => (item.id || item.title) === over.id,
+      );
+
+      return arrayMove(prev, oldIndex, newIndex);
+    });
   };
+
+const addSpecRow = (index: number) => {
+  setTechnicalSpecs((prev) =>
+    prev.map((item, i) =>
+      i === index
+        ? {
+            ...item,
+            specs: [
+              ...item.specs,
+              {
+                specId: uuidv4(), // ✅ AUTO GENERATE
+                name: "",
+                value: "",
+                unit: "",
+              },
+            ],
+          }
+        : item,
+    ),
+  );
+};
 
   const removeSpecRow = (specIndex: number, rowIndex: number) => {
     setTechnicalSpecs((prev) =>
@@ -725,6 +874,42 @@ export default function EditProductPage() {
           : item,
       ),
     );
+  };
+
+  // ================= SPEC ROW DRAG HANDLER =================
+
+  const handleSpecRowDragEnd = (
+    event: any,
+
+    specIndex: number,
+  ) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    setTechnicalSpecs((prev) => {
+      const updated = [...prev];
+
+      const spec = updated[specIndex];
+
+      const oldIndex = spec.specs.findIndex(
+        (_, i) => `${spec.specs[i].specId}-${i}` === active.id,
+      );
+
+      const newIndex = spec.specs.findIndex(
+        (_, i) => `${spec.specs[i].specId}-${i}` === over.id,
+      );
+
+      spec.specs = arrayMove(
+        spec.specs,
+
+        oldIndex,
+
+        newIndex,
+      );
+
+      return updated;
+    });
   };
 
   const handleImageChange = (file: File | null) => {
@@ -949,23 +1134,39 @@ export default function EditProductPage() {
         "technicalSpecifications",
       );
 
+      const existingSnapshot = await getDocs(specsRef);
+
       const batch = writeBatch(db);
 
-      technicalSpecs.forEach((spec) => {
-        const ref = spec.id ? doc(specsRef, spec.id) : doc(specsRef);
+      technicalSpecs.forEach((spec, index) => {
+        if (!spec.title.trim()) return;
+
+        // ✅ USE titleId NOT title
+        const existingDoc = existingSnapshot.docs.find(
+          (d) => d.data().titleId === spec.id,
+        );
+
+        const ref = existingDoc ? doc(specsRef, existingDoc.id) : doc(specsRef);
 
         batch.set(ref, {
+          titleId: spec.id || ref.id,
+
           title: spec.title,
 
-          specs: spec.specs
-            .filter((row) => row.specId.trim() !== "")
-            .map((row) => ({
-              specId: row.specId.trim(),
-              value: row.value?.trim() || "",
-            })),
+          order: index,
 
-          units: spec.units,
+          specs: spec.specs.map((row, rowIndex) => ({
+            specId: row.specId,
+
+            value: row.value,
+
+            unit: row.unit,
+
+            order: rowIndex,
+          })),
+
           isActive: true,
+
           updatedAt: serverTimestamp(),
         });
       });
@@ -973,9 +1174,10 @@ export default function EditProductPage() {
       await batch.commit();
 
       toast.success("Technical specifications saved successfully");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to save technical specifications");
+    } catch (err) {
+      console.error(err);
+
+      toast.error("Failed");
     }
   };
 
@@ -1061,21 +1263,31 @@ export default function EditProductPage() {
               ]
             : [],
 
-        technicalSpecifications: technicalSpecs.map((spec) => ({
-          technicalSpecificationId: spec.id || "",
+        technicalSpecifications: technicalSpecs
+          .filter((spec) => spec.title.trim() !== "")
+          .map((spec, specIndex) => ({
+            titleId: spec.id || "",
 
-          title: spec.title,
+            technicalSpecificationId: spec.id || "",
 
-          specs: spec.specs.map((row) => ({
-            specId: row.specId || "",
+            title: spec.title,
 
-            value: row.value || "",
+            order: specIndex, // ✅ SAVE TITLE ORDER
 
-            unit: row.unit || "",
+            specs: spec.specs
+              .filter((row) => row.specId.trim() !== "")
+              .map((row, rowIndex) => ({
+                specId: row.specId, // DO NOT CHANGE ID
+                name: row.name?.trim() || "",
+                value: row.value?.trim() || "",
+
+                unit: row.unit?.trim() || "",
+
+                order: rowIndex, // ✅ SAVE ROW ORDER
+              })),
+
+            units: spec.units || [],
           })),
-
-          units: [],
-        })),
 
         createdBy: userId,
         referenceID: user?.ReferenceID || null,
@@ -1254,9 +1466,11 @@ export default function EditProductPage() {
               </select>
             </div>
 
-            {/* ===== TECHNICAL SPECIFICATIONS (FULL EDITOR - EDIT MODE) ===== */}
+            {/* ================= DRAGGABLE TECH SPECS EDIT MODE START ================= */}
 
             <div className="space-y-3">
+              {/* HEADER */}
+
               <div className="flex justify-between items-center bg-white sticky top-0 z-10 pb-2">
                 <Label>Technical Specifications</Label>
 
@@ -1275,138 +1489,182 @@ export default function EditProductPage() {
                 </div>
               </div>
 
-              <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
-                {technicalSpecs.map((item, index) => (
-                  <Card
-                    key={item.id || index}
-                    className="p-4 space-y-4 border-2 border-blue-200 bg-blue-50"
-                  >
-                    {/* TITLE */}
+              {/* TITLE DRAG CONTEXT */}
 
-                    <div className="space-y-1">
-                      <Label className="block w-full text-center text-xs font-bold uppercase text-orange-600 tracking-widest">
-                        TECHNICAL SPECIFICATION TITLE
-                      </Label>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleTitleDragEnd}
+              >
+                <SortableContext
+                  items={technicalSpecs.map((spec) => spec.id || spec.title)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
+                    {technicalSpecs.map((item, index) => {
+                      const titleId = item.id || item.title;
 
-                      <div className="flex gap-2 items-center">
-                        <Input
-                          className="border-orange-300 focus-visible:ring-orange-400 bg-white"
-                          placeholder="Enter title..."
-                          value={item.title}
-                          onChange={(e) => updateTitle(index, e.target.value)}
-                        />
+                      return (
+                        <SortableSpecTitle key={titleId} id={titleId}>
+                          <Card className="p-4 space-y-4 border-2 border-blue-200 bg-blue-50">
+                            {/* TITLE */}
 
-                        {item.id &&
-                        classificationType &&
-                        selectedProductType &&
-                        selectedCategoryTypes.length === 1 ? (
-                          <AddProductDeleteTechnicalSpecification
-                            classificationId={classificationType.id}
-                            categoryTypeId={selectedCategoryTypes[0].id}
-                            productTypeId={selectedProductType.id}
-                            technicalSpecificationId={item.id}
-                            title={item.title}
-                            referenceID={user?.ReferenceID || ""}
-                          />
-                        ) : (
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="border-orange-400 text-orange-700 hover:bg-orange-100"
-                            disabled={technicalSpecs.length === 1}
-                            onClick={() =>
-                              setTechnicalSpecs((prev) =>
-                                prev.filter((_, i) => i !== index),
-                              )
-                            }
-                          >
-                            <Minus />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+                            <div className="space-y-1">
+                              <Label className="block w-full text-center text-xs font-bold uppercase text-orange-600 tracking-widest cursor-grab">
+                                TECHNICAL SPECIFICATION TITLE
+                              </Label>
 
-                    {/* SPEC ROWS */}
+                              <div className="flex gap-2 items-center">
+                                <Input
+                                  className="border-orange-300 focus-visible:ring-orange-400 bg-white"
+                                  placeholder="Enter title..."
+                                  value={item.title}
+                                  onChange={(e) =>
+                                    updateTitle(index, e.target.value)
+                                  }
+                                />
 
-                    {(item.specs || []).map((row, rIndex) => (
-                      <div
-                        key={rIndex}
-                        className="space-y-2 border-2 border-orange-200 rounded-md p-3 bg-orange-50"
-                      >
-                        {/* HEADER */}
+                                {item.id &&
+                                classificationType &&
+                                selectedProductType &&
+                                selectedCategoryTypes.length === 1 ? (
+                                  <AddProductDeleteTechnicalSpecification
+                                    classificationId={classificationType.id}
+                                    categoryTypeId={selectedCategoryTypes[0].id}
+                                    productTypeId={selectedProductType.id}
+                                    technicalSpecificationId={item.id}
+                                    title={item.title}
+                                    referenceID={user?.ReferenceID || ""}
+                                  />
+                                ) : (
+                                  <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                                    disabled={technicalSpecs.length === 1}
+                                    onClick={() => removeTechnicalSpec(index)}
+                                  >
+                                    <Minus />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
 
-                        <div className="grid grid-cols-[1fr_1fr_120px] gap-2">
-                          <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
-                            SPECIFICATION
-                          </Label>
+                            {/* SPEC ROW DRAG CONTEXT */}
 
-                          <Label className="block w-full text-center text-xs font-bold uppercase text-orange-700 tracking-widest">
-                            VALUE
-                          </Label>
-
-                          <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
-                            ACTION
-                          </Label>
-                        </div>
-
-                        {/* INPUT ROW */}
-
-                        <div className="grid grid-cols-[1fr_1fr_120px] gap-2 items-center">
-                          <Input
-                            className="border-blue-300 focus-visible:ring-blue-400 bg-white"
-                            placeholder="Enter specification..."
-                            value={row.specId}
-                            onChange={(e) =>
-                              updateSpecField(
-                                index,
-                                rIndex,
-                                "specId",
-                                e.target.value,
-                              )
-                            }
-                          />
-
-                          <Input
-                            className="border-orange-300 focus-visible:ring-orange-400 bg-white"
-                            placeholder="Enter value..."
-                            value={row.value}
-                            onChange={(e) =>
-                              updateSpecField(
-                                index,
-                                rIndex,
-                                "value",
-                                e.target.value,
-                              )
-                            }
-                          />
-
-                          <div className="flex gap-1 justify-center">
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="border-blue-400 text-blue-700 hover:bg-blue-100"
-                              onClick={() => addSpecRow(index)}
+                            <DndContext
+                              sensors={sensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={(event) =>
+                                handleSpecRowDragEnd(event, index)
+                              }
                             >
-                              <Plus />
-                            </Button>
+                              <SortableContext
+                                items={item.specs.map(
+                                  (row, i) => `${row.specId}-${i}`,
+                                )}
+                                strategy={verticalListSortingStrategy}
+                              >
+                                {(item.specs || []).map((row, rIndex) => (
+                                  <SortableSpecRow
+                                    key={`${row.specId}-${rIndex}`}
+                                    id={`${row.specId}-${rIndex}`}
+                                  >
+                                    <div className="space-y-2 border-2 border-orange-200 rounded-md p-3 bg-orange-50">
+                                      {/* HEADER */}
 
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="border-orange-400 text-orange-700 hover:bg-orange-100"
-                              disabled={item.specs.length === 1}
-                              onClick={() => removeSpecRow(index, rIndex)}
-                            >
-                              <Minus />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </Card>
-                ))}
-              </div>
+                                      <div className="grid grid-cols-[1fr_1fr_120px] gap-2">
+                                        <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
+                                          SPECIFICATION
+                                        </Label>
+
+                                        <Label className="block w-full text-center text-xs font-bold uppercase text-orange-700 tracking-widest">
+                                          VALUE
+                                        </Label>
+
+                                        <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
+                                          ACTION
+                                        </Label>
+                                      </div>
+
+                                      {/* INPUT */}
+
+                                      <div className="grid grid-cols-[1fr_1fr_120px] gap-2 items-center cursor-grab">
+                                        {/* SPEC NAME */}
+                                        <Input
+                                          className="border-blue-300 focus-visible:ring-blue-400 bg-white"
+                                          placeholder="Enter specification..."
+                                          value={row.name}
+                                          onChange={(e) =>
+                                            updateSpecField(
+                                              index,
+                                              rIndex,
+                                              "name",
+                                              e.target.value,
+                                            )
+                                          }
+                                        />
+
+                                        {/* SPEC VALUE */}
+                                        <Input
+                                          className="border-orange-300 focus-visible:ring-orange-400 bg-white"
+                                          placeholder="Enter value..."
+                                          value={row.value}
+                                          onChange={(e) =>
+                                            updateSpecField(
+                                              index,
+                                              rIndex,
+                                              "value",
+                                              e.target.value,
+                                            )
+                                          }
+                                        />
+
+                                        {/* ACTION BUTTONS */}
+                                        <div className="flex gap-1 justify-center">
+                                          {/* ADD ROW */}
+                                          <Button
+                                            size="icon"
+                                            type="button"
+                                            variant="outline"
+                                            className="border-blue-400 text-blue-700 hover:bg-blue-100"
+                                            onClick={() => {
+                                              addSpecRow(index);
+                                            }}
+                                          >
+                                            <Plus />
+                                          </Button>
+
+                                          {/* REMOVE ROW */}
+                                          <Button
+                                            size="icon"
+                                            type="button"
+                                            variant="outline"
+                                            className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                                            disabled={item.specs.length === 1}
+                                            onClick={() => {
+                                              removeSpecRow(index, rIndex);
+                                            }}
+                                          >
+                                            <Minus />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </SortableSpecRow>
+                                ))}
+                              </SortableContext>
+                            </DndContext>
+                          </Card>
+                        </SortableSpecTitle>
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </div>
+
+            {/* ================= DRAGGABLE TECH SPECS EDIT MODE END ================= */}
           </CardContent>
         </Card>
 

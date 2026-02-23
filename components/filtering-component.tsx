@@ -99,27 +99,52 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   /* ================= TECH SPECS ================= */
 
-  const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
+/* ================= TECH SPECS ================= */
 
-  products.forEach((p) =>
-    p.technicalSpecifications?.forEach((g: any) =>
-      g.specs?.forEach((s: any) => {
-        if (!s.specId) return;
+const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
 
-        const val = formatSpec(s);
+products.forEach((p) => {
 
-        if (!val) return;
+  if (!p?.technicalSpecifications) return;
 
-        technicalSpecs[g.title] ??= {};
+  p.technicalSpecifications.forEach((g: any) => {
 
-        technicalSpecs[g.title][s.specId] ??= new Set();
+    if (!g?.title) return;
 
-splitValues(val).forEach((single) => {
-  technicalSpecs[g.title][s.specId].add(single);
+    /* ensure group exists */
+    technicalSpecs[g.title] ??= {};
+
+    if (!Array.isArray(g.specs)) return;
+
+    g.specs.forEach((s: any) => {
+
+      if (!s?.specId) return;
+
+      const val = formatSpec(s);
+
+      if (!val) return;
+
+      /* ✅ PRIORITY: name → title → specId */
+      const specLabel: string =
+        s.name ||
+        s.title ||
+        s.specId;
+
+      /* ensure spec exists */
+      technicalSpecs[g.title][specLabel] ??= new Set<string>();
+
+      /* add split values */
+      splitValues(val).forEach((single) => {
+
+        technicalSpecs[g.title][specLabel].add(single);
+
+      });
+
+    });
+
+  });
+
 });
-      }),
-    ),
-  );
 
   /* ================= FILTER ENGINE ================= */
 
@@ -183,20 +208,30 @@ useEffect(() => {
 
       const pv: string[] = [];
 
-      p.technicalSpecifications?.forEach((g: any) => {
-        if (g.title !== gt) return;
+p.technicalSpecifications?.forEach((g: any) => {
 
-        g.specs?.forEach((s: any) => {
-          if (s.specId === sn) {
-            const d = formatSpec(s);
+  if (g.title !== gt) return;
 
-splitValues(d).forEach((v) => {
-  pv.push(v);
+  g.specs?.forEach((s: any) => {
+
+    const label =
+      s.name ||
+      s.title ||
+      s.specId;
+
+    if (label !== sn) return;
+
+    const d = formatSpec(s);
+
+    splitValues(d).forEach((v) => {
+
+      pv.push(v);
+
+    });
+
+  });
+
 });
-          }
-        });
-      });
-
       if (vals.length && !vals.some((v) => pv.includes(v))) return false;
     }
 
