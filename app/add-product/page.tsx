@@ -206,6 +206,63 @@ export default function AddProductPage() {
     TechnicalSpecification[]
   >([]);
 
+  const dragIndex = useRef<number | null>(null);
+
+  /* ================= DRAG SPEC ROW ================= */
+
+  const dragRow = useRef<{
+    specIndex: number;
+    rowIndex: number;
+  } | null>(null);
+
+  const handleRowDragStart = (specIndex: number, rowIndex: number) => {
+    dragRow.current = { specIndex, rowIndex };
+  };
+
+  const handleRowDrop = (specIndex: number, dropRowIndex: number) => {
+    if (!dragRow.current) return;
+
+    const { specIndex: fromSpec, rowIndex: fromRow } = dragRow.current;
+
+    if (fromSpec !== specIndex) return;
+
+    const copy = [...technicalSpecs];
+
+    const dragged = copy[specIndex].specs[fromRow];
+
+    copy[specIndex].specs.splice(fromRow, 1);
+
+    copy[specIndex].specs.splice(dropRowIndex, 0, dragged);
+
+    dragRow.current = null;
+
+    setTechnicalSpecs(copy);
+  };
+
+  const handleDragStart = (index: number) => {
+    dragIndex.current = index;
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (dropIndex: number) => {
+    if (dragIndex.current === null) return;
+
+    const copy = [...technicalSpecs];
+
+    const draggedItem = copy[dragIndex.current];
+
+    copy.splice(dragIndex.current, 1);
+
+    copy.splice(dropIndex, 0, draggedItem);
+
+    dragIndex.current = null;
+
+    setTechnicalSpecs(copy);
+  };
+
   const [productTypeSearch, setProductTypeSearch] = useState("");
   const [newProductType, setNewProductType] = useState("");
   type SelectedCategoryType = {
@@ -644,61 +701,69 @@ export default function AddProductPage() {
 
   /* ===== SAVE EDITABLE SPECS BACK TO PRODUCT TYPE COLLECTION ===== */
 
-  const syncSpecsToProductType = async () => {
-    if (!classificationType) return;
-    if (!selectedProductType) return;
-    if (selectedCategoryTypes.length !== 1) return;
+const syncSpecsToProductType = async () => {
+  if (!classificationType) return;
+  if (!selectedProductType) return;
+  if (selectedCategoryTypes.length !== 1) return;
 
-    try {
-      const categoryTypeId = selectedCategoryTypes[0].id;
+  try {
+    const categoryTypeId = selectedCategoryTypes[0].id;
 
-      const specsRef = collection(
-        db,
-        "classificationTypes",
-        classificationType.id,
-        "categoryTypes",
-        categoryTypeId,
-        "productTypes",
-        selectedProductType.id,
-        "technicalSpecifications",
+    const specsRef = collection(
+      db,
+      "classificationTypes",
+      classificationType.id,
+      "categoryTypes",
+      categoryTypeId,
+      "productTypes",
+      selectedProductType.id,
+      "technicalSpecifications",
+    );
+
+    const existingSnapshot = await getDocs(specsRef);
+
+    const batch = writeBatch(db);
+
+    technicalSpecs.forEach((spec) => {
+      if (!spec.title.trim()) return;
+
+      const existingDoc = existingSnapshot.docs.find(
+        (d) => d.data().title === spec.title,
       );
 
-      const existingSnapshot = await getDocs(specsRef);
+      const ref = existingDoc
+        ? doc(specsRef, existingDoc.id)
+        : doc(specsRef);
 
-      const batch = writeBatch(db);
+      batch.set(ref, {
+        title: spec.title,
 
-      technicalSpecs.forEach((spec) => {
-        if (!spec.title.trim()) return;
+        specs: spec.specs
+          .filter((row) => row.specId.trim() !== "")
+          .map((row) => ({
+            specId: row.specId.trim(),
 
-        // FIND EXISTING DOC WITH SAME TITLE
-        const existingDoc = existingSnapshot.docs.find(
-          (d) => d.data().title === spec.title,
-        );
+            // ✅ FIX IS HERE
+            value: row.value?.trim() || "",
+          })),
 
-        const ref = existingDoc ? doc(specsRef, existingDoc.id) : doc(specsRef);
-
-        batch.set(ref, {
-          title: spec.title,
-
-          specs: spec.specs
-            .filter((row) => row.specId.trim() !== "")
-            .map((row) => ({
-              specId: row.specId.trim(),
-            })),
-
-          isActive: true,
-          updatedAt: serverTimestamp(),
-        });
+        isActive: true,
+        updatedAt: serverTimestamp(),
       });
+    });
 
-      await batch.commit();
+    await batch.commit();
 
-      toast.success("Technical specifications saved successfully");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to save technical specifications");
-    }
-  };
+    toast.success("Technical specifications saved successfully");
+
+  } catch (error) {
+
+    console.error(error);
+
+    toast.error("Failed to save technical specifications");
+
+  }
+};
 
   /* ================= NUMBER FORMATTERS ================= */
   const formatPHP = (value: number, decimals = 2) => {
@@ -1090,18 +1155,20 @@ export default function AddProductPage() {
           categoryTypeName: c.name,
         })),
 
-        technicalSpecifications: technicalSpecs
-          .filter((spec) => spec.title.trim() !== "")
-          .map((spec) => ({
-            technicalSpecificationId: spec.id || "",
-            title: spec.title,
-            specs: spec.specs
-              .filter((row) => row.specId.trim() !== "")
-              .map((row) => ({
-                specId: row.specId.trim(),
-                value: row.value?.trim() || "",
-              })),
-          })),
+technicalSpecifications: technicalSpecs
+  .filter((spec) => spec.title.trim() !== "")
+  .map((spec) => ({
+    technicalSpecificationId: spec.id || "",
+    title: spec.title,
+    specs: spec.specs
+      .filter((row) => row.specId.trim() !== "")
+      .map((row) => ({
+        specId: row.specId.trim(),
+
+        // ✅ FIX HERE
+        value: row.value?.trim() || "",
+      })),
+  })),
 
         mainImage: null,
 
@@ -1300,7 +1367,11 @@ export default function AddProductPage() {
                 {technicalSpecs.map((item, index) => (
                   <Card
                     key={index}
-                    className="p-4 space-y-4 border-2 border-blue-200 bg-blue-50"
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={handleDragOver}
+                    onDrop={() => handleDrop(index)}
+                    className="p-4 space-y-4 border-2 border-blue-200 bg-blue-50 cursor-move"
                   >
                     {/* TITLE */}
                     <div className="space-y-1">
@@ -1346,7 +1417,11 @@ export default function AddProductPage() {
                     {item.specs.map((row, rIndex) => (
                       <div
                         key={rIndex}
-                        className="space-y-2 border-2 border-orange-200 rounded-md p-3 bg-orange-50"
+                        draggable
+                        onDragStart={() => handleRowDragStart(index, rIndex)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => handleRowDrop(index, rIndex)}
+                        className="space-y-2 border-2 border-orange-200 rounded-md p-3 bg-orange-50 cursor-move"
                       >
                         {/* HEADER */}
                         <div className="grid grid-cols-[2fr_1fr_120px] gap-2">
