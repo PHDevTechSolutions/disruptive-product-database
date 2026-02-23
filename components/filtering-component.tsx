@@ -181,6 +181,7 @@ useEffect(() => {
         return value
           ?.toLowerCase()
           .includes(searchFilters[key].toLowerCase());
+<<<<<<< HEAD
 
       return true;
     };
@@ -222,6 +223,59 @@ splitValues(d).forEach((v) => {
         });
       });
 
+=======
+
+      return true;
+    };
+
+    if (!check("Brand", p.brandName)) return false;
+
+    if (!check("Classification Type", p.classificationName)) return false;
+
+    if (!check("Category Type", p.categoryTypes?.[0]?.categoryTypeName))
+      return false;
+
+    if (!check("Product Type", p.productTypes?.[0]?.productTypeName))
+      return false;
+
+    if (!check("Supplier", p.supplier?.company)) return false;
+
+    if (!check("Price Point", p.pricePoint)) return false;
+
+    if (!check("Brand Origin", p.brandOrigin)) return false;
+
+    for (const [k, vals] of Object.entries(filters)) {
+      if (!k.includes("||")) continue;
+
+      const [gt, sn] = k.split("||");
+
+      const pv: string[] = [];
+
+p.technicalSpecifications?.forEach((g: any) => {
+
+  if (g.title !== gt) return;
+
+  g.specs?.forEach((s: any) => {
+
+    const label =
+      s.name ||
+      s.title ||
+      s.specId;
+
+    if (label !== sn) return;
+
+    const d = formatSpec(s);
+
+    splitValues(d).forEach((v) => {
+
+      pv.push(v);
+
+    });
+
+  });
+
+});
+>>>>>>> f58d0b2b5918e672f5a090a1c84d8735a5471eba
       if (vals.length && !vals.some((v) => pv.includes(v))) return false;
     }
 
