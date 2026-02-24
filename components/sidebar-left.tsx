@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { LayoutDashboard, Package, Truck } from "lucide-react";
+import { LayoutDashboard, Package, Truck, History, FileText } from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
 import { NavUser } from "@/components/nav-user";
@@ -105,6 +105,20 @@ export function SidebarLeft() {
           icon={<Truck className="h-3.5 w-3.5" />}
           active={pathname === "/suppliers"}
         />
+
+        <NavItem
+          href="/tds"
+          label="TDS"
+          icon={<FileText className="h-3.5 w-3.5" />}
+          active={pathname === "/tds"}
+        />
+
+        <NavItem
+          href="/history"
+          label="History"
+          icon={<History className="h-3.5 w-3.5" />}
+          active={pathname === "/history"}
+        />
       </div>
 
       {/* ===== RIGHT SECTION - USER ===== */}
@@ -153,12 +167,7 @@ function NavItem({ href, label, icon, active }: NavItemProps) {
         rounded-md
         transition-all
         text-xs font-medium
-
-        ${
-          active
-            ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-sm"
-            : "hover:bg-red-50 hover:text-red-700"
-        }
+        ${active ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-sm" : "hover:bg-red-50 hover:text-red-700"}
       `}
     >
       {icon}

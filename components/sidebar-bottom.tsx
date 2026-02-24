@@ -1,11 +1,10 @@
-//sample
 "use client";
 
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { LayoutDashboard, Package, Truck } from "lucide-react";
+import { LayoutDashboard, Package, Truck, History, FileText } from "lucide-react";
 
 import { useSidebar } from "@/components/ui/sidebar";
 import { useUser } from "@/contexts/UserContext";
@@ -91,6 +90,26 @@ export function SidebarBottom() {
         >
           <Truck className="h-5 w-5" />
           <span>Suppliers</span>
+        </Link>
+
+        <Link
+          href="/tds"
+          className={`flex flex-col items-center gap-1 text-xs ${
+            pathname === "/tds" ? "text-red-600" : "text-gray-600"
+          }`}
+        >
+          <FileText className="h-5 w-5" />
+          <span>TDS</span>
+        </Link>
+
+        <Link
+          href="/history"
+          className={`flex flex-col items-center gap-1 text-xs ${
+            pathname === "/history" ? "text-red-600" : "text-gray-600"
+          }`}
+        >
+          <History className="h-5 w-5" />
+          <span>History</span>
         </Link>
       </div>
 
