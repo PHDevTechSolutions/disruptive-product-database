@@ -1081,16 +1081,6 @@ export default function EditProductPage() {
         return;
       }
 
-      if (!classificationType) {
-        toast.error("Please select a classification type");
-        return;
-      }
-
-      if (!selectedBrand) {
-        toast.error("Please select a brand");
-        return;
-      }
-
       // ================= CLOUDINARY UPLOAD =================
 
       // MAIN IMAGE
@@ -1103,11 +1093,7 @@ export default function EditProductPage() {
         pricePoint,
         brandOrigin,
 
-        brandId: selectedBrand.id,
-        brandName: selectedBrand.name,
 
-        classificationId: classificationType.id,
-        classificationName: classificationType.name,
 
         supplier: {
           supplierId: selectedSupplier.supplierId,
@@ -1503,7 +1489,6 @@ export default function EditProductPage() {
 
         {/* RIGHT */}
         <div className="space-y-6">
-
           {/* CATEGORY TYPE */}
           <Card>
             <CardHeader>
@@ -1568,11 +1553,9 @@ export default function EditProductPage() {
 
                     <div className="flex gap-1">
                       <AddProductSelectProductType
-                        classificationId={classificationType?.id || ""}
                         item={item}
                       />
                       <AddProductDeleteProductType
-                        classificationId={classificationType?.id || ""}
                         item={item}
                         referenceID={user?.ReferenceID || ""}
                       />
@@ -1645,10 +1628,11 @@ export default function EditProductPage() {
                     {/* ACTION BUTTONS */}
                     <div className="flex gap-1">
                       <AddProductEditSelectProduct
-                        classificationId={
-                          classificationType ? classificationType.id : ""
-                        }
-                        item={item}
+                        item={{
+                          id: item.id,
+                          name: item.name,
+                          productUsageId: item.productUsageId,
+                        }}
                       />
 
                       <AddProductDeleteProduct
@@ -1656,9 +1640,6 @@ export default function EditProductPage() {
                           id: item.id,
                           productName: item.name,
                           productUsageId: item.productUsageId,
-                          classificationId: classificationType
-                            ? classificationType.id
-                            : "",
                         }}
                         referenceID={user?.ReferenceID || ""}
                       />
