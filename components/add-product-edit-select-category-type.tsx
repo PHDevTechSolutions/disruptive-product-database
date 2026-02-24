@@ -92,7 +92,7 @@ export default function AddProductSelectCategoryType({
         snap.docs
           .filter((p) =>
             (p.data().categoryTypes || []).some(
-              (c: any) => c.categoryTypeId === item.id,
+              (c: any) => c.productUsageId === item.id,
             ),
           )
           .map((p) => {
@@ -100,7 +100,7 @@ export default function AddProductSelectCategoryType({
 
             const updatedCategoryTypes = (data.categoryTypes || []).map(
               (c: any) =>
-                c.categoryTypeId === item.id
+                c.productUsageId === item.id
                   ? { ...c, categoryTypeName: value.trim() }
                   : c,
             );

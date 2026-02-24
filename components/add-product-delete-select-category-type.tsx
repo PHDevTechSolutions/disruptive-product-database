@@ -26,7 +26,7 @@ type ProductType = {
 type Props = {
   classificationId: string;
   item: ProductType;
-  referenceID: string; // 🔑 kung sino nag delete
+  referenceID: string;
 };
 
 export default function AddProductDeleteProductType({
@@ -92,6 +92,7 @@ export default function AddProductDeleteProductType({
           >
             Cancel
           </Button>
+
           <Button
             variant="destructive"
             onClick={handleDelete}
