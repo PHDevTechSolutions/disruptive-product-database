@@ -50,14 +50,12 @@ import {
 import { db } from "@/lib/firebase";
 
 /* 🔹 EDIT COMPONENT */
-import AddProductSelectType from "@/components/add-product-edit-select-classifcation-type";
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
-import AddProductEditBrandType from "@/components/add-product-edit-sister-company-type";
+
 
 /* 🔹 DELETE (SOFT DELETE) COMPONENT */
-import AddProductDeleteBrand from "@/components/add-product-delete-select-sister-company";
-import AddProductDeleteClassification from "@/components/add-product-delete-select-classification-type";
+
 import AddProductDeleteProductType from "@/components/add-product-delete-select-category-type";
 import AddProductDeleteProduct from "@/components/add-product-delete-select-product";
 import AddProductDeleteTechnicalSpecification from "@/components/add-product-delete-technical-specification";
@@ -158,7 +156,6 @@ export default function AddProductPage() {
     id: string;
     name: string;
     productUsageId: string;
-    
   };
 
   const [productFamilies, setProductFamilies] = useState<ProductFamily[]>([]);
@@ -336,117 +333,36 @@ export default function AddProductPage() {
 
   /* ---------------- REAL-TIME CLASSIFICATIONS ---------------- */
 
-  /* ---------------- REAL-TIME PRODUCT TYPES (DEPENDS ON CLASSIFICATION) ---------------- */
+  /* ================= PRODUCT FAMILY FETCH INDEPENDENT ================= */
 
-  useEffect(() => {
-    if (!classificationType) return;
-    if (selectedCategoryTypes.length === 0) return;
+useEffect(() => {
+  if (selectedCategoryTypes.length === 0) {
+    setProductFamilies([]);
+    return;
+  }
 
-    const unsubscribers = selectedCategoryTypes.map((cat) => {
-      const q = query(
-        collection(
-          db,
-          "classificationTypes",
-          classificationType.id,
-          "categoryTypes",
-          cat.id,
-          "productFamilies",
-        ),
-        where("isActive", "==", true),
-      );
-
-      return onSnapshot(q, (snapshot) => {
-        const list = snapshot.docs
-          .map((docSnap) => ({
-            id: docSnap.id,
-            name: docSnap.data().name as string,
-            productUsageId: cat.id,
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name));
-
-        setProductFamilies((prev: ProductFamily[]) => {
-          const filtered = prev.filter(
-            (p: ProductFamily) => p.productUsageId !== cat.id,
-          );
-          return [...filtered, ...list];
-        });
-      });
-    });
-
-    return () => unsubscribers.forEach((u) => u());
-  }, [
-    selectedCategoryTypes.map((c) => c.id).join(","),
-    classificationType?.id,
-  ]);
-
-  /* ===== REAL-TIME TECHNICAL SPECS (DEPENDENT ON PRODUCT TYPE) ===== */
-
-  useEffect(() => {
-    setTechnicalSpecs([]);
-
-    if (!classificationType) return;
-    if (!selectedProductFamily) return;
-    if (selectedCategoryTypes.length !== 1) return;
-
-    const productUsageId = selectedCategoryTypes[0].id;
-
+  const unsubscribers = selectedCategoryTypes.map((cat) => {
     const q = query(
-      collection(
-        db,
-        "classificationTypes",
-        classificationType.id,
-        "categoryTypes",
-        productUsageId,
-        "productFamilies",
-        selectedProductFamily.id,
-        "technicalSpecifications",
-      ),
-      where("isActive", "==", true),
+      collection(db, "categoryTypes", cat.id, "productFamilies"),
+      where("isActive", "==", true)
     );
 
-    /* ✅ LOAD ONLY ONCE — NOT REALTIME */
-
-    getDocs(q).then((snapshot) => {
-      const list = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-
-        title: docSnap.data().title || "",
-
-        specs: (docSnap.data().specs || []).map((row: any) => ({
-          specId: row.specId || "",
-          unit: row.unit || "",
-
-          isRanging: row.isRanging || false,
-          isSlashing: row.isSlashing || false,
-          isDimension: row.isDimension || false,
-          isRating: row.isRating || false,
-
-          /* CLEAR VALUES BUT KEEP STRUCTURE */
-
-          value: "",
-          rangeFrom: "",
-          rangeTo: "",
-
-          slashValues: Array.isArray(row.slashValues)
-            ? row.slashValues.map(() => "")
-            : [""],
-
-          length: "",
-          width: "",
-          height: "",
-
-          ipFirst: "",
-          ipSecond: "",
-        })),
+    return onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data().name,
+        productUsageId: cat.id,
       }));
 
-      setTechnicalSpecs(list);
+      setProductFamilies((prev) => {
+        const filtered = prev.filter((p) => p.productUsageId !== cat.id);
+        return [...filtered, ...list];
+      });
     });
-  }, [
-    classificationType?.id,
-    selectedProductFamily?.id,
-    selectedCategoryTypes.map((c) => c.id).join(","),
-  ]);
+  });
+
+  return () => unsubscribers.forEach((u) => u());
+}, [selectedCategoryTypes]);
 
   const addTechnicalSpec = () => {
     setTechnicalSpecs((prev) => [
@@ -649,118 +565,70 @@ export default function AddProductPage() {
     );
   };
 
+  /* ================= PRODUCT USAGE FETCH FINAL ================= */
+
   useEffect(() => {
-    setCategoryTypes([]);
-
-    setSelectedCategoryTypes([]);
-    setSelectedProductFamily(null);
-    setProductFamilies([]);
-
-    if (!classificationType) return;
-
-    const selected = classificationTypes.find(
-      (c) => c.id === classificationType.id,
-    );
-    if (!selected) return;
-
     const q = query(
-      collection(db, "classificationTypes", selected.id, "categoryTypes"),
+      collection(db, "categoryTypes"),
+
       where("isActive", "==", true),
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs
-        .map((docSnap) => ({
-          id: docSnap.id,
-          name: docSnap.data().name as string,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map((doc) => ({
+        id: doc.id,
+
+        name: doc.data().name,
+      }));
 
       setCategoryTypes(list);
     });
 
-    return () => unsubscribe();
-  }, [classificationType, classificationTypes]);
-
-  useEffect(() => {
-    const q = query(
-      collection(db, "classificationTypes"),
-      where("isActive", "==", true),
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const types = snapshot.docs
-        .map((docSnap) => ({
-          id: docSnap.id,
-          name: docSnap.data().name as string,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-      setClassificationTypes(types);
-    });
-
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
-  /* ===== SAVE EDITABLE SPECS BACK TO PRODUCT TYPE COLLECTION ===== */
-
   const syncSpecsToProductType = async () => {
-    if (!classificationType) return;
     if (!selectedProductFamily) return;
+
     if (selectedCategoryTypes.length !== 1) return;
 
-    try {
-      const productUsageId = selectedCategoryTypes[0].id;
+    const productUsageId = selectedCategoryTypes[0].id;
 
-      const specsRef = collection(
-        db,
-        "classificationTypes",
-        classificationType.id,
-        "categoryTypes",
-        productUsageId,
-        "productFamilies",
-        selectedProductFamily.id,
-        "technicalSpecifications",
-      );
+    const specsRef = collection(
+      db,
 
-      const existingSnapshot = await getDocs(specsRef);
+      "categoryTypes",
 
-      const batch = writeBatch(db);
+      productUsageId,
 
-      technicalSpecs.forEach((spec) => {
-        if (!spec.title.trim()) return;
+      "productFamilies",
 
-        const existingDoc = existingSnapshot.docs.find(
-          (d) => d.data().title === spec.title,
-        );
+      selectedProductFamily.id,
 
-        const ref = existingDoc ? doc(specsRef, existingDoc.id) : doc(specsRef);
+      "technicalSpecifications",
+    );
 
-        batch.set(ref, {
-          title: spec.title,
+    const batch = writeBatch(db);
 
-          specs: spec.specs
-            .filter((row) => row.specId.trim() !== "")
-            .map((row) => ({
-              specId: row.specId.trim(),
+    technicalSpecs.forEach((spec) => {
+      if (!spec.title.trim()) return;
 
-              // ✅ FIX IS HERE
-              value: row.value?.trim() || "",
-            })),
+      const ref = doc(specsRef);
 
-          isActive: true,
-          updatedAt: serverTimestamp(),
-        });
+      batch.set(ref, {
+        title: spec.title,
+
+        specs: spec.specs,
+
+        isActive: true,
+
+        createdAt: serverTimestamp(),
       });
+    });
 
-      await batch.commit();
+    await batch.commit();
 
-      toast.success("Technical specifications saved successfully");
-    } catch (error) {
-      console.error(error);
-
-      toast.error("Failed to save technical specifications");
-    }
+    toast.success("Specs Saved");
   };
 
   /* ================= NUMBER FORMATTERS ================= */
@@ -825,71 +693,24 @@ export default function AddProductPage() {
     setPreview(URL.createObjectURL(file));
   };
 
-  /* ---------------- Classification Handlers ---------------- */
-  const handleAddClassification = async () => {
-    if (!newClassification.trim()) return;
 
-    if (classificationTypes.some((c) => c.name === newClassification.trim())) {
-      toast.error("Classification already exists");
-      return;
-    }
-
-    await addDoc(collection(db, "classificationTypes"), {
-      name: newClassification.trim(),
-      isActive: true,
-      createdAt: serverTimestamp(),
-    });
-
-    setNewClassification("");
-  };
-
-  /* ---------------- Sister Company Handlers ---------------- */
-  const handleAddBrand = async () => {
-    if (!newBrand.trim()) return;
-
-    if (brands.some((s) => s.name === newBrand.trim())) {
-      toast.error("Brand already exists");
-
-      return;
-    }
-
-    await addDoc(collection(db, "brands"), {
-      name: newBrand.trim(),
-
-      isActive: true,
-
-      createdAt: serverTimestamp(),
-    });
-
-    setNewBrand("");
-  };
-
-  /* ---------------- Product Type Handlers ---------------- */
   const handleAddCategoryType = async () => {
-    if (!newCategoryType.trim() || !classificationType) return;
-
-    const selected = classificationTypes.find(
-      (c) => c.id === classificationType.id,
-    );
-    if (!selected) return;
-
-    if (categoryTypes.some((p) => p.name === newCategoryType.trim())) {
-      toast.error("Product type already exists");
-      return;
-    }
+    if (!newCategoryType.trim()) return;
 
     await addDoc(
-      collection(db, "classificationTypes", selected.id, "categoryTypes"),
+      collection(db, "categoryTypes"),
+
       {
         name: newCategoryType.trim(),
+
         isActive: true,
+
         createdAt: serverTimestamp(),
       },
     );
 
     setNewCategoryType("");
   };
-
   const handleRemoveCategoryType = async (_item: CategoryType) => {
     // UI ONLY – no soft delete logic
     return;
@@ -918,38 +739,19 @@ export default function AddProductPage() {
 
   const handleAddProductType = async () => {
     if (!newProductType.trim()) return;
-    if (!classificationType) return;
-    if (selectedCategoryTypes.length !== 1) {
-      toast.error("Select exactly one category type to add a product type");
-      return;
-    }
+
+    if (selectedCategoryTypes.length !== 1) return;
 
     const productUsageId = selectedCategoryTypes[0].id;
 
-    // Prevent duplicate
-    if (
-      productFamilies.some(
-        (p) =>
-          p.name === newProductType.trim() &&
-          p.productUsageId === productUsageId,
-      )
-    ) {
-      toast.error("Product type already exists");
-      return;
-    }
-
     await addDoc(
-      collection(
-        db,
-        "classificationTypes",
-        classificationType.id,
-        "categoryTypes",
-        productUsageId,
-        "productFamilies",
-      ),
+      collection(db, "categoryTypes", productUsageId, "productFamilies"),
+
       {
         name: newProductType.trim(),
+
         isActive: true,
+
         createdAt: serverTimestamp(),
       },
     );
@@ -1099,16 +901,6 @@ export default function AddProductPage() {
         return;
       }
 
-      if (!classificationType) {
-        toast.error("Please select a classification type");
-        return;
-      }
-
-      if (!selectedBrand) {
-        toast.error("Please select a brand");
-        return;
-      }
-
       if (!mainImage) {
         toast.error("Please upload main image");
         return;
@@ -1126,12 +918,6 @@ export default function AddProductPage() {
 
         pricePoint,
         brandOrigin,
-
-        brandId: selectedBrand.id,
-        brandName: selectedBrand.name,
-
-        classificationId: classificationType.id,
-        classificationName: classificationType.name,
 
         supplier: {
           supplierId: selectedSupplier.supplierId,
@@ -1498,157 +1284,6 @@ export default function AddProductPage() {
 
         {/* RIGHT */}
         <div className="space-y-6">
-          {/* SELECT BRAND */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center text-sm">
-                SELECT BRAND
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              {/* SEARCH */}
-
-              <div className="flex items-center justify-between gap-2">
-                <Label>Select Brand</Label>
-
-                <Input
-                  value={brandSearch}
-                  onChange={(e) => setBrandSearch(e.target.value)}
-                  placeholder="Search brand..."
-                  className="h-8 w-[160px]"
-                />
-              </div>
-
-              {/* ADD */}
-
-              <div className="flex gap-2">
-                <Input
-                  value={newBrand}
-                  onChange={(e) => setNewBrand(e.target.value)}
-                  placeholder="Add brand..."
-                />
-
-                <Button size="icon" variant="outline" onClick={handleAddBrand}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <Separator />
-
-              {/* LIST */}
-
-              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {filteredBrands.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between gap-2"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="brand"
-                        checked={selectedBrand?.id === item.id}
-                        onChange={() =>
-                          setSelectedBrand({
-                            id: item.id,
-                            name: item.name,
-                          })
-                        }
-                      />
-
-                      <span className="text-sm">{item.name}</span>
-                    </div>
-
-                    <div className="flex gap-1">
-                      <AddProductEditBrandType item={item} />
-
-                      <AddProductDeleteBrand
-                        item={item}
-                        referenceID={user?.ReferenceID || ""}
-                      />
-                    </div>
-                  </div>
-                ))}
-
-                {filteredBrands.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No brands found
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* CLASSIFICATION */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center text-sm">
-                SELECT CLASSIFICATION TYPE
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between gap-2">
-                <Label>Select Classification Type</Label>
-                <Input
-                  value={classificationSearch}
-                  onChange={(e) => setClassificationSearch(e.target.value)}
-                  placeholder="Search type..."
-                  className="h-8 w-[160px]"
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Input
-                  value={newClassification}
-                  onChange={(e) => setNewClassification(e.target.value)}
-                  placeholder="Add classification..."
-                />
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={handleAddClassification}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {filteredClassifications.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between gap-2"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="classificationType"
-                        checked={classificationType?.id === item.id}
-                        onChange={() =>
-                          setClassificationType({
-                            id: item.id,
-                            name: item.name,
-                          })
-                        }
-                      />
-                      <span className="text-sm">{item.name}</span>
-                    </div>
-
-                    <div className="flex gap-1">
-                      <AddProductSelectType item={item} />
-                      <AddProductDeleteClassification
-                        item={item}
-                        referenceID={user?.ReferenceID || ""}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
           {/* PRODUCT USAGE */}
           <Card>
             <CardHeader>
@@ -1665,7 +1300,6 @@ export default function AddProductPage() {
                   onChange={(e) => setCategoryTypeSearch(e.target.value)}
                   placeholder="Search Product Usage..."
                   className="h-8 w-[160px]"
-                  disabled={!classificationType}
                 />
               </div>
 
@@ -1674,13 +1308,11 @@ export default function AddProductPage() {
                   value={newCategoryType}
                   onChange={(e) => setNewCategoryType(e.target.value)}
                   placeholder="Add category type..."
-                  disabled={!classificationType}
                 />
                 <Button
                   size="icon"
                   variant="outline"
                   onClick={handleAddCategoryType}
-                  disabled={!classificationType}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -1713,11 +1345,9 @@ export default function AddProductPage() {
 
                     <div className="flex gap-1">
                       <AddProductSelectProductType
-                        classificationId={classificationType?.id || ""}
                         item={item}
                       />
                       <AddProductDeleteProductType
-                        classificationId={classificationType?.id || ""}
                         item={item}
                         referenceID={user?.ReferenceID || ""}
                       />
@@ -1790,7 +1420,6 @@ export default function AddProductPage() {
                     {/* ACTION BUTTONS */}
                     <div className="flex gap-1">
                       <AddProductEditSelectProduct
-                        classificationId={classificationType!.id}
                         item={item}
                       />
 
@@ -1799,7 +1428,6 @@ export default function AddProductPage() {
                           id: item.id,
                           productName: item.name,
                           productUsageId: item.productUsageId,
-                          classificationId: classificationType!.id,
                         }}
                         referenceID={user?.ReferenceID || ""}
                       />

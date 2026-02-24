@@ -27,26 +27,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 /* ---------------- Types ---------------- */
+
 type ProductFamilyItem = {
   id: string;
   name: string;
-  productUsageId: string; // Replaced categoryTypeId with productUsageId
+  productUsageId: string;
 };
 
 type Props = {
-  classificationId: string;
   item: ProductFamilyItem;
 };
 
 export default function AddProductEditSelectProduct({
-  classificationId,
   item,
 }: Props) {
+
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(item.name);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+
     if (!value.trim()) {
       toast.error("Product family name cannot be empty");
       return;
@@ -58,18 +59,15 @@ export default function AddProductEditSelectProduct({
     }
 
     try {
+
       setSaving(true);
 
-      /* ==================================================
-         1️⃣ UPDATE MASTER PRODUCT FAMILY (productFamilies)
-      ================================================== */
+      /* ✅ FIXED PATH */
       await updateDoc(
         doc(
           db,
-          "classificationTypes",
-          classificationId,
           "categoryTypes",
-          item.productUsageId, // Updated to productUsageId
+          item.productUsageId,
           "productFamilies",
           item.id
         ),
@@ -79,15 +77,16 @@ export default function AddProductEditSelectProduct({
       );
 
       /* ==================================================
-         2️⃣ UPDATE ALL PRODUCTS USING THIS productFamilyId
+         UPDATE ALL PRODUCTS USING THIS productFamilyId
       ================================================== */
+
       const q = query(
         collection(db, "products"),
         where("productFamilies", "array-contains-any", [
           {
             productFamilyId: item.id,
             productFamilyName: item.name,
-            productUsageId: item.productUsageId, // Updated to productUsageId
+            productUsageId: item.productUsageId,
           },
         ])
       );
@@ -96,58 +95,83 @@ export default function AddProductEditSelectProduct({
 
       await Promise.all(
         snap.docs.map((p) => {
+
           const data = p.data();
 
-          const updatedProductFamilies = (data.productFamilies || []).map(
-            (pf: any) =>
+          const updatedProductFamilies =
+            (data.productFamilies || []).map((pf: any) =>
+
               pf.productFamilyId === item.id
                 ? {
                     ...pf,
                     productFamilyName: value.trim(),
                   }
                 : pf
-          );
+
+            );
 
           return updateDoc(p.ref, {
             productFamilies: updatedProductFamilies,
           });
+
         })
       );
 
       toast.success("Product family updated");
+
       setOpen(false);
+
     } catch (error) {
+
       console.error(error);
+
       toast.error("Failed to update product family");
+
     } finally {
+
       setSaving(false);
+
     }
+
   };
 
   return (
+
     <Dialog open={open} onOpenChange={setOpen}>
+
       <DialogTrigger asChild>
+
         <Button size="icon" variant="outline">
+
           <Pencil className="h-4 w-4" />
+
         </Button>
+
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[400px]">
+
         <DialogHeader>
+
           <DialogTitle>Edit Product Family</DialogTitle>
+
         </DialogHeader>
 
         <div className="space-y-2">
+
           <Label>Product Family Name</Label>
+
           <Input
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Enter product family name..."
             disabled={saving}
           />
+
         </div>
 
         <DialogFooter className="gap-2">
+
           <Button
             variant="secondary"
             onClick={() => setOpen(false)}
@@ -155,11 +179,19 @@ export default function AddProductEditSelectProduct({
           >
             Cancel
           </Button>
+
           <Button onClick={handleSave} disabled={saving}>
+
             {saving ? "Saving..." : "Save"}
+
           </Button>
+
         </DialogFooter>
+
       </DialogContent>
+
     </Dialog>
+
   );
+
 }

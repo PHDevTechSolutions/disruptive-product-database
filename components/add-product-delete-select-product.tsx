@@ -21,13 +21,12 @@ import { Button } from "@/components/ui/button";
 type ProductFamilyItem = {
   id: string; // productFamilyId
   productName: string;
-  productUsageId: string; // Replaced categoryTypeId with productUsageId
-  classificationId: string;
+  productUsageId: string; // categoryTypeId
 };
 
 type Props = {
   item: ProductFamilyItem;
-  referenceID: string; // 🔑 kung sino nag delete
+  referenceID: string;
 };
 
 /* 🔥 CTRL + F: AddProductDeleteProduct */
@@ -42,14 +41,12 @@ export default function AddProductDeleteProduct({
     try {
       setDeleting(true);
 
-      /* 🔁 CTRL + F: productFamilies path (CORRECT) */
+      /* ✅ CORRECT PATH */
       await updateDoc(
         doc(
           db,
-          "classificationTypes",
-          item.classificationId,
           "categoryTypes",
-          item.productUsageId, // Updated to productUsageId
+          item.productUsageId,
           "productFamilies",
           item.id
         ),
@@ -85,7 +82,7 @@ export default function AddProductDeleteProduct({
 
         <p className="text-sm text-muted-foreground">
           Are you sure you want to delete{" "}
-          <span className="font-semibold">{item.productName}</span>?  
+          <span className="font-semibold">{item.productName}</span>?
           <br />
           This action can be restored later.
         </p>
@@ -98,6 +95,7 @@ export default function AddProductDeleteProduct({
           >
             Cancel
           </Button>
+
           <Button
             variant="destructive"
             onClick={handleDelete}
@@ -105,6 +103,7 @@ export default function AddProductDeleteProduct({
           >
             {deleting ? "Deleting..." : "Delete"}
           </Button>
+
         </DialogFooter>
       </DialogContent>
     </Dialog>
