@@ -124,7 +124,6 @@ export default function ProductsPage() {
                         referenceID={userId ?? ""}
                         onDeleted={id => setProducts(prev => prev.filter(prod => prod.id !== id))}
                       />
-
                     </div>
 
                   </div>
@@ -138,12 +137,15 @@ export default function ProductsPage() {
                     <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Prev</Button>
                     <span className="text-sm px-3 py-2">Page {currentPage} of {totalPages}</span>
                     <Button size="sm" variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
-                  </div>
+              </div>
             )}
 
           </div>
 
-              <FilteringComponent products={products} onFilter={setFilteredProducts} />
+              {/* Added scrollable filtering component */}
+              <div className="space-y-3 max-h-[500px] overflow-y-auto"> {/* Fixed filter scroll behavior */}
+                <FilteringComponent products={products} onFilter={setFilteredProducts} />
+              </div>
 
             </div>
       )}
