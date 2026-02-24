@@ -241,7 +241,7 @@ export default function EditProductPage() {
   type ProductFamily = {
     id: string;
     name: string;
-    categoryTypeId: string;
+    productUsageId: string;
   };
 
   const [productFamilies, setProductFamilies] = useState<ProductFamily[]>([]);
@@ -374,7 +374,7 @@ export default function EditProductPage() {
           ) {
             setSelectedCategoryTypes([
               {
-                id: data.categoryTypes[0].categoryTypeId,
+                id: data.categoryTypes[0].productUsageId,
                 name: data.categoryTypes[0].categoryTypeName,
               },
             ]);
@@ -391,10 +391,10 @@ export default function EditProductPage() {
 
             setSelectedCategoryTypes([
               {
-                id: p.categoryTypeId,
+                id: p.productUsageId,
                 name:
                   data.categoryTypes?.find(
-                    (c: any) => c.categoryTypeId === p.categoryTypeId,
+                    (c: any) => c.productUsageId === p.productUsageId,
                   )?.categoryTypeName || "",
               },
             ]);
@@ -402,7 +402,7 @@ export default function EditProductPage() {
             setSelectedProductFamily({
               id: p.productFamilyId,
               name: p.productFamilyName,
-              categoryTypeId: p.categoryTypeId,
+              productUsageId: p.productUsageId,
             });
           } else {
             setSelectedProductFamily(null);
@@ -495,7 +495,7 @@ export default function EditProductPage() {
     // ❗ IMPORTANT: only run AFTER product fully loaded
     if (!hasLoadedProductSpecs.current) return;
 
-    const categoryTypeId = selectedCategoryTypes[0].id;
+    const productUsageId = selectedCategoryTypes[0].id;
 
     const unsubscribe = onSnapshot(
       doc(db, "products", productId!),
@@ -544,7 +544,7 @@ export default function EditProductPage() {
 
               "categoryTypes",
 
-              categoryTypeId,
+              productUsageId,
 
               "productFamilies",
 
@@ -608,12 +608,14 @@ export default function EditProductPage() {
           .map((docSnap) => ({
             id: docSnap.id,
             name: docSnap.data().name as string,
-            categoryTypeId: cat.id,
+            productUsageId: cat.id,
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
 
         setProductFamilies((prev: ProductFamily[]) => {
-          const filtered = prev.filter((p: ProductFamily) => p.categoryTypeId !== cat.id);
+          const filtered = prev.filter(
+            (p: ProductFamily) => p.productUsageId !== cat.id,
+          );
           const updated = [...filtered, ...list];
 
           // ✅ RESTORE SELECTED PRODUCT TYPE PROPERLY
@@ -898,14 +900,14 @@ export default function EditProductPage() {
       return;
     }
 
-    const categoryTypeId = selectedCategoryTypes[0].id;
+    const productUsageId = selectedCategoryTypes[0].id;
 
     // Prevent duplicate
     if (
       productFamilies.some(
         (p) =>
           p.name === newProductType.trim() &&
-          p.categoryTypeId === categoryTypeId,
+          p.productUsageId === productUsageId,
       )
     ) {
       toast.error("Product type already exists");
@@ -918,7 +920,7 @@ export default function EditProductPage() {
         "classificationTypes",
         classificationType.id,
         "categoryTypes",
-        categoryTypeId,
+        productUsageId,
         "productFamilies",
       ),
       {
@@ -982,7 +984,7 @@ export default function EditProductPage() {
     return productFamilies
       .filter(
         (item) =>
-          allowedCategoryIds.includes(item.categoryTypeId) &&
+          allowedCategoryIds.includes(item.productUsageId) &&
           item.name.toLowerCase().includes(productFamilySearch.toLowerCase()),
       )
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -998,14 +1000,14 @@ export default function EditProductPage() {
     if (selectedCategoryTypes.length !== 1) return;
 
     try {
-      const categoryTypeId = selectedCategoryTypes[0].id;
+      const productUsageId = selectedCategoryTypes[0].id;
 
       const specsRef = collection(
         db,
         "classificationTypes",
         classificationType.id,
         "categoryTypes",
-        categoryTypeId,
+        productUsageId,
         "productFamilies",
         selectedProductFamily.id,
         "technicalSpecifications",
@@ -1117,7 +1119,7 @@ export default function EditProductPage() {
         categoryTypes:
           selectedCategoryTypes.length > 0
             ? selectedCategoryTypes.map((c) => ({
-                categoryTypeId: c.id || "",
+                productUsageId: c.id || "",
                 categoryTypeName: c.name || "",
               }))
             : [],
@@ -1128,8 +1130,8 @@ export default function EditProductPage() {
                 {
                   productFamilyId: selectedProductFamily.id || "",
                   productFamilyName: selectedProductFamily.name || "",
-                  categoryTypeId:
-                    selectedProductFamily.categoryTypeId ||
+                  productUsageId:
+                    selectedProductFamily.productUsageId ||
                     selectedCategoryTypes[0].id ||
                     "",
                 },
@@ -1387,7 +1389,7 @@ export default function EditProductPage() {
                         selectedCategoryTypes.length === 1 ? (
                           <AddProductDeleteTechnicalSpecification
                             classificationId={classificationType.id}
-                            categoryTypeId={selectedCategoryTypes[0].id}
+                            productUsageId={selectedCategoryTypes[0].id}
                             productFamilyId={selectedProductFamily?.id || ""}
                             technicalSpecificationId={item.id}
                             title={item.title}
@@ -1650,17 +1652,17 @@ export default function EditProductPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-sm">
-                SELECT CATEGORY TYPE
+                SELECT PRODUCT USAGE
               </CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between gap-2">
-                <Label>Select Category Type</Label>
+                <Label>Select Product Usage</Label>
                 <Input
                   value={categoryTypeSearch}
                   onChange={(e) => setCategoryTypeSearch(e.target.value)}
-                  placeholder="Search category type..."
+                  placeholder="Search product usage..."
                   className="h-8 w-[160px]"
                   disabled={!classificationType}
                 />
@@ -1797,7 +1799,7 @@ export default function EditProductPage() {
                         item={{
                           id: item.id,
                           productName: item.name,
-                          categoryTypeId: item.categoryTypeId,
+                          productUsageId: item.productUsageId,
                           classificationId: classificationType
                             ? classificationType.id
                             : "",

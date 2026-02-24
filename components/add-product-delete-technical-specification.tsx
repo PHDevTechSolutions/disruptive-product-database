@@ -23,9 +23,9 @@ type Props = {
 
   classificationId: string;
 
-  categoryTypeId: string;
+  productUsageId: string; // ✅ CHANGED
 
-  productFamilyId: string; // ✅ FIXED
+  productFamilyId: string;
 
   technicalSpecificationId: string;
 
@@ -39,7 +39,7 @@ export default function AddProductDeleteTechnicalSpecification({
 
   classificationId,
 
-  categoryTypeId,
+  productUsageId,
 
   productFamilyId,
 
@@ -73,9 +73,9 @@ export default function AddProductDeleteTechnicalSpecification({
 
           "categoryTypes",
 
-          categoryTypeId,
+          productUsageId, // ✅ CHANGED
 
-          "productFamilies", // ✅ FIXED
+          "productFamilies",
 
           productFamilyId,
 

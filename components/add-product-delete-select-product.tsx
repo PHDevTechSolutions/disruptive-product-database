@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 type ProductFamilyItem = {
   id: string; // productFamilyId
   productName: string;
-  categoryTypeId: string;
+  productUsageId: string; // Replaced categoryTypeId with productUsageId
   classificationId: string;
 };
 
@@ -49,7 +49,7 @@ export default function AddProductDeleteProduct({
           "classificationTypes",
           item.classificationId,
           "categoryTypes",
-          item.categoryTypeId,
+          item.productUsageId, // Updated to productUsageId
           "productFamilies",
           item.id
         ),

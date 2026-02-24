@@ -154,14 +154,15 @@ export default function AddProductPage() {
   const [categoryTypes, setCategoryTypes] = useState<CategoryType[]>([]);
 
   /* ===== PRODUCT TYPE (DEPENDENT ON CATEGORY TYPE) ===== */
-type ProductFamily = {
-  id: string;
-  name: string;
-  categoryTypeId: string;
-};
+  type ProductFamily = {
+    id: string;
+    name: string;
+    productUsageId: string;
+    
+  };
 
   const [productFamilies, setProductFamilies] = useState<ProductFamily[]>([]);
-const [selectedProductFamily, setSelectedProductFamily] =
+  const [selectedProductFamily, setSelectedProductFamily] =
     useState<ProductFamily | null>(null);
 
   /* ===== TECHNICAL SPECIFICATIONS DEPENDENT ON PRODUCT TYPE ===== */
@@ -359,12 +360,14 @@ const [selectedProductFamily, setSelectedProductFamily] =
           .map((docSnap) => ({
             id: docSnap.id,
             name: docSnap.data().name as string,
-            categoryTypeId: cat.id,
+            productUsageId: cat.id,
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
 
         setProductFamilies((prev: ProductFamily[]) => {
-          const filtered = prev.filter((p: ProductFamily) => p.categoryTypeId !== cat.id);
+          const filtered = prev.filter(
+            (p: ProductFamily) => p.productUsageId !== cat.id,
+          );
           return [...filtered, ...list];
         });
       });
@@ -385,7 +388,7 @@ const [selectedProductFamily, setSelectedProductFamily] =
     if (!selectedProductFamily) return;
     if (selectedCategoryTypes.length !== 1) return;
 
-    const categoryTypeId = selectedCategoryTypes[0].id;
+    const productUsageId = selectedCategoryTypes[0].id;
 
     const q = query(
       collection(
@@ -393,7 +396,7 @@ const [selectedProductFamily, setSelectedProductFamily] =
         "classificationTypes",
         classificationType.id,
         "categoryTypes",
-        categoryTypeId,
+        productUsageId,
         "productFamilies",
         selectedProductFamily.id,
         "technicalSpecifications",
@@ -701,69 +704,64 @@ const [selectedProductFamily, setSelectedProductFamily] =
 
   /* ===== SAVE EDITABLE SPECS BACK TO PRODUCT TYPE COLLECTION ===== */
 
-const syncSpecsToProductType = async () => {
-  if (!classificationType) return;
-  if (!selectedProductFamily) return;
-  if (selectedCategoryTypes.length !== 1) return;
+  const syncSpecsToProductType = async () => {
+    if (!classificationType) return;
+    if (!selectedProductFamily) return;
+    if (selectedCategoryTypes.length !== 1) return;
 
-  try {
-    const categoryTypeId = selectedCategoryTypes[0].id;
+    try {
+      const productUsageId = selectedCategoryTypes[0].id;
 
-    const specsRef = collection(
-      db,
-      "classificationTypes",
-      classificationType.id,
-      "categoryTypes",
-      categoryTypeId,
-      "productFamilies",
-      selectedProductFamily.id,
-      "technicalSpecifications",
-    );
-
-    const existingSnapshot = await getDocs(specsRef);
-
-    const batch = writeBatch(db);
-
-    technicalSpecs.forEach((spec) => {
-      if (!spec.title.trim()) return;
-
-      const existingDoc = existingSnapshot.docs.find(
-        (d) => d.data().title === spec.title,
+      const specsRef = collection(
+        db,
+        "classificationTypes",
+        classificationType.id,
+        "categoryTypes",
+        productUsageId,
+        "productFamilies",
+        selectedProductFamily.id,
+        "technicalSpecifications",
       );
 
-      const ref = existingDoc
-        ? doc(specsRef, existingDoc.id)
-        : doc(specsRef);
+      const existingSnapshot = await getDocs(specsRef);
 
-      batch.set(ref, {
-        title: spec.title,
+      const batch = writeBatch(db);
 
-        specs: spec.specs
-          .filter((row) => row.specId.trim() !== "")
-          .map((row) => ({
-            specId: row.specId.trim(),
+      technicalSpecs.forEach((spec) => {
+        if (!spec.title.trim()) return;
 
-            // ✅ FIX IS HERE
-            value: row.value?.trim() || "",
-          })),
+        const existingDoc = existingSnapshot.docs.find(
+          (d) => d.data().title === spec.title,
+        );
 
-        isActive: true,
-        updatedAt: serverTimestamp(),
+        const ref = existingDoc ? doc(specsRef, existingDoc.id) : doc(specsRef);
+
+        batch.set(ref, {
+          title: spec.title,
+
+          specs: spec.specs
+            .filter((row) => row.specId.trim() !== "")
+            .map((row) => ({
+              specId: row.specId.trim(),
+
+              // ✅ FIX IS HERE
+              value: row.value?.trim() || "",
+            })),
+
+          isActive: true,
+          updatedAt: serverTimestamp(),
+        });
       });
-    });
 
-    await batch.commit();
+      await batch.commit();
 
-    toast.success("Technical specifications saved successfully");
+      toast.success("Technical specifications saved successfully");
+    } catch (error) {
+      console.error(error);
 
-  } catch (error) {
-
-    console.error(error);
-
-    toast.error("Failed to save technical specifications");
-
-  }
-};
+      toast.error("Failed to save technical specifications");
+    }
+  };
 
   /* ================= NUMBER FORMATTERS ================= */
   const formatPHP = (value: number, decimals = 2) => {
@@ -914,9 +912,9 @@ const syncSpecsToProductType = async () => {
     });
   };
 
-const selectProductFamily = (item: ProductFamily) => {
-  setSelectedProductFamily(item);
-};
+  const selectProductFamily = (item: ProductFamily) => {
+    setSelectedProductFamily(item);
+  };
 
   const handleAddProductType = async () => {
     if (!newProductType.trim()) return;
@@ -926,14 +924,14 @@ const selectProductFamily = (item: ProductFamily) => {
       return;
     }
 
-    const categoryTypeId = selectedCategoryTypes[0].id;
+    const productUsageId = selectedCategoryTypes[0].id;
 
     // Prevent duplicate
     if (
       productFamilies.some(
         (p) =>
           p.name === newProductType.trim() &&
-          p.categoryTypeId === categoryTypeId,
+          p.productUsageId === productUsageId,
       )
     ) {
       toast.error("Product type already exists");
@@ -946,7 +944,7 @@ const selectProductFamily = (item: ProductFamily) => {
         "classificationTypes",
         classificationType.id,
         "categoryTypes",
-        categoryTypeId,
+        productUsageId,
         "productFamilies",
       ),
       {
@@ -1036,7 +1034,7 @@ const selectProductFamily = (item: ProductFamily) => {
     return productFamilies
       .filter(
         (item) =>
-          allowedCategoryIds.includes(item.categoryTypeId) &&
+          allowedCategoryIds.includes(item.productUsageId) &&
           item.name.toLowerCase().includes(productFamilySearch.toLowerCase()),
       )
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -1145,30 +1143,30 @@ const selectProductFamily = (item: ProductFamily) => {
               {
                 productFamilyId: selectedProductFamily.id,
                 productFamilyName: selectedProductFamily.name,
-                categoryTypeId: selectedProductFamily.categoryTypeId,
+                productUsageId: selectedProductFamily.productUsageId,
               },
             ]
           : [],
 
         categoryTypes: selectedCategoryTypes.map((c) => ({
-          categoryTypeId: c.id,
+          productUsageId: c.id,
           categoryTypeName: c.name,
         })),
 
-technicalSpecifications: technicalSpecs
-  .filter((spec) => spec.title.trim() !== "")
-  .map((spec) => ({
-    technicalSpecificationId: spec.id || "",
-    title: spec.title,
-    specs: spec.specs
-      .filter((row) => row.specId.trim() !== "")
-      .map((row) => ({
-        specId: row.specId.trim(),
+        technicalSpecifications: technicalSpecs
+          .filter((spec) => spec.title.trim() !== "")
+          .map((spec) => ({
+            technicalSpecificationId: spec.id || "",
+            title: spec.title,
+            specs: spec.specs
+              .filter((row) => row.specId.trim() !== "")
+              .map((row) => ({
+                specId: row.specId.trim(),
 
-        // ✅ FIX HERE
-        value: row.value?.trim() || "",
-      })),
-  })),
+                // ✅ FIX HERE
+                value: row.value?.trim() || "",
+              })),
+          })),
 
         mainImage: null,
 
@@ -1393,7 +1391,7 @@ technicalSpecifications: technicalSpecs
                         selectedCategoryTypes.length === 1 ? (
                           <AddProductDeleteTechnicalSpecification
                             classificationId={classificationType.id}
-                            categoryTypeId={selectedCategoryTypes[0].id}
+                            productUsageId={selectedCategoryTypes[0].id}
                             productFamilyId={selectedProductFamily.id}
                             technicalSpecificationId={item.id}
                             title={item.title}
@@ -1651,21 +1649,21 @@ technicalSpecifications: technicalSpecs
               </div>
             </CardContent>
           </Card>
-          {/* CATEGORY TYPE */}
+          {/* PRODUCT USAGE */}
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-sm">
-                SELECT CATEGORY TYPE
+                SELECT PRODUCT USAGE
               </CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between gap-2">
-                <Label>Select Category Type</Label>
+                <Label>Select Product Usage</Label>
                 <Input
                   value={categoryTypeSearch}
                   onChange={(e) => setCategoryTypeSearch(e.target.value)}
-                  placeholder="Search category type..."
+                  placeholder="Search Product Usage..."
                   className="h-8 w-[160px]"
                   disabled={!classificationType}
                 />
@@ -1800,7 +1798,7 @@ technicalSpecifications: technicalSpecs
                         item={{
                           id: item.id,
                           productName: item.name,
-                          categoryTypeId: item.categoryTypeId,
+                          productUsageId: item.productUsageId,
                           classificationId: classificationType!.id,
                         }}
                         referenceID={user?.ReferenceID || ""}

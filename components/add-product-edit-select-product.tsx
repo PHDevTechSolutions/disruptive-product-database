@@ -30,7 +30,7 @@ import { Label } from "@/components/ui/label";
 type ProductFamilyItem = {
   id: string;
   name: string;
-  categoryTypeId: string;
+  productUsageId: string; // Replaced categoryTypeId with productUsageId
 };
 
 type Props = {
@@ -69,7 +69,7 @@ export default function AddProductEditSelectProduct({
           "classificationTypes",
           classificationId,
           "categoryTypes",
-          item.categoryTypeId,
+          item.productUsageId, // Updated to productUsageId
           "productFamilies",
           item.id
         ),
@@ -87,7 +87,7 @@ export default function AddProductEditSelectProduct({
           {
             productFamilyId: item.id,
             productFamilyName: item.name,
-            categoryTypeId: item.categoryTypeId,
+            productUsageId: item.productUsageId, // Updated to productUsageId
           },
         ])
       );

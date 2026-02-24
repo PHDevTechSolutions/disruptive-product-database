@@ -47,8 +47,10 @@ type SpecRow = {
 
 type Props = {
   classificationId: string;
-  categoryTypeId: string;
-  productFamilyId: string; // ✅ FIXED
+
+  productUsageId: string; // ✅ CHANGED
+
+  productFamilyId: string;
 
   technicalSpecificationId: string;
 
@@ -59,7 +61,7 @@ type Props = {
 
 export default function AddProductEditSelectTechnicalSpecification({
   classificationId,
-  categoryTypeId,
+  productUsageId,
   productFamilyId,
   technicalSpecificationId,
   title,
@@ -129,8 +131,8 @@ export default function AddProductEditSelectTechnicalSpecification({
         "classificationTypes",
         classificationId,
         "categoryTypes",
-        categoryTypeId,
-        "productFamilies", // ✅ FIXED
+        productUsageId, // ✅ CHANGED
+        "productFamilies",
         productFamilyId,
         "technicalSpecifications",
         technicalSpecificationId
