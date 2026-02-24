@@ -154,15 +154,15 @@ export default function AddProductPage() {
   const [categoryTypes, setCategoryTypes] = useState<CategoryType[]>([]);
 
   /* ===== PRODUCT TYPE (DEPENDENT ON CATEGORY TYPE) ===== */
-  type ProductType = {
-    id: string;
-    name: string;
-    categoryTypeId: string;
-  };
+type ProductFamily = {
+  id: string;
+  name: string;
+  categoryTypeId: string;
+};
 
-  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
-  const [selectedProductType, setSelectedProductType] =
-    useState<ProductType | null>(null);
+  const [productFamilies, setProductFamilies] = useState<ProductFamily[]>([]);
+const [selectedProductFamily, setSelectedProductFamily] =
+    useState<ProductFamily | null>(null);
 
   /* ===== TECHNICAL SPECIFICATIONS DEPENDENT ON PRODUCT TYPE ===== */
 
@@ -263,7 +263,7 @@ export default function AddProductPage() {
     setTechnicalSpecs(copy);
   };
 
-  const [productTypeSearch, setProductTypeSearch] = useState("");
+  const [productFamilySearch, setProductFamilySearch] = useState("");
   const [newProductType, setNewProductType] = useState("");
   type SelectedCategoryType = {
     id: string;
@@ -349,7 +349,7 @@ export default function AddProductPage() {
           classificationType.id,
           "categoryTypes",
           cat.id,
-          "productTypes",
+          "productFamilies",
         ),
         where("isActive", "==", true),
       );
@@ -363,8 +363,8 @@ export default function AddProductPage() {
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
 
-        setProductTypes((prev) => {
-          const filtered = prev.filter((p) => p.categoryTypeId !== cat.id);
+        setProductFamilies((prev: ProductFamily[]) => {
+          const filtered = prev.filter((p: ProductFamily) => p.categoryTypeId !== cat.id);
           return [...filtered, ...list];
         });
       });
@@ -382,7 +382,7 @@ export default function AddProductPage() {
     setTechnicalSpecs([]);
 
     if (!classificationType) return;
-    if (!selectedProductType) return;
+    if (!selectedProductFamily) return;
     if (selectedCategoryTypes.length !== 1) return;
 
     const categoryTypeId = selectedCategoryTypes[0].id;
@@ -394,8 +394,8 @@ export default function AddProductPage() {
         classificationType.id,
         "categoryTypes",
         categoryTypeId,
-        "productTypes",
-        selectedProductType.id,
+        "productFamilies",
+        selectedProductFamily.id,
         "technicalSpecifications",
       ),
       where("isActive", "==", true),
@@ -441,7 +441,7 @@ export default function AddProductPage() {
     });
   }, [
     classificationType?.id,
-    selectedProductType?.id,
+    selectedProductFamily?.id,
     selectedCategoryTypes.map((c) => c.id).join(","),
   ]);
 
@@ -650,8 +650,8 @@ export default function AddProductPage() {
     setCategoryTypes([]);
 
     setSelectedCategoryTypes([]);
-    setSelectedProductType(null);
-    setProductTypes([]);
+    setSelectedProductFamily(null);
+    setProductFamilies([]);
 
     if (!classificationType) return;
 
@@ -703,7 +703,7 @@ export default function AddProductPage() {
 
 const syncSpecsToProductType = async () => {
   if (!classificationType) return;
-  if (!selectedProductType) return;
+  if (!selectedProductFamily) return;
   if (selectedCategoryTypes.length !== 1) return;
 
   try {
@@ -715,8 +715,8 @@ const syncSpecsToProductType = async () => {
       classificationType.id,
       "categoryTypes",
       categoryTypeId,
-      "productTypes",
-      selectedProductType.id,
+      "productFamilies",
+      selectedProductFamily.id,
       "technicalSpecifications",
     );
 
@@ -902,21 +902,21 @@ const syncSpecsToProductType = async () => {
       const isSame = prev.length === 1 && prev[0].id === item.id;
 
       if (isSame) {
-        setSelectedProductType(null);
-        setProductTypes([]);
+        setSelectedProductFamily(null);
+        setProductFamilies([]);
         return [];
       }
 
-      setSelectedProductType(null);
-      setProductTypes([]);
+      setSelectedProductFamily(null);
+      setProductFamilies([]);
 
       return [item];
     });
   };
 
-  const selectProductType = (item: ProductType) => {
-    setSelectedProductType(item);
-  };
+const selectProductFamily = (item: ProductFamily) => {
+  setSelectedProductFamily(item);
+};
 
   const handleAddProductType = async () => {
     if (!newProductType.trim()) return;
@@ -930,7 +930,7 @@ const syncSpecsToProductType = async () => {
 
     // Prevent duplicate
     if (
-      productTypes.some(
+      productFamilies.some(
         (p) =>
           p.name === newProductType.trim() &&
           p.categoryTypeId === categoryTypeId,
@@ -947,7 +947,7 @@ const syncSpecsToProductType = async () => {
         classificationType.id,
         "categoryTypes",
         categoryTypeId,
-        "productTypes",
+        "productFamilies",
       ),
       {
         name: newProductType.trim(),
@@ -1030,17 +1030,17 @@ const syncSpecsToProductType = async () => {
     );
   }, [categoryTypes, categoryTypeSearch]);
 
-  const filteredProductTypes = React.useMemo(() => {
+  const filteredProductFamilies = React.useMemo(() => {
     const allowedCategoryIds = selectedCategoryTypes.map((c) => c.id);
 
-    return productTypes
+    return productFamilies
       .filter(
         (item) =>
           allowedCategoryIds.includes(item.categoryTypeId) &&
-          item.name.toLowerCase().includes(productTypeSearch.toLowerCase()),
+          item.name.toLowerCase().includes(productFamilySearch.toLowerCase()),
       )
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [productTypes, productTypeSearch, selectedCategoryTypes]);
+  }, [productFamilies, productFamilySearch, selectedCategoryTypes]);
 
   /* ---------------- Save Product ---------------- */
 
@@ -1140,12 +1140,12 @@ const syncSpecsToProductType = async () => {
           company: selectedSupplier.company,
         },
 
-        productTypes: selectedProductType
+        productFamilies: selectedProductFamily
           ? [
               {
-                productTypeId: selectedProductType.id,
-                productTypeName: selectedProductType.name,
-                categoryTypeId: selectedProductType.categoryTypeId,
+                productFamilyId: selectedProductFamily.id,
+                productFamilyName: selectedProductFamily.name,
+                categoryTypeId: selectedProductFamily.categoryTypeId,
               },
             ]
           : [],
@@ -1389,12 +1389,12 @@ technicalSpecifications: technicalSpecs
 
                         {item.id &&
                         classificationType &&
-                        selectedProductType &&
+                        selectedProductFamily &&
                         selectedCategoryTypes.length === 1 ? (
                           <AddProductDeleteTechnicalSpecification
                             classificationId={classificationType.id}
                             categoryTypeId={selectedCategoryTypes[0].id}
-                            productTypeId={selectedProductType.id}
+                            productFamilyId={selectedProductFamily.id}
                             technicalSpecificationId={item.id}
                             title={item.title}
                             referenceID={user?.ReferenceID || ""}
@@ -1730,20 +1730,20 @@ technicalSpecifications: technicalSpecs
             </CardContent>
           </Card>
 
-          {/* SELECT PRODUCT TYPE */}
+          {/* SELECT PRODUCT FAMILY */}
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-sm">
-                SELECT PRODUCT TYPE
+                SELECT PRODUCT FAMILY
               </CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between gap-2">
-                <Label>Select Product Type</Label>
+                <Label>Select Product Family</Label>
                 <Input
-                  value={productTypeSearch}
-                  onChange={(e) => setProductTypeSearch(e.target.value)}
+                  value={productFamilySearch}
+                  onChange={(e) => setProductFamilySearch(e.target.value)}
                   placeholder="Search product type..."
                   className="h-8 w-[160px]"
                   disabled={selectedCategoryTypes.length === 0}
@@ -1774,7 +1774,7 @@ technicalSpecifications: technicalSpecs
               </div>
 
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {filteredProductTypes.map((item) => (
+                {filteredProductFamilies.map((item) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between gap-2"
@@ -1783,8 +1783,8 @@ technicalSpecifications: technicalSpecs
                       <input
                         type="radio"
                         name="productType"
-                        checked={selectedProductType?.id === item.id}
-                        onChange={() => selectProductType(item)}
+                        checked={selectedProductFamily?.id === item.id}
+                        onChange={() => selectProductFamily(item)}
                       />
                       <span className="text-sm">{item.name}</span>
                     </div>

@@ -18,15 +18,15 @@ import {
 import { Button } from "@/components/ui/button";
 
 /* ---------------- Types ---------------- */
-type ProductTypeItem = {
-  id: string; // productTypeId
+type ProductFamilyItem = {
+  id: string; // productFamilyId
   productName: string;
   categoryTypeId: string;
   classificationId: string;
 };
 
 type Props = {
-  item: ProductTypeItem;
+  item: ProductFamilyItem;
   referenceID: string; // 🔑 kung sino nag delete
 };
 
@@ -42,7 +42,7 @@ export default function AddProductDeleteProduct({
     try {
       setDeleting(true);
 
-      /* 🔁 CTRL + F: productTypes path (CORRECT) */
+      /* 🔁 CTRL + F: productFamilies path (CORRECT) */
       await updateDoc(
         doc(
           db,
@@ -50,7 +50,7 @@ export default function AddProductDeleteProduct({
           item.classificationId,
           "categoryTypes",
           item.categoryTypeId,
-          "productTypes",
+          "productFamilies",
           item.id
         ),
         {
@@ -60,11 +60,11 @@ export default function AddProductDeleteProduct({
         }
       );
 
-      toast.success("Product type deleted");
+      toast.success("Product family deleted");
       setOpen(false);
     } catch (error) {
-      console.error("DELETE PRODUCT TYPE ERROR:", error);
-      toast.error("Failed to delete product type");
+      console.error("DELETE PRODUCT FAMILY ERROR:", error);
+      toast.error("Failed to delete product family");
     } finally {
       setDeleting(false);
     }
@@ -80,7 +80,7 @@ export default function AddProductDeleteProduct({
 
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle>Delete Product Type</DialogTitle>
+          <DialogTitle>Delete Product Family</DialogTitle>
         </DialogHeader>
 
         <p className="text-sm text-muted-foreground">

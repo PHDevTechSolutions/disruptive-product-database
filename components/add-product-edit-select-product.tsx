@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 /* ---------------- Types ---------------- */
-type ProductTypeItem = {
+type ProductFamilyItem = {
   id: string;
   name: string;
   categoryTypeId: string;
@@ -35,7 +35,7 @@ type ProductTypeItem = {
 
 type Props = {
   classificationId: string;
-  item: ProductTypeItem;
+  item: ProductFamilyItem;
 };
 
 export default function AddProductEditSelectProduct({
@@ -48,7 +48,7 @@ export default function AddProductEditSelectProduct({
 
   const handleSave = async () => {
     if (!value.trim()) {
-      toast.error("Product type name cannot be empty");
+      toast.error("Product family name cannot be empty");
       return;
     }
 
@@ -61,7 +61,7 @@ export default function AddProductEditSelectProduct({
       setSaving(true);
 
       /* ==================================================
-         1️⃣ UPDATE MASTER PRODUCT TYPE (productTypes)
+         1️⃣ UPDATE MASTER PRODUCT FAMILY (productFamilies)
       ================================================== */
       await updateDoc(
         doc(
@@ -70,7 +70,7 @@ export default function AddProductEditSelectProduct({
           classificationId,
           "categoryTypes",
           item.categoryTypeId,
-          "productTypes",
+          "productFamilies",
           item.id
         ),
         {
@@ -79,14 +79,14 @@ export default function AddProductEditSelectProduct({
       );
 
       /* ==================================================
-         2️⃣ UPDATE ALL PRODUCTS USING THIS productTypeId
+         2️⃣ UPDATE ALL PRODUCTS USING THIS productFamilyId
       ================================================== */
       const q = query(
         collection(db, "products"),
-        where("productTypes", "array-contains-any", [
+        where("productFamilies", "array-contains-any", [
           {
-            productTypeId: item.id,
-            productTypeName: item.name,
+            productFamilyId: item.id,
+            productFamilyName: item.name,
             categoryTypeId: item.categoryTypeId,
           },
         ])
@@ -98,27 +98,27 @@ export default function AddProductEditSelectProduct({
         snap.docs.map((p) => {
           const data = p.data();
 
-          const updatedProductTypes = (data.productTypes || []).map(
-            (pt: any) =>
-              pt.productTypeId === item.id
+          const updatedProductFamilies = (data.productFamilies || []).map(
+            (pf: any) =>
+              pf.productFamilyId === item.id
                 ? {
-                    ...pt,
-                    productTypeName: value.trim(),
+                    ...pf,
+                    productFamilyName: value.trim(),
                   }
-                : pt
+                : pf
           );
 
           return updateDoc(p.ref, {
-            productTypes: updatedProductTypes,
+            productFamilies: updatedProductFamilies,
           });
         })
       );
 
-      toast.success("Product type updated");
+      toast.success("Product family updated");
       setOpen(false);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to update product type");
+      toast.error("Failed to update product family");
     } finally {
       setSaving(false);
     }
@@ -134,15 +134,15 @@ export default function AddProductEditSelectProduct({
 
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Edit Product Type</DialogTitle>
+          <DialogTitle>Edit Product Family</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-2">
-          <Label>Product Type Name</Label>
+          <Label>Product Family Name</Label>
           <Input
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Enter product type name..."
+            placeholder="Enter product family name..."
             disabled={saving}
           />
         </div>

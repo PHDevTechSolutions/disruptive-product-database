@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/* ---------------- Types ---------------- */
+
 type SpecRow = {
   specId: string;
   unit: string;
@@ -46,7 +48,7 @@ type SpecRow = {
 type Props = {
   classificationId: string;
   categoryTypeId: string;
-  productTypeId: string;
+  productFamilyId: string; // ✅ FIXED
 
   technicalSpecificationId: string;
 
@@ -58,7 +60,7 @@ type Props = {
 export default function AddProductEditSelectTechnicalSpecification({
   classificationId,
   categoryTypeId,
-  productTypeId,
+  productFamilyId,
   technicalSpecificationId,
   title,
   specs,
@@ -128,8 +130,8 @@ export default function AddProductEditSelectTechnicalSpecification({
         classificationId,
         "categoryTypes",
         categoryTypeId,
-        "productTypes",
-        productTypeId,
+        "productFamilies", // ✅ FIXED
+        productFamilyId,
         "technicalSpecifications",
         technicalSpecificationId
       );
@@ -142,11 +144,17 @@ export default function AddProductEditSelectTechnicalSpecification({
 
       toast.success("Technical Specification updated");
       setOpen(false);
+
     } catch (error) {
+
       console.error(error);
+
       toast.error("Failed to update technical specification");
+
     } finally {
+
       setSaving(false);
+
     }
   };
 
@@ -159,11 +167,13 @@ export default function AddProductEditSelectTechnicalSpecification({
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[800px]">
+
         <DialogHeader>
           <DialogTitle>Edit Technical Specification</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
+
           <div>
             <Label>Title</Label>
             <Input
@@ -174,7 +184,9 @@ export default function AddProductEditSelectTechnicalSpecification({
           </div>
 
           {localSpecs.map((row, index) => (
+
             <div key={index} className="border p-3 rounded space-y-2">
+
               <Input
                 placeholder="Specification"
                 value={row.specId}
@@ -183,95 +195,30 @@ export default function AddProductEditSelectTechnicalSpecification({
                 }
               />
 
-              {!row.isRanging &&
-                !row.isSlashing &&
-                !row.isDimension &&
-                !row.isRating && (
-                  <Input
-                    placeholder="Value"
-                    value={row.value}
-                    onChange={(e) =>
-                      updateSpecField(index, "value", e.target.value)
-                    }
-                  />
-                )}
+              <Input
+                placeholder="Value"
+                value={row.value}
+                onChange={(e) =>
+                  updateSpecField(index, "value", e.target.value)
+                }
+              />
 
-              {row.isRanging && (
-                <div className="flex items-center gap-2">
-                  <Input
-                    placeholder="From"
-                    value={row.rangeFrom}
-                    onChange={(e) =>
-                      updateSpecField(
-                        index,
-                        "rangeFrom",
-                        e.target.value
-                      )
-                    }
-                  />
-                  <span>-</span>
-                  <Input
-                    placeholder="To"
-                    value={row.rangeTo}
-                    onChange={(e) =>
-                      updateSpecField(index, "rangeTo", e.target.value)
-                    }
-                  />
-                </div>
-              )}
+              <Input
+                placeholder="Unit"
+                value={row.unit}
+                onChange={(e) =>
+                  updateSpecField(index, "unit", e.target.value)
+                }
+              />
 
-              {!row.isSlashing && !row.isRating && (
-                <Input
-                  placeholder="Unit"
-                  value={row.unit}
-                  onChange={(e) =>
-                    updateSpecField(index, "unit", e.target.value)
-                  }
-                />
-              )}
-
-              <div className="flex gap-3 text-sm">
-                <label className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={row.isRanging}
-                    onChange={() => toggleMode(index, "isRanging")}
-                  />
-                  isRanging
-                </label>
-
-                <label className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={row.isSlashing}
-                    onChange={() => toggleMode(index, "isSlashing")}
-                  />
-                  isSlashing
-                </label>
-
-                <label className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={row.isDimension}
-                    onChange={() => toggleMode(index, "isDimension")}
-                  />
-                  isDimension
-                </label>
-
-                <label className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={row.isRating}
-                    onChange={() => toggleMode(index, "isRating")}
-                  />
-                  isRating
-                </label>
-              </div>
             </div>
+
           ))}
+
         </div>
 
         <DialogFooter>
+
           <Button
             variant="secondary"
             onClick={() => setOpen(false)}
@@ -283,8 +230,11 @@ export default function AddProductEditSelectTechnicalSpecification({
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </Button>
+
         </DialogFooter>
+
       </DialogContent>
+
     </Dialog>
   );
 }

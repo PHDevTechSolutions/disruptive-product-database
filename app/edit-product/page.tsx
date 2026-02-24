@@ -144,62 +144,62 @@ export default function EditProductPage() {
   ]);
 
   // ================= DRAG TITLE =================
-const dragTitleIndex = React.useRef<number | null>(null);
+  const dragTitleIndex = React.useRef<number | null>(null);
 
-const handleTitleDragStart = (index: number) => {
-  dragTitleIndex.current = index;
-};
+  const handleTitleDragStart = (index: number) => {
+    dragTitleIndex.current = index;
+  };
 
-const handleTitleDrop = (dropIndex: number) => {
-  if (dragTitleIndex.current === null) return;
+  const handleTitleDrop = (dropIndex: number) => {
+    if (dragTitleIndex.current === null) return;
 
-  const copy = [...technicalSpecs];
+    const copy = [...technicalSpecs];
 
-  const dragged = copy[dragTitleIndex.current];
+    const dragged = copy[dragTitleIndex.current];
 
-  copy.splice(dragTitleIndex.current, 1);
+    copy.splice(dragTitleIndex.current, 1);
 
-  copy.splice(dropIndex, 0, dragged);
+    copy.splice(dropIndex, 0, dragged);
 
-  dragTitleIndex.current = null;
+    dragTitleIndex.current = null;
 
-  setTechnicalSpecs(copy);
-};
+    setTechnicalSpecs(copy);
+  };
 
-// ================= DRAG SPEC ROW =================
+  // ================= DRAG SPEC ROW =================
 
-const dragRowIndex = React.useRef<{
-  specIndex: number;
-  rowIndex: number;
-} | null>(null);
+  const dragRowIndex = React.useRef<{
+    specIndex: number;
+    rowIndex: number;
+  } | null>(null);
 
-const handleRowDragStart = (specIndex: number, rowIndex: number) => {
-  dragRowIndex.current = { specIndex, rowIndex };
-};
+  const handleRowDragStart = (specIndex: number, rowIndex: number) => {
+    dragRowIndex.current = { specIndex, rowIndex };
+  };
 
-const handleRowDrop = (specIndex: number, dropRowIndex: number) => {
-  if (!dragRowIndex.current) return;
+  const handleRowDrop = (specIndex: number, dropRowIndex: number) => {
+    if (!dragRowIndex.current) return;
 
-  const { specIndex: fromSpec, rowIndex: fromRow } = dragRowIndex.current;
+    const { specIndex: fromSpec, rowIndex: fromRow } = dragRowIndex.current;
 
-  if (fromSpec !== specIndex) return;
+    if (fromSpec !== specIndex) return;
 
-  const copy = [...technicalSpecs];
+    const copy = [...technicalSpecs];
 
-  const draggedRow = copy[specIndex].specs[fromRow];
+    const draggedRow = copy[specIndex].specs[fromRow];
 
-  copy[specIndex].specs.splice(fromRow, 1);
+    copy[specIndex].specs.splice(fromRow, 1);
 
-  copy[specIndex].specs.splice(dropRowIndex, 0, draggedRow);
+    copy[specIndex].specs.splice(dropRowIndex, 0, draggedRow);
 
-  dragRowIndex.current = null;
+    dragRowIndex.current = null;
 
-  setTechnicalSpecs(copy);
-};
+    setTechnicalSpecs(copy);
+  };
 
-const handleDragOver = (e: React.DragEvent) => {
-  e.preventDefault();
-};
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
 
   const hasLoadedProductSpecs = React.useRef(false);
   // ✅ TRACK CURRENT PRODUCT TYPE FOR EDIT MODE
@@ -238,16 +238,16 @@ const handleDragOver = (e: React.DragEvent) => {
   const [categoryTypes, setCategoryTypes] = useState<CategoryType[]>([]);
 
   /* ===== PRODUCT TYPE (DEPENDENT ON CATEGORY TYPE) ===== */
-  type ProductType = {
+  type ProductFamily = {
     id: string;
     name: string;
     categoryTypeId: string;
   };
 
-  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
-  const [selectedProductType, setSelectedProductType] =
-    useState<ProductType | null>(null);
-  const [productTypeSearch, setProductTypeSearch] = useState("");
+  const [productFamilies, setProductFamilies] = useState<ProductFamily[]>([]);
+  const [selectedProductFamily, setSelectedProductFamily] =
+    useState<ProductFamily | null>(null);
+  const [productFamilySearch, setProductFamilySearch] = useState("");
   const [newProductType, setNewProductType] = useState("");
   type SelectedCategoryType = {
     id: string;
@@ -384,10 +384,10 @@ const handleDragOver = (e: React.DragEvent) => {
 
           // ================= PRODUCT TYPES =================
           if (
-            Array.isArray(data.productTypes) &&
-            data.productTypes.length > 0
+            Array.isArray(data.productFamilies) &&
+            data.productFamilies.length > 0
           ) {
-            const p = data.productTypes[0];
+            const p = data.productFamilies[0];
 
             setSelectedCategoryTypes([
               {
@@ -399,13 +399,13 @@ const handleDragOver = (e: React.DragEvent) => {
               },
             ]);
 
-            setSelectedProductType({
-              id: p.productTypeId,
-              name: p.productTypeName,
+            setSelectedProductFamily({
+              id: p.productFamilyId,
+              name: p.productFamilyName,
               categoryTypeId: p.categoryTypeId,
             });
           } else {
-            setSelectedProductType(null);
+            setSelectedProductFamily(null);
           }
 
           // ================= IMAGE PREVIEW =================
@@ -489,7 +489,7 @@ const handleDragOver = (e: React.DragEvent) => {
   /* ---------------- REAL-TIME PRODUCT TYPES (DEPENDS ON CLASSIFICATION) ---------------- */
   useEffect(() => {
     if (!classificationType) return;
-    if (!selectedProductType) return;
+    if (!selectedProductFamily) return;
     if (selectedCategoryTypes.length !== 1) return;
 
     // ❗ IMPORTANT: only run AFTER product fully loaded
@@ -506,7 +506,10 @@ const handleDragOver = (e: React.DragEvent) => {
         const data: any = snap.data();
 
         // if same product type → restore original saved specs
-        if (data.productTypes?.[0]?.productTypeId === selectedProductType.id) {
+        if (
+          data.productFamilies?.[0]?.productFamilyId ===
+          selectedProductFamily.id
+        ) {
           if (Array.isArray(data.technicalSpecifications)) {
             const mappedSpecs = data.technicalSpecifications.map(
               (spec: any) => ({
@@ -543,9 +546,9 @@ const handleDragOver = (e: React.DragEvent) => {
 
               categoryTypeId,
 
-              "productTypes",
+              "productFamilies",
 
-              selectedProductType.id,
+              selectedProductFamily.id,
 
               "technicalSpecifications",
             ),
@@ -581,7 +584,7 @@ const handleDragOver = (e: React.DragEvent) => {
     );
 
     return () => unsubscribe();
-  }, [selectedProductType?.id]);
+  }, [selectedProductFamily?.id]);
 
   useEffect(() => {
     if (!classificationType) return;
@@ -595,7 +598,7 @@ const handleDragOver = (e: React.DragEvent) => {
           classificationType.id,
           "categoryTypes",
           cat.id,
-          "productTypes",
+          "productFamilies",
         ),
         where("isActive", "==", true),
       );
@@ -609,16 +612,18 @@ const handleDragOver = (e: React.DragEvent) => {
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
 
-        setProductTypes((prev) => {
-          const filtered = prev.filter((p) => p.categoryTypeId !== cat.id);
+        setProductFamilies((prev: ProductFamily[]) => {
+          const filtered = prev.filter((p: ProductFamily) => p.categoryTypeId !== cat.id);
           const updated = [...filtered, ...list];
 
           // ✅ RESTORE SELECTED PRODUCT TYPE PROPERLY
-          if (selectedProductType) {
-            const match = updated.find((p) => p.id === selectedProductType.id);
+          if (selectedProductFamily) {
+            const match = updated.find(
+              (p) => p.id === selectedProductFamily.id,
+            );
 
             if (match) {
-              setSelectedProductType(match);
+              setSelectedProductFamily(match);
             }
           }
 
@@ -634,7 +639,7 @@ const handleDragOver = (e: React.DragEvent) => {
   ]);
   useEffect(() => {
     setCategoryTypes([]);
-    setProductTypes([]);
+    setSelectedProductFamily(null);
 
     if (!classificationType) return;
 
@@ -869,20 +874,20 @@ const handleDragOver = (e: React.DragEvent) => {
       const isSame = prev.length === 1 && prev[0].id === item.id;
 
       if (isSame) {
-        setSelectedProductType(null);
-        setProductTypes([]);
+        setSelectedProductFamily(null);
+        setSelectedProductFamily(null);
         return [];
       }
 
-      setSelectedProductType(null);
-      setProductTypes([]);
+      setSelectedProductFamily(null);
+      setSelectedProductFamily(null);
 
       return [item];
     });
   };
 
-  const selectProductType = (item: ProductType) => {
-    setSelectedProductType(item);
+  const selectProductFamily = (item: ProductFamily) => {
+    setSelectedProductFamily(item);
   };
 
   const handleAddProductType = async () => {
@@ -897,7 +902,7 @@ const handleDragOver = (e: React.DragEvent) => {
 
     // Prevent duplicate
     if (
-      productTypes.some(
+      productFamilies.some(
         (p) =>
           p.name === newProductType.trim() &&
           p.categoryTypeId === categoryTypeId,
@@ -914,7 +919,7 @@ const handleDragOver = (e: React.DragEvent) => {
         classificationType.id,
         "categoryTypes",
         categoryTypeId,
-        "productTypes",
+        "productFamilies",
       ),
       {
         name: newProductType.trim(),
@@ -971,95 +976,84 @@ const handleDragOver = (e: React.DragEvent) => {
     );
   }, [categoryTypes, categoryTypeSearch]);
 
-  const filteredProductTypes = React.useMemo(() => {
+  const filteredProductFamilies = React.useMemo(() => {
     const allowedCategoryIds = selectedCategoryTypes.map((c) => c.id);
 
-    return productTypes
+    return productFamilies
       .filter(
         (item) =>
           allowedCategoryIds.includes(item.categoryTypeId) &&
-          item.name.toLowerCase().includes(productTypeSearch.toLowerCase()),
+          item.name.toLowerCase().includes(productFamilySearch.toLowerCase()),
       )
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [productTypes, productTypeSearch, selectedCategoryTypes]);
+  }, [productFamilies, productFamilySearch, selectedCategoryTypes]);
 
   /* ---------------- Save Product ---------------- */
 
   /* ===== SAFE LOGISTICS PAYLOAD (FIRESTORE SAFE) ===== */
 
-const syncSpecsToProductType = async () => {
-  if (!classificationType) return;
-  if (!selectedProductType) return;
-  if (selectedCategoryTypes.length !== 1) return;
+  const syncSpecsToProductType = async () => {
+    if (!classificationType) return;
+    if (!selectedProductFamily) return;
+    if (selectedCategoryTypes.length !== 1) return;
 
-  try {
-    const categoryTypeId = selectedCategoryTypes[0].id;
+    try {
+      const categoryTypeId = selectedCategoryTypes[0].id;
 
-    const specsRef = collection(
-      db,
-      "classificationTypes",
-      classificationType.id,
-      "categoryTypes",
-      categoryTypeId,
-      "productTypes",
-      selectedProductType.id,
-      "technicalSpecifications",
-    );
-
-    const existingSnapshot = await getDocs(specsRef);
-
-    const batch = writeBatch(db);
-
-    technicalSpecs.forEach((spec, index) => {
-
-      if (!spec.title.trim()) return;
-
-      const existingDoc = existingSnapshot.docs.find(
-        (d) => d.data().title === spec.title
+      const specsRef = collection(
+        db,
+        "classificationTypes",
+        classificationType.id,
+        "categoryTypes",
+        categoryTypeId,
+        "productFamilies",
+        selectedProductFamily.id,
+        "technicalSpecifications",
       );
 
-      const ref = existingDoc
-        ? doc(specsRef, existingDoc.id)
-        : doc(specsRef);
+      const existingSnapshot = await getDocs(specsRef);
 
-      batch.set(ref, {
+      const batch = writeBatch(db);
 
-        title: spec.title,
+      technicalSpecs.forEach((spec, index) => {
+        if (!spec.title.trim()) return;
 
-        order: index, // ✅ SAVE ORDER
+        const existingDoc = existingSnapshot.docs.find(
+          (d) => d.data().title === spec.title,
+        );
 
-        specs: spec.specs
-          .filter((row) => row.specId.trim() !== "")
-          .map((row, rowIndex) => ({
+        const ref = existingDoc ? doc(specsRef, existingDoc.id) : doc(specsRef);
 
-            specId: row.specId.trim(),
+        batch.set(ref, {
+          title: spec.title,
 
-            value: row.value?.trim() || "",
+          order: index, // ✅ SAVE ORDER
 
-            order: rowIndex // ✅ SAVE ROW ORDER
+          specs: spec.specs
+            .filter((row) => row.specId.trim() !== "")
+            .map((row, rowIndex) => ({
+              specId: row.specId.trim(),
 
-          })),
+              value: row.value?.trim() || "",
 
-        isActive: true,
+              order: rowIndex, // ✅ SAVE ROW ORDER
+            })),
 
-        updatedAt: serverTimestamp(),
+          isActive: true,
 
+          updatedAt: serverTimestamp(),
+        });
       });
 
-    });
+      await batch.commit();
 
-    await batch.commit();
+      toast.success("Technical specifications saved successfully");
+    } catch (error) {
+      console.error(error);
 
-    toast.success("Technical specifications saved successfully");
-
-  } catch (error) {
-
-    console.error(error);
-
-    toast.error("Failed to save technical specifications");
-
-  }
-};
+      toast.error("Failed to save technical specifications");
+    }
+  };
 
   const handleSaveProduct = async () => {
     if (saving) return;
@@ -1106,7 +1100,7 @@ const syncSpecsToProductType = async () => {
 
         pricePoint,
         brandOrigin,
-        
+
         brandId: selectedBrand.id,
         brandName: selectedBrand.name,
 
@@ -1128,45 +1122,41 @@ const syncSpecsToProductType = async () => {
               }))
             : [],
 
-        productTypes:
-          selectedProductType && selectedCategoryTypes.length > 0
+        productFamilies:
+          selectedProductFamily && selectedCategoryTypes.length > 0
             ? [
                 {
-                  productTypeId: selectedProductType.id || "",
-                  productTypeName: selectedProductType.name || "",
+                  productFamilyId: selectedProductFamily.id || "",
+                  productFamilyName: selectedProductFamily.name || "",
                   categoryTypeId:
-                    selectedProductType.categoryTypeId ||
+                    selectedProductFamily.categoryTypeId ||
                     selectedCategoryTypes[0].id ||
                     "",
                 },
               ]
             : [],
 
-technicalSpecifications: technicalSpecs
-  .filter((spec) => spec.title.trim() !== "")
-  .map((spec, index) => ({
+        technicalSpecifications: technicalSpecs
+          .filter((spec) => spec.title.trim() !== "")
+          .map((spec, index) => ({
+            technicalSpecificationId: spec.id || "",
 
-    technicalSpecificationId: spec.id || "",
+            title: spec.title,
 
-    title: spec.title,
+            order: index, // ✅ SAVE TITLE ORDER
 
-    order: index, // ✅ SAVE TITLE ORDER
+            specs: spec.specs
+              .filter((row) => row.specId.trim() !== "")
+              .map((row, rowIndex) => ({
+                specId: row.specId.trim(),
 
-    specs: spec.specs
-      .filter((row) => row.specId.trim() !== "")
-      .map((row, rowIndex) => ({
+                value: row.value?.trim() || "",
 
-        specId: row.specId.trim(),
+                unit: row.unit || "",
 
-        value: row.value?.trim() || "",
-
-        unit: row.unit || "",
-
-        order: rowIndex // ✅ SAVE ROW ORDER
-
-      })),
-
-  })),
+                order: rowIndex, // ✅ SAVE ROW ORDER
+              })),
+          })),
 
         createdBy: userId,
         referenceID: user?.ReferenceID || null,
@@ -1368,14 +1358,14 @@ technicalSpecifications: technicalSpecs
 
               <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
                 {technicalSpecs.map((item, index) => (
-<Card
-  key={item.id || index}
-  draggable
-  onDragStart={() => handleTitleDragStart(index)}
-  onDragOver={handleDragOver}
-  onDrop={() => handleTitleDrop(index)}
-  className="p-4 space-y-4 border-2 border-blue-200 bg-blue-50 cursor-move"
->
+                  <Card
+                    key={item.id || index}
+                    draggable
+                    onDragStart={() => handleTitleDragStart(index)}
+                    onDragOver={handleDragOver}
+                    onDrop={() => handleTitleDrop(index)}
+                    className="p-4 space-y-4 border-2 border-blue-200 bg-blue-50 cursor-move"
+                  >
                     {/* TITLE */}
 
                     <div className="space-y-1">
@@ -1393,12 +1383,12 @@ technicalSpecifications: technicalSpecs
 
                         {item.id &&
                         classificationType &&
-                        selectedProductType &&
+                        selectedProductFamily &&
                         selectedCategoryTypes.length === 1 ? (
                           <AddProductDeleteTechnicalSpecification
                             classificationId={classificationType.id}
                             categoryTypeId={selectedCategoryTypes[0].id}
-                            productTypeId={selectedProductType.id}
+                            productFamilyId={selectedProductFamily?.id || ""}
                             technicalSpecificationId={item.id}
                             title={item.title}
                             referenceID={user?.ReferenceID || ""}
@@ -1424,14 +1414,14 @@ technicalSpecifications: technicalSpecs
                     {/* SPEC ROWS */}
 
                     {(item.specs || []).map((row, rIndex) => (
-<div
-  key={rIndex}
-  draggable
-  onDragStart={() => handleRowDragStart(index, rIndex)}
-  onDragOver={handleDragOver}
-  onDrop={() => handleRowDrop(index, rIndex)}
-  className="space-y-2 border-2 border-orange-200 rounded-md p-3 bg-orange-50 cursor-move"
->
+                      <div
+                        key={rIndex}
+                        draggable
+                        onDragStart={() => handleRowDragStart(index, rIndex)}
+                        onDragOver={handleDragOver}
+                        onDrop={() => handleRowDrop(index, rIndex)}
+                        className="space-y-2 border-2 border-orange-200 rounded-md p-3 bg-orange-50 cursor-move"
+                      >
                         {/* HEADER */}
 
                         <div className="grid grid-cols-[1fr_1fr_120px] gap-2">
@@ -1735,20 +1725,20 @@ technicalSpecifications: technicalSpecs
             </CardContent>
           </Card>
 
-          {/* SELECT PRODUCT TYPE */}
+          {/* SELECT PRODUCT FAMILY */}
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-sm">
-                SELECT PRODUCT TYPE
+                SELECT PRODUCT FAMILY
               </CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between gap-2">
-                <Label>Select Product Type</Label>
+                <Label>Select Product Family</Label>
                 <Input
-                  value={productTypeSearch}
-                  onChange={(e) => setProductTypeSearch(e.target.value)}
+                  value={productFamilySearch}
+                  onChange={(e) => setProductFamilySearch(e.target.value)}
                   placeholder="Search product type..."
                   className="h-8 w-[160px]"
                   disabled={selectedCategoryTypes.length === 0}
@@ -1779,7 +1769,7 @@ technicalSpecifications: technicalSpecs
               </div>
 
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {filteredProductTypes.map((item) => (
+                {filteredProductFamilies.map((item: ProductFamily) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between gap-2"
@@ -1788,8 +1778,8 @@ technicalSpecifications: technicalSpecs
                       <input
                         type="radio"
                         name="productType"
-                        checked={selectedProductType?.id === item.id}
-                        onChange={() => selectProductType(item)}
+                        checked={selectedProductFamily?.id === item.id}
+                        onChange={() => selectProductFamily(item)}
                       />
                       <span className="text-sm">{item.name}</span>
                     </div>

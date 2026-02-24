@@ -18,101 +18,151 @@ import {
 import { Button } from "@/components/ui/button";
 
 /* ---------------- Types ---------------- */
+
 type Props = {
+
   classificationId: string;
+
   categoryTypeId: string;
-  productTypeId: string;
+
+  productFamilyId: string; // ✅ FIXED
 
   technicalSpecificationId: string;
+
   title: string;
 
-  referenceID: string; // 🔑 who performed the delete
+  referenceID: string;
+
 };
 
-/* 🔥 CTRL + F: AddProductDeleteTechnicalSpecification */
 export default function AddProductDeleteTechnicalSpecification({
+
   classificationId,
+
   categoryTypeId,
-  productTypeId,
+
+  productFamilyId,
+
   technicalSpecificationId,
+
   title,
+
   referenceID,
+
 }: Props) {
+
   const [open, setOpen] = useState(false);
+
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
+
     try {
+
       setDeleting(true);
 
-      /* 🔁 CTRL + F: technicalSpecifications path */
       await updateDoc(
+
         doc(
+
           db,
+
           "classificationTypes",
+
           classificationId,
+
           "categoryTypes",
+
           categoryTypeId,
-          "productTypes",
-          productTypeId,
+
+          "productFamilies", // ✅ FIXED
+
+          productFamilyId,
+
           "technicalSpecifications",
+
           technicalSpecificationId
+
         ),
+
         {
+
           isActive: false,
+
           deletedBy: referenceID,
+
           deletedAt: serverTimestamp(),
+
         }
+
       );
 
       toast.success("Technical specification deleted");
+
       setOpen(false);
+
     } catch (error) {
-      console.error("DELETE TECHNICAL SPEC ERROR:", error);
+
+      console.error(error);
+
       toast.error("Failed to delete technical specification");
+
     } finally {
+
       setDeleting(false);
+
     }
+
   };
 
   return (
+
     <Dialog open={open} onOpenChange={setOpen}>
+
       <DialogTrigger asChild>
+
         <Button size="icon" variant="outline">
+
           <Minus className="h-4 w-4" />
+
         </Button>
+
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent>
+
         <DialogHeader>
+
           <DialogTitle>Delete Technical Specification</DialogTitle>
+
         </DialogHeader>
 
-        <p className="text-sm text-muted-foreground">
-          Are you sure you want to delete{" "}
-          <span className="font-semibold">{title}</span>?
-          <br />
-          This action can be restored later.
+        <p>
+
+          Delete <b>{title}</b> ?
+
         </p>
 
-        <DialogFooter className="gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => setOpen(false)}
-            disabled={deleting}
-          >
+        <DialogFooter>
+
+          <Button onClick={() => setOpen(false)}>
+
             Cancel
+
           </Button>
 
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={deleting}
-          >
-            {deleting ? "Deleting..." : "Delete"}
+          <Button variant="destructive" onClick={handleDelete}>
+
+            Delete
+
           </Button>
+
         </DialogFooter>
+
       </DialogContent>
+
     </Dialog>
+
   );
+
 }

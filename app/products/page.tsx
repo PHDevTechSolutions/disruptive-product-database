@@ -85,7 +85,7 @@ export default function ProductsPage() {
       ) : products.length === 0 ? (
           <p className="text-center text-muted-foreground">No products available</p>
         ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-6">
 
           <div>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
