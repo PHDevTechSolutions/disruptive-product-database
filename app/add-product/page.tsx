@@ -733,9 +733,49 @@ useEffect(() => {
     });
   };
 
-  const selectProductFamily = (item: ProductFamily) => {
-    setSelectedProductFamily(item);
-  };
+const selectProductFamily = async (item: ProductFamily) => {
+
+  setSelectedProductFamily(item);
+
+  if (selectedCategoryTypes.length !== 1) return;
+
+  const productUsageId = selectedCategoryTypes[0].id;
+
+  const specsRef = collection(
+    db,
+    "categoryTypes",
+    productUsageId,
+    "productFamilies",
+    item.id,
+    "technicalSpecifications"
+  );
+
+  const q = query(
+    specsRef,
+    where("isActive", "==", true)
+  );
+
+  const snapshot = await getDocs(q);
+
+  const loadedSpecs: TechnicalSpecification[] = snapshot.docs.map(doc => {
+
+    const data = doc.data();
+
+    return {
+
+      id: doc.id,
+
+      title: data.title,
+
+      specs: data.specs || [],
+
+    };
+
+  });
+
+  setTechnicalSpecs(loadedSpecs);
+
+};
 
   const handleAddProductType = async () => {
     if (!newProductType.trim()) return;
@@ -1345,9 +1385,11 @@ useEffect(() => {
 
                     <div className="flex gap-1">
                       <AddProductSelectProductType
+
                         item={item}
                       />
                       <AddProductDeleteProductType
+
                         item={item}
                         referenceID={user?.ReferenceID || ""}
                       />

@@ -4,6 +4,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Minus, ImagePlus, Pencil } from "lucide-react";
+import { useRef } from "react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -40,24 +41,20 @@ import {
   updateDoc,
   onSnapshot,
   getDocs,
+  deleteDoc,
   writeBatch,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
 
 /* 🔹 EDIT COMPONENT */
-import AddProductSelectType from "@/components/add-product-edit-select-classifcation-type";
-
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
-
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
 
-import AddProductEditBrandType from "@/components/add-product-edit-sister-company-type";
-
-import AddProductDeleteBrand from "@/components/add-product-delete-select-sister-company";
-
 /* 🔹 DELETE (SOFT DELETE) COMPONENT */
-import AddProductDeleteClassification from "@/components/add-product-delete-select-classification-type";
+
 import AddProductDeleteProductType from "@/components/add-product-delete-select-category-type";
 import AddProductDeleteProduct from "@/components/add-product-delete-select-product";
 import AddProductDeleteTechnicalSpecification from "@/components/add-product-delete-technical-specification";
@@ -70,19 +67,14 @@ type UserData = {
   ReferenceID: string;
 };
 
-type TechSpecRow = {
-  specId: string;
-
+type TechnicalSpecRow = {
+  key: string;
   value: string;
-
-  unit: string;
 };
 
-type TechSpec = {
-  id?: string;
+type TechnicalSpecGroup = {
   title: string;
-  specs: TechSpecRow[];
-  units: string[];
+  specs: TechnicalSpecRow[];
 };
 
 type Classification = {
@@ -107,102 +99,29 @@ type Supplier = {
 
 export default function EditProductPage() {
   const router = useRouter();
+  const { userId } = useUser();
 
-  // ================== EDIT MODE: GET PRODUCT ID ==================
   const searchParams = new URLSearchParams(
     typeof window !== "undefined" ? window.location.search : "",
   );
 
   const productId = searchParams.get("id");
-  const { userId } = useUser();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
     null,
   );
+
   const [pricePoint, setPricePoint] = useState("");
   const [brandOrigin, setBrandOrigin] = useState("");
+
+  const isInitialLoad = useRef(true);
 
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [productName, setProductName] = useState("");
-
-  const emptyRow = {
-    specId: "",
-    value: "",
-    unit: "",
-  };
-
-  const [technicalSpecs, setTechnicalSpecs] = useState<TechSpec[]>([
-    {
-      title: "",
-      specs: [emptyRow],
-      units: [],
-    },
-  ]);
-
-  // ================= DRAG TITLE =================
-  const dragTitleIndex = React.useRef<number | null>(null);
-
-  const handleTitleDragStart = (index: number) => {
-    dragTitleIndex.current = index;
-  };
-
-  const handleTitleDrop = (dropIndex: number) => {
-    if (dragTitleIndex.current === null) return;
-
-    const copy = [...technicalSpecs];
-
-    const dragged = copy[dragTitleIndex.current];
-
-    copy.splice(dragTitleIndex.current, 1);
-
-    copy.splice(dropIndex, 0, dragged);
-
-    dragTitleIndex.current = null;
-
-    setTechnicalSpecs(copy);
-  };
-
-  // ================= DRAG SPEC ROW =================
-
-  const dragRowIndex = React.useRef<{
-    specIndex: number;
-    rowIndex: number;
-  } | null>(null);
-
-  const handleRowDragStart = (specIndex: number, rowIndex: number) => {
-    dragRowIndex.current = { specIndex, rowIndex };
-  };
-
-  const handleRowDrop = (specIndex: number, dropRowIndex: number) => {
-    if (!dragRowIndex.current) return;
-
-    const { specIndex: fromSpec, rowIndex: fromRow } = dragRowIndex.current;
-
-    if (fromSpec !== specIndex) return;
-
-    const copy = [...technicalSpecs];
-
-    const draggedRow = copy[specIndex].specs[fromRow];
-
-    copy[specIndex].specs.splice(fromRow, 1);
-
-    copy[specIndex].specs.splice(dropRowIndex, 0, draggedRow);
-
-    dragRowIndex.current = null;
-
-    setTechnicalSpecs(copy);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const hasLoadedProductSpecs = React.useRef(false);
-  // ✅ TRACK CURRENT PRODUCT TYPE FOR EDIT MODE
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -247,6 +166,106 @@ export default function EditProductPage() {
   const [productFamilies, setProductFamilies] = useState<ProductFamily[]>([]);
   const [selectedProductFamily, setSelectedProductFamily] =
     useState<ProductFamily | null>(null);
+
+  /* ===== TECHNICAL SPECIFICATIONS DEPENDENT ON PRODUCT TYPE ===== */
+
+  type SpecRow = {
+    specId: string;
+
+    unit: string;
+
+    isRanging: boolean;
+    isSlashing: boolean;
+    isDimension: boolean;
+    isRating: boolean;
+
+    // Default
+    value: string;
+
+    // Ranging
+    rangeFrom: string;
+    rangeTo: string;
+
+    // Slashing
+    slashValues: string[];
+
+    // Dimension
+    length: string;
+    width: string;
+    height: string;
+
+    // IP Rating
+    ipFirst: string;
+    ipSecond: string;
+  };
+
+  type TechnicalSpecification = {
+    id: string;
+    title: string;
+    specs: SpecRow[];
+  };
+
+  const [technicalSpecs, setTechnicalSpecs] = useState<
+    TechnicalSpecification[]
+  >([]);
+
+  const dragIndex = useRef<number | null>(null);
+
+  /* ================= DRAG SPEC ROW ================= */
+
+  const dragRow = useRef<{
+    specIndex: number;
+    rowIndex: number;
+  } | null>(null);
+
+  const handleRowDragStart = (specIndex: number, rowIndex: number) => {
+    dragRow.current = { specIndex, rowIndex };
+  };
+
+  const handleRowDrop = (specIndex: number, dropRowIndex: number) => {
+    if (!dragRow.current) return;
+
+    const { specIndex: fromSpec, rowIndex: fromRow } = dragRow.current;
+
+    if (fromSpec !== specIndex) return;
+
+    const copy = [...technicalSpecs];
+
+    const dragged = copy[specIndex].specs[fromRow];
+
+    copy[specIndex].specs.splice(fromRow, 1);
+
+    copy[specIndex].specs.splice(dropRowIndex, 0, dragged);
+
+    dragRow.current = null;
+
+    setTechnicalSpecs(copy);
+  };
+
+  const handleDragStart = (index: number) => {
+    dragIndex.current = index;
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (dropIndex: number) => {
+    if (dragIndex.current === null) return;
+
+    const copy = [...technicalSpecs];
+
+    const draggedItem = copy[dragIndex.current];
+
+    copy.splice(dragIndex.current, 1);
+
+    copy.splice(dropIndex, 0, draggedItem);
+
+    dragIndex.current = null;
+
+    setTechnicalSpecs(copy);
+  };
+
   const [productFamilySearch, setProductFamilySearch] = useState("");
   const [newProductType, setNewProductType] = useState("");
   type SelectedCategoryType = {
@@ -262,174 +281,6 @@ export default function EditProductPage() {
   const [categoryTypeSearch, setCategoryTypeSearch] = useState("");
 
   /* ---------------- Fetch User ---------------- */
-
-  // ================== LOAD EXISTING PRODUCT (EDIT MODE) ==================
-  useEffect(() => {
-    if (!productId) return;
-
-    hasLoadedProductSpecs.current = false;
-
-    const productRef = doc(db, "products", productId);
-
-    const unsubscribe = onSnapshot(
-      productRef,
-      (snap) => {
-        try {
-          if (!snap.exists()) {
-            toast.error("Product not found");
-            router.push("/products");
-            return;
-          }
-
-          const data: any = snap.data();
-
-          // ================= BASIC INFO =================
-          setProductName(data.productName || "");
-
-          // ================= SUPPLIER =================
-          if (data.supplier) {
-            setSelectedSupplier({
-              supplierId: data.supplier.supplierId,
-              company: data.supplier.company,
-            });
-          } else {
-            setSelectedSupplier(null);
-          }
-
-          // ================= PRICE POINT =================
-          setPricePoint(data.pricePoint || "");
-
-          // ================= BRAND ORIGIN =================
-          setBrandOrigin(data.brandOrigin || "");
-
-          // ================= BRAND =================
-          if (data.brandId) {
-            setSelectedBrand({
-              id: data.brandId,
-              name: data.brandName,
-            });
-          } else {
-            setSelectedBrand(null);
-          }
-
-          // ================= CLASSIFICATION =================
-          if (data.classificationId) {
-            setClassificationType({
-              id: data.classificationId,
-              name: data.classificationName,
-            });
-          } else {
-            setClassificationType(null);
-          }
-
-          // ================= TECHNICAL SPECIFICATIONS =================
-          if (Array.isArray(data.technicalSpecifications)) {
-            const mappedSpecs = data.technicalSpecifications.map(
-              (spec: any) => ({
-                id: spec.technicalSpecificationId || "",
-                title: spec.title || "",
-                specs: Array.isArray(spec.specs)
-                  ? spec.specs.map((row: any) => ({
-                      specId: row.specId || "",
-                      value: row.value || "",
-                      unit: row.unit || "",
-                    }))
-                  : [
-                      {
-                        specId: "",
-                        value: "",
-                        unit: "",
-                      },
-                    ],
-                units: [],
-              }),
-            );
-
-            setTechnicalSpecs(
-              mappedSpecs.length > 0
-                ? mappedSpecs
-                : [
-                    {
-                      id: "",
-                      title: "",
-                      specs: [
-                        {
-                          specId: "",
-                          value: "",
-                          unit: "",
-                        },
-                      ],
-                      units: [],
-                    },
-                  ],
-            );
-
-            hasLoadedProductSpecs.current = true;
-          }
-
-          // ================= CATEGORY TYPES =================
-          if (
-            Array.isArray(data.categoryTypes) &&
-            data.categoryTypes.length > 0
-          ) {
-            setSelectedCategoryTypes([
-              {
-                id: data.categoryTypes[0].productUsageId,
-                name: data.categoryTypes[0].categoryTypeName,
-              },
-            ]);
-          } else {
-            setSelectedCategoryTypes([]);
-          }
-
-          // ================= PRODUCT TYPES =================
-          if (
-            Array.isArray(data.productFamilies) &&
-            data.productFamilies.length > 0
-          ) {
-            const p = data.productFamilies[0];
-
-            setSelectedCategoryTypes([
-              {
-                id: p.productUsageId,
-                name:
-                  data.categoryTypes?.find(
-                    (c: any) => c.productUsageId === p.productUsageId,
-                  )?.categoryTypeName || "",
-              },
-            ]);
-
-            setSelectedProductFamily({
-              id: p.productFamilyId,
-              name: p.productFamilyName,
-              productUsageId: p.productUsageId,
-            });
-          } else {
-            setSelectedProductFamily(null);
-          }
-
-          // ================= IMAGE PREVIEW =================
-          if (data.mainImage?.url) {
-            setPreview(data.mainImage.url);
-          } else {
-            setPreview(null);
-          }
-        } catch (error) {
-          console.error("Product snapshot error:", error);
-        }
-      },
-      (error) => {
-        console.error("Firestore listener error:", error);
-        toast.error("Failed to load product");
-      },
-    );
-
-    // ✅ CLEANUP — VERY IMPORTANT
-    return () => {
-      unsubscribe();
-    };
-  }, [productId, router]);
-
   useEffect(() => {
     if (!userId) {
       router.push("/login");
@@ -454,17 +305,89 @@ export default function EditProductPage() {
     const q = query(collection(db, "suppliers"), where("isActive", "==", true));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map((docSnap) => ({
-        supplierId: docSnap.id,
-
-        company: docSnap.data().company,
+      const SUPPLIER_LIST = snapshot.docs.map((doc) => ({
+        supplierId: doc.id,
+        company: doc.data().company,
       }));
 
-      setSuppliers(list);
+      SUPPLIER_LIST.sort((a, b) => a.company.localeCompare(b.company));
+
+      setSuppliers(SUPPLIER_LIST);
     });
 
     return () => unsubscribe();
   }, []);
+
+  /* ================= LOAD PRODUCT DATA ================= */
+
+  useEffect(() => {
+    if (!productId) return;
+
+    const ref = doc(db, "products", productId);
+
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) {
+        toast.error("Product not found");
+
+        router.push("/products");
+
+        return;
+      }
+
+      const data: any = snap.data();
+
+      setProductName(data.productName || "");
+
+      setPricePoint(data.pricePoint || "");
+
+      setBrandOrigin(data.brandOrigin || "");
+
+      if (data.supplier) {
+        setSelectedSupplier({
+          supplierId: data.supplier.supplierId,
+          company: data.supplier.company,
+        });
+      }
+
+      if (data.mainImage?.url) {
+        setPreview(data.mainImage.url);
+      }
+
+      if (Array.isArray(data.categoryTypes)) {
+        setSelectedCategoryTypes(
+          data.categoryTypes.map((c: any) => ({
+            id: c.productUsageId,
+            name: c.categoryTypeName,
+          })),
+        );
+      }
+
+      if (
+        Array.isArray(data.productFamilies) &&
+        data.productFamilies.length > 0
+      ) {
+        const p = data.productFamilies[0];
+
+        setSelectedProductFamily({
+          id: p.productFamilyId,
+          name: p.productFamilyName,
+          productUsageId: p.productUsageId,
+        });
+      }
+
+      if (Array.isArray(data.technicalSpecifications)) {
+        setTechnicalSpecs(
+          data.technicalSpecifications.map((spec: any) => ({
+            id: spec.technicalSpecificationId,
+            title: spec.title,
+            specs: spec.specs,
+          })),
+        );
+      }
+    });
+
+    return () => unsub();
+  }, [productId]);
 
   /* ---------------- REAL-TIME SISTER COMPANIES ---------------- */
   useEffect(() => {
@@ -486,275 +409,68 @@ export default function EditProductPage() {
 
   /* ---------------- REAL-TIME CLASSIFICATIONS ---------------- */
 
-  /* ---------------- REAL-TIME PRODUCT TYPES (DEPENDS ON CLASSIFICATION) ---------------- */
-  useEffect(() => {
-    if (!classificationType) return;
-    if (!selectedProductFamily) return;
-    if (selectedCategoryTypes.length !== 1) return;
-
-    // ❗ IMPORTANT: only run AFTER product fully loaded
-    if (!hasLoadedProductSpecs.current) return;
-
-    const productUsageId = selectedCategoryTypes[0].id;
-
-    const unsubscribe = onSnapshot(
-      doc(db, "products", productId!),
-
-      (snap) => {
-        if (!snap.exists()) return;
-
-        const data: any = snap.data();
-
-        // if same product type → restore original saved specs
-        if (
-          data.productFamilies?.[0]?.productFamilyId ===
-          selectedProductFamily.id
-        ) {
-          if (Array.isArray(data.technicalSpecifications)) {
-            const mappedSpecs = data.technicalSpecifications.map(
-              (spec: any) => ({
-                id: spec.technicalSpecificationId || "",
-
-                title: spec.title || "",
-
-                specs: Array.isArray(spec.specs)
-                  ? spec.specs.map((row: any) => ({
-                      specId: row.specId || "",
-                      value: row.value || "",
-                      unit: row.unit || "",
-                    }))
-                  : [{ specId: "", value: "", unit: "" }],
-
-                units: [],
-              }),
-            );
-
-            setTechnicalSpecs(mappedSpecs);
-          }
-        } else {
-          // load specs from classificationTypes
-
-          const q = query(
-            collection(
-              db,
-
-              "classificationTypes",
-
-              classificationType.id,
-
-              "categoryTypes",
-
-              productUsageId,
-
-              "productFamilies",
-
-              selectedProductFamily.id,
-
-              "technicalSpecifications",
-            ),
-
-            where("isActive", "==", true),
-          );
-
-          getDocs(q).then((snapshot) => {
-            const fetchedSpecs = snapshot.docs.map((docSnap) => {
-              const data = docSnap.data();
-
-              return {
-                id: docSnap.id,
-
-                title: data.title || "",
-
-                specs: Array.isArray(data.specs)
-                  ? data.specs.map((row: any) => ({
-                      specId: row.specId || "",
-                      value: "",
-                      unit: "",
-                    }))
-                  : [{ specId: "", value: "", unit: "" }],
-
-                units: [],
-              };
-            });
-
-            setTechnicalSpecs(fetchedSpecs);
-          });
-        }
-      },
-    );
-
-    return () => unsubscribe();
-  }, [selectedProductFamily?.id]);
+  /* ================= PRODUCT FAMILY FETCH INDEPENDENT ================= */
 
   useEffect(() => {
-    if (!classificationType) return;
-    if (selectedCategoryTypes.length === 0) return;
+    if (selectedCategoryTypes.length === 0) {
+      setProductFamilies([]);
+      return;
+    }
 
     const unsubscribers = selectedCategoryTypes.map((cat) => {
       const q = query(
-        collection(
-          db,
-          "classificationTypes",
-          classificationType.id,
-          "categoryTypes",
-          cat.id,
-          "productFamilies",
-        ),
+        collection(db, "categoryTypes", cat.id, "productFamilies"),
         where("isActive", "==", true),
       );
 
       return onSnapshot(q, (snapshot) => {
-        const list = snapshot.docs
-          .map((docSnap) => ({
-            id: docSnap.id,
-            name: docSnap.data().name as string,
-            productUsageId: cat.id,
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name));
+        const list = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          name: doc.data().name,
+          productUsageId: cat.id,
+        }));
 
-        setProductFamilies((prev: ProductFamily[]) => {
-          const filtered = prev.filter(
-            (p: ProductFamily) => p.productUsageId !== cat.id,
-          );
-          const updated = [...filtered, ...list];
-
-          // ✅ RESTORE SELECTED PRODUCT TYPE PROPERLY
-          if (selectedProductFamily) {
-            const match = updated.find(
-              (p) => p.id === selectedProductFamily.id,
-            );
-
-            if (match) {
-              setSelectedProductFamily(match);
-            }
-          }
-
-          return updated;
+        setProductFamilies((prev) => {
+          const filtered = prev.filter((p) => p.productUsageId !== cat.id);
+          return [...filtered, ...list];
         });
       });
     });
 
     return () => unsubscribers.forEach((u) => u());
-  }, [
-    selectedCategoryTypes.map((c) => c.id).join(","),
-    classificationType?.id,
-  ]);
-  useEffect(() => {
-    setCategoryTypes([]);
-    setSelectedProductFamily(null);
-
-    if (!classificationType) return;
-
-    const selected = classificationTypes.find(
-      (c) => c.id === classificationType.id,
-    );
-    if (!selected) return;
-
-    const q = query(
-      collection(db, "classificationTypes", selected.id, "categoryTypes"),
-      where("isActive", "==", true),
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs
-        .map((docSnap) => ({
-          id: docSnap.id,
-          name: docSnap.data().name as string,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-      setCategoryTypes(list);
-
-      // 🟢 IMPORTANT: Restore selected category type if existing
-      setSelectedCategoryTypes((prev) =>
-        prev.filter((p) => list.some((l) => l.id === p.id)),
-      );
-    });
-
-    return () => unsubscribe();
-  }, [classificationType, classificationTypes]);
-
-  useEffect(() => {
-    const q = query(
-      collection(db, "classificationTypes"),
-      where("isActive", "==", true),
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const types = snapshot.docs
-        .map((docSnap) => ({
-          id: docSnap.id,
-          name: docSnap.data().name as string,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-      setClassificationTypes(types);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  /* ================= NUMBER FORMATTERS ================= */
-  const formatPHP = (value: number, decimals = 2) => {
-    return value.toLocaleString("en-PH", {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    });
-  };
-
-  const uploadToCloudinary = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const res = await fetch("/api/upload-product", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!res.ok) throw new Error("Cloudinary upload failed");
-
-    const data = await res.json();
-
-    if (!data.secure_url || !data.public_id) {
-      throw new Error("Invalid Cloudinary response");
-    }
-
-    return data;
-  };
-
-  const updateTitle = (index: number, value: string) => {
-    setTechnicalSpecs((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, title: value } : item)),
-    );
-  };
-
-  const updateSpecField = (
-    specIndex: number,
-    rowIndex: number,
-    field: keyof TechSpecRow,
-    value: any,
-  ) => {
-    setTechnicalSpecs((prev) =>
-      prev.map((item, i) =>
-        i === specIndex
-          ? {
-              ...item,
-              specs: item.specs.map((row, r) =>
-                r === rowIndex ? { ...row, [field]: value } : row,
-              ),
-            }
-          : item,
-      ),
-    );
-  };
+  }, [selectedCategoryTypes]);
 
   const addTechnicalSpec = () => {
     setTechnicalSpecs((prev) => [
       ...prev,
       {
+        id: "",
         title: "",
-        specs: [emptyRow],
-        units: [],
+        specs: [
+          {
+            specId: "",
+            unit: "",
+
+            isRanging: false,
+            isSlashing: false,
+            isDimension: false,
+            isRating: false,
+
+            value: "",
+
+            rangeFrom: "",
+            rangeTo: "",
+
+            slashValues: [""],
+
+            length: "",
+            width: "",
+            height: "",
+
+            ipFirst: "",
+            ipSecond: "",
+          },
+        ],
       },
     ]);
   };
@@ -765,11 +481,115 @@ export default function EditProductPage() {
     );
   };
 
-  const addSpecRow = (index: number) => {
+  const updateTitle = (index: number, value: string) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, title: value } : item)),
+    );
+  };
+
+  const addSpecRow = (specIndex: number) => {
     setTechnicalSpecs((prev) =>
       prev.map((item, i) =>
-        i === index
-          ? { ...item, specs: [...item.specs, { ...emptyRow }] }
+        i === specIndex
+          ? {
+              ...item,
+              specs: [
+                ...item.specs,
+                {
+                  specId: "",
+                  unit: "",
+
+                  isRanging: false,
+                  isSlashing: false,
+                  isDimension: false,
+                  isRating: false,
+
+                  value: "",
+
+                  rangeFrom: "",
+                  rangeTo: "",
+
+                  slashValues: [""],
+
+                  length: "",
+                  width: "",
+                  height: "",
+
+                  ipFirst: "",
+                  ipSecond: "",
+                },
+              ],
+            }
+          : item,
+      ),
+    );
+  };
+
+  const toggleMode = (
+    specIndex: number,
+    rowIndex: number,
+    mode: "isRanging" | "isSlashing" | "isDimension" | "isRating",
+  ) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
+        i === specIndex
+          ? {
+              ...item,
+              specs: item.specs.map((row, r) => {
+                if (r !== rowIndex) return row;
+
+                // If the clicked mode is already active → TURN EVERYTHING OFF
+                const isCurrentlyActive = row[mode];
+
+                if (isCurrentlyActive) {
+                  return {
+                    ...row,
+
+                    isRanging: false,
+                    isSlashing: false,
+                    isDimension: false,
+                    isRating: false,
+
+                    // Clear special fields
+                    rangeFrom: "",
+                    rangeTo: "",
+                    slashValues: [""],
+                    length: "",
+                    width: "",
+                    height: "",
+                    ipFirst: "",
+                    ipSecond: "",
+                  };
+                }
+
+                // Otherwise activate ONLY the selected mode
+                return {
+                  ...row,
+
+                  isRanging: mode === "isRanging",
+                  isSlashing: mode === "isSlashing",
+                  isDimension: mode === "isDimension",
+                  isRating: mode === "isRating",
+
+                  // Auto clear value fields when switching modes
+                  value: "",
+                  rangeFrom: "",
+                  rangeTo: "",
+                  slashValues: [""],
+                  length: "",
+                  width: "",
+                  height: "",
+                  ipFirst: "",
+                  ipSecond: "",
+
+                  // Auto remove unit if slashing or IP Rating
+                  unit:
+                    mode === "isSlashing" || mode === "isRating"
+                      ? ""
+                      : row.unit,
+                };
+              }),
+            }
           : item,
       ),
     );
@@ -791,6 +611,157 @@ export default function EditProductPage() {
     );
   };
 
+  const updateSpecField = (
+    specIndex: number,
+    rowIndex: number,
+    field:
+      | "specId"
+      | "value"
+      | "unit"
+      | "rangeFrom"
+      | "rangeTo"
+      | "length"
+      | "width"
+      | "height"
+      | "ipFirst"
+      | "ipSecond",
+    value: string,
+  ) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
+        i === specIndex
+          ? {
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex ? { ...row, [field]: value } : row,
+              ),
+            }
+          : item,
+      ),
+    );
+  };
+
+  /* ================= PRODUCT USAGE FETCH FINAL ================= */
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "categoryTypes"),
+
+      where("isActive", "==", true),
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map((doc) => ({
+        id: doc.id,
+
+        name: doc.data().name,
+      }));
+
+      setCategoryTypes(list);
+    });
+
+    return () => unsub();
+  }, []);
+
+  const syncSpecsToProductType = async () => {
+    if (!selectedProductFamily) return;
+
+    if (selectedCategoryTypes.length !== 1) return;
+
+    const productUsageId = selectedCategoryTypes[0].id;
+
+    const specsRef = collection(
+      db,
+
+      "categoryTypes",
+
+      productUsageId,
+
+      "productFamilies",
+
+      selectedProductFamily.id,
+
+      "technicalSpecifications",
+    );
+
+    const batch = writeBatch(db);
+
+    technicalSpecs.forEach((spec) => {
+      if (!spec.title.trim()) return;
+
+      const ref = doc(specsRef);
+
+      batch.set(ref, {
+        title: spec.title,
+
+        specs: spec.specs,
+
+        isActive: true,
+
+        createdAt: serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
+
+    toast.success("Specs Saved");
+  };
+
+  /* ================= NUMBER FORMATTERS ================= */
+  const formatPHP = (value: number, decimals = 2) => {
+    return value.toLocaleString("en-PH", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  };
+
+  const addSlashValue = (specIndex: number, rowIndex: number) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
+        i === specIndex
+          ? {
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex
+                  ? {
+                      ...row,
+                      slashValues: [...row.slashValues, ""],
+                    }
+                  : row,
+              ),
+            }
+          : item,
+      ),
+    );
+  };
+
+  const removeSlashValue = (
+    specIndex: number,
+    rowIndex: number,
+    slashIndex: number,
+  ) => {
+    setTechnicalSpecs((prev) =>
+      prev.map((item, i) =>
+        i === specIndex
+          ? {
+              ...item,
+              specs: item.specs.map((row, r) =>
+                r === rowIndex
+                  ? {
+                      ...row,
+                      slashValues:
+                        row.slashValues.length > 1
+                          ? row.slashValues.filter((_, si) => si !== slashIndex)
+                          : row.slashValues,
+                    }
+                  : row,
+              ),
+            }
+          : item,
+      ),
+    );
+  };
+
   const handleImageChange = (file: File | null) => {
     if (!file) return;
     setMainImage(file);
@@ -798,74 +769,23 @@ export default function EditProductPage() {
     setPreview(URL.createObjectURL(file));
   };
 
-  useEffect(() => {
-    return () => {
-      if (preview && preview.startsWith("blob:")) {
-        URL.revokeObjectURL(preview);
-      }
-    };
-  }, [preview]);
-
-  /* ---------------- Classification Handlers ---------------- */
-  const handleAddClassification = async () => {
-    if (!newClassification.trim()) return;
-
-    if (classificationTypes.some((c) => c.name === newClassification.trim())) {
-      toast.error("Classification already exists");
-      return;
-    }
-
-    await addDoc(collection(db, "classificationTypes"), {
-      name: newClassification.trim(),
-      isActive: true,
-    });
-
-    setNewClassification("");
-  };
-
-  /* ---------------- Sister Company Handlers ---------------- */
-  const handleAddBrand = async () => {
-    if (!newBrand.trim()) return;
-
-    if (brands.some((s) => s.name === newBrand.trim())) {
-      toast.error("Brand already exists");
-      return;
-    }
-
-    await addDoc(collection(db, "brands"), {
-      name: newBrand.trim(),
-      isActive: true,
-      createdAt: serverTimestamp(),
-    });
-
-    setNewBrand("");
-  };
-  /* ---------------- Product Type Handlers ---------------- */
   const handleAddCategoryType = async () => {
-    if (!newCategoryType.trim() || !classificationType) return;
-
-    const selected = classificationTypes.find(
-      (c) => c.id === classificationType.id,
-    );
-    if (!selected) return;
-
-    if (categoryTypes.some((p) => p.name === newCategoryType.trim())) {
-      toast.error("Product type already exists");
-      return;
-    }
+    if (!newCategoryType.trim()) return;
 
     await addDoc(
-      collection(db, "classificationTypes", selected.id, "categoryTypes"),
+      collection(db, "categoryTypes"),
+
       {
         name: newCategoryType.trim(),
+
         isActive: true,
+
         createdAt: serverTimestamp(),
       },
     );
 
     setNewCategoryType("");
   };
-
   const handleRemoveCategoryType = async (_item: CategoryType) => {
     // UI ONLY – no soft delete logic
     return;
@@ -877,55 +797,76 @@ export default function EditProductPage() {
 
       if (isSame) {
         setSelectedProductFamily(null);
-        setSelectedProductFamily(null);
+        setProductFamilies([]);
         return [];
       }
 
       setSelectedProductFamily(null);
-      setSelectedProductFamily(null);
+      setProductFamilies([]);
 
       return [item];
     });
   };
 
-  const selectProductFamily = (item: ProductFamily) => {
-    setSelectedProductFamily(item);
-  };
+const selectProductFamily = async (item: ProductFamily) => {
+
+  setSelectedProductFamily(item);
+
+  if (selectedCategoryTypes.length !== 1) return;
+
+  const productUsageId = selectedCategoryTypes[0].id;
+
+  const specsRef = collection(
+    db,
+    "categoryTypes",
+    productUsageId,
+    "productFamilies",
+    item.id,
+    "technicalSpecifications"
+  );
+
+  const q = query(
+    specsRef,
+    where("isActive", "==", true)
+  );
+
+  const snapshot = await getDocs(q);
+
+  const loadedSpecs: TechnicalSpecification[] = snapshot.docs.map(doc => {
+
+    const data = doc.data();
+
+    return {
+
+      id: doc.id,
+
+      title: data.title,
+
+      specs: data.specs || [],
+
+    };
+
+  });
+
+  setTechnicalSpecs(loadedSpecs);
+
+};
 
   const handleAddProductType = async () => {
     if (!newProductType.trim()) return;
-    if (!classificationType) return;
-    if (selectedCategoryTypes.length !== 1) {
-      toast.error("Select exactly one category type to add a product type");
-      return;
-    }
+
+    if (selectedCategoryTypes.length !== 1) return;
 
     const productUsageId = selectedCategoryTypes[0].id;
 
-    // Prevent duplicate
-    if (
-      productFamilies.some(
-        (p) =>
-          p.name === newProductType.trim() &&
-          p.productUsageId === productUsageId,
-      )
-    ) {
-      toast.error("Product type already exists");
-      return;
-    }
-
     await addDoc(
-      collection(
-        db,
-        "classificationTypes",
-        classificationType.id,
-        "categoryTypes",
-        productUsageId,
-        "productFamilies",
-      ),
+      collection(db, "categoryTypes", productUsageId, "productFamilies"),
+
       {
         name: newProductType.trim(),
+
         isActive: true,
+
         createdAt: serverTimestamp(),
       },
     );
@@ -938,11 +879,38 @@ export default function EditProductPage() {
     return;
   };
 
+  const uploadToCloudinary = async (file: File) => {
+    const formData = new FormData();
+
+    formData.append("file", file);
+
+    const res = await fetch("/api/upload-product", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new Error("Cloudinary upload failed");
+    }
+
+    const data = await res.json();
+
+    if (!data.secure_url || !data.public_id) {
+      throw new Error("Invalid Cloudinary response");
+    }
+
+    return data;
+  };
+
   const uploadProductMedia = async (productId: string) => {
     try {
       if (!mainImage) return;
 
       const result = await uploadToCloudinary(mainImage);
+
+      if (!result.secure_url) {
+        throw new Error("Upload failed");
+      }
 
       await updateDoc(doc(db, "products", productId), {
         mainImage: {
@@ -959,7 +927,6 @@ export default function EditProductPage() {
       });
     }
   };
-
   const filteredClassifications = React.useMemo(() => {
     return classificationTypes.filter((item) =>
       item.name.toLowerCase().includes(classificationSearch.toLowerCase()),
@@ -992,68 +959,36 @@ export default function EditProductPage() {
 
   /* ---------------- Save Product ---------------- */
 
-  /* ===== SAFE LOGISTICS PAYLOAD (FIRESTORE SAFE) ===== */
-
-  const syncSpecsToProductType = async () => {
-    if (!classificationType) return;
-    if (!selectedProductFamily) return;
-    if (selectedCategoryTypes.length !== 1) return;
-
+  /* ===== GENERATE UNIQUE PRODUCT REFERENCE ID ===== */
+  const generateProductReferenceID = async () => {
     try {
-      const productUsageId = selectedCategoryTypes[0].id;
-
-      const specsRef = collection(
-        db,
-        "classificationTypes",
-        classificationType.id,
-        "categoryTypes",
-        productUsageId,
-        "productFamilies",
-        selectedProductFamily.id,
-        "technicalSpecifications",
+      const q = query(
+        collection(db, "products"),
+        orderBy("createdAt", "desc"),
+        limit(1),
       );
 
-      const existingSnapshot = await getDocs(specsRef);
+      const snapshot = await getDocs(q);
 
-      const batch = writeBatch(db);
+      if (snapshot.empty) {
+        return "PROD-SPF-00001";
+      }
 
-      technicalSpecs.forEach((spec, index) => {
-        if (!spec.title.trim()) return;
+      const lastProduct = snapshot.docs[0].data();
+      const lastRef: string =
+        lastProduct.productReferenceID || "PROD-SPF-00000";
 
-        const existingDoc = existingSnapshot.docs.find(
-          (d) => d.data().title === spec.title,
-        );
+      // Extract only the numeric part after PROD-SPF-
+      const lastNumber = parseInt(lastRef.replace("PROD-SPF-", ""), 10);
 
-        const ref = existingDoc ? doc(specsRef, existingDoc.id) : doc(specsRef);
+      const newNumber = lastNumber + 1;
 
-        batch.set(ref, {
-          title: spec.title,
-
-          order: index, // ✅ SAVE ORDER
-
-          specs: spec.specs
-            .filter((row) => row.specId.trim() !== "")
-            .map((row, rowIndex) => ({
-              specId: row.specId.trim(),
-
-              value: row.value?.trim() || "",
-
-              order: rowIndex, // ✅ SAVE ROW ORDER
-            })),
-
-          isActive: true,
-
-          updatedAt: serverTimestamp(),
-        });
-      });
-
-      await batch.commit();
-
-      toast.success("Technical specifications saved successfully");
+      return `PROD-SPF-${newNumber.toString().padStart(5, "0")}`;
     } catch (error) {
-      console.error(error);
+      console.error("Error generating productReferenceID:", error);
 
-      toast.error("Failed to save technical specifications");
+      // Fallback format if something goes wrong
+      return `PROD-SPF-${Date.now().toString().slice(-5)}`;
     }
   };
 
@@ -1081,93 +1016,72 @@ export default function EditProductPage() {
         return;
       }
 
+
       // ================= CLOUDINARY UPLOAD =================
 
-      // MAIN IMAGE
-      // 🔥 INSTANT SAVE — NO MEDIA WAIT
       const productRef = doc(db, "products", productId!);
 
-      const updatePayload: any = {
+      await updateDoc(productRef, {
+
         productName,
 
         pricePoint,
         brandOrigin,
-
-
 
         supplier: {
           supplierId: selectedSupplier.supplierId,
           company: selectedSupplier.company,
         },
 
-        /* ===== FIX: ALWAYS SAVE CATEGORY TYPE & PRODUCT TYPE ===== */
+        productFamilies: selectedProductFamily
+          ? [
+              {
+                productFamilyId: selectedProductFamily.id,
+                productFamilyName: selectedProductFamily.name,
+                productUsageId: selectedProductFamily.productUsageId,
+              },
+            ]
+          : [],
 
-        categoryTypes:
-          selectedCategoryTypes.length > 0
-            ? selectedCategoryTypes.map((c) => ({
-                productUsageId: c.id || "",
-                categoryTypeName: c.name || "",
-              }))
-            : [],
-
-        productFamilies:
-          selectedProductFamily && selectedCategoryTypes.length > 0
-            ? [
-                {
-                  productFamilyId: selectedProductFamily.id || "",
-                  productFamilyName: selectedProductFamily.name || "",
-                  productUsageId:
-                    selectedProductFamily.productUsageId ||
-                    selectedCategoryTypes[0].id ||
-                    "",
-                },
-              ]
-            : [],
+        categoryTypes: selectedCategoryTypes.map((c) => ({
+          productUsageId: c.id,
+          categoryTypeName: c.name,
+        })),
 
         technicalSpecifications: technicalSpecs
           .filter((spec) => spec.title.trim() !== "")
-          .map((spec, index) => ({
+          .map((spec) => ({
             technicalSpecificationId: spec.id || "",
-
             title: spec.title,
-
-            order: index, // ✅ SAVE TITLE ORDER
-
             specs: spec.specs
               .filter((row) => row.specId.trim() !== "")
-              .map((row, rowIndex) => ({
+              .map((row) => ({
                 specId: row.specId.trim(),
 
+                // ✅ FIX HERE
                 value: row.value?.trim() || "",
-
-                unit: row.unit || "",
-
-                order: rowIndex, // ✅ SAVE ROW ORDER
               })),
           })),
 
+...(mainImage && { mediaStatus:"pending" }),
+
         createdBy: userId,
         referenceID: user?.ReferenceID || null,
-        isActive: true,
-        createdAt: serverTimestamp(),
-      };
 
-      // ONLY reset media fields IF NEW FILES ARE ACTUALLY ADDED
-      if (mainImage) {
-        updatePayload.mediaStatus = "pending";
-      }
-      await updateDoc(productRef, updatePayload);
+        isActive: true,
+
+        updatedAt: serverTimestamp(),
+      });
+
+if(mainImage) uploadProductMedia(productId!);
 
       toast.success("Product saved successfully");
-      router.push("/products");
 
-      // 🚀 background upload (wag hintayin)
-      uploadProductMedia(productId!);
+      router.push("/products");
     } catch (error) {
-      console.error("SAVE PRODUCT ERROR:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save product",
-      );
+      console.error(error);
+
+      toast.error("Failed to save product");
     } finally {
       setSaving(false);
     }
@@ -1176,11 +1090,11 @@ export default function EditProductPage() {
   if (loading) return null;
 
   return (
-    <div className="h-dvh overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
+    <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
       <SidebarTrigger className="hidden md:flex" />
 
       <h1 className="text-2xl font-bold">
-        Edit Product –
+       Edit Product –  {user?.Firstname} {user?.Lastname}
         <span className="ml-2 text-sm font-normal text-muted-foreground">
           ({user?.Role})
         </span>
@@ -1218,7 +1132,6 @@ export default function EditProductPage() {
                   )}
                   <input
                     type="file"
-                    accept="image/*"
                     className="hidden"
                     onChange={(e) =>
                       handleImageChange(e.target.files?.[0] || null)
@@ -1297,11 +1210,8 @@ export default function EditProductPage() {
                 className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
               >
                 <option value="">Select price point...</option>
-
                 <option value="Economy">Economy</option>
-
                 <option value="Mid-End">Mid-End</option>
-
                 <option value="High-End">High-End</option>
               </select>
             </div>
@@ -1316,16 +1226,15 @@ export default function EditProductPage() {
                 className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
               >
                 <option value="">Select brand origin...</option>
-
                 <option value="China">China</option>
-
                 <option value="Non-China">Non-China</option>
               </select>
             </div>
 
-            {/* ===== TECHNICAL SPECIFICATIONS (FULL EDITOR - EDIT MODE) ===== */}
+            {/* ===== TECHNICAL SPECIFICATIONS (EDITABLE) ===== */}
 
             <div className="space-y-3">
+              {/* ---- STICKY HEADER (NOT SCROLLABLE) ---- */}
               <div className="flex justify-between items-center bg-white sticky top-0 z-10 pb-2">
                 <Label>Technical Specifications</Label>
 
@@ -1344,18 +1253,18 @@ export default function EditProductPage() {
                 </div>
               </div>
 
+              {/* ---- SCROLLABLE CONTENT ONLY ---- */}
               <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
                 {technicalSpecs.map((item, index) => (
                   <Card
-                    key={item.id || index}
+                    key={index}
                     draggable
-                    onDragStart={() => handleTitleDragStart(index)}
+                    onDragStart={() => handleDragStart(index)}
                     onDragOver={handleDragOver}
-                    onDrop={() => handleTitleDrop(index)}
+                    onDrop={() => handleDrop(index)}
                     className="p-4 space-y-4 border-2 border-blue-200 bg-blue-50 cursor-move"
                   >
                     {/* TITLE */}
-
                     <div className="space-y-1">
                       <Label className="block w-full text-center text-xs font-bold uppercase text-orange-600 tracking-widest">
                         TECHNICAL SPECIFICATION TITLE
@@ -1376,7 +1285,7 @@ export default function EditProductPage() {
                           <AddProductDeleteTechnicalSpecification
                             classificationId={classificationType.id}
                             productUsageId={selectedCategoryTypes[0].id}
-                            productFamilyId={selectedProductFamily?.id || ""}
+                            productFamilyId={selectedProductFamily.id}
                             technicalSpecificationId={item.id}
                             title={item.title}
                             referenceID={user?.ReferenceID || ""}
@@ -1385,13 +1294,9 @@ export default function EditProductPage() {
                           <Button
                             size="icon"
                             variant="outline"
-                            className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                            className="border-orange-400 text-orange-600 hover:bg-orange-100"
                             disabled={technicalSpecs.length === 1}
-                            onClick={() =>
-                              setTechnicalSpecs((prev) =>
-                                prev.filter((_, i) => i !== index),
-                              )
-                            }
+                            onClick={() => removeTechnicalSpec(index)}
                           >
                             <Minus />
                           </Button>
@@ -1399,20 +1304,18 @@ export default function EditProductPage() {
                       </div>
                     </div>
 
-                    {/* SPEC ROWS */}
-
-                    {(item.specs || []).map((row, rIndex) => (
+                    {/* SPECIFICATION ROW */}
+                    {item.specs.map((row, rIndex) => (
                       <div
                         key={rIndex}
                         draggable
                         onDragStart={() => handleRowDragStart(index, rIndex)}
-                        onDragOver={handleDragOver}
+                        onDragOver={(e) => e.preventDefault()}
                         onDrop={() => handleRowDrop(index, rIndex)}
                         className="space-y-2 border-2 border-orange-200 rounded-md p-3 bg-orange-50 cursor-move"
                       >
                         {/* HEADER */}
-
-                        <div className="grid grid-cols-[1fr_1fr_120px] gap-2">
+                        <div className="grid grid-cols-[2fr_1fr_120px] gap-2">
                           <Label className="block w-full text-center text-xs font-bold uppercase text-blue-700 tracking-widest">
                             SPECIFICATION
                           </Label>
@@ -1426,13 +1329,12 @@ export default function EditProductPage() {
                           </Label>
                         </div>
 
-                        {/* INPUT ROW */}
-
-                        <div className="grid grid-cols-[1fr_1fr_120px] gap-2 items-center">
+                        {/* INPUT */}
+                        <div className="grid grid-cols-[2fr_1fr_120px] gap-2 items-center">
                           <Input
                             className="border-blue-300 focus-visible:ring-blue-400 bg-white"
                             placeholder="Enter specification..."
-                            value={row.specId}
+                            value={row.specId ?? ""}
                             onChange={(e) =>
                               updateSpecField(
                                 index,
@@ -1446,7 +1348,7 @@ export default function EditProductPage() {
                           <Input
                             className="border-orange-300 focus-visible:ring-orange-400 bg-white"
                             placeholder="Enter value..."
-                            value={row.value}
+                            value={row.value ?? ""}
                             onChange={(e) =>
                               updateSpecField(
                                 index,
@@ -1489,7 +1391,7 @@ export default function EditProductPage() {
 
         {/* RIGHT */}
         <div className="space-y-6">
-          {/* CATEGORY TYPE */}
+          {/* PRODUCT USAGE */}
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-sm">
@@ -1503,9 +1405,8 @@ export default function EditProductPage() {
                 <Input
                   value={categoryTypeSearch}
                   onChange={(e) => setCategoryTypeSearch(e.target.value)}
-                  placeholder="Search product usage..."
+                  placeholder="Search Product Usage..."
                   className="h-8 w-[160px]"
-                  disabled={!classificationType}
                 />
               </div>
 
@@ -1514,13 +1415,11 @@ export default function EditProductPage() {
                   value={newCategoryType}
                   onChange={(e) => setNewCategoryType(e.target.value)}
                   placeholder="Add category type..."
-                  disabled={!classificationType}
                 />
                 <Button
                   size="icon"
                   variant="outline"
                   onClick={handleAddCategoryType}
-                  disabled={!classificationType}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -1552,9 +1451,7 @@ export default function EditProductPage() {
                     </div>
 
                     <div className="flex gap-1">
-                      <AddProductSelectProductType
-                        item={item}
-                      />
+                      <AddProductSelectProductType item={item} />
                       <AddProductDeleteProductType
                         item={item}
                         referenceID={user?.ReferenceID || ""}
@@ -1610,7 +1507,7 @@ export default function EditProductPage() {
               </div>
 
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {filteredProductFamilies.map((item: ProductFamily) => (
+                {filteredProductFamilies.map((item) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between gap-2"
@@ -1627,13 +1524,7 @@ export default function EditProductPage() {
 
                     {/* ACTION BUTTONS */}
                     <div className="flex gap-1">
-                      <AddProductEditSelectProduct
-                        item={{
-                          id: item.id,
-                          name: item.name,
-                          productUsageId: item.productUsageId,
-                        }}
-                      />
+                      <AddProductEditSelectProduct item={item} />
 
                       <AddProductDeleteProduct
                         item={{
