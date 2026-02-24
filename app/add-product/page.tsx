@@ -114,6 +114,7 @@ export default function AddProductPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
     null,
   );
+  const [noSupplier, setNoSupplier] = useState(false);
 
   const [pricePoint, setPricePoint] = useState("");
   const [brandOrigin, setBrandOrigin] = useState("");
@@ -930,10 +931,10 @@ export default function AddProductPage() {
         return;
       }
 
-      if (!selectedSupplier) {
-        toast.error("Please select a supplier");
-        return;
-      }
+if (!selectedSupplier && !noSupplier) {
+  toast.error("Please select a supplier");
+  return;
+}
 
       if (!pricePoint) {
         toast.error("Please select price point");
@@ -963,10 +964,12 @@ export default function AddProductPage() {
         pricePoint,
         brandOrigin,
 
-        supplier: {
-          supplierId: selectedSupplier.supplierId,
-          company: selectedSupplier.company,
-        },
+supplier: noSupplier
+  ? null
+  : {
+      supplierId: selectedSupplier!.supplierId,
+      company: selectedSupplier!.company,
+    },
 
         productFamilies: selectedProductFamily
           ? [
@@ -1088,15 +1091,40 @@ export default function AddProductPage() {
             </div>
             {/* ================= SUPPLIER SELECT ================= */}
             <div className="space-y-2">
-              <Label>Supplier / Company</Label>
+<Label>Supplier / Company</Label>
 
-              <Popover>
+{/* ✅ NO SUPPLIER CHECKBOX */}
+<div className="flex items-center gap-2 mb-2">
+  <input
+    type="checkbox"
+    checked={noSupplier}
+    onChange={(e) => {
+      const checked = e.target.checked;
+      setNoSupplier(checked);
+
+      if (checked) {
+        setSelectedSupplier(null);
+
+        // ✅ Force defaults
+        setPricePoint("Economy");
+        setBrandOrigin("China");
+      }
+    }}
+  />
+
+  <span className="text-sm text-muted-foreground">
+    Check if no supplier
+  </span>
+</div>
+
+<Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-[360px] justify-between" // 🔒 FIXED WIDTH
-                  >
+<Button
+  variant="outline"
+  role="combobox"
+  disabled={noSupplier}
+  className="w-[360px] justify-between"
+>
                     <span className="truncate text-left max-w-[85%]">
                       {selectedSupplier
                         ? selectedSupplier.company
@@ -1141,11 +1169,12 @@ export default function AddProductPage() {
             <div className="space-y-2">
               <Label>Price Point</Label>
 
-              <select
-                value={pricePoint}
-                onChange={(e) => setPricePoint(e.target.value)}
-                className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
-              >
+<select
+  value={noSupplier ? "Economy" : pricePoint}
+  disabled={noSupplier}
+  onChange={(e) => setPricePoint(e.target.value)}
+  className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
+>
                 <option value="">Select price point...</option>
                 <option value="Economy">Economy</option>
                 <option value="Mid-End">Mid-End</option>
@@ -1157,11 +1186,12 @@ export default function AddProductPage() {
             <div className="space-y-2">
               <Label>Brand Origin</Label>
 
-              <select
-                value={brandOrigin}
-                onChange={(e) => setBrandOrigin(e.target.value)}
-                className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
-              >
+<select
+  value={noSupplier ? "China" : brandOrigin}
+  disabled={noSupplier}
+  onChange={(e) => setBrandOrigin(e.target.value)}
+  className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
+>
                 <option value="">Select brand origin...</option>
                 <option value="China">China</option>
                 <option value="Non-China">Non-China</option>
