@@ -93,16 +93,6 @@ export function SidebarBottom() {
         </Link>
 
         <Link
-          href="/tds"
-          className={`flex flex-col items-center gap-1 text-xs ${
-            pathname === "/tds" ? "text-red-600" : "text-gray-600"
-          }`}
-        >
-          <FileText className="h-5 w-5" />
-          <span>TDS</span>
-        </Link>
-
-        <Link
           href="/history"
           className={`flex flex-col items-center gap-1 text-xs ${
             pathname === "/history" ? "text-red-600" : "text-gray-600"

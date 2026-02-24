@@ -87,22 +87,19 @@ const generateSupplierCode = (companyName: string) => {
 
 const safeSplit = (value: any) => {
   if (Array.isArray(value))
-    return value
-      .map(String)
-      .map((v) => v.trim())
-      .filter(Boolean);
+    return value.map(String).map(v => v.trim()).filter(Boolean);
 
   if (typeof value === "string")
     return value
-      .split("|")
-      .map((v) => v.trim())
+      .split(",")
+      .map(v => v.trim())
       .filter(Boolean);
 
   if (value == null) return [];
 
   return String(value)
-    .split("|")
-    .map((v) => v.trim())
+    .split(",")
+    .map(v => v.trim())
     .filter(Boolean);
 };
 

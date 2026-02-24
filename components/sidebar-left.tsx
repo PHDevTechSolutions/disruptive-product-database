@@ -107,13 +107,6 @@ export function SidebarLeft() {
         />
 
         <NavItem
-          href="/tds"
-          label="TDS"
-          icon={<FileText className="h-3.5 w-3.5" />}
-          active={pathname === "/tds"}
-        />
-
-        <NavItem
           href="/history"
           label="History"
           icon={<History className="h-3.5 w-3.5" />}

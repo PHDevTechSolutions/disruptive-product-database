@@ -291,18 +291,18 @@ export default function Suppliers() {
       "Certificate(s)",
     ];
 
-    const rows = filteredSuppliers.map((s) => [
-      s.company,
-      s.internalCode ?? "",
-      s.addresses?.join(" | ") ?? "",
-      s.emails?.join(" | ") ?? "",
-      s.website ?? "",
-      s.contacts?.map((c) => c.name).join(" | ") ?? "",
-      s.contacts?.map((c) => c.phone).join(" | ") ?? "",
-      s.forteProducts?.join(" | ") ?? "",
-      s.products?.join(" | ") ?? "",
-      s.certificates?.join(" | ") ?? "",
-    ]);
+const rows = filteredSuppliers.map((s) => [
+  s.company,
+  s.internalCode?.join(", ") ?? "",
+  s.addresses?.join(", ") ?? "",
+  s.emails?.join(", ") ?? "",
+  s.website?.join(", ") ?? "",
+  s.contacts?.map((c) => c.name).join(", ") ?? "",
+  s.contacts?.map((c) => c.phone).join(", ") ?? "",
+  s.forteProducts?.join(", ") ?? "",
+  s.products?.join(", ") ?? "",
+  s.certificates?.join(", ") ?? "",
+]);
 
     const csvContent = [headers, ...rows]
       .map((row) =>
