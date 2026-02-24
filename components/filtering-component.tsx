@@ -263,7 +263,7 @@ splitValues(d).forEach((v) => {
         Clear Filters
       </button>
 
-      <div className="space-y-3 max-h-[500px] overflow-y-auto">
+      <div className="space-y-3">
         <Section
           title="Brand"
           items={brands}

@@ -85,7 +85,7 @@ export default function ProductsPage() {
       ) : products.length === 0 ? (
           <p className="text-center text-muted-foreground">No products available</p>
         ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-6 items-start">
 
           <div>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -124,6 +124,7 @@ export default function ProductsPage() {
                         referenceID={userId ?? ""}
                         onDeleted={id => setProducts(prev => prev.filter(prod => prod.id !== id))}
                       />
+
                     </div>
 
                   </div>
@@ -137,15 +138,12 @@ export default function ProductsPage() {
                     <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Prev</Button>
                     <span className="text-sm px-3 py-2">Page {currentPage} of {totalPages}</span>
                     <Button size="sm" variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
-              </div>
+                  </div>
             )}
 
           </div>
 
-              {/* Added scrollable filtering component */}
-              <div className="space-y-3 max-h-[500px] overflow-y-auto"> {/* Fixed filter scroll behavior */}
-                <FilteringComponent products={products} onFilter={setFilteredProducts} />
-              </div>
+              <FilteringComponent products={products} onFilter={setFilteredProducts} />
 
             </div>
       )}
