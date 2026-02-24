@@ -53,7 +53,6 @@ import { db } from "@/lib/firebase";
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
 
-
 /* 🔹 DELETE (SOFT DELETE) COMPONENT */
 
 import AddProductDeleteProductType from "@/components/add-product-delete-select-category-type";
@@ -99,15 +98,14 @@ type Supplier = {
 };
 
 export default function AddProductPage() {
-
   useEffect(() => {
-  // Check if there are saved technical specifications in sessionStorage
-  const savedSpecs = sessionStorage.getItem('technicalSpecs');
-  
-  if (savedSpecs) {
-    setTechnicalSpecs(JSON.parse(savedSpecs));
-  }
-}, []);
+    // Check if there are saved technical specifications in sessionStorage
+    const savedSpecs = sessionStorage.getItem("technicalSpecs");
+
+    if (savedSpecs) {
+      setTechnicalSpecs(JSON.parse(savedSpecs));
+    }
+  }, []);
 
   const router = useRouter();
   const { userId } = useUser();
@@ -345,34 +343,34 @@ export default function AddProductPage() {
 
   /* ================= PRODUCT FAMILY FETCH INDEPENDENT ================= */
 
-useEffect(() => {
-  if (selectedCategoryTypes.length === 0) {
-    setProductFamilies([]);
-    return;
-  }
+  useEffect(() => {
+    if (selectedCategoryTypes.length === 0) {
+      setProductFamilies([]);
+      return;
+    }
 
-  const unsubscribers = selectedCategoryTypes.map((cat) => {
-    const q = query(
-      collection(db, "categoryTypes", cat.id, "productFamilies"),
-      where("isActive", "==", true)
-    );
+    const unsubscribers = selectedCategoryTypes.map((cat) => {
+      const q = query(
+        collection(db, "categoryTypes", cat.id, "productFamilies"),
+        where("isActive", "==", true),
+      );
 
-    return onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data().name,
-        productUsageId: cat.id,
-      }));
+      return onSnapshot(q, (snapshot) => {
+        const list = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          name: doc.data().name,
+          productUsageId: cat.id,
+        }));
 
-      setProductFamilies((prev) => {
-        const filtered = prev.filter((p) => p.productUsageId !== cat.id);
-        return [...filtered, ...list];
+        setProductFamilies((prev) => {
+          const filtered = prev.filter((p) => p.productUsageId !== cat.id);
+          return [...filtered, ...list];
+        });
       });
     });
-  });
 
-  return () => unsubscribers.forEach((u) => u());
-}, [selectedCategoryTypes]);
+    return () => unsubscribers.forEach((u) => u());
+  }, [selectedCategoryTypes]);
 
   const addTechnicalSpec = () => {
     setTechnicalSpecs((prev) => [
@@ -545,27 +543,27 @@ useEffect(() => {
     );
   };
 
-const updateSpecField = (
-  specIndex: number,
-  rowIndex: number,
-  field:
-    | "specId"
-    | "value"
-    | "unit"
-    | "rangeFrom"
-    | "rangeTo"
-    | "length"
-    | "width"
-    | "height"
-    | "ipFirst"
-    | "ipSecond",
-  value: string,
-) => {
-  const updatedSpecs = [...technicalSpecs];
-  updatedSpecs[specIndex].specs[rowIndex][field] = value;
+  const updateSpecField = (
+    specIndex: number,
+    rowIndex: number,
+    field:
+      | "specId"
+      | "value"
+      | "unit"
+      | "rangeFrom"
+      | "rangeTo"
+      | "length"
+      | "width"
+      | "height"
+      | "ipFirst"
+      | "ipSecond",
+    value: string,
+  ) => {
+    const updatedSpecs = [...technicalSpecs];
+    updatedSpecs[specIndex].specs[rowIndex][field] = value;
 
-  setTechnicalSpecs(updatedSpecs);
-};
+    setTechnicalSpecs(updatedSpecs);
+  };
 
   /* ================= PRODUCT USAGE FETCH FINAL ================= */
 
@@ -589,60 +587,60 @@ const updateSpecField = (
     return () => unsub();
   }, []);
 
-const syncSpecsToProductType = async () => {
-  if (!selectedProductFamily) return;
+  const syncSpecsToProductType = async () => {
+    if (!selectedProductFamily) return;
 
-  if (selectedCategoryTypes.length !== 1) return;
+    if (selectedCategoryTypes.length !== 1) return;
 
-  const productUsageId = selectedCategoryTypes[0].id;
-  const specsRef = collection(
-    db,
-    "categoryTypes",
-    productUsageId,
-    "productFamilies",
-    selectedProductFamily.id,
-    "technicalSpecifications"
-  );
+    const productUsageId = selectedCategoryTypes[0].id;
+    const specsRef = collection(
+      db,
+      "categoryTypes",
+      productUsageId,
+      "productFamilies",
+      selectedProductFamily.id,
+      "technicalSpecifications",
+    );
 
-  const batch = writeBatch(db);
+    const batch = writeBatch(db);
 
-  try {
-    // Fetch existing specifications
-    const existingSpecsSnapshot = await getDocs(specsRef);
+    try {
+      // Fetch existing specifications
+      const existingSpecsSnapshot = await getDocs(specsRef);
 
-    technicalSpecs.forEach((spec) => {
-      if (!spec.title.trim()) return;
+      technicalSpecs.forEach((spec) => {
+        if (!spec.title.trim()) return;
 
-      // Check if the specification title already exists
-      const existingSpec = existingSpecsSnapshot.docs.find(
-        (doc) => doc.data().title === spec.title
-      );
+        // Check if the specification title already exists
+        const existingSpec = existingSpecsSnapshot.docs.find(
+          (doc) => doc.data().title === spec.title,
+        );
 
-      // If spec exists, update it, otherwise add a new one
-      const ref = existingSpec
-        ? doc(specsRef, existingSpec.id) // Update existing spec
-        : doc(specsRef); // Create new spec
+        // If spec exists, update it, otherwise add a new one
+        const ref = existingSpec
+          ? doc(specsRef, existingSpec.id) // Update existing spec
+          : doc(specsRef); // Create new spec
 
-      batch.set(ref, {
-        title: spec.title,
-        specs: spec.specs.map((row) => ({
-          specId: row.specId.trim(),
-          value: row.value?.trim() || "", // Ensuring empty value fields are handled
-        })),
-        isActive: true,
-        updatedAt: serverTimestamp(), // Track when it was last updated
+        batch.set(ref, {
+          title: spec.title,
+          specs: spec.specs.map((row) => ({
+            specId: row.specId.trim(),
+            value: row.value?.trim() || "", // Ensuring empty value fields are handled
+          })),
+          isActive: true,
+          updatedAt: serverTimestamp(), // Track when it was last updated
+        });
       });
-    });
 
-    // Commit the batch to Firestore
-    await batch.commit();
+      // Commit the batch to Firestore
+      await batch.commit();
 
-    toast.success("Specs Saved");
-  } catch (error) {
-    console.error("Error saving specifications:", error);
-    toast.error("Failed to save specifications");
-  }
-};
+      toast.success("Specs Saved");
+    } catch (error) {
+      console.error("Error saving specifications:", error);
+      toast.error("Failed to save specifications");
+    }
+  };
 
   /* ================= NUMBER FORMATTERS ================= */
   const formatPHP = (value: number, decimals = 2) => {
@@ -706,7 +704,6 @@ const syncSpecsToProductType = async () => {
     setPreview(URL.createObjectURL(file));
   };
 
-
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
 
@@ -746,52 +743,43 @@ const syncSpecsToProductType = async () => {
     });
   };
 
-const selectProductFamily = async (item: ProductFamily) => {
+  const selectProductFamily = async (item: ProductFamily) => {
+    setSelectedProductFamily(item);
 
-  setSelectedProductFamily(item);
+    if (selectedCategoryTypes.length !== 1) return;
 
-  if (selectedCategoryTypes.length !== 1) return;
+    const productUsageId = selectedCategoryTypes[0].id;
 
-  const productUsageId = selectedCategoryTypes[0].id;
+    const specsRef = collection(
+      db,
+      "categoryTypes",
+      productUsageId,
+      "productFamilies",
+      item.id,
+      "technicalSpecifications",
+    );
 
-  const specsRef = collection(
-    db,
-    "categoryTypes",
-    productUsageId,
-    "productFamilies",
-    item.id,
-    "technicalSpecifications"
-  );
+    const q = query(specsRef, where("isActive", "==", true));
 
-  const q = query(
-    specsRef,
-    where("isActive", "==", true)
-  );
+    const snapshot = await getDocs(q);
 
-  const snapshot = await getDocs(q);
+    const loadedSpecs: TechnicalSpecification[] = snapshot.docs.map((doc) => {
+      const data = doc.data();
 
-const loadedSpecs: TechnicalSpecification[] = snapshot.docs.map(doc => {
+      return {
+        id: doc.id,
 
-  const data = doc.data();
+        title: data.title,
 
-  return {
+        specs: (data.specs || []).map((row: any) => ({
+          ...row,
+          value: "", // ✅ CLEAR VALUE HERE
+        })),
+      };
+    });
 
-    id: doc.id,
-
-    title: data.title,
-
-    specs: (data.specs || []).map((row: any) => ({
-      ...row,
-      value: ""   // ✅ CLEAR VALUE HERE
-    })),
-
+    setTechnicalSpecs(loadedSpecs);
   };
-
-});
-
-  setTechnicalSpecs(loadedSpecs);
-
-};
 
   const handleAddProductType = async () => {
     if (!newProductType.trim()) return;
@@ -1400,12 +1388,8 @@ const loadedSpecs: TechnicalSpecification[] = snapshot.docs.map(doc => {
                     </div>
 
                     <div className="flex gap-1">
-                      <AddProductSelectProductType
-
-                        item={item}
-                      />
+                      <AddProductSelectProductType item={item} />
                       <AddProductDeleteProductType
-
                         item={item}
                         referenceID={user?.ReferenceID || ""}
                       />
@@ -1477,9 +1461,7 @@ const loadedSpecs: TechnicalSpecification[] = snapshot.docs.map(doc => {
 
                     {/* ACTION BUTTONS */}
                     <div className="flex gap-1">
-                      <AddProductEditSelectProduct
-                        item={item}
-                      />
+                      <AddProductEditSelectProduct item={item} />
 
                       <AddProductDeleteProduct
                         item={{

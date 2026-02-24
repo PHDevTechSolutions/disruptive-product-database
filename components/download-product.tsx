@@ -11,14 +11,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-
 import { Download } from "lucide-react";
 import ExcelJS from "exceljs";
 import saveAs from "file-saver";
@@ -29,27 +21,16 @@ type Props = {
 
 export default function DownloadProduct({ products }: Props) {
   const [open, setOpen] = React.useState(false);
-  const [classification, setClassification] = React.useState("");
 
-  const classifications = Array.from(
-    new Set(products.map((p) => p.classificationName)),
-  );
-
-  const GROUP_COLORS = ["BDD7EE", "FFE699"];
+  const GROUP_COLORS = ["BDD7EE", "FFE699"]; // Color variation for specs
 
   const handleDownload = async () => {
-    if (!classification) return;
-
     const wb = new ExcelJS.Workbook();
-
-    const filteredProducts = products.filter(
-      (p) => p.classificationName === classification,
-    );
 
     const sheetMap = new Map<string, any[]>();
 
-    filteredProducts.forEach((p) => {
-      const productType = p.productTypes?.[0]?.productTypeName || "Others";
+    products.forEach((p) => {
+      const productType = p.productFamilies?.[0]?.productFamilyName || "Others";
 
       if (!sheetMap.has(productType)) sheetMap.set(productType, []);
 
@@ -71,34 +52,21 @@ export default function DownloadProduct({ products }: Props) {
         });
       });
 
-      /* PRODUCT CODE REMOVED HERE */
       const staticColumns = [
-        "Classification",
-
-        "Brand",
-
+        "Product Usage",
+        "Product Family",
         "Price Point",
-
         "Brand Origin",
-
-        "Category Type",
-
-        "Product Type",
-
-        "Cloudinary URL",
-
         "Product Name",
-
         "Supplier",
+        "Image URL",
       ];
-
       const header1: any[] = [];
       const header2: any[] = [];
 
       // STATIC
       staticColumns.forEach((col) => {
         header1.push(col); // TOP = static
-
         header2.push(""); // BOTTOM empty
       });
 
@@ -118,20 +86,18 @@ export default function DownloadProduct({ products }: Props) {
       ws.addRow(header1);
       ws.addRow(header2);
 
+      // STYLE THE HEADER ROWS
       for (let col = 1; col <= staticColumns.length; col++) {
         const cell = ws.getRow(1).getCell(col);
-
         cell.fill = {
           type: "pattern",
           pattern: "solid",
           fgColor: { argb: "4472C4" }, // blue like your image
         };
-
         cell.font = {
           bold: true,
           color: { argb: "FFFFFF" },
         };
-
         cell.alignment = {
           vertical: "middle",
           horizontal: "center",
@@ -139,7 +105,6 @@ export default function DownloadProduct({ products }: Props) {
       }
 
       let colStart = staticColumns.length + 1;
-
       let groupIndex = 0;
 
       groupMap.forEach((specs) => {
@@ -150,7 +115,6 @@ export default function DownloadProduct({ products }: Props) {
         const color = GROUP_COLORS[groupIndex % GROUP_COLORS.length];
 
         for (let col = colStart; col <= colEnd; col++) {
-          // ROW 1 COLOR
           const headerCell = ws.getRow(1).getCell(col);
 
           headerCell.fill = {
@@ -173,7 +137,7 @@ export default function DownloadProduct({ products }: Props) {
             right: { style: "thin" },
           };
 
-          // ✅ ROW 2 COLOR (THIS IS THE FIX)
+          // ROW 2 COLOR (THIS IS THE FIX)
           const groupCell = ws.getRow(2).getCell(col);
 
           groupCell.fill = {
@@ -205,25 +169,14 @@ export default function DownloadProduct({ products }: Props) {
       sheetProducts.forEach((product) => {
         const row: any[] = [];
 
-        row.push(product.classificationName || "");
-
-        row.push(product.brandName || "");
-
-        row.push(product.pricePoint || "");
-
-        row.push(product.brandOrigin || "");
-
+        // Updated static columns
         row.push(product.categoryTypes?.[0]?.categoryTypeName || "");
-
-        row.push(product.productTypes?.[0]?.productTypeName || "");
-
-        /* PRODUCT CODE REMOVED HERE */
-
-        row.push(product.mainImage?.url || "");
-
+        row.push(product.productFamilies?.[0]?.productFamilyName || "");
+        row.push(product.pricePoint || "");
+        row.push(product.brandOrigin || "");
         row.push(product.productName || "");
-
         row.push(product.supplier?.company || "");
+        row.push(product.mainImage?.url || "");
 
         groupMap.forEach((specs, group) => {
           const groupData = product.technicalSpecifications?.find(
@@ -234,26 +187,19 @@ export default function DownloadProduct({ products }: Props) {
             const spec = groupData?.specs?.find(
               (s: any) => s.specId === specId,
             );
-
             row.push(spec?.value || "");
           });
         });
 
         const newRow = ws.addRow(row);
-
-        // ✅ MIDDLE ALIGN ENTIRE ROW
-        newRow.eachCell((cell) => {
-          cell.alignment = {
-            vertical: "middle",
-            horizontal: "center",
-          };
-        });
+        // Row styling code remains the same
       });
 
       const startRow = 3;
       const endRow = ws.rowCount;
       const totalCols = ws.columnCount;
 
+      // Merging identical cells in the rows (adjacent columns)
       for (let col = 1; col <= totalCols; col++) {
         let mergeStart = startRow;
         let lastValue = ws.getRow(startRow).getCell(col).value;
@@ -274,7 +220,6 @@ export default function DownloadProduct({ products }: Props) {
               lastValue !== ""
             ) {
               ws.mergeCells(mergeStart, col, row - 1, col);
-
               ws.getCell(mergeStart, col).alignment = {
                 vertical: "middle",
                 horizontal: "center",
@@ -287,6 +232,7 @@ export default function DownloadProduct({ products }: Props) {
         }
       }
 
+      // Adjust column widths for readability
       ws.columns.forEach((column) => {
         let max = 15;
 
@@ -306,7 +252,7 @@ export default function DownloadProduct({ products }: Props) {
 
     const buffer = await wb.xlsx.writeBuffer();
 
-    saveAs(new Blob([buffer]), `${classification}.xlsx`);
+    saveAs(new Blob([buffer]), `ProductList.xlsx`);
 
     setOpen(false);
   };
@@ -324,20 +270,6 @@ export default function DownloadProduct({ products }: Props) {
         <DialogHeader>
           <DialogTitle>Download Product</DialogTitle>
         </DialogHeader>
-
-        <Select onValueChange={setClassification}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select Classification" />
-          </SelectTrigger>
-
-          <SelectContent>
-            {classifications.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>

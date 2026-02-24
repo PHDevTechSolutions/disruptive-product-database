@@ -808,49 +808,40 @@ export default function EditProductPage() {
     });
   };
 
-const selectProductFamily = async (item: ProductFamily) => {
+  const selectProductFamily = async (item: ProductFamily) => {
+    setSelectedProductFamily(item);
 
-  setSelectedProductFamily(item);
+    if (selectedCategoryTypes.length !== 1) return;
 
-  if (selectedCategoryTypes.length !== 1) return;
+    const productUsageId = selectedCategoryTypes[0].id;
 
-  const productUsageId = selectedCategoryTypes[0].id;
+    const specsRef = collection(
+      db,
+      "categoryTypes",
+      productUsageId,
+      "productFamilies",
+      item.id,
+      "technicalSpecifications",
+    );
 
-  const specsRef = collection(
-    db,
-    "categoryTypes",
-    productUsageId,
-    "productFamilies",
-    item.id,
-    "technicalSpecifications"
-  );
+    const q = query(specsRef, where("isActive", "==", true));
 
-  const q = query(
-    specsRef,
-    where("isActive", "==", true)
-  );
+    const snapshot = await getDocs(q);
 
-  const snapshot = await getDocs(q);
+    const loadedSpecs: TechnicalSpecification[] = snapshot.docs.map((doc) => {
+      const data = doc.data();
 
-  const loadedSpecs: TechnicalSpecification[] = snapshot.docs.map(doc => {
+      return {
+        id: doc.id,
 
-    const data = doc.data();
+        title: data.title,
 
-    return {
+        specs: data.specs || [],
+      };
+    });
 
-      id: doc.id,
-
-      title: data.title,
-
-      specs: data.specs || [],
-
-    };
-
-  });
-
-  setTechnicalSpecs(loadedSpecs);
-
-};
+    setTechnicalSpecs(loadedSpecs);
+  };
 
   const handleAddProductType = async () => {
     if (!newProductType.trim()) return;
@@ -1016,13 +1007,11 @@ const selectProductFamily = async (item: ProductFamily) => {
         return;
       }
 
-
       // ================= CLOUDINARY UPLOAD =================
 
       const productRef = doc(db, "products", productId!);
 
       await updateDoc(productRef, {
-
         productName,
 
         pricePoint,
@@ -1063,7 +1052,7 @@ const selectProductFamily = async (item: ProductFamily) => {
               })),
           })),
 
-...(mainImage && { mediaStatus:"pending" }),
+        ...(mainImage && { mediaStatus: "pending" }),
 
         createdBy: userId,
         referenceID: user?.ReferenceID || null,
@@ -1073,7 +1062,7 @@ const selectProductFamily = async (item: ProductFamily) => {
         updatedAt: serverTimestamp(),
       });
 
-if(mainImage) uploadProductMedia(productId!);
+      if (mainImage) uploadProductMedia(productId!);
 
       toast.success("Product saved successfully");
 
@@ -1094,7 +1083,7 @@ if(mainImage) uploadProductMedia(productId!);
       <SidebarTrigger className="hidden md:flex" />
 
       <h1 className="text-2xl font-bold">
-       Edit Product –  {user?.Firstname} {user?.Lastname}
+        Edit Product – {user?.Firstname} {user?.Lastname}
         <span className="ml-2 text-sm font-normal text-muted-foreground">
           ({user?.Role})
         </span>
