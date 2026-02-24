@@ -99,6 +99,16 @@ type Supplier = {
 };
 
 export default function AddProductPage() {
+
+  useEffect(() => {
+  // Check if there are saved technical specifications in sessionStorage
+  const savedSpecs = sessionStorage.getItem('technicalSpecs');
+  
+  if (savedSpecs) {
+    setTechnicalSpecs(JSON.parse(savedSpecs));
+  }
+}, []);
+
   const router = useRouter();
   const { userId } = useUser();
 
@@ -535,35 +545,27 @@ useEffect(() => {
     );
   };
 
-  const updateSpecField = (
-    specIndex: number,
-    rowIndex: number,
-    field:
-      | "specId"
-      | "value"
-      | "unit"
-      | "rangeFrom"
-      | "rangeTo"
-      | "length"
-      | "width"
-      | "height"
-      | "ipFirst"
-      | "ipSecond",
-    value: string,
-  ) => {
-    setTechnicalSpecs((prev) =>
-      prev.map((item, i) =>
-        i === specIndex
-          ? {
-              ...item,
-              specs: item.specs.map((row, r) =>
-                r === rowIndex ? { ...row, [field]: value } : row,
-              ),
-            }
-          : item,
-      ),
-    );
-  };
+const updateSpecField = (
+  specIndex: number,
+  rowIndex: number,
+  field:
+    | "specId"
+    | "value"
+    | "unit"
+    | "rangeFrom"
+    | "rangeTo"
+    | "length"
+    | "width"
+    | "height"
+    | "ipFirst"
+    | "ipSecond",
+  value: string,
+) => {
+  const updatedSpecs = [...technicalSpecs];
+  updatedSpecs[specIndex].specs[rowIndex][field] = value;
+
+  setTechnicalSpecs(updatedSpecs);
+};
 
   /* ================= PRODUCT USAGE FETCH FINAL ================= */
 
@@ -587,49 +589,60 @@ useEffect(() => {
     return () => unsub();
   }, []);
 
-  const syncSpecsToProductType = async () => {
-    if (!selectedProductFamily) return;
+const syncSpecsToProductType = async () => {
+  if (!selectedProductFamily) return;
 
-    if (selectedCategoryTypes.length !== 1) return;
+  if (selectedCategoryTypes.length !== 1) return;
 
-    const productUsageId = selectedCategoryTypes[0].id;
+  const productUsageId = selectedCategoryTypes[0].id;
+  const specsRef = collection(
+    db,
+    "categoryTypes",
+    productUsageId,
+    "productFamilies",
+    selectedProductFamily.id,
+    "technicalSpecifications"
+  );
 
-    const specsRef = collection(
-      db,
+  const batch = writeBatch(db);
 
-      "categoryTypes",
-
-      productUsageId,
-
-      "productFamilies",
-
-      selectedProductFamily.id,
-
-      "technicalSpecifications",
-    );
-
-    const batch = writeBatch(db);
+  try {
+    // Fetch existing specifications
+    const existingSpecsSnapshot = await getDocs(specsRef);
 
     technicalSpecs.forEach((spec) => {
       if (!spec.title.trim()) return;
 
-      const ref = doc(specsRef);
+      // Check if the specification title already exists
+      const existingSpec = existingSpecsSnapshot.docs.find(
+        (doc) => doc.data().title === spec.title
+      );
+
+      // If spec exists, update it, otherwise add a new one
+      const ref = existingSpec
+        ? doc(specsRef, existingSpec.id) // Update existing spec
+        : doc(specsRef); // Create new spec
 
       batch.set(ref, {
         title: spec.title,
-
-        specs: spec.specs,
-
+        specs: spec.specs.map((row) => ({
+          specId: row.specId.trim(),
+          value: row.value?.trim() || "", // Ensuring empty value fields are handled
+        })),
         isActive: true,
-
-        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(), // Track when it was last updated
       });
     });
 
+    // Commit the batch to Firestore
     await batch.commit();
 
     toast.success("Specs Saved");
-  };
+  } catch (error) {
+    console.error("Error saving specifications:", error);
+    toast.error("Failed to save specifications");
+  }
+};
 
   /* ================= NUMBER FORMATTERS ================= */
   const formatPHP = (value: number, decimals = 2) => {
@@ -757,21 +770,24 @@ const selectProductFamily = async (item: ProductFamily) => {
 
   const snapshot = await getDocs(q);
 
-  const loadedSpecs: TechnicalSpecification[] = snapshot.docs.map(doc => {
+const loadedSpecs: TechnicalSpecification[] = snapshot.docs.map(doc => {
 
-    const data = doc.data();
+  const data = doc.data();
 
-    return {
+  return {
 
-      id: doc.id,
+    id: doc.id,
 
-      title: data.title,
+    title: data.title,
 
-      specs: data.specs || [],
+    specs: (data.specs || []).map((row: any) => ({
+      ...row,
+      value: ""   // ✅ CLEAR VALUE HERE
+    })),
 
-    };
+  };
 
-  });
+});
 
   setTechnicalSpecs(loadedSpecs);
 
