@@ -17,9 +17,7 @@ type Props = {
 
 export default function FilteringComponent({ products, onFilter }: Props) {
   const [filters, setFilters] = useState<Record<string, string[]>>({});
-  const [searchFilters, setSearchFilters] = useState<Record<string, string>>(
-    {},
-  );
+  const [searchFilters, setSearchFilters] = useState<Record<string, string>>({});
 
   const uniq = (arr: any[]) => Array.from(new Set(arr.filter(Boolean)));
 
@@ -33,7 +31,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   const splitValues = (value: string): string[] => {
     if (!value) return [];
-
     return value
       .split(",")
       .map((v) => v.trim())
@@ -42,52 +39,33 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   const expandRange = (value: string): string[] => {
     const match = value.match(/(\d+)\s*-\s*(\d+)/);
-
     if (!match) return [];
-
     const from = Number(match[1]);
     const to = Number(match[2]);
-
     const result: string[] = [];
-
     for (let i = from; i <= to; i++) {
       result.push(i.toString());
     }
-
     return result;
   };
 
   const formatSpec = (s: any): string => {
     if (!s) return "";
-
     if (s.isRanging)
       return `${s.rangeFrom} - ${s.rangeTo}${s.unit ? ` ${s.unit}` : ""}`;
-
     if (s.isSlashing) return s.slashValues?.join("/") || "";
-
     if (s.isDimension)
       return `${s.slashValues?.join(" x ") || ""}${s.unit ? ` ${s.unit}` : ""}`;
-
     if (s.isIPRating) return `IP${s.ipFirst}${s.ipSecond}`;
-
     if (s.value) return s.unit ? `${s.value} ${s.unit}` : s.value;
-
     return "";
   };
 
   /* ================= BASIC FILTER SOURCES ================= */
 
-  const brands = uniq(products.map((p) => p.brandName));
+  const productUsages = uniq(products.map((p) => p.categoryTypes?.[0]?.categoryTypeName));
 
-  const classifications = uniq(products.map((p) => p.classificationName));
-
-  const categories = uniq(
-    products.map((p) => p.categoryTypes?.[0]?.categoryTypeName),
-  );
-
-  const productTypes = uniq(
-    products.map((p) => p.productTypes?.[0]?.productTypeName),
-  );
+  const productFamilies = uniq(products.map((p) => p.productFamilies?.[0]?.productFamilyName));
 
   const suppliers = uniq(products.map((p) => p.supplier?.company));
 
@@ -99,137 +77,90 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   /* ================= TECH SPECS ================= */
 
-/* ================= TECH SPECS ================= */
+  const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
 
-const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
-
-products.forEach((p) => {
-
-  if (!p?.technicalSpecifications) return;
-
-  p.technicalSpecifications.forEach((g: any) => {
-
-    if (!g?.title) return;
-
-    /* ensure group exists */
-    technicalSpecs[g.title] ??= {};
-
-    if (!Array.isArray(g.specs)) return;
-
-    g.specs.forEach((s: any) => {
-
-      if (!s?.specId) return;
-
-      const val = formatSpec(s);
-
-      if (!val) return;
-
-      /* ✅ PRIORITY: name → title → specId */
-      const specLabel: string =
-        s.name ||
-        s.title ||
-        s.specId;
-
-      /* ensure spec exists */
-      technicalSpecs[g.title][specLabel] ??= new Set<string>();
-
-      /* add split values */
-      splitValues(val).forEach((single) => {
-
-        technicalSpecs[g.title][specLabel].add(single);
-
+  products.forEach((p) => {
+    if (!p?.technicalSpecifications) return;
+    p.technicalSpecifications.forEach((g: any) => {
+      if (!g?.title) return;
+      /* ensure group exists */
+      technicalSpecs[g.title] ??= {};
+      if (!Array.isArray(g.specs)) return;
+      g.specs.forEach((s: any) => {
+        if (!s?.specId) return;
+        const val = formatSpec(s);
+        if (!val) return;
+        /* ✅ PRIORITY: name → title → specId */
+        const specLabel: string = s.name || s.title || s.specId;
+        /* ensure spec exists */
+        technicalSpecs[g.title][specLabel] ??= new Set<string>();
+        /* add split values */
+        splitValues(val).forEach((single) => {
+          technicalSpecs[g.title][specLabel].add(single);
+        });
       });
-
     });
-
   });
-
-});
 
   /* ================= FILTER ENGINE ================= */
 
-useEffect(() => {
-  const filtered = products.filter((p) => {
-    const check = (key: string, value: any) => {
-      if (filters[key]?.length) {
-        return filters[key].some((filterVal) => {
-          if (!value) return false;
+  useEffect(() => {
+    const filtered = products.filter((p) => {
+      const check = (key: string, value: any) => {
+        if (filters[key]?.length) {
+          return filters[key].some((filterVal) => {
+            if (!value) return false;
+            const valueStr = value.toString();
+            /* EXACT MATCH */
+            if (valueStr === filterVal) return true;
+            /* RANGE MATCH SUPPORT — FIXED FOR DECIMAL AND PLAIN TEXT */
+            const match = valueStr.match(/(\d+(\.\d+)?)\s*-\s*(\d+(\.\d+)?)/);
+            if (match && !isNaN(Number(filterVal))) {
+              const num = Number(filterVal);
+              const from = Number(match[1]);
+              const to = Number(match[3]);
+              if (num >= from && num <= to) return true;
+            }
+            return false;
+          });
+        }
 
-          const valueStr = value.toString();
+        if (searchFilters[key])
+          return value
+            ?.toLowerCase()
+            .includes(searchFilters[key].toLowerCase());
 
-          /* EXACT MATCH */
-          if (valueStr === filterVal) return true;
+        return true;
+      };
 
-          /* RANGE MATCH SUPPORT — FIXED FOR DECIMAL AND PLAIN TEXT */
+      if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName)) return false;
+      if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName)) return false;
+      if (!check("Price Point", p.pricePoint)) return false;
+      if (!check("Brand Origin", p.brandOrigin)) return false;
+      if (!check("Supplier", p.supplier?.company)) return false;
 
-          const match = valueStr.match(/(\d+(\.\d+)?)\s*-\s*(\d+(\.\d+)?)/);
-
-          if (match && !isNaN(Number(filterVal))) {
-            const num = Number(filterVal);
-
-            const from = Number(match[1]);
-            const to = Number(match[3]);
-
-            if (num >= from && num <= to) return true;
-          }
-
-          return false;
+      for (const [k, vals] of Object.entries(filters)) {
+        if (!k.includes("||")) continue;
+        const [gt, sn] = k.split("||");
+        const pv: string[] = [];
+        p.technicalSpecifications?.forEach((g: any) => {
+          if (g.title !== gt) return;
+          g.specs?.forEach((s: any) => {
+            if (s.specId === sn) {
+              const d = formatSpec(s);
+              splitValues(d).forEach((v) => {
+                pv.push(v);
+              });
+            }
+          });
         });
+        if (vals.length && !vals.some((v) => pv.includes(v))) return false;
       }
-
-      if (searchFilters[key])
-        return value
-          ?.toLowerCase()
-          .includes(searchFilters[key].toLowerCase());
-
       return true;
-    };
+    });
 
-    if (!check("Brand", p.brandName)) return false;
-
-    if (!check("Classification Type", p.classificationName)) return false;
-
-    if (!check("Category Type", p.categoryTypes?.[0]?.categoryTypeName))
-      return false;
-
-    if (!check("Product Type", p.productTypes?.[0]?.productTypeName))
-      return false;
-
-    if (!check("Supplier", p.supplier?.company)) return false;
-
-    if (!check("Price Point", p.pricePoint)) return false;
-
-    if (!check("Brand Origin", p.brandOrigin)) return false;
-
-    for (const [k, vals] of Object.entries(filters)) {
-      if (!k.includes("||")) continue;
-
-      const [gt, sn] = k.split("||");
-
-      const pv: string[] = [];
-
-      p.technicalSpecifications?.forEach((g: any) => {
-        if (g.title !== gt) return;
-
-        g.specs?.forEach((s: any) => {
-          if (s.specId === sn) {
-            const d = formatSpec(s);
-
-splitValues(d).forEach((v) => {
-  pv.push(v);
-});
-          }
-        });
-      });
-
-      if (vals.length && !vals.some((v) => pv.includes(v))) return false;
-    }
-
-    return true;
-  });
-
-  onFilter(filtered);
-}, [filters, searchFilters, products]);
+    onFilter(filtered);
+  }, [filters, searchFilters, products]);
 
   /* ================= UI ACTIONS ================= */
 
@@ -265,16 +196,16 @@ splitValues(d).forEach((v) => {
 
       <div className="space-y-3">
         <Section
-          title="Brand"
-          items={brands}
+          title="Product Usage"
+          items={productUsages}
           filters={filters}
           toggle={toggle}
           setSearch={setSearch}
         />
 
         <Section
-          title="Classification Type"
-          items={classifications}
+          title="Product Family"
+          items={productFamilies}
           filters={filters}
           toggle={toggle}
           setSearch={setSearch}
@@ -293,22 +224,6 @@ splitValues(d).forEach((v) => {
         <Section
           title="Brand Origin"
           items={brandOrigins}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
-
-        <Section
-          title="Category Type"
-          items={categories}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
-
-        <Section
-          title="Product Type"
-          items={productTypes}
           filters={filters}
           toggle={toggle}
           setSearch={setSearch}
@@ -357,109 +272,109 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
     setSearch(title, input);
   }, [input]);
 
-const visible = items.filter((i: string) => {
-  if (!input) return true;
+  const visible = items.filter((i: string) => {
+    if (!input) return true;
 
-  const normalize = (str: string) =>
-    str.toLowerCase().replace(/[^0-9a-z.\-]/g, "");
+    const normalize = (str: string) =>
+      str.toLowerCase().replace(/[^0-9a-z.\-]/g, "");
 
-  const extractNumbers = (str: string) => {
-    const matches = str.match(/(\d+(\.\d+)?)/g);
-    return matches ? matches.map(Number) : [];
-  };
+    const extractNumbers = (str: string) => {
+      const matches = str.match(/(\d+(\.\d+)?)/g);
+      return matches ? matches.map(Number) : [];
+    };
 
-  const itemNorm = normalize(i);
-  const inputNorm = normalize(input);
+    const itemNorm = normalize(i);
+    const inputNorm = normalize(input);
 
-  /* -------------------------------- */
-  /* CASE 1: INPUT IS RANGE */
-  /* example: 150-200K */
-  /* -------------------------------- */
+    /* -------------------------------- */
+    /* CASE 1: INPUT IS RANGE */
+    /* example: 150-200K */
+    /* -------------------------------- */
 
-  if (inputNorm.includes("-")) {
+    if (inputNorm.includes("-")) {
+      const inputNums = extractNumbers(inputNorm);
+      const itemNums = extractNumbers(itemNorm);
+
+      if (inputNums.length >= 2 && itemNums.length >= 2) {
+        const inputFrom = inputNums[0];
+        const inputTo = inputNums[1];
+
+        const itemFrom = itemNums[0];
+        const itemTo = itemNums[1];
+
+        /* overlap detection */
+        if (
+          inputFrom <= itemTo &&
+          inputTo >= itemFrom
+        ) {
+          return true;
+        }
+      }
+    }
+
+    /* -------------------------------- */
+    /* CASE 2: INPUT IS SINGLE NUMBER */
+    /* example: 250 VAC */
+    /* -------------------------------- */
+
     const inputNums = extractNumbers(inputNorm);
     const itemNums = extractNumbers(itemNorm);
 
-    if (inputNums.length >= 2 && itemNums.length >= 2) {
-      const inputFrom = inputNums[0];
-      const inputTo = inputNums[1];
+    if (inputNums.length >= 1 && itemNums.length >= 2) {
+      const num = inputNums[0];
 
-      const itemFrom = itemNums[0];
-      const itemTo = itemNums[1];
+      const from = itemNums[0];
+      const to = itemNums[1];
 
-      /* overlap detection */
-      if (
-        inputFrom <= itemTo &&
-        inputTo >= itemFrom
-      ) {
+      if (num >= from && num <= to) {
         return true;
       }
     }
-  }
 
-  /* -------------------------------- */
-  /* CASE 2: INPUT IS SINGLE NUMBER */
-  /* example: 250 VAC */
-  /* -------------------------------- */
+    /* -------------------------------- */
+    /* CASE 3: NORMAL FUZZY TEXT */
+    /* -------------------------------- */
 
-  const inputNums = extractNumbers(inputNorm);
-  const itemNums = extractNumbers(itemNorm);
+    if (itemNorm.includes(inputNorm)) return true;
 
-  if (inputNums.length >= 1 && itemNums.length >= 2) {
-    const num = inputNums[0];
-
-    const from = itemNums[0];
-    const to = itemNums[1];
-
-    if (num >= from && num <= to) {
-      return true;
-    }
-  }
-
-  /* -------------------------------- */
-  /* CASE 3: NORMAL FUZZY TEXT */
-  /* -------------------------------- */
-
-  if (itemNorm.includes(inputNorm)) return true;
-
-  return false;
-});
+    return false;
+  });
 
   return (
     <div className="border rounded p-2 space-y-2">
       <p className="text-sm font-medium">{label ?? title}</p>
 
       {/* ✅ FIX IS HERE */}
-<Command shouldFilter={false}>
+      <Command shouldFilter={false}>
 
-  <CommandInput
-    placeholder="Type to search..."
-    value={input}
-    onValueChange={setInput}
-  />
+        <CommandInput
+          placeholder="Type to search..."
+          value={input}
+          onValueChange={setInput}
+        />
 
-  {visible.length === 0 && (
-    <CommandEmpty>No results</CommandEmpty>
-  )}
+        {visible.length === 0 && (
+          <CommandEmpty>No results</CommandEmpty>
+        )}
 
-  {visible.length > 0 && (
-    <CommandGroup>
-      {visible.map((i: string) => (
-        <CommandItem key={i} onSelect={() => toggle(title, i)}>
-          <Check
-            className={`mr-2 h-4 w-4 ${
-              filters[title]?.includes(i)
-                ? "opacity-100"
-                : "opacity-0"
-            }`}
-          />
-          {i}
-        </CommandItem>
-      ))}
-    </CommandGroup>
-  )}
+        {visible.length > 0 && (
+          <CommandGroup>
+            {visible.map((i: string) => (
+              <CommandItem key={i} onSelect={() => toggle(title, i)}>
+                <Check
+                  className={`mr-2 h-4 w-4 ${
+                    filters[title]?.includes(i)
+                      ? "opacity-100"
+                      : "opacity-0"
+                  }`}
+                />
+                {i}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
 
-</Command>
+      </Command>
     </div>
   );
 }
