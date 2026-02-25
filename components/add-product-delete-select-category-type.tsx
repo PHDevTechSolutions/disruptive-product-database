@@ -54,9 +54,11 @@ export default function AddProductDeleteProductType({
 
       setDeleting(true);
 
-      /* ✅ SOFT DELETE CATEGORY TYPE */
+      const batch = writeBatch(db);
 
-      await updateDoc(
+      /* ✅ STEP 1: SOFT DELETE CATEGORY TYPE */
+
+      batch.update(
         doc(db, "categoryTypes", item.id),
         {
           isActive: false,
@@ -66,35 +68,68 @@ export default function AddProductDeleteProductType({
       );
 
 
-      /* ✅ REMOVE FROM ALL PRODUCTS */
+      /* ✅ STEP 2: SOFT DELETE ALL PRODUCT FAMILIES UNDER THIS CATEGORY TYPE */
 
-      const snapshot = await getDocs(collection(db, "products"));
+      const familiesSnapshot = await getDocs(
+        collection(db, "categoryTypes", item.id, "productFamilies")
+      );
 
-      const batch = writeBatch(db);
-
-      snapshot.forEach((productDoc) => {
-
-        const data = productDoc.data();
-
-        if (!data.categoryTypes) return;
-
-        const updated = data.categoryTypes.filter(
-          (ct: any) => ct.productUsageId !== item.id
-        );
+      familiesSnapshot.forEach((familyDoc) => {
 
         batch.update(
-          doc(db, "products", productDoc.id),
+          doc(
+            db,
+            "categoryTypes",
+            item.id,
+            "productFamilies",
+            familyDoc.id
+          ),
           {
-            categoryTypes: updated
+            isActive: false,
+            deletedBy: referenceID,
+            deletedAt: serverTimestamp(),
           }
         );
 
       });
 
+
+      /* ✅ STEP 3: REMOVE CATEGORY TYPE AND PRODUCT FAMILIES FROM ALL PRODUCTS */
+
+      const productsSnapshot = await getDocs(collection(db, "products"));
+
+      productsSnapshot.forEach((productDoc) => {
+
+        const data = productDoc.data();
+
+        const updatedCategoryTypes =
+          (data.categoryTypes || []).filter(
+            (ct: any) => ct.productUsageId !== item.id
+          );
+
+        const updatedProductFamilies =
+          (data.productFamilies || []).filter(
+            (pf: any) => pf.productUsageId !== item.id
+          );
+
+        batch.update(
+          doc(db, "products", productDoc.id),
+          {
+            categoryTypes: updatedCategoryTypes,
+            productFamilies: updatedProductFamilies
+          }
+        );
+
+      });
+
+
+      /* ✅ COMMIT EVERYTHING */
+
       await batch.commit();
 
 
-      toast.success("Category type deleted");
+      toast.success("Category type and all dependent product families deleted");
+
 
       setOpen(false);
 
@@ -138,13 +173,18 @@ export default function AddProductDeleteProductType({
 
 
         <p>
-          Delete <b>{item.name}</b> ?
+
+          Delete <b>{item.name}</b> and all its Product Families?
+
         </p>
 
 
         <DialogFooter>
 
-          <Button onClick={() => setOpen(false)}>
+          <Button
+            onClick={() => setOpen(false)}
+            disabled={deleting}
+          >
             Cancel
           </Button>
 
