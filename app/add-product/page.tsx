@@ -936,15 +936,15 @@ if (!selectedSupplier && !noSupplier) {
   return;
 }
 
-      if (!pricePoint) {
-        toast.error("Please select price point");
-        return;
-      }
+if (!noSupplier && !pricePoint) {
+  toast.error("Please select price point");
+  return;
+}
 
-      if (!brandOrigin) {
-        toast.error("Please select brand origin");
-        return;
-      }
+if (!noSupplier && !brandOrigin) {
+  toast.error("Please select brand origin");
+  return;
+}
 
       if (!mainImage) {
         toast.error("Please upload main image");
@@ -961,8 +961,8 @@ if (!selectedSupplier && !noSupplier) {
 
         productName,
 
-        pricePoint,
-        brandOrigin,
+pricePoint: noSupplier ? "Economy" : pricePoint,
+brandOrigin: noSupplier ? "China" : brandOrigin,
 
 supplier: noSupplier
   ? null

@@ -343,12 +343,21 @@ export default function EditProductPage() {
 
       setBrandOrigin(data.brandOrigin || "");
 
-      if (data.supplier) {
-        setSelectedSupplier({
-          supplierId: data.supplier.supplierId,
-          company: data.supplier.company,
-        });
-      }
+if (data.supplier) {
+  setSelectedSupplier({
+    supplierId: data.supplier.supplierId,
+    company: data.supplier.company,
+  });
+
+  setNoSupplier(false);
+} else {
+  // ✅ THIS IS THE FIX
+  setNoSupplier(true);
+
+  // optional but recommended
+  setPricePoint(data.pricePoint || "Economy");
+  setBrandOrigin(data.brandOrigin || "China");
+}
 
       if (data.mainImage?.url) {
         setPreview(data.mainImage.url);
@@ -998,15 +1007,15 @@ if (!selectedSupplier && !noSupplier) {
   return;
 }
 
-      if (!pricePoint) {
-        toast.error("Please select price point");
-        return;
-      }
+if (!noSupplier && !pricePoint) {
+  toast.error("Please select price point");
+  return;
+}
 
-      if (!brandOrigin) {
-        toast.error("Please select brand origin");
-        return;
-      }
+if (!noSupplier && !brandOrigin) {
+  toast.error("Please select brand origin");
+  return;
+}
 
       // ================= CLOUDINARY UPLOAD =================
 
@@ -1015,8 +1024,8 @@ if (!selectedSupplier && !noSupplier) {
       await updateDoc(productRef, {
         productName,
 
-        pricePoint,
-        brandOrigin,
+pricePoint: noSupplier ? "Economy" : pricePoint,
+brandOrigin: noSupplier ? "China" : brandOrigin,
 
 supplier: noSupplier
   ? null
