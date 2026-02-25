@@ -100,54 +100,49 @@ export default function UploadProductModal() {
   };
 
   /* MAIN UPLOAD */
-const isDuplicateProduct = async ({
-  productName,
-  productUsageId,
-  productFamilyId,
-  supplierId,
-  pricePoint,
-  brandOrigin,
-}: {
-  productName: string;
-  productUsageId: string;
-  productFamilyId: string;
-  supplierId: string;
-  pricePoint: string;
-  brandOrigin: string;
-}) => {
-  const snap = await getDocs(
-    query(
-      collection(db, "products"),
-      where("productName", "==", productName),
-      where("pricePoint", "==", pricePoint),
-      where("brandOrigin", "==", brandOrigin),
-      where("supplier.supplierId", "==", supplierId)
-    )
-  );
+  const isDuplicateProduct = async ({
+    productName,
+    productUsageId,
+    productFamilyId,
+    supplierId,
+    pricePoint,
+    brandOrigin,
+  }: {
+    productName: string;
+    productUsageId: string;
+    productFamilyId: string;
+    supplierId: string;
+    pricePoint: string;
+    brandOrigin: string;
+  }) => {
+    const snap = await getDocs(
+      query(
+        collection(db, "products"),
+        where("productName", "==", productName),
+        where("pricePoint", "==", pricePoint),
+        where("brandOrigin", "==", brandOrigin),
+        where("supplier.supplierId", "==", supplierId),
+      ),
+    );
 
-  if (snap.empty) return false;
+    if (snap.empty) return false;
 
-  let duplicate = false;
+    let duplicate = false;
 
-  snap.forEach((doc) => {
-    const data = doc.data();
+    snap.forEach((doc) => {
+      const data = doc.data();
 
-    const usageId =
-      data.categoryTypes?.[0]?.productUsageId;
+      const usageId = data.categoryTypes?.[0]?.productUsageId;
 
-    const familyId =
-      data.productFamilies?.[0]?.productFamilyId;
+      const familyId = data.productFamilies?.[0]?.productFamilyId;
 
-    if (
-      usageId === productUsageId &&
-      familyId === productFamilyId
-    ) {
-      duplicate = true;
-    }
-  });
+      if (usageId === productUsageId && familyId === productFamilyId) {
+        duplicate = true;
+      }
+    });
 
-  return duplicate;
-};
+    return duplicate;
+  };
 
   const handleUpload = async () => {
     if (!file) {
@@ -305,22 +300,19 @@ const isDuplicateProduct = async ({
           const productReferenceID = `PROD-SPF-${refCounter
             .toString()
             .padStart(5, "0")}`;
-const duplicate = await isDuplicateProduct({
-  productName,
-  productUsageId: categoryType.productUsageId,
-  productFamilyId:
-    productFamilyData.productFamilyId,
-  supplierId: supplier.supplierId,
-  pricePoint,
-  brandOrigin,
-});
+          const duplicate = await isDuplicateProduct({
+            productName,
+            productUsageId: categoryType.productUsageId,
+            productFamilyId: productFamilyData.productFamilyId,
+            supplierId: supplier.supplierId,
+            pricePoint,
+            brandOrigin,
+          });
 
-if (duplicate) {
-  toast.error(
-    `Duplicate skipped: ${productName}`
-  );
-  continue;
-}
+          if (duplicate) {
+            toast.error(`Duplicate skipped: ${productName}`);
+            continue;
+          }
           /* SAVE */
 
           await addDoc(collection(db, "products"), {
@@ -364,6 +356,8 @@ if (duplicate) {
             mediaStatus: "done",
 
             createdAt: serverTimestamp(),
+            whatHappened: "Product Added",
+            date_updated: serverTimestamp(),
           });
         }
       }
