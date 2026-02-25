@@ -877,11 +877,13 @@ await addDoc(
     );
   }, [brands, brandSearch]);
 
-  const filteredCategoryTypes = React.useMemo(() => {
-    return categoryTypes.filter((item) =>
+const filteredCategoryTypes = React.useMemo(() => {
+  return categoryTypes
+    .filter((item) =>
       item.name.toLowerCase().includes(categoryTypeSearch.toLowerCase()),
-    );
-  }, [categoryTypes, categoryTypeSearch]);
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
+}, [categoryTypes, categoryTypeSearch]);
 
   const filteredProductFamilies = React.useMemo(() => {
     const allowedCategoryIds = selectedCategoryTypes.map((c) => c.id);
