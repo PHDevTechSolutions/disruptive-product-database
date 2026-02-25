@@ -86,23 +86,24 @@ const generateSupplierCode = (companyName: string) => {
 };
 
 const safeSplit = (value: any) => {
+
   if (Array.isArray(value))
     return value.map(String).map(v => v.trim()).filter(Boolean);
 
   if (typeof value === "string")
     return value
-      .split(",")
+      .split("|")
       .map(v => v.trim())
       .filter(Boolean);
 
   if (value == null) return [];
 
   return String(value)
-    .split(",")
+    .split("|")
     .map(v => v.trim())
     .filter(Boolean);
-};
 
+};
 const normalizeJoin = (arr?: string[]) =>
   arr && arr.length ? arr.join(" | ") : "";
 

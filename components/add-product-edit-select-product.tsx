@@ -9,7 +9,9 @@ import {
   getDocs,
   query,
   where,
+  serverTimestamp, // ✅ ADD THIS
 } from "firebase/firestore";
+
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
 
@@ -62,7 +64,6 @@ export default function AddProductEditSelectProduct({
 
       setSaving(true);
 
-      /* ✅ FIXED PATH */
       await updateDoc(
         doc(
           db,
@@ -73,12 +74,16 @@ export default function AddProductEditSelectProduct({
         ),
         {
           name: value.trim(),
+
+          // ✅ ADD THIS
+          whatHappened: "Product Family Edited",
+          date_updated: serverTimestamp(),
+
         }
       );
 
-      /* ==================================================
-         UPDATE ALL PRODUCTS USING THIS productFamilyId
-      ================================================== */
+
+      /* UPDATE PRODUCTS */
 
       const q = query(
         collection(db, "products"),
@@ -164,23 +169,21 @@ export default function AddProductEditSelectProduct({
           <Input
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Enter product family name..."
             disabled={saving}
           />
 
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter>
 
           <Button
             variant="secondary"
             onClick={() => setOpen(false)}
-            disabled={saving}
           >
             Cancel
           </Button>
 
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave}>
 
             {saving ? "Saving..." : "Save"}
 

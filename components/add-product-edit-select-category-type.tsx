@@ -8,6 +8,7 @@ import {
   collection,
   getDocs,
   query,
+  serverTimestamp, // ✅ ADD THIS
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
@@ -77,6 +78,11 @@ export default function AddProductSelectCategoryType({
 
         {
           name: value.trim(),
+
+          // ✅ ADD THIS
+          whatHappened: "Product Usage Edited",
+          date_updated: serverTimestamp(),
+
         }
 
       );

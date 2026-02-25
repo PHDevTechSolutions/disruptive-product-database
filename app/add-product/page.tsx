@@ -708,17 +708,21 @@ export default function AddProductPage() {
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
 
-    await addDoc(
-      collection(db, "categoryTypes"),
+await addDoc(
+  collection(db, "categoryTypes"),
 
-      {
-        name: newCategoryType.trim(),
+  {
+    name: newCategoryType.trim(),
 
-        isActive: true,
+    isActive: true,
 
-        createdAt: serverTimestamp(),
-      },
-    );
+    createdAt: serverTimestamp(),
+
+    // ✅ ADD THIS
+    whatHappened: "Product Usage Added",
+    date_updated: serverTimestamp(),
+  },
+);
 
     setNewCategoryType("");
   };
@@ -789,17 +793,21 @@ export default function AddProductPage() {
 
     const productUsageId = selectedCategoryTypes[0].id;
 
-    await addDoc(
-      collection(db, "categoryTypes", productUsageId, "productFamilies"),
+await addDoc(
+  collection(db, "categoryTypes", productUsageId, "productFamilies"),
 
-      {
-        name: newProductType.trim(),
+  {
+    name: newProductType.trim(),
 
-        isActive: true,
+    isActive: true,
 
-        createdAt: serverTimestamp(),
-      },
-    );
+    createdAt: serverTimestamp(),
+
+    // ✅ ADD THIS
+    whatHappened: "Product Family Added",
+    date_updated: serverTimestamp(),
+  },
+);
 
     setNewProductType("");
   };
