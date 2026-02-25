@@ -6,7 +6,10 @@ import { Minus } from "lucide-react";
 import {
   doc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  getDocs,
+  collection,
+  writeBatch
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
@@ -26,31 +29,22 @@ import { Button } from "@/components/ui/button";
 
 
 type ProductType = {
-
   id: string;
   name: string;
-
 };
 
-
 type Props = {
-
   item: ProductType;
   referenceID: string;
-
 };
 
 
 export default function AddProductDeleteProductType({
-
   item,
   referenceID,
-
 }: Props) {
 
-
   const [open, setOpen] = useState(false);
-
   const [deleting, setDeleting] = useState(false);
 
 
@@ -60,30 +54,53 @@ export default function AddProductDeleteProductType({
 
       setDeleting(true);
 
-      /* ✅ FIXED PATH */
+      /* ✅ SOFT DELETE CATEGORY TYPE */
 
       await updateDoc(
-
-        doc(
-          db,
-          "categoryTypes",
-          item.id
-        ),
-
+        doc(db, "categoryTypes", item.id),
         {
           isActive: false,
           deletedBy: referenceID,
           deletedAt: serverTimestamp(),
         }
-
       );
+
+
+      /* ✅ REMOVE FROM ALL PRODUCTS */
+
+      const snapshot = await getDocs(collection(db, "products"));
+
+      const batch = writeBatch(db);
+
+      snapshot.forEach((productDoc) => {
+
+        const data = productDoc.data();
+
+        if (!data.categoryTypes) return;
+
+        const updated = data.categoryTypes.filter(
+          (ct: any) => ct.productUsageId !== item.id
+        );
+
+        batch.update(
+          doc(db, "products", productDoc.id),
+          {
+            categoryTypes: updated
+          }
+        );
+
+      });
+
+      await batch.commit();
 
 
       toast.success("Category type deleted");
 
       setOpen(false);
 
-    } catch {
+    } catch (error) {
+
+      console.error(error);
 
       toast.error("Failed to delete category type");
 
@@ -100,7 +117,6 @@ export default function AddProductDeleteProductType({
 
     <Dialog open={open} onOpenChange={setOpen}>
 
-
       <DialogTrigger asChild>
 
         <Button size="icon" variant="outline">
@@ -114,7 +130,6 @@ export default function AddProductDeleteProductType({
 
       <DialogContent>
 
-
         <DialogHeader>
 
           <DialogTitle>Delete Category Type</DialogTitle>
@@ -123,24 +138,21 @@ export default function AddProductDeleteProductType({
 
 
         <p>
-
           Delete <b>{item.name}</b> ?
-
         </p>
 
 
         <DialogFooter>
 
           <Button onClick={() => setOpen(false)}>
-
             Cancel
-
           </Button>
 
 
           <Button
             variant="destructive"
             onClick={handleDelete}
+            disabled={deleting}
           >
 
             {deleting ? "Deleting..." : "Delete"}
