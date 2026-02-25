@@ -86,75 +86,89 @@ function DeleteSupplier({ open, onOpenChange, supplier }: DeleteSupplierProps) {
       });
   }, [userId]);
 
-  /* ---------------- Soft Delete Supplier + Remove from Products ---------------- */
+/* ---------------- Soft Delete Supplier + Remove from Products ---------------- */
 
-  const handleDeleteSupplier = async () => {
-    try {
-      if (!user?.ReferenceID) {
-        toast.error("User reference not loaded");
+const handleDeleteSupplier = async () => {
+  try {
+    if (!user?.ReferenceID) {
+      toast.error("User reference not loaded");
+      return;
+    }
 
-        return;
+    setLoading(true);
+
+    /* ✅ STEP 1: SOFT DELETE SUPPLIER */
+
+    await updateDoc(
+      doc(db, "suppliers", supplier.id),
+      {
+        isActive: false,
+        deletedBy: user.ReferenceID,
+        deletedAt: serverTimestamp(),
+        whatHappened: "Supplier Deleted",
+        date_updated: serverTimestamp(),
+      }
+    );
+
+    /* ✅ STEP 2: REMOVE SUPPLIER FROM ALL PRODUCTS
+       AND APPLY DEFAULT VALUES */
+
+    const snapshot = await getDocs(collection(db, "products"));
+
+    const batch = writeBatch(db);
+
+    snapshot.forEach((productDoc) => {
+
+      const data = productDoc.data();
+
+      if (!data.supplier) return;
+
+      if (data.supplier.supplierId === supplier.id) {
+
+        batch.update(
+          doc(db, "products", productDoc.id),
+          {
+            supplier: null,
+
+            // ✅ APPLY DEFAULT VALUES
+            pricePoint: "Economy",
+
+            brandOrigin: "China",
+
+            whatHappened: "Supplier Deleted - Defaults Applied",
+
+            date_updated: serverTimestamp(),
+          }
+        );
+
       }
 
-      setLoading(true);
+    });
 
-      /* ✅ STEP 1: SOFT DELETE SUPPLIER */
+    await batch.commit();
 
-      await updateDoc(
-        doc(db, "suppliers", supplier.id),
+    /* ✅ SUCCESS */
 
-        {
-          isActive: false,
+    toast.success("Supplier deleted", {
+      description: supplier.company,
+    });
 
-          deletedBy: user.ReferenceID,
+    onOpenChange(false);
 
-          deletedAt: serverTimestamp(),
+  }
+  catch (error) {
 
-          whatHappened: "Supplier Deleted",
+    console.error("Soft delete supplier error:", error);
 
-          date_updated: serverTimestamp(),
-        },
-      );
+    toast.error("Failed to delete supplier");
 
-      /* ✅ STEP 2: REMOVE SUPPLIER FROM ALL PRODUCTS */
+  }
+  finally {
 
-      const snapshot = await getDocs(collection(db, "products"));
+    setLoading(false);
 
-      const batch = writeBatch(db);
-
-      snapshot.forEach((productDoc) => {
-        const data = productDoc.data();
-
-        if (!data.supplier) return;
-
-        if (data.supplier.supplierId === supplier.id) {
-          batch.update(
-            doc(db, "products", productDoc.id),
-
-            {
-              supplier: null,
-            },
-          );
-        }
-      });
-
-      await batch.commit();
-
-      /* ✅ SUCCESS */
-
-      toast.success("Supplier deleted", {
-        description: supplier.company,
-      });
-
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Soft delete supplier error:", error);
-
-      toast.error("Failed to delete supplier");
-    } finally {
-      setLoading(false);
-    }
-  };
+  }
+};
 
   /* ---------------- UI ---------------- */
 
