@@ -141,24 +141,62 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   }, [userId]);
 
   /* ---------------- Read Excel ---------------- */
-  const readExcel = async (file: File) => {
-    const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: "array" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = XLSX.utils.sheet_to_json(sheet, {
+const readExcel = async (file: File) => {
+
+  try {
+
+    if (!file) return;
+
+    if (file.size === 0) {
+      toast.error("File is empty");
+      return;
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+
+    const workbook = XLSX.read(arrayBuffer, {
+      type: "array",
+      cellDates: true,
+      raw: false,
+    });
+
+    const sheetName = workbook.SheetNames[0];
+
+    if (!sheetName) {
+      toast.error("Excel has no sheets");
+      return;
+    }
+
+    const sheet = workbook.Sheets[sheetName];
+
+    const json = XLSX.utils.sheet_to_json(sheet, {
       defval: "",
     }) as ExcelRow[];
 
-    if (!data.length) {
+    if (!json.length) {
       toast.error("Excel file is empty");
       return;
     }
 
-    setRows(data);
+    setRows(json);
+
     toast.success("Excel loaded", {
-      description: `${data.length} rows detected`,
+      description: `${json.length} rows detected`,
     });
-  };
+
+    // ✅ RESET INPUT (IMPORTANT FIX)
+    if (fileInputRef.current)
+      fileInputRef.current.value = "";
+
+  } catch (error) {
+
+    console.error(error);
+
+    toast.error("Invalid or corrupted Excel file");
+
+  }
+
+};
 
   /* ---------------- Drag & Drop ---------------- */
   const handleDrop = (e: React.DragEvent) => {
@@ -173,7 +211,10 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
       return;
     }
 
-    readExcel(file);
+readExcel(file);
+
+if (fileInputRef.current)
+  fileInputRef.current.value = "";
   };
 
   /* ✅ CLICK FILE PICKER (ADDED) */
@@ -186,7 +227,10 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
       return;
     }
 
-    readExcel(file);
+readExcel(file);
+
+if (fileInputRef.current)
+  fileInputRef.current.value = "";
   };
 
   /* ---------------- Confirm Upload ---------------- */
@@ -308,6 +352,8 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           const phones = splitPipe(row["Phone Number(s)"]);
 
           await updateDoc(doc(db, "suppliers", existing.id), {
+            whatHappened: "Supplier Added",
+date_updated: serverTimestamp(),
             supplierId: existing.id, // 👈 ADD THIS
 
             companyCode:
@@ -362,9 +408,11 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
         // 2️⃣ Save Firestore ID as companyId
         // 2️⃣ Save Firestore ID as supplierId
-        await updateDoc(doc(db, "suppliers", docRef.id), {
-          supplierId: docRef.id,
-        });
+await updateDoc(doc(db, "suppliers", docRef.id), {
+  supplierId: docRef.id,
+  whatHappened: "Supplier Added",
+  date_updated: serverTimestamp(),
+});
 
         supplierMap.set(key, {
           id: "new",

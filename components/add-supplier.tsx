@@ -262,9 +262,11 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
       const docRef = await addDoc(collection(db, "suppliers"), supplierData);
 
       // 2️⃣ SAVE supplierId (same as Firestore document ID)
-      await updateDoc(doc(db, "suppliers", docRef.id), {
-        supplierId: docRef.id,
-      });
+await updateDoc(doc(db, "suppliers", docRef.id), {
+  supplierId: docRef.id,
+  whatHappened: "Supplier Added",
+  date_updated: serverTimestamp(),
+});
 
       toast.success("Supplier saved successfully", {
         description: company,

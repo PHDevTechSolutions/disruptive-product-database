@@ -277,26 +277,41 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
       /* ===============================
        1️⃣ UPDATE SUPPLIER (MASTER)
     =============================== */
-      await updateDoc(doc(db, "suppliers", supplier.id), {
-        supplierId: supplier.id,
-        company: company.trim(),
-        internalCode: internalCode.filter(Boolean),
-        addresses: addresses.filter(Boolean),
-        emails: emails.filter(Boolean),
-        website: website.filter(Boolean),
-        contacts: contactNames
-          .map((name, index) => ({
-            name,
-            phone: contactNumbers[index] || "",
-          }))
-          .filter((c) => c.name || c.phone),
-        forteProducts: forteProducts.filter(Boolean),
-        products: products.filter(Boolean),
-        certificates: certificates.filter(Boolean),
-        referenceID: user?.ReferenceID || supplier.referenceID || null,
-        updatedAt: serverTimestamp(),
-      });
+await updateDoc(doc(db, "suppliers", supplier.id), {
 
+  supplierId: supplier.id,
+
+  company: company.trim(),
+
+  internalCode: internalCode.filter(Boolean),
+
+  addresses: addresses.filter(Boolean),
+
+  emails: emails.filter(Boolean),
+
+  website: website.filter(Boolean),
+
+  contacts: contactNames
+    .map((name, index) => ({
+      name,
+      phone: contactNumbers[index] || "",
+    }))
+    .filter((c) => c.name || c.phone),
+
+  forteProducts: forteProducts.filter(Boolean),
+
+  products: products.filter(Boolean),
+
+  certificates: certificates.filter(Boolean),
+
+  referenceID: user?.ReferenceID || supplier.referenceID || null,
+
+  whatHappened: "Supplier Edited",
+  date_updated: serverTimestamp(),
+
+  updatedAt: serverTimestamp(),
+
+});
       /* =========================================
        2️⃣ FETCH PRODUCTS USING THIS SUPPLIER ID
     ========================================= */
