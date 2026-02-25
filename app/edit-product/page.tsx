@@ -115,14 +115,13 @@ export default function EditProductPage() {
 
   const [pricePoint, setPricePoint] = useState("");
   const [brandOrigin, setBrandOrigin] = useState("");
+  const [productClass, setProductClass] = useState("");
 
   const isInitialLoad = useRef(true);
 
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const [productName, setProductName] = useState("");
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -337,11 +336,11 @@ export default function EditProductPage() {
 
       const data: any = snap.data();
 
-      setProductName(data.productName || "");
-
       setPricePoint(data.pricePoint || "");
 
       setBrandOrigin(data.brandOrigin || "");
+
+      setProductClass(data.productClass || "");
 
       if (data.supplier) {
         setSelectedSupplier({
@@ -782,21 +781,21 @@ export default function EditProductPage() {
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
 
-await addDoc(
-  collection(db, "categoryTypes"),
+    await addDoc(
+      collection(db, "categoryTypes"),
 
-  {
-    name: newCategoryType.trim(),
+      {
+        name: newCategoryType.trim(),
 
-    isActive: true,
+        isActive: true,
 
-    createdAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
 
-    // ✅ ADD THIS
-    whatHappened: "Product Usage Added",
-    date_updated: serverTimestamp(),
-  },
-);
+        // ✅ ADD THIS
+        whatHappened: "Product Usage Added",
+        date_updated: serverTimestamp(),
+      },
+    );
 
     setNewCategoryType("");
   };
@@ -864,21 +863,21 @@ await addDoc(
 
     const productUsageId = selectedCategoryTypes[0].id;
 
-await addDoc(
-  collection(db, "categoryTypes", productUsageId, "productFamilies"),
+    await addDoc(
+      collection(db, "categoryTypes", productUsageId, "productFamilies"),
 
-  {
-    name: newProductType.trim(),
+      {
+        name: newProductType.trim(),
 
-    isActive: true,
+        isActive: true,
 
-    createdAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
 
-    // ✅ ADD THIS
-    whatHappened: "Product Family Added",
-    date_updated: serverTimestamp(),
-  },
-);
+        // ✅ ADD THIS
+        whatHappened: "Product Family Added",
+        date_updated: serverTimestamp(),
+      },
+    );
 
     setNewProductType("");
   };
@@ -948,13 +947,13 @@ await addDoc(
     );
   }, [brands, brandSearch]);
 
-const filteredCategoryTypes = React.useMemo(() => {
-  return categoryTypes
-    .filter((item) =>
-      item.name.toLowerCase().includes(categoryTypeSearch.toLowerCase()),
-    )
-    .sort((a, b) => a.name.localeCompare(b.name));
-}, [categoryTypes, categoryTypeSearch]);
+  const filteredCategoryTypes = React.useMemo(() => {
+    return categoryTypes
+      .filter((item) =>
+        item.name.toLowerCase().includes(categoryTypeSearch.toLowerCase()),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [categoryTypes, categoryTypeSearch]);
 
   const filteredProductFamilies = React.useMemo(() => {
     const allowedCategoryIds = selectedCategoryTypes.map((c) => c.id);
@@ -1007,10 +1006,6 @@ const filteredCategoryTypes = React.useMemo(() => {
     if (saving) return;
     try {
       setSaving(true);
-      if (!productName.trim()) {
-        toast.error("Product name is required");
-        return;
-      }
 
       if (!selectedSupplier && !noSupplier) {
         toast.error("Please select a supplier");
@@ -1027,15 +1022,19 @@ const filteredCategoryTypes = React.useMemo(() => {
         return;
       }
 
+      if (!productClass) {
+        toast.error("Please select product class");
+        return;
+      }
+
       // ================= CLOUDINARY UPLOAD =================
 
       const productRef = doc(db, "products", productId!);
 
       await updateDoc(productRef, {
-        productName,
-
         pricePoint: noSupplier ? "Economy" : pricePoint,
         brandOrigin: noSupplier ? "China" : brandOrigin,
+        productClass,
 
         supplier: noSupplier
           ? null
@@ -1127,7 +1126,7 @@ const filteredCategoryTypes = React.useMemo(() => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-center text-sm">
-                  MAIN PRODUCT IMAGE
+                  PRODUCT IMAGES
                 </CardTitle>
               </CardHeader>
 
@@ -1154,14 +1153,6 @@ const filteredCategoryTypes = React.useMemo(() => {
               </CardContent>
             </Card>
 
-            <div>
-              <Label>Model No.</Label>
-              <Input
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                placeholder="Enter Model No."
-              />
-            </div>
             {/* ================= SUPPLIER SELECT ================= */}
             <div className="space-y-2">
               <Label>Supplier / Company</Label>
@@ -1268,6 +1259,22 @@ const filteredCategoryTypes = React.useMemo(() => {
                 <option value="">Select brand origin...</option>
                 <option value="China">China</option>
                 <option value="Non-China">Non-China</option>
+              </select>
+            </div>
+
+            {/* ================= PRODUCT CLASS SELECT ================= */}
+
+            <div className="space-y-2">
+              <Label>Product Class</Label>
+
+              <select
+                value={productClass}
+                onChange={(e) => setProductClass(e.target.value)}
+                className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
+              >
+                <option value="">Select product class...</option>
+                <option value="Standard">Standard</option>
+                <option value="SPF">SPF</option>
               </select>
             </div>
 

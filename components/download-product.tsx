@@ -55,6 +55,7 @@ export default function DownloadProduct({ products }: Props) {
       const staticColumns = [
         "Product Usage",
         "Product Family",
+        "Product Class", // ✅ ADD THIS
         "Price Point",
         "Brand Origin",
         "Product Name",
@@ -172,6 +173,7 @@ export default function DownloadProduct({ products }: Props) {
         // Updated static columns
         row.push(product.categoryTypes?.[0]?.categoryTypeName || "");
         row.push(product.productFamilies?.[0]?.productFamilyName || "");
+        row.push(product.productClass || "");
         row.push(product.pricePoint || "");
         row.push(product.brandOrigin || "");
         row.push(product.productName || "");

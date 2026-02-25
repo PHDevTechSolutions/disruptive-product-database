@@ -99,7 +99,8 @@ export default function UploadProductModal() {
     };
   };
 
-  /* MAIN UPLOAD */
+  /* DUPLICATE CHECK */
+
   const isDuplicateProduct = async ({
     productName,
     productUsageId,
@@ -107,14 +108,7 @@ export default function UploadProductModal() {
     supplierId,
     pricePoint,
     brandOrigin,
-  }: {
-    productName: string;
-    productUsageId: string;
-    productFamilyId: string;
-    supplierId: string;
-    pricePoint: string;
-    brandOrigin: string;
-  }) => {
+  }: any) => {
     const snap = await getDocs(
       query(
         collection(db, "products"),
@@ -132,17 +126,17 @@ export default function UploadProductModal() {
     snap.forEach((doc) => {
       const data = doc.data();
 
-      const usageId = data.categoryTypes?.[0]?.productUsageId;
-
-      const familyId = data.productFamilies?.[0]?.productFamilyId;
-
-      if (usageId === productUsageId && familyId === productFamilyId) {
+      if (
+        data.categoryTypes?.[0]?.productUsageId === productUsageId &&
+        data.productFamilies?.[0]?.productFamilyId === productFamilyId
+      )
         duplicate = true;
-      }
     });
 
     return duplicate;
   };
+
+  /* MAIN UPLOAD */
 
   const handleUpload = async () => {
     if (!file) {
@@ -159,7 +153,7 @@ export default function UploadProductModal() {
 
       await workbook.xlsx.load(buffer);
 
-      /* GENERATE REF COUNTER */
+      /* GENERATE REF */
 
       let refCounter = 0;
 
@@ -185,7 +179,7 @@ export default function UploadProductModal() {
         const techHeaders: any[] = [];
 
         header1.eachCell((cell, col) => {
-          if (col <= 7) return;
+          if (col <= 8) return;
 
           const specId = cell.value?.toString();
 
@@ -193,17 +187,12 @@ export default function UploadProductModal() {
 
           if (!title || !specId) return;
 
-          techHeaders.push({
-            col,
-            title,
-            specId,
-          });
+          techHeaders.push({ col, title, specId });
         });
-
-        /* MERGE SUPPORT */
 
         let lastUsage = "";
         let lastFamily = "";
+        let lastClass = "";
         let lastPrice = "";
         let lastOrigin = "";
         let lastName = "";
@@ -221,58 +210,47 @@ export default function UploadProductModal() {
 
           if (productFamily) lastFamily = productFamily;
 
-          const pricePoint = row.getCell(3).value?.toString() || lastPrice;
+          const productClass = row.getCell(3).value?.toString() || lastClass;
+
+          if (productClass) lastClass = productClass;
+
+          const pricePoint = row.getCell(4).value?.toString() || lastPrice;
 
           if (pricePoint) lastPrice = pricePoint;
 
-          const brandOrigin = row.getCell(4).value?.toString() || lastOrigin;
+          const brandOrigin = row.getCell(5).value?.toString() || lastOrigin;
 
           if (brandOrigin) lastOrigin = brandOrigin;
 
-          const productName = row.getCell(5).value?.toString() || lastName;
+          const productName = row.getCell(6).value?.toString() || lastName;
 
           if (productName) lastName = productName;
 
           const supplierCompany =
-            row.getCell(6).value?.toString() || lastSupplier;
+            row.getCell(7).value?.toString() || lastSupplier;
 
           if (supplierCompany) lastSupplier = supplierCompany;
 
-          const image = row.getCell(7).value?.toString() || lastImage;
+          const image = row.getCell(8).value?.toString() || lastImage;
 
           if (image) lastImage = image;
 
           if (!productName) continue;
 
-          /* FIND DATA */
-
           const supplier = await findSupplier(supplierCompany);
 
-          if (!supplier) {
-            toast.error(`Supplier "${supplierCompany}" not found`);
-            continue;
-          }
 
           const categoryType = await findCategoryType(productUsage);
 
-          if (!categoryType) {
-            toast.error(`Product Usage "${productUsage}" not found`);
-            continue;
-          }
 
-          const productFamilyData = await findProductFamily(
-            categoryType.productUsageId,
-            productFamily,
-          );
+const productFamilyData = categoryType
+  ? await findProductFamily(
+      categoryType.productUsageId,
+      productFamily,
+    )
+  : null;
 
-          if (!productFamilyData) {
-            toast.error(`Product Family "${productFamily}" not found`);
-            continue;
-          }
-
-          /* TECH SPECS */
-
-          const specMap: Record<string, any[]> = {};
+          const specMap: any = {};
 
           techHeaders.forEach(({ col, title, specId }) => {
             const value = row.getCell(col).value?.toString();
@@ -281,10 +259,7 @@ export default function UploadProductModal() {
 
             if (!specMap[title]) specMap[title] = [];
 
-            specMap[title].push({
-              specId,
-              value,
-            });
+            specMap[title].push({ specId, value });
           });
 
           const technicalSpecifications = Object.keys(specMap).map((title) => ({
@@ -293,32 +268,36 @@ export default function UploadProductModal() {
             specs: specMap[title],
           }));
 
-          /* REF */
-
           refCounter++;
 
-          const productReferenceID = `PROD-SPF-${refCounter
-            .toString()
-            .padStart(5, "0")}`;
-          const duplicate = await isDuplicateProduct({
-            productName,
-            productUsageId: categoryType.productUsageId,
-            productFamilyId: productFamilyData.productFamilyId,
-            supplierId: supplier.supplierId,
-            pricePoint,
-            brandOrigin,
-          });
+          const productReferenceID = `PROD-SPF-${refCounter.toString().padStart(5, "0")}`;
+
+const duplicate =
+  supplier &&
+  categoryType &&
+  productFamilyData
+    ? await isDuplicateProduct({
+        productName,
+        productUsageId: categoryType.productUsageId,
+        productFamilyId: productFamilyData.productFamilyId,
+        supplierId: supplier.supplierId,
+        pricePoint,
+        brandOrigin,
+      })
+    : false;
 
           if (duplicate) {
             toast.error(`Duplicate skipped: ${productName}`);
+
             continue;
           }
-          /* SAVE */
 
           await addDoc(collection(db, "products"), {
             productReferenceID,
 
             productName,
+
+            productClass: productClass || "Standard",
 
             pricePoint,
 
@@ -326,20 +305,9 @@ export default function UploadProductModal() {
 
             supplier,
 
-            categoryTypes: [
-              {
-                productUsageId: categoryType.productUsageId,
-                categoryTypeName: categoryType.categoryTypeName,
-              },
-            ],
+            categoryTypes: [categoryType],
 
-            productFamilies: [
-              {
-                productFamilyId: productFamilyData.productFamilyId,
-                productFamilyName: productFamilyData.productFamilyName,
-                productUsageId: productFamilyData.productUsageId,
-              },
-            ],
+            productFamilies: [productFamilyData],
 
             mainImage: {
               url: image,
@@ -356,7 +324,9 @@ export default function UploadProductModal() {
             mediaStatus: "done",
 
             createdAt: serverTimestamp(),
+
             whatHappened: "Product Added",
+
             date_updated: serverTimestamp(),
           });
         }
@@ -367,16 +337,12 @@ export default function UploadProductModal() {
       setOpen(false);
 
       setFile(null);
-    } catch (err) {
-      console.error(err);
-
+    } catch {
       toast.error("Upload Failed");
     } finally {
       setUploading(false);
     }
   };
-
-  /* UI */
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

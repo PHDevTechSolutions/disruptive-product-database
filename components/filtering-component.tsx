@@ -17,7 +17,9 @@ type Props = {
 
 export default function FilteringComponent({ products, onFilter }: Props) {
   const [filters, setFilters] = useState<Record<string, string[]>>({});
-  const [searchFilters, setSearchFilters] = useState<Record<string, string>>({});
+  const [searchFilters, setSearchFilters] = useState<Record<string, string>>(
+    {},
+  );
 
   const uniq = (arr: any[]) => Array.from(new Set(arr.filter(Boolean)));
 
@@ -63,9 +65,13 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   /* ================= BASIC FILTER SOURCES ================= */
 
-  const productUsages = uniq(products.map((p) => p.categoryTypes?.[0]?.categoryTypeName));
+  const productUsages = uniq(
+    products.map((p) => p.categoryTypes?.[0]?.categoryTypeName),
+  );
 
-  const productFamilies = uniq(products.map((p) => p.productFamilies?.[0]?.productFamilyName));
+  const productFamilies = uniq(
+    products.map((p) => p.productFamilies?.[0]?.productFamilyName),
+  );
 
   const suppliers = uniq(products.map((p) => p.supplier?.company));
 
@@ -74,6 +80,9 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   /* ✅ BRAND ORIGIN FILTER */
   const brandOrigins = uniq(products.map((p) => p.brandOrigin));
+
+  const productClasses = uniq(products.map((p) => p.productClass));
+
 
   /* ================= TECH SPECS ================= */
 
@@ -133,10 +142,13 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         return true;
       };
 
-      if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName)) return false;
-      if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName)) return false;
+      if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName))
+        return false;
+      if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName))
+        return false;
       if (!check("Price Point", p.pricePoint)) return false;
       if (!check("Brand Origin", p.brandOrigin)) return false;
+      if (!check("Product Class", p.productClass)) return false; 
       if (!check("Supplier", p.supplier?.company)) return false;
 
       for (const [k, vals] of Object.entries(filters)) {
@@ -230,6 +242,14 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         />
 
         <Section
+          title="Product Class"
+          items={productClasses}
+          filters={filters}
+          toggle={toggle}
+          setSearch={setSearch}
+        />
+
+        <Section
           title="Supplier"
           items={suppliers}
           filters={filters}
@@ -303,10 +323,7 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
         const itemTo = itemNums[1];
 
         /* overlap detection */
-        if (
-          inputFrom <= itemTo &&
-          inputTo >= itemFrom
-        ) {
+        if (inputFrom <= itemTo && inputTo >= itemFrom) {
           return true;
         }
       }
@@ -346,16 +363,13 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
 
       {/* ✅ FIX IS HERE */}
       <Command shouldFilter={false}>
-
         <CommandInput
           placeholder="Type to search..."
           value={input}
           onValueChange={setInput}
         />
 
-        {visible.length === 0 && (
-          <CommandEmpty>No results</CommandEmpty>
-        )}
+        {visible.length === 0 && <CommandEmpty>No results</CommandEmpty>}
 
         {visible.length > 0 && (
           <CommandGroup>
@@ -363,9 +377,7 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
               <CommandItem key={i} onSelect={() => toggle(title, i)}>
                 <Check
                   className={`mr-2 h-4 w-4 ${
-                    filters[title]?.includes(i)
-                      ? "opacity-100"
-                      : "opacity-0"
+                    filters[title]?.includes(i) ? "opacity-100" : "opacity-0"
                   }`}
                 />
                 {i}
@@ -373,7 +385,6 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
             ))}
           </CommandGroup>
         )}
-
       </Command>
     </div>
   );
