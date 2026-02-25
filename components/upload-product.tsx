@@ -108,6 +108,7 @@ export default function UploadProductModal() {
     supplierId,
     pricePoint,
     brandOrigin,
+    productClass,
   }: any) => {
     const snap = await getDocs(
       query(
@@ -115,7 +116,7 @@ export default function UploadProductModal() {
         where("productName", "==", productName),
         where("pricePoint", "==", pricePoint),
         where("brandOrigin", "==", brandOrigin),
-        where("supplier.supplierId", "==", supplierId),
+        where("productClass", "==", productClass || "Standard"),
       ),
     );
 
@@ -126,11 +127,21 @@ export default function UploadProductModal() {
     snap.forEach((doc) => {
       const data = doc.data();
 
+      const usageId = data.categoryTypes?.[0]?.productUsageId;
+
+      const familyId = data.productFamilies?.[0]?.productFamilyId;
+
+      const existingSupplierId = data.supplier?.supplierId || null;
+
+      const newSupplierId = supplierId || null;
+
       if (
-        data.categoryTypes?.[0]?.productUsageId === productUsageId &&
-        data.productFamilies?.[0]?.productFamilyId === productFamilyId
-      )
+        usageId === productUsageId &&
+        familyId === productFamilyId &&
+        existingSupplierId === newSupplierId
+      ) {
         duplicate = true;
+      }
     });
 
     return duplicate;
@@ -239,16 +250,14 @@ export default function UploadProductModal() {
 
           const supplier = await findSupplier(supplierCompany);
 
-
           const categoryType = await findCategoryType(productUsage);
 
-
-const productFamilyData = categoryType
-  ? await findProductFamily(
-      categoryType.productUsageId,
-      productFamily,
-    )
-  : null;
+          const productFamilyData = categoryType
+            ? await findProductFamily(
+                categoryType.productUsageId,
+                productFamily,
+              )
+            : null;
 
           const specMap: any = {};
 
@@ -272,19 +281,18 @@ const productFamilyData = categoryType
 
           const productReferenceID = `PROD-SPF-${refCounter.toString().padStart(5, "0")}`;
 
-const duplicate =
-  supplier &&
-  categoryType &&
-  productFamilyData
-    ? await isDuplicateProduct({
-        productName,
-        productUsageId: categoryType.productUsageId,
-        productFamilyId: productFamilyData.productFamilyId,
-        supplierId: supplier.supplierId,
-        pricePoint,
-        brandOrigin,
-      })
-    : false;
+          const duplicate =
+            categoryType && productFamilyData
+              ? await isDuplicateProduct({
+                  productName,
+                  productUsageId: categoryType.productUsageId,
+                  productFamilyId: productFamilyData.productFamilyId,
+                  supplierId: supplier?.supplierId || null,
+                  pricePoint,
+                  brandOrigin,
+                  productClass,
+                })
+              : false;
 
           if (duplicate) {
             toast.error(`Duplicate skipped: ${productName}`);
