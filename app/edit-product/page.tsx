@@ -1001,7 +1001,168 @@ export default function EditProductPage() {
       return `PROD-SPF-${Date.now().toString().slice(-5)}`;
     }
   };
+const syncTemplateChangesToFamily = async () => {
 
+  if (!selectedProductFamily) return;
+  if (selectedCategoryTypes.length !== 1) return;
+
+  const categoryTypeId = selectedCategoryTypes[0].id;
+  const productFamilyId = selectedProductFamily.id;
+
+  const templateRef = collection(
+    db,
+    "categoryTypes",
+    categoryTypeId,
+    "productFamilies",
+    productFamilyId,
+    "technicalSpecifications"
+  );
+
+  const snapshot = await getDocs(templateRef);
+
+  const batch = writeBatch(db);
+
+  const updatedSpecs = [...technicalSpecs];
+
+  // DELETE removed specs
+  snapshot.forEach(docSnap => {
+
+    const exists = technicalSpecs.find(
+      s => s.id === docSnap.id
+    );
+
+    if (!exists)
+      batch.delete(docSnap.ref);
+
+  });
+
+  // ADD / UPDATE specs
+  for (let i = 0; i < updatedSpecs.length; i++) {
+
+    const spec = updatedSpecs[i];
+
+    if (!spec.title.trim()) continue;
+
+    let ref;
+
+    if (spec.id) {
+
+      ref = doc(templateRef, spec.id);
+
+    } else {
+
+      ref = doc(templateRef);
+
+      // ✅ Assign generated ID to state
+      updatedSpecs[i].id = ref.id;
+
+    }
+
+    batch.set(ref, {
+
+      title: spec.title,
+
+      specs: spec.specs.map(row => ({
+        specId: row.specId
+      })),
+
+      isActive: true,
+
+      updatedAt: serverTimestamp()
+
+    });
+
+  }
+
+  await batch.commit();
+
+  // ✅ UPDATE STATE
+  setTechnicalSpecs(updatedSpecs);
+
+};
+const syncProductsUsingThisFamily = async () => {
+
+  if (!selectedProductFamily) return;
+
+  const q = query(
+    collection(db, "products"),
+    where(
+      "productFamilies",
+      "array-contains",
+      {
+        productFamilyId: selectedProductFamily.id,
+        productFamilyName: selectedProductFamily.name,
+        productUsageId: selectedProductFamily.productUsageId
+      }
+    )
+  );
+
+  const snapshot = await getDocs(q);
+
+  const batch = writeBatch(db);
+
+  snapshot.forEach(productDoc => {
+
+    const productRef = doc(db, "products", productDoc.id);
+
+    const productData: any = productDoc.data();
+
+    const existingSpecs = productData.technicalSpecifications || [];
+
+    const mergedSpecs = technicalSpecs
+      .filter(templateSpec => templateSpec.title.trim() !== "")
+      .map(templateSpec => {
+
+        const existingSpec =
+          existingSpecs.find(
+            (s: any) =>
+              s.technicalSpecificationId === templateSpec.id
+          );
+
+        return {
+
+          technicalSpecificationId: templateSpec.id,
+
+          title: templateSpec.title,
+
+          specs: templateSpec.specs
+            .filter(row => row.specId.trim() !== "")
+            .map(templateRow => {
+
+              const existingRow =
+                existingSpec?.specs?.find(
+                  (r: any) =>
+                    r.specId === templateRow.specId
+                );
+
+              return {
+
+                specId: templateRow.specId,
+
+                // ✅ PRESERVE VALUE PER PRODUCT
+                value: existingRow?.value || ""
+
+              };
+
+            })
+
+        };
+
+      });
+
+    batch.update(productRef, {
+
+      technicalSpecifications: mergedSpecs,
+
+      updatedAt: serverTimestamp()
+
+    });
+
+  });
+
+  await batch.commit();
+
+};
   const handleSaveProduct = async () => {
     if (saving) return;
     try {
@@ -1030,6 +1191,8 @@ export default function EditProductPage() {
       // ================= CLOUDINARY UPLOAD =================
 
       const productRef = doc(db, "products", productId!);
+      
+      await syncTemplateChangesToFamily();
 
       await updateDoc(productRef, {
         pricePoint: noSupplier ? "Economy" : pricePoint,
@@ -1084,6 +1247,8 @@ export default function EditProductPage() {
         whatHappened: "Product Edited",
         date_updated: serverTimestamp(),
       });
+
+      await syncProductsUsingThisFamily();
 
       if (mainImage) uploadProductMedia(productId!);
 

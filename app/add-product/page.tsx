@@ -587,6 +587,7 @@ export default function AddProductPage() {
     return () => unsub();
   }, []);
 
+  
   const syncSpecsToProductType = async () => {
     if (!selectedProductFamily) return;
 
@@ -641,6 +642,89 @@ export default function AddProductPage() {
       toast.error("Failed to save specifications");
     }
   };
+
+  const syncProductsUsingThisFamily = async (
+  productFamilyId: string,
+  productFamilyName: string,
+  productUsageId: string,
+  templateSpecs: any[]
+) => {
+
+  const q = query(
+    collection(db, "products"),
+    where(
+      "productFamilies",
+      "array-contains",
+      {
+        productFamilyId,
+        productFamilyName,
+        productUsageId
+      }
+    )
+  );
+
+  const snapshot = await getDocs(q);
+
+  const batch = writeBatch(db);
+
+  snapshot.forEach(productDoc => {
+
+    const ref = doc(db, "products", productDoc.id);
+
+    const data: any = productDoc.data();
+
+    const existingSpecs =
+      data.technicalSpecifications || [];
+
+    const mergedSpecs = templateSpecs.map(templateSpec => {
+
+      const existingSpec =
+        existingSpecs.find(
+          (s: any) =>
+            s.technicalSpecificationId === templateSpec.id
+        );
+
+      return {
+
+        technicalSpecificationId: templateSpec.id,
+
+        title: templateSpec.title,
+
+        specs: templateSpec.specs.map((templateRow: any) => {
+
+          const existingRow =
+            existingSpec?.specs?.find(
+              (r: any) =>
+                r.specId === templateRow.specId
+            );
+
+          return {
+
+            specId: templateRow.specId,
+
+            value: existingRow?.value || ""
+
+          };
+
+        })
+
+      };
+
+    });
+
+    batch.update(ref, {
+
+      technicalSpecifications: mergedSpecs,
+
+      updatedAt: serverTimestamp()
+
+    });
+
+  });
+
+  await batch.commit();
+
+};
 
   /* ================= NUMBER FORMATTERS ================= */
   const formatPHP = (value: number, decimals = 2) => {
