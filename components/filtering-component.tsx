@@ -33,8 +33,9 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   const splitValues = (value: string): string[] => {
     if (!value) return [];
+
     return value
-      .split(",")
+      .split("|") // ✅ USE PIPE
       .map((v) => v.trim())
       .filter(Boolean);
   };
