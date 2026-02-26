@@ -31,14 +31,14 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         })
       : "-";
 
-  const splitValues = (value: string): string[] => {
-    if (!value) return [];
+const splitValues = (value: string): string[] => {
+  if (!value) return [];
 
-    return value
-      .split("|") // ✅ USE PIPE
-      .map((v) => v.trim())
-      .filter(Boolean);
-  };
+  return value
+    .split("|") // ✅ USE PIPE
+    .map((v) => v.trim())
+    .filter(Boolean);
+};
 
   const expandRange = (value: string): string[] => {
     const match = value.match(/(\d+)\s*-\s*(\d+)/);
