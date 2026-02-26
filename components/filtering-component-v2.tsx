@@ -17,6 +17,23 @@ type Props = {
 
 export default function FilteringComponent({ products, onFilter }: Props) {
   const [filters, setFilters] = useState<Record<string, string[]>>({});
+
+/* ================= STEP VISIBILITY CONTROL ================= */
+/* CTRL+F: STEP VISIBILITY CONTROL */
+
+const stepOrder = [
+  "Product Usage",
+  "Product Family",
+  "Product Class",
+  "Price Point",
+  "Brand Origin",
+  "Supplier",
+];
+
+const [visibleSteps, setVisibleSteps] = useState<string[]>([
+  "Product Usage",
+]);
+  
   const [searchFilters, setSearchFilters] = useState<Record<string, string>>(
     {},
   );
@@ -176,13 +193,37 @@ const splitValues = (value: string): string[] => {
 
   /* ================= UI ACTIONS ================= */
 
-  const toggle = (title: string, value: string) =>
-    setFilters((prev) => ({
+/* ================= STEP TOGGLE FILTER ================= */
+/* CTRL+F: STEP TOGGLE FILTER */
+
+const toggle = (title: string, value: string) => {
+  setFilters((prev) => {
+    const updated = {
       ...prev,
       [title]: prev[title]?.includes(value)
         ? prev[title].filter((v) => v !== value)
         : [...(prev[title] || []), value],
-    }));
+    };
+
+    /* STEP VISIBILITY */
+
+    if (!prev[title]?.length) {
+      const currentIndex = stepOrder.indexOf(title);
+
+      if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
+        const nextStep = stepOrder[currentIndex + 1];
+
+        setVisibleSteps((vs) =>
+          vs.includes(nextStep) ? vs : [...vs, nextStep],
+        );
+      }
+    }
+
+    return updated;
+  });
+};
+
+    
 
   const setSearch = (title: string, value: string) =>
     setSearchFilters((prev) => ({
@@ -206,79 +247,105 @@ const splitValues = (value: string): string[] => {
         Clear Filters
       </button>
 
-      <div className="space-y-3">
-        <Section
-          title="Product Usage"
-          items={productUsages}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
+{/* ================= STEP FILTER UI ================= */}
+{/* CTRL+F: STEP FILTER UI */}
 
-        <Section
-          title="Product Family"
-          items={productFamilies}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
+<div className="space-y-3">
 
-        {/* ✅ PRICE POINT FILTER */}
-        <Section
-          title="Price Point"
-          items={pricePoints}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
+  {visibleSteps.includes("Product Usage") && (
+    <Section
+      title="Product Usage"
+      items={productUsages}
+      filters={filters}
+      toggle={toggle}
+      setSearch={setSearch}
+    />
+  )}
 
-        {/* ✅ BRAND ORIGIN FILTER */}
-        <Section
-          title="Brand Origin"
-          items={brandOrigins}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
+  {visibleSteps.includes("Product Family") && (
+    <Section
+      title="Product Family"
+      items={productFamilies}
+      filters={filters}
+      toggle={toggle}
+      setSearch={setSearch}
+    />
+  )}
 
-        <Section
-          title="Product Class"
-          items={productClasses}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
+  {visibleSteps.includes("Product Class") && (
+    <Section
+      title="Product Class"
+      items={productClasses}
+      filters={filters}
+      toggle={toggle}
+      setSearch={setSearch}
+    />
+  )}
 
-        <Section
-          title="Supplier"
-          items={suppliers}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
+  {visibleSteps.includes("Price Point") && (
+    <Section
+      title="Price Point"
+      items={pricePoints}
+      filters={filters}
+      toggle={toggle}
+      setSearch={setSearch}
+    />
+  )}
 
-        {/* TECH SPECS */}
+  {visibleSteps.includes("Brand Origin") && (
+    <Section
+      title="Brand Origin"
+      items={brandOrigins}
+      filters={filters}
+      toggle={toggle}
+      setSearch={setSearch}
+    />
+  )}
 
-        <h3 className="font-semibold mt-4">Technical Specifications</h3>
+  {visibleSteps.includes("Supplier") && (
+    <Section
+      title="Supplier"
+      items={suppliers}
+      filters={filters}
+      toggle={toggle}
+      setSearch={setSearch}
+    />
+  )}
 
-        {Object.entries(technicalSpecs).map(([gt, s]) => (
-          <div key={gt} className="border rounded p-2 space-y-2">
-            <p className="font-semibold text-sm">{gt}</p>
+  {/* ================= TECH SPECS STEP ================= */}
 
-            {Object.entries(s).map(([sn, vals]) => (
-              <Section
-                key={sn}
-                title={`${gt}||${sn}`}
-                label={sn}
-                items={[...vals]}
-                filters={filters}
-                toggle={toggle}
-                setSearch={setSearch}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
+  {visibleSteps.includes("Supplier") && (
+    <>
+      <h3 className="font-semibold mt-4">
+        Technical Specifications
+      </h3>
+
+      {Object.entries(technicalSpecs).map(([gt, s]) => (
+        <div key={gt} className="border rounded p-2 space-y-2">
+
+          <p className="font-semibold text-sm">
+            {gt}
+          </p>
+
+          {Object.entries(s).map(([sn, vals]) => (
+            <Section
+              key={sn}
+              title={`${gt}||${sn}`}
+              label={sn}
+              items={[...vals]}
+              filters={filters}
+              toggle={toggle}
+              setSearch={setSearch}
+            />
+          ))}
+
+        </div>
+      ))}
+
+    </>
+  )}
+
+</div>
     </div>
   );
 }
