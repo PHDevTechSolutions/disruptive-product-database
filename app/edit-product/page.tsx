@@ -1134,46 +1134,48 @@ const syncProductsUsingThisFamily = async () => {
 
     const existingSpecs = productData.technicalSpecifications || [];
 
-    const mergedSpecs = technicalSpecs
-      .filter(templateSpec => templateSpec.title.trim() !== "")
-      .map(templateSpec => {
+const mergedSpecs = technicalSpecs
+  .filter(templateSpec => templateSpec.title.trim() !== "")
+  .map(templateSpec => {
 
-        const existingSpec =
-          existingSpecs.find(
-            (s: any) =>
-              s.technicalSpecificationId === templateSpec.id
-          );
+    const existingSpec =
+      existingSpecs.find(
+        (s: any) =>
+          s.technicalSpecificationId === templateSpec.id
+      );
 
-        return {
+    return {
 
-          technicalSpecificationId: templateSpec.id,
+      technicalSpecificationId: templateSpec.id,
 
-          title: templateSpec.title,
+      title: templateSpec.title,
 
-          specs: templateSpec.specs
-            .filter(row => row.specId.trim() !== "")
-            .map(templateRow => {
+      specs: templateSpec.specs
+        .filter(row => row.specId.trim() !== "")
+        .map(templateRow => {
 
-              const existingRow =
-                existingSpec?.specs?.find(
-                  (r: any) =>
-                    r.specId === templateRow.specId
-                );
+          const existingRow =
+            existingSpec?.specs?.find(
+              (r: any) =>
+                r.specId === templateRow.specId
+            );
 
-              return {
+          return {
 
-                specId: templateRow.specId,
+            specId: templateRow.specId,
 
-                // ✅ PRESERVE VALUE PER PRODUCT
-                value: existingRow?.value || ""
+            value:
+              productDoc.id === productId
+                ? templateRow.value || ""
+                : existingRow?.value || ""
 
-              };
+          };
 
-            })
+        })
 
-        };
+    };
 
-      });
+  });
 
     batch.update(productRef, {
 
