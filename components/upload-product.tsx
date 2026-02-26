@@ -339,21 +339,39 @@ const handleUpload = async () => {
 
    const syncedFamilies = new Set<string>();
 
+   let lastUsage = "";
+let lastFamily = "";
+let lastClass = "";
+let lastPricePoint = "";
+let lastBrandOrigin = "";
+let lastSupplier = "";
+let lastImage = "";
 
    for(let r=3; r<=ws.rowCount; r++){
 
     const row = ws.getRow(r);
 
 
-    const usage = row.getCell(1).value?.toString()||"";
-    const family = row.getCell(2).value?.toString()||"";
+let usage = row.getCell(1).value?.toString() || lastUsage;
+let family = row.getCell(2).value?.toString() || lastFamily;
 
-    const productClass = row.getCell(3).value?.toString()||"";
-    const pricePoint = row.getCell(4).value?.toString()||"";
-    const brandOrigin = row.getCell(5).value?.toString()||"";
+let productClass = row.getCell(3).value?.toString() || lastClass;
+let pricePoint = row.getCell(4).value?.toString() || lastPricePoint;
+let brandOrigin = row.getCell(5).value?.toString() || lastBrandOrigin;
 
-    const supplierName = row.getCell(6).value?.toString()||"";
-    const imageURL = row.getCell(7).value?.toString()||"";
+let supplierName = row.getCell(6).value?.toString() || lastSupplier;
+let imageURL = row.getCell(7).value?.toString() || lastImage;
+
+
+/* SAVE LAST VALUES */
+
+lastUsage = usage;
+lastFamily = family;
+lastClass = productClass;
+lastPricePoint = pricePoint;
+lastBrandOrigin = brandOrigin;
+lastSupplier = supplierName;
+lastImage = imageURL;
 
 
     if(!usage || !family) continue;
@@ -478,7 +496,7 @@ const handleUpload = async () => {
 
      createdAt:serverTimestamp(),
 
-     whatHappened:"Product Uploaded",
+     whatHappened:"Product Added",
 
      date_updated:serverTimestamp()
 

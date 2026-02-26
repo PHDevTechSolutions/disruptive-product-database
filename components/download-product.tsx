@@ -240,6 +240,44 @@ export default function DownloadProduct({ products }: Props) {
         ws.addRow(row);
       });
 
+      const mergeColumns = staticColumns.length;
+
+for (let col = 1; col <= mergeColumns; col++) {
+
+  let startRow = 3; // data starts at row 3
+  let lastValue = ws.getRow(3).getCell(col).value;
+
+  for (let row = 4; row <= ws.rowCount + 1; row++) {
+
+    const currentValue =
+      row <= ws.rowCount
+        ? ws.getRow(row).getCell(col).value
+        : "__END__";
+
+    if (currentValue !== lastValue) {
+
+      if (row - startRow > 1) {
+
+        ws.mergeCells(startRow, col, row - 1, col);
+
+        const cell = ws.getRow(startRow).getCell(col);
+
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: "center",
+        };
+
+      }
+
+      startRow = row;
+      lastValue = currentValue;
+
+    }
+
+  }
+
+}
+
       /* AUTO WIDTH */
 
       ws.columns.forEach((column) => {

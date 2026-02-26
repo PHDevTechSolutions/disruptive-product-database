@@ -798,7 +798,7 @@ export default function EditProductPage() {
         createdAt: serverTimestamp(),
 
         // ✅ ADD THIS
-        whatHappened: "Product Usage Added",
+        whatHappened: "Product Added",
         date_updated: serverTimestamp(),
       },
     );
