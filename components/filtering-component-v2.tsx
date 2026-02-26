@@ -18,22 +18,20 @@ type Props = {
 export default function FilteringComponent({ products, onFilter }: Props) {
   const [filters, setFilters] = useState<Record<string, string[]>>({});
 
-/* ================= STEP VISIBILITY CONTROL ================= */
-/* CTRL+F: STEP VISIBILITY CONTROL */
+  /* ================= STEP VISIBILITY CONTROL ================= */
+  /* CTRL+F: STEP VISIBILITY CONTROL */
 
-const stepOrder = [
-  "Product Usage",
-  "Product Family",
-  "Product Class",
-  "Price Point",
-  "Brand Origin",
-  "Supplier",
-];
+  const stepOrder = [
+    "Product Usage",
+    "Product Family",
+    "Product Class",
+    "Price Point",
+    "Brand Origin",
+    "Supplier",
+  ];
 
-const [visibleSteps, setVisibleSteps] = useState<string[]>([
-  "Product Usage",
-]);
-  
+  const [visibleSteps, setVisibleSteps] = useState<string[]>(["Product Usage"]);
+
   const [searchFilters, setSearchFilters] = useState<Record<string, string>>(
     {},
   );
@@ -48,14 +46,14 @@ const [visibleSteps, setVisibleSteps] = useState<string[]>([
         })
       : "-";
 
-const splitValues = (value: string): string[] => {
-  if (!value) return [];
+  const splitValues = (value: string): string[] => {
+    if (!value) return [];
 
-  return value
-    .split("|") // ✅ USE PIPE
-    .map((v) => v.trim())
-    .filter(Boolean);
-};
+    return value
+      .split("|") // ✅ USE PIPE
+      .map((v) => v.trim())
+      .filter(Boolean);
+  };
 
   const expandRange = (value: string): string[] => {
     const match = value.match(/(\d+)\s*-\s*(\d+)/);
@@ -101,84 +99,72 @@ const splitValues = (value: string): string[] => {
 
   const productClasses = uniq(products.map((p) => p.productClass));
 
-/* ================= TECH SPECS ================= */
-/* CTRL+F: TECH SPECS FILTERED SOURCE */
+  /* ================= TECH SPECS ================= */
+  /* CTRL+F: TECH SPECS FILTERED SOURCE */
 
-const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
+  const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
 
-/* ================================================= */
-/* STEP 1: FILTER PRODUCTS BASED ON CURRENT FILTERS */
-/* ================================================= */
+  /* ================================================= */
+  /* STEP 1: FILTER PRODUCTS BASED ON CURRENT FILTERS */
+  /* ================================================= */
 
-const sourceProducts = products.filter((p) => {
+  const sourceProducts = products.filter((p) => {
+    const check = (key: string, value: any) => {
+      if (filters[key]?.length) {
+        return filters[key].includes(value);
+      }
 
-  const check = (key: string, value: any) => {
+      return true;
+    };
 
-    if (filters[key]?.length) {
+    if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName))
+      return false;
 
-      return filters[key].includes(value);
+    if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName))
+      return false;
 
-    }
+    if (!check("Product Class", p.productClass)) return false;
+
+    if (!check("Price Point", p.pricePoint)) return false;
+
+    if (!check("Brand Origin", p.brandOrigin)) return false;
+
+    if (!check("Supplier", p.supplier?.company)) return false;
 
     return true;
-
-  };
-
-  if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName)) return false;
-
-  if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName)) return false;
-
-  if (!check("Product Class", p.productClass)) return false;
-
-  if (!check("Price Point", p.pricePoint)) return false;
-
-  if (!check("Brand Origin", p.brandOrigin)) return false;
-
-  if (!check("Supplier", p.supplier?.company)) return false;
-
-  return true;
-
-});
-
-/* ================================================= */
-/* STEP 2: BUILD TECH SPECS ONLY FROM FILTERED DATA */
-/* ================================================= */
-
-sourceProducts.forEach((p) => {
-
-  if (!p?.technicalSpecifications) return;
-
-  p.technicalSpecifications.forEach((g: any) => {
-
-    if (!g?.title) return;
-
-    technicalSpecs[g.title] ??= {};
-
-    if (!Array.isArray(g.specs)) return;
-
-    g.specs.forEach((s: any) => {
-
-      if (!s?.specId) return;
-
-      const val = formatSpec(s);
-
-      if (!val) return;
-
-      const specLabel: string = s.specId;
-
-      technicalSpecs[g.title][specLabel] ??= new Set<string>();
-
-      splitValues(val).forEach((single) => {
-
-        technicalSpecs[g.title][specLabel].add(single);
-
-      });
-
-    });
-
   });
 
-});
+  /* ================================================= */
+  /* STEP 2: BUILD TECH SPECS ONLY FROM FILTERED DATA */
+  /* ================================================= */
+
+  sourceProducts.forEach((p) => {
+    if (!p?.technicalSpecifications) return;
+
+    p.technicalSpecifications.forEach((g: any) => {
+      if (!g?.title) return;
+
+      technicalSpecs[g.title] ??= {};
+
+      if (!Array.isArray(g.specs)) return;
+
+      g.specs.forEach((s: any) => {
+        if (!s?.specId) return;
+
+        const val = formatSpec(s);
+
+        if (!val) return;
+
+        const specLabel: string = s.specId;
+
+        technicalSpecs[g.title][specLabel] ??= new Set<string>();
+
+        splitValues(val).forEach((single) => {
+          technicalSpecs[g.title][specLabel].add(single);
+        });
+      });
+    });
+  });
 
   /* ================= FILTER ENGINE ================= */
 
@@ -245,82 +231,58 @@ sourceProducts.forEach((p) => {
 
   /* ================= UI ACTIONS ================= */
 
-/* ================= STEP TOGGLE FILTER ================= */
-/* ================= STEP TOGGLE FILTER ================= */
-/* CTRL+F: STEP TOGGLE FILTER */
+  /* ================= STEP TOGGLE FILTER ================= */
+  /* ================= STEP TOGGLE FILTER ================= */
+  /* CTRL+F: STEP TOGGLE FILTER */
 
-const toggle = (title: string, value: string) => {
+  const toggle = (title: string, value: string) => {
+    setFilters((prev) => {
+      const alreadySelected = prev[title]?.includes(value);
 
-  setFilters((prev) => {
+      let updated = {
+        ...prev,
+        [title]: alreadySelected
+          ? prev[title].filter((v) => v !== value)
+          : [...(prev[title] || []), value],
+      };
 
-    const alreadySelected = prev[title]?.includes(value);
+      const currentIndex = stepOrder.indexOf(title);
 
-    let updated = {
-      ...prev,
-      [title]: alreadySelected
-        ? prev[title].filter((v) => v !== value)
-        : [...(prev[title] || []), value],
-    };
+      /* ========================================= */
+      /* IF UNCHECK → CLEAR NEXT STEPS */
+      /* ========================================= */
 
-    const currentIndex = stepOrder.indexOf(title);
+      if (alreadySelected) {
+        const newVisibleSteps = stepOrder.slice(0, currentIndex + 1);
 
+        setVisibleSteps(newVisibleSteps);
 
-    /* ========================================= */
-    /* IF UNCHECK → CLEAR NEXT STEPS */
-    /* ========================================= */
+        /* REMOVE FILTERS OF NEXT STEPS */
 
-    if (alreadySelected) {
+        const cleared = { ...updated };
 
-      const newVisibleSteps = stepOrder.slice(0, currentIndex + 1);
+        stepOrder.slice(currentIndex + 1).forEach((step) => {
+          delete cleared[step];
+        });
 
-      setVisibleSteps(newVisibleSteps);
+        updated = cleared;
+      } else {
 
+      /* ========================================= */
+      /* IF CHECK → SHOW NEXT STEP */
+      /* ========================================= */
+        if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
+          const nextStep = stepOrder[currentIndex + 1];
 
-      /* REMOVE FILTERS OF NEXT STEPS */
-
-      const cleared = { ...updated };
-
-      stepOrder.slice(currentIndex + 1).forEach((step) => {
-
-        delete cleared[step];
-
-      });
-
-      updated = cleared;
-
-    }
-
-
-    /* ========================================= */
-    /* IF CHECK → SHOW NEXT STEP */
-    /* ========================================= */
-
-    else {
-
-      if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
-
-        const nextStep = stepOrder[currentIndex + 1];
-
-        setVisibleSteps((prevSteps) =>
-
-          prevSteps.includes(nextStep)
-            ? prevSteps
-            : [...prevSteps, nextStep]
-
-        );
-
+          setVisibleSteps((prevSteps) =>
+            prevSteps.includes(nextStep) ? prevSteps : [...prevSteps, nextStep],
+          );
+        }
       }
 
-    }
-
-
-    return updated;
-
-  });
-
-};
-
-    
+      return updated;
+    });
+  };
 
   const setSearch = (title: string, value: string) =>
     setSearchFilters((prev) => ({
@@ -344,105 +306,96 @@ const toggle = (title: string, value: string) => {
         Clear Filters
       </button>
 
-{/* ================= STEP FILTER UI ================= */}
-{/* CTRL+F: STEP FILTER UI */}
+      {/* ================= STEP FILTER UI ================= */}
+      {/* CTRL+F: STEP FILTER UI */}
 
-<div className="space-y-3">
+      <div className="space-y-3">
+        {visibleSteps.includes("Product Usage") && (
+          <Section
+            title="Product Usage"
+            items={productUsages}
+            filters={filters}
+            toggle={toggle}
+            setSearch={setSearch}
+          />
+        )}
 
-  {visibleSteps.includes("Product Usage") && (
-    <Section
-      title="Product Usage"
-      items={productUsages}
-      filters={filters}
-      toggle={toggle}
-      setSearch={setSearch}
-    />
-  )}
+        {visibleSteps.includes("Product Family") && (
+          <Section
+            title="Product Family"
+            items={productFamilies}
+            filters={filters}
+            toggle={toggle}
+            setSearch={setSearch}
+          />
+        )}
 
-  {visibleSteps.includes("Product Family") && (
-    <Section
-      title="Product Family"
-      items={productFamilies}
-      filters={filters}
-      toggle={toggle}
-      setSearch={setSearch}
-    />
-  )}
+        {visibleSteps.includes("Product Class") && (
+          <Section
+            title="Product Class"
+            items={productClasses}
+            filters={filters}
+            toggle={toggle}
+            setSearch={setSearch}
+          />
+        )}
 
-  {visibleSteps.includes("Product Class") && (
-    <Section
-      title="Product Class"
-      items={productClasses}
-      filters={filters}
-      toggle={toggle}
-      setSearch={setSearch}
-    />
-  )}
+        {visibleSteps.includes("Price Point") && (
+          <Section
+            title="Price Point"
+            items={pricePoints}
+            filters={filters}
+            toggle={toggle}
+            setSearch={setSearch}
+          />
+        )}
 
-  {visibleSteps.includes("Price Point") && (
-    <Section
-      title="Price Point"
-      items={pricePoints}
-      filters={filters}
-      toggle={toggle}
-      setSearch={setSearch}
-    />
-  )}
+        {visibleSteps.includes("Brand Origin") && (
+          <Section
+            title="Brand Origin"
+            items={brandOrigins}
+            filters={filters}
+            toggle={toggle}
+            setSearch={setSearch}
+          />
+        )}
 
-  {visibleSteps.includes("Brand Origin") && (
-    <Section
-      title="Brand Origin"
-      items={brandOrigins}
-      filters={filters}
-      toggle={toggle}
-      setSearch={setSearch}
-    />
-  )}
+        {visibleSteps.includes("Supplier") && (
+          <Section
+            title="Supplier"
+            items={suppliers}
+            filters={filters}
+            toggle={toggle}
+            setSearch={setSearch}
+          />
+        )}
 
-  {visibleSteps.includes("Supplier") && (
-    <Section
-      title="Supplier"
-      items={suppliers}
-      filters={filters}
-      toggle={toggle}
-      setSearch={setSearch}
-    />
-  )}
+        {/* ================= TECH SPECS STEP ================= */}
 
-  {/* ================= TECH SPECS STEP ================= */}
+        {visibleSteps.includes("Supplier") && (
+          <>
+            <h3 className="font-semibold mt-4">Technical Specifications</h3>
 
-  {visibleSteps.includes("Supplier") && (
-    <>
-      <h3 className="font-semibold mt-4">
-        Technical Specifications
-      </h3>
+            {Object.entries(technicalSpecs).map(([gt, s]) => (
+              <div key={gt} className="border rounded p-2 space-y-2">
+                <p className="font-semibold text-sm">{gt}</p>
 
-      {Object.entries(technicalSpecs).map(([gt, s]) => (
-        <div key={gt} className="border rounded p-2 space-y-2">
-
-          <p className="font-semibold text-sm">
-            {gt}
-          </p>
-
-          {Object.entries(s).map(([sn, vals]) => (
-            <Section
-              key={sn}
-              title={`${gt}||${sn}`}
-              label={sn}
-              items={[...vals]}
-              filters={filters}
-              toggle={toggle}
-              setSearch={setSearch}
-            />
-          ))}
-
-        </div>
-      ))}
-
-    </>
-  )}
-
-</div>
+                {Object.entries(s).map(([sn, vals]) => (
+                  <Section
+                    key={sn}
+                    title={`${gt}||${sn}`}
+                    label={sn}
+                    items={[...vals]}
+                    filters={filters}
+                    toggle={toggle}
+                    setSearch={setSearch}
+                  />
+                ))}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
     </div>
   );
 }
