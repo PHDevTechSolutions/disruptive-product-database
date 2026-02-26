@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-
 import {
   Dialog,
   DialogTrigger,
@@ -13,53 +12,125 @@ import {
 } from "@/components/ui/dialog";
 
 import { Upload } from "lucide-react";
-
 import ExcelJS from "exceljs";
 
 import {
   collection,
   addDoc,
-  serverTimestamp,
-  getDocs,
   query,
   where,
+  getDocs,
+  serverTimestamp,
+  DocumentData,
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
-
 import { toast } from "sonner";
 
-import { useUser } from "@/contexts/UserContext";
+type Props = {};
 
-export default function UploadProductModal() {
-  const { userId } = useUser();
+/* ---------------- TYPES ---------------- */
 
-  const [userReferenceID, setUserReferenceID] = React.useState("");
+type CategoryType = {
+  id: string;
+  name: string;
+};
 
+type ProductFamily = {
+  id: string;
+  name: string;
+  categoryTypeId: string;
+};
+
+type Supplier = {
+  supplierId: string;
+  company: string;
+};
+
+type TemplateSpec = {
+  id: string;
+  title: string;
+  specs: {
+    specId: string;
+  }[];
+};
+
+export default function UploadProduct({}: Props) {
   const [open, setOpen] = React.useState(false);
-
   const [file, setFile] = React.useState<File | null>(null);
-
   const [uploading, setUploading] = React.useState(false);
 
-  /* LOAD USER */
+  /* ---------------- GENERATE REF ---------------- */
 
-  React.useEffect(() => {
-    if (!userId) return;
+  const generateProductReferenceID = async () => {
+    const snap = await getDocs(collection(db, "products"));
+    const count = snap.size + 1;
+    return `PROD-SPF-${count.toString().padStart(5, "0")}`;
+  };
 
-    fetch(`/api/users?id=${encodeURIComponent(userId)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setUserReferenceID(data.ReferenceID || "");
-      });
-  }, [userId]);
+  /* ---------------- FIND CATEGORY ---------------- */
 
-  /* HELPERS */
-
-  const findSupplier = async (company: string) => {
-    const snap = await getDocs(
-      query(collection(db, "suppliers"), where("company", "==", company)),
+  const findCategoryType = async (
+    name: string,
+  ): Promise<CategoryType | null> => {
+    const q = query(
+      collection(db, "categoryTypes"),
+      where("name", "==", name),
+      where("isActive", "==", true),
     );
+
+    const snap = await getDocs(q);
+
+    if (snap.empty) return null;
+
+    const doc = snap.docs[0];
+    const data = doc.data() as DocumentData;
+
+    return {
+      id: doc.id,
+      name: data.name,
+    };
+  };
+
+  /* ---------------- FIND FAMILY ---------------- */
+
+  const findProductFamily = async (
+    categoryTypeId: string,
+    name: string,
+  ): Promise<ProductFamily | null> => {
+    const q = query(
+      collection(db, "productFamilies"),
+      where("categoryTypeId", "==", categoryTypeId),
+      where("name", "==", name),
+      where("isActive", "==", true),
+    );
+
+    const snap = await getDocs(q);
+
+    if (snap.empty) return null;
+
+    const doc = snap.docs[0];
+    const data = doc.data() as DocumentData;
+
+    return {
+      id: doc.id,
+      name: data.name,
+      categoryTypeId: data.categoryTypeId,
+    };
+  };
+
+  /* ---------------- FIND SUPPLIER ---------------- */
+
+  const findSupplier = async (company: string): Promise<Supplier | null> => {
+    if (!company) return null;
+
+    const q = query(
+      collection(db, "suppliers"),
+      where("company", "==", company),
+      where("isActive", "==", true),
+    );
+
+    const snap = await getDocs(q);
 
     if (snap.empty) return null;
 
@@ -69,293 +140,164 @@ export default function UploadProductModal() {
     };
   };
 
-  const findCategoryType = async (name: string) => {
-    const snap = await getDocs(
-      query(collection(db, "categoryTypes"), where("name", "==", name)),
+  /* ---------------- FIND TEMPLATE ---------------- */
+
+  const findTemplateSpecs = async (
+    categoryTypeId: string,
+    productFamilyId: string,
+  ): Promise<TemplateSpec[]> => {
+    const q = query(
+      collection(db, "technicalSpecifications"),
+      where("categoryTypeId", "==", categoryTypeId),
+      where("productFamilyId", "==", productFamilyId),
+      where("isActive", "==", true),
     );
 
-    if (snap.empty) return null;
+    const snap = await getDocs(q);
 
-    return {
-      productUsageId: snap.docs[0].id,
-      categoryTypeName: name,
-    };
-  };
+    return snap.docs.map((doc) => {
+      const data = doc.data() as DocumentData;
 
-  const findProductFamily = async (productUsageId: string, name: string) => {
-    const snap = await getDocs(
-      query(
-        collection(db, "categoryTypes", productUsageId, "productFamilies"),
-        where("name", "==", name),
-      ),
-    );
-
-    if (snap.empty) return null;
-
-    return {
-      productFamilyId: snap.docs[0].id,
-      productFamilyName: name,
-      productUsageId,
-    };
-  };
-
-  /* DUPLICATE CHECK */
-
-  const isDuplicateProduct = async ({
-    productName,
-    productUsageId,
-    productFamilyId,
-    supplierId,
-    pricePoint,
-    brandOrigin,
-    productClass,
-  }: any) => {
-    const snap = await getDocs(
-      query(
-        collection(db, "products"),
-        where("productName", "==", productName),
-        where("pricePoint", "==", pricePoint),
-        where("brandOrigin", "==", brandOrigin),
-        where("productClass", "==", productClass || "Standard"),
-      ),
-    );
-
-    if (snap.empty) return false;
-
-    let duplicate = false;
-
-    snap.forEach((doc) => {
-      const data = doc.data();
-
-      const usageId = data.categoryTypes?.[0]?.productUsageId;
-
-      const familyId = data.productFamilies?.[0]?.productFamilyId;
-
-      const existingSupplierId = data.supplier?.supplierId || null;
-
-      const newSupplierId = supplierId || null;
-
-      if (
-        usageId === productUsageId &&
-        familyId === productFamilyId &&
-        existingSupplierId === newSupplierId
-      ) {
-        duplicate = true;
-      }
+      return {
+        id: doc.id,
+        title: data.title,
+        specs: data.specs || [],
+      };
     });
-
-    return duplicate;
   };
 
-  /* MAIN UPLOAD */
+  /* ---------------- UPLOAD ---------------- */
 
   const handleUpload = async () => {
-    if (!file) {
-      toast.error("Select Excel file");
-      return;
-    }
+    if (!file) return;
 
     try {
       setUploading(true);
 
+      const wb = new ExcelJS.Workbook();
       const buffer = await file.arrayBuffer();
 
-      const workbook = new ExcelJS.Workbook();
+      await wb.xlsx.load(buffer);
 
-      await workbook.xlsx.load(buffer);
+      for (const ws of wb.worksheets) {
+        const header1 = ws.getRow(1);
+        const header2 = ws.getRow(2);
 
-      /* GENERATE REF */
+        /* START AT COLUMN 8 NOW */
+        const specColumns: {
+          title: string;
+          specId: string;
+          col: number;
+        }[] = [];
 
-      let refCounter = 0;
-
-      const snap = await getDocs(collection(db, "products"));
-
-      snap.forEach((doc) => {
-        const ref = doc.data().productReferenceID;
-
-        if (!ref) return;
-
-        const num = parseInt(ref.replace("PROD-SPF-", ""));
-
-        if (num > refCounter) refCounter = num;
-      });
-
-      /* LOOP SHEETS */
-
-      for (const sheet of workbook.worksheets) {
-        const header1 = sheet.getRow(1);
-
-        const header2 = sheet.getRow(2);
-
-        const techHeaders: any[] = [];
-
-        header1.eachCell((cell, col) => {
-          if (col <= 8) return;
-
-          const specId = cell.value?.toString();
-
-          const title = header2.getCell(col).value?.toString();
-
-          if (!title || !specId) return;
-
-          techHeaders.push({ col, title, specId });
-        });
-
-        let lastUsage = "";
-        let lastFamily = "";
-        let lastClass = "";
-        let lastPrice = "";
-        let lastOrigin = "";
-        let lastName = "";
-        let lastSupplier = "";
-        let lastImage = "";
-
-        for (let r = 3; r <= sheet.rowCount; r++) {
-          const row = sheet.getRow(r);
-
-          const productUsage = row.getCell(1).value?.toString() || lastUsage;
-
-          if (productUsage) lastUsage = productUsage;
-
-          const productFamily = row.getCell(2).value?.toString() || lastFamily;
-
-          if (productFamily) lastFamily = productFamily;
-
-          const productClass = row.getCell(3).value?.toString() || lastClass;
-
-          if (productClass) lastClass = productClass;
-
-          const pricePoint = row.getCell(4).value?.toString() || lastPrice;
-
-          if (pricePoint) lastPrice = pricePoint;
-
-          const brandOrigin = row.getCell(5).value?.toString() || lastOrigin;
-
-          if (brandOrigin) lastOrigin = brandOrigin;
-
-          const productName = row.getCell(6).value?.toString() || lastName;
-
-          if (productName) lastName = productName;
-
-          const supplierCompany =
-            row.getCell(7).value?.toString() || lastSupplier;
-
-          if (supplierCompany) lastSupplier = supplierCompany;
-
-          const image = row.getCell(8).value?.toString() || lastImage;
-
-          if (image) lastImage = image;
-
-          if (!productName) continue;
-
-          const supplier = await findSupplier(supplierCompany);
-
-          const categoryType = await findCategoryType(productUsage);
-
-          const productFamilyData = categoryType
-            ? await findProductFamily(
-                categoryType.productUsageId,
-                productFamily,
-              )
-            : null;
-
-          const specMap: any = {};
-
-          techHeaders.forEach(({ col, title, specId }) => {
-            const value = row.getCell(col).value?.toString();
-
-            if (!value) return;
-
-            if (!specMap[title]) specMap[title] = [];
-
-            specMap[title].push({ specId, value });
+        for (let col = 8; col <= ws.columnCount; col++) {
+          specColumns.push({
+            title: header2.getCell(col).value?.toString() || "",
+            specId: header1.getCell(col).value?.toString() || "",
+            col,
           });
+        }
 
-          const technicalSpecifications = Object.keys(specMap).map((title) => ({
-            technicalSpecificationId: "",
-            title,
-            specs: specMap[title],
+        for (let r = 3; r <= ws.rowCount; r++) {
+          const row = ws.getRow(r);
+
+          const usage = row.getCell(1).value?.toString() || "";
+          const family = row.getCell(2).value?.toString() || "";
+          const productClass = row.getCell(3).value?.toString() || "";
+          const pricePoint = row.getCell(4).value?.toString() || "";
+          const brandOrigin = row.getCell(5).value?.toString() || "";
+          const supplierName = row.getCell(6).value?.toString() || "";
+          const imageURL = row.getCell(7).value?.toString() || "";
+
+          const category = await findCategoryType(usage);
+          if (!category) continue;
+
+          const productFamily = await findProductFamily(category.id, family);
+          if (!productFamily) continue;
+
+          const supplier = await findSupplier(supplierName);
+
+          const templateSpecs = await findTemplateSpecs(
+            category.id,
+            productFamily.id,
+          );
+
+          const productSpecs = templateSpecs.map((template) => ({
+            technicalSpecificationId: template.id,
+            title: template.title,
+            specs: template.specs.map((spec) => {
+              const match = specColumns.find(
+                (s) => s.title === template.title && s.specId === spec.specId,
+              );
+
+              return {
+                specId: spec.specId,
+                value: match
+                  ? row.getCell(match.col).value?.toString() || ""
+                  : "",
+              };
+            }),
           }));
 
-          refCounter++;
-
-          const productReferenceID = `PROD-SPF-${refCounter.toString().padStart(5, "0")}`;
-
-          const duplicate =
-            categoryType && productFamilyData
-              ? await isDuplicateProduct({
-                  productName,
-                  productUsageId: categoryType.productUsageId,
-                  productFamilyId: productFamilyData.productFamilyId,
-                  supplierId: supplier?.supplierId || null,
-                  pricePoint,
-                  brandOrigin,
-                  productClass,
-                })
-              : false;
-
-          if (duplicate) {
-            toast.error(`Duplicate skipped: ${productName}`);
-
-            continue;
-          }
+          const ref = await generateProductReferenceID();
 
           await addDoc(collection(db, "products"), {
-            productReferenceID,
+            productReferenceID: ref,
 
-            productName,
-
-            productClass: productClass || "Standard",
-
+            productClass,
             pricePoint,
-
             brandOrigin,
 
             supplier,
 
-            categoryTypes: [categoryType],
+            mainImage: imageURL ? { url: imageURL } : null,
 
-            productFamilies: [productFamilyData],
+            categoryTypes: [
+              {
+                productUsageId: category.id,
+                categoryTypeName: category.name,
+              },
+            ],
 
-            mainImage: {
-              url: image,
-            },
+            productFamilies: [
+              {
+                productFamilyId: productFamily.id,
+                productFamilyName: productFamily.name,
+                productUsageId: category.id,
+              },
+            ],
 
-            technicalSpecifications,
-
-            createdBy: userId,
-
-            referenceID: userReferenceID,
+            technicalSpecifications: productSpecs,
 
             isActive: true,
 
-            mediaStatus: "done",
-
             createdAt: serverTimestamp(),
 
-            whatHappened: "Product Added",
+            whatHappened: "Product Uploaded",
 
             date_updated: serverTimestamp(),
           });
         }
       }
 
-      toast.success("Upload Complete");
+      toast.success("Upload complete");
 
       setOpen(false);
-
       setFile(null);
-    } catch {
-      toast.error("Upload Failed");
+    } catch (err) {
+      console.error(err);
+      toast.error("Upload failed");
     } finally {
       setUploading(false);
     }
   };
 
+  /* ---------------- UI ---------------- */
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button>
           <Upload className="w-4 h-4 mr-2" />
           Upload
         </Button>
@@ -377,7 +319,7 @@ export default function UploadProductModal() {
             Cancel
           </Button>
 
-          <Button onClick={handleUpload} disabled={uploading}>
+          <Button disabled={!file || uploading} onClick={handleUpload}>
             {uploading ? "Uploading..." : "Upload"}
           </Button>
         </DialogFooter>

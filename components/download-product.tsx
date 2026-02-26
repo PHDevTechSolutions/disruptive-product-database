@@ -22,7 +22,7 @@ type Props = {
 export default function DownloadProduct({ products }: Props) {
   const [open, setOpen] = React.useState(false);
 
-  const GROUP_COLORS = ["BDD7EE", "FFE699"]; // Color variation for specs
+  const GROUP_COLORS = ["BDD7EE", "FFE699"];
 
   const handleDownload = async () => {
     const wb = new ExcelJS.Workbook();
@@ -55,31 +55,28 @@ export default function DownloadProduct({ products }: Props) {
       const staticColumns = [
         "Product Usage",
         "Product Family",
-        "Product Class", // ✅ ADD THIS
+        "Product Class",
         "Price Point",
         "Brand Origin",
-        "Product Name",
         "Supplier",
         "Image URL",
       ];
+
       const header1: any[] = [];
       const header2: any[] = [];
 
-      // STATIC
       staticColumns.forEach((col) => {
-        header1.push(col); // TOP = static
-        header2.push(""); // BOTTOM empty
+        header1.push(col);
+        header2.push("");
       });
 
-      // TECH SPECS
       groupMap.forEach((specs, group) => {
         const specArray = Array.from(specs);
 
         specArray.forEach((specId, index) => {
-          header1.push(specId); // TOP = SPEC NAME
+          header1.push(specId);
 
-          if (index === 0)
-            header2.push(group); // BOTTOM = GROUP TITLE
+          if (index === 0) header2.push(group);
           else header2.push("");
         });
       });
@@ -87,18 +84,20 @@ export default function DownloadProduct({ products }: Props) {
       ws.addRow(header1);
       ws.addRow(header2);
 
-      // STYLE THE HEADER ROWS
       for (let col = 1; col <= staticColumns.length; col++) {
         const cell = ws.getRow(1).getCell(col);
+
         cell.fill = {
           type: "pattern",
           pattern: "solid",
-          fgColor: { argb: "4472C4" }, // blue like your image
+          fgColor: { argb: "4472C4" },
         };
+
         cell.font = {
           bold: true,
           color: { argb: "FFFFFF" },
         };
+
         cell.alignment = {
           vertical: "middle",
           horizontal: "center",
@@ -138,7 +137,6 @@ export default function DownloadProduct({ products }: Props) {
             right: { style: "thin" },
           };
 
-          // ROW 2 COLOR (THIS IS THE FIX)
           const groupCell = ws.getRow(2).getCell(col);
 
           groupCell.fill = {
@@ -147,7 +145,10 @@ export default function DownloadProduct({ products }: Props) {
             fgColor: { argb: color },
           };
 
-          groupCell.font = { bold: true, italic: true };
+          groupCell.font = {
+            bold: true,
+            italic: true,
+          };
 
           groupCell.alignment = {
             vertical: "middle",
@@ -163,45 +164,41 @@ export default function DownloadProduct({ products }: Props) {
         }
 
         groupIndex++;
-
         colStart = colEnd + 1;
       });
 
       sheetProducts.forEach((product) => {
         const row: any[] = [];
 
-        // Updated static columns
         row.push(product.categoryTypes?.[0]?.categoryTypeName || "");
         row.push(product.productFamilies?.[0]?.productFamilyName || "");
         row.push(product.productClass || "");
         row.push(product.pricePoint || "");
         row.push(product.brandOrigin || "");
-        row.push(product.productName || "");
         row.push(product.supplier?.company || "");
         row.push(product.mainImage?.url || "");
 
         groupMap.forEach((specs, group) => {
           const groupData = product.technicalSpecifications?.find(
-            (g: any) => g.title === group,
+            (g: any) => g.title === group
           );
 
           Array.from(specs).forEach((specId) => {
             const spec = groupData?.specs?.find(
-              (s: any) => s.specId === specId,
+              (s: any) => s.specId === specId
             );
+
             row.push(spec?.value || "");
           });
         });
 
-        const newRow = ws.addRow(row);
-        // Row styling code remains the same
+        ws.addRow(row);
       });
 
       const startRow = 3;
       const endRow = ws.rowCount;
       const totalCols = ws.columnCount;
 
-      // Merging identical cells in the rows (adjacent columns)
       for (let col = 1; col <= totalCols; col++) {
         let mergeStart = startRow;
         let lastValue = ws.getRow(startRow).getCell(col).value;
@@ -222,6 +219,7 @@ export default function DownloadProduct({ products }: Props) {
               lastValue !== ""
             ) {
               ws.mergeCells(mergeStart, col, row - 1, col);
+
               ws.getCell(mergeStart, col).alignment = {
                 vertical: "middle",
                 horizontal: "center",
@@ -234,17 +232,13 @@ export default function DownloadProduct({ products }: Props) {
         }
       }
 
-      // Adjust column widths for readability
       ws.columns.forEach((column) => {
         let max = 15;
 
-        if (column.eachCell) {
-          column.eachCell({ includeEmpty: true }, (cell) => {
-            const len = cell.value ? cell.value.toString().length : 0;
-
-            if (len > max) max = len;
-          });
-        }
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
+          const len = cell.value ? cell.value.toString().length : 0;
+          if (len > max) max = len;
+        });
 
         column.width = max + 4;
       });
@@ -278,7 +272,9 @@ export default function DownloadProduct({ products }: Props) {
             Cancel
           </Button>
 
-          <Button onClick={handleDownload}>Download</Button>
+          <Button onClick={handleDownload}>
+            Download
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

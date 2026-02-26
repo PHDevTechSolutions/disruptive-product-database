@@ -343,47 +343,37 @@ export default function AddProductPage() {
 
   /* ================= PRODUCT FAMILY FETCH INDEPENDENT ================= */
 
-useEffect(() => {
+  useEffect(() => {
+    if (selectedCategoryTypes.length === 0) {
+      setProductFamilies([]);
 
-  if (selectedCategoryTypes.length === 0) {
+      return;
+    }
 
-    setProductFamilies([]);
+    const categoryTypeId = selectedCategoryTypes[0].id;
 
-    return;
+    const q = query(
+      collection(db, "productFamilies"),
 
-  }
+      where("categoryTypeId", "==", categoryTypeId),
 
-  const categoryTypeId = selectedCategoryTypes[0].id;
+      where("isActive", "==", true),
+    );
 
-  const q = query(
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map((doc) => ({
+        id: doc.id,
 
-    collection(db, "productFamilies"),
+        name: doc.data().name,
 
-    where("categoryTypeId", "==", categoryTypeId),
+        productUsageId: doc.data().categoryTypeId,
+      }));
 
-    where("isActive", "==", true)
+      setProductFamilies(list);
+    });
 
-  );
-
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-
-    const list = snapshot.docs.map(doc => ({
-
-      id: doc.id,
-
-      name: doc.data().name,
-
-      productUsageId: doc.data().categoryTypeId
-
-    }));
-
-    setProductFamilies(list);
-
-  });
-
-  return unsubscribe;
-
-}, [selectedCategoryTypes]);
+    return unsubscribe;
+  }, [selectedCategoryTypes]);
 
   const addTechnicalSpec = () => {
     setTechnicalSpecs((prev) => [
@@ -600,166 +590,141 @@ useEffect(() => {
     return () => unsub();
   }, []);
 
-  
-const syncSpecsToProductType = async () => {
+  const syncSpecsToProductType = async () => {
+    if (!selectedProductFamily) return;
+    if (selectedCategoryTypes.length !== 1) return;
 
-  if (!selectedProductFamily) return;
-  if (selectedCategoryTypes.length !== 1) return;
+    const categoryTypeId = selectedCategoryTypes[0].id;
+    const productFamilyId = selectedProductFamily.id;
 
-  const categoryTypeId = selectedCategoryTypes[0].id;
-  const productFamilyId = selectedProductFamily.id;
+    const specsRef = collection(db, "technicalSpecifications");
 
-  const specsRef = collection(db, "technicalSpecifications");
-
-  const snapshot = await getDocs(
-    query(
-      specsRef,
-      where("categoryTypeId", "==", categoryTypeId),
-      where("productFamilyId", "==", productFamilyId)
-    )
-  );
-
-  const batch = writeBatch(db);
-
-  technicalSpecs.forEach(spec => {
-
-    if (!spec.title.trim()) return;
-
-    const existing = snapshot.docs.find(
-      d => d.data().title === spec.title
+    const snapshot = await getDocs(
+      query(
+        specsRef,
+        where("categoryTypeId", "==", categoryTypeId),
+        where("productFamilyId", "==", productFamilyId),
+      ),
     );
 
-    const ref = existing
-      ? doc(db, "technicalSpecifications", existing.id)
-      : doc(collection(db, "technicalSpecifications"));
+    const batch = writeBatch(db);
 
-    batch.set(ref, {
+    technicalSpecs.forEach((spec) => {
+      if (!spec.title.trim()) return;
 
-      categoryTypeId,
-      productFamilyId,
+      const existing = snapshot.docs.find((d) => d.data().title === spec.title);
 
-      title: spec.title.trim(),
+      const ref = existing
+        ? doc(db, "technicalSpecifications", existing.id)
+        : doc(collection(db, "technicalSpecifications"));
 
-      specs: spec.specs
-        .filter(row => row.specId.trim() !== "")
-        .map(row => ({
+      batch.set(ref, {
+        categoryTypeId,
+        productFamilyId,
 
-          specId: row.specId.trim(),
+        title: spec.title.trim(),
 
-          unit: row.unit || "",
+        specs: spec.specs
+          .filter((row) => row.specId.trim() !== "")
+          .map((row) => ({
+            specId: row.specId.trim(),
 
-          isRanging: row.isRanging || false,
-          isSlashing: row.isSlashing || false,
-          isDimension: row.isDimension || false,
-          isRating: row.isRating || false,
+            unit: row.unit || "",
 
-          rangeFrom: row.rangeFrom || "",
-          rangeTo: row.rangeTo || "",
+            isRanging: row.isRanging || false,
+            isSlashing: row.isSlashing || false,
+            isDimension: row.isDimension || false,
+            isRating: row.isRating || false,
 
-          slashValues: row.slashValues || [""],
+            rangeFrom: row.rangeFrom || "",
+            rangeTo: row.rangeTo || "",
 
-          length: row.length || "",
-          width: row.width || "",
-          height: row.height || "",
+            slashValues: row.slashValues || [""],
 
-          ipFirst: row.ipFirst || "",
-          ipSecond: row.ipSecond || ""
+            length: row.length || "",
+            width: row.width || "",
+            height: row.height || "",
 
-        })),
+            ipFirst: row.ipFirst || "",
+            ipSecond: row.ipSecond || "",
+          })),
 
-      isActive: true,
+        isActive: true,
 
-      updatedAt: serverTimestamp()
-
+        updatedAt: serverTimestamp(),
+      });
     });
 
-  });
+    await batch.commit();
+  };
 
-  await batch.commit();
-
-};
-
-const syncProductsUsingThisFamily = async (
-  productFamilyId: string,
-  productFamilyName: string,
-  categoryTypeId: string,
-  templateSpecs: any[]
-) => {
-
-  const q = query(
-    collection(db, "products"),
-    where(
-      "productFamilies",
-      "array-contains",
-      {
+  const syncProductsUsingThisFamily = async (
+    productFamilyId: string,
+    productFamilyName: string,
+    categoryTypeId: string,
+    templateSpecs: any[],
+  ) => {
+    const q = query(
+      collection(db, "products"),
+      where("productFamilies", "array-contains", {
         productFamilyId,
         productFamilyName,
-        productUsageId: categoryTypeId
-      }
-    )
-  );
+        productUsageId: categoryTypeId,
+      }),
+    );
 
-  const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q);
 
-  const batch = writeBatch(db);
+    const docs = snapshot.docs;
 
-  snapshot.forEach(productDoc => {
+    const CHUNK_SIZE = 200;
 
-    const ref = doc(db, "products", productDoc.id);
+    for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+      const chunk = docs.slice(i, i + CHUNK_SIZE);
 
-    const data: any = productDoc.data();
+      const batch = writeBatch(db);
 
-    const existingSpecs = data.technicalSpecifications || [];
+      chunk.forEach((productDoc) => {
+        const ref = doc(db, "products", productDoc.id);
 
-    const mergedSpecs = templateSpecs.map(templateSpec => {
+        const data: any = productDoc.data();
 
-      const existingSpec =
-        existingSpecs.find(
-          (s: any) =>
-            s.technicalSpecificationId === templateSpec.id
-        );
+        const existingSpecs = data.technicalSpecifications || [];
 
-      return {
-
-        technicalSpecificationId: templateSpec.id,
-
-        title: templateSpec.title,
-
-        specs: templateSpec.specs.map((templateRow: any) => {
-
-          const existingRow =
-            existingSpec?.specs?.find(
-              (r: any) =>
-                r.specId === templateRow.specId
-            );
+        const mergedSpecs = templateSpecs.map((templateSpec) => {
+          const existingSpec = existingSpecs.find(
+            (s: any) => s.technicalSpecificationId === templateSpec.id,
+          );
 
           return {
+            technicalSpecificationId: templateSpec.id,
 
-            specId: templateRow.specId,
+            title: templateSpec.title,
 
-            value: existingRow?.value || ""
+            specs: templateSpec.specs.map((templateRow: SpecRow) => {
+              const existingRow = existingSpec?.specs?.find(
+                (r: SpecRow) => r.specId === templateRow.specId,
+              );
 
+              return {
+                specId: templateRow.specId,
+
+                value: existingRow?.value || "",
+              };
+            }),
           };
+        });
 
-        })
+        batch.update(ref, {
+          technicalSpecifications: mergedSpecs,
 
-      };
+          updatedAt: serverTimestamp(),
+        });
+      });
 
-    });
-
-    batch.update(ref, {
-
-      technicalSpecifications: mergedSpecs,
-
-      updatedAt: serverTimestamp()
-
-    });
-
-  });
-
-  await batch.commit();
-
-};
+      await batch.commit();
+    }
+  };
 
   /* ================= NUMBER FORMATTERS ================= */
   const formatPHP = (value: number, decimals = 2) => {
@@ -866,50 +831,40 @@ const syncProductsUsingThisFamily = async (
     });
   };
 
-const selectProductFamily = async (item: ProductFamily) => {
+  const selectProductFamily = async (item: ProductFamily) => {
+    setSelectedProductFamily(item);
 
-  setSelectedProductFamily(item);
+    if (selectedCategoryTypes.length !== 1) return;
 
-  if (selectedCategoryTypes.length !== 1) return;
+    const categoryTypeId = selectedCategoryTypes[0].id;
 
-  const categoryTypeId = selectedCategoryTypes[0].id;
+    const snapshot = await getDocs(
+      query(
+        collection(db, "technicalSpecifications"),
+        where("categoryTypeId", "==", categoryTypeId),
+        where("productFamilyId", "==", item.id),
+        where("isActive", "==", true),
+      ),
+    );
 
-  const snapshot = await getDocs(
+    const loadedSpecs = snapshot.docs.map((doc) => {
+      const data = doc.data();
 
-    query(
-      collection(db, "technicalSpecifications"),
-      where("categoryTypeId", "==", categoryTypeId),
-      where("productFamilyId", "==", item.id),
-      where("isActive", "==", true)
-    )
+      return {
+        id: doc.id,
 
-  );
+        title: data.title,
 
-  const loadedSpecs = snapshot.docs.map(doc => {
+        specs: (data.specs || []).map((row: any) => ({
+          ...row,
 
-    const data = doc.data();
+          value: "",
+        })),
+      };
+    });
 
-    return {
-
-      id: doc.id,
-
-      title: data.title,
-
-      specs: (data.specs || []).map((row:any)=>({
-
-        ...row,
-
-        value:""
-
-      }))
-
-    };
-
-  });
-
-  setTechnicalSpecs(loadedSpecs);
-
-};
+    setTechnicalSpecs(loadedSpecs);
+  };
 
   const handleAddProductType = async () => {
     if (!newProductType.trim()) return;
@@ -918,27 +873,23 @@ const selectProductFamily = async (item: ProductFamily) => {
 
     const productUsageId = selectedCategoryTypes[0].id;
 
-await addDoc(
+    await addDoc(
+      collection(db, "productFamilies"),
 
-  collection(db, "productFamilies"),
+      {
+        name: newProductType.trim(),
 
-  {
+        categoryTypeId: productUsageId,
 
-    name: newProductType.trim(),
+        isActive: true,
 
-    categoryTypeId: productUsageId,
+        createdAt: serverTimestamp(),
 
-    isActive: true,
+        whatHappened: "Product Family Added",
 
-    createdAt: serverTimestamp(),
-
-    whatHappened: "Product Family Added",
-
-    date_updated: serverTimestamp(),
-
-  }
-
-);
+        date_updated: serverTimestamp(),
+      },
+    );
 
     setNewProductType("");
   };
@@ -1095,30 +1046,28 @@ await addDoc(
       // ================= CLOUDINARY UPLOAD =================
 
       // MAIN IMAGE
-const newProductReferenceID = await generateProductReferenceID();
+      const newProductReferenceID = await generateProductReferenceID();
 
-await syncSpecsToProductType();
+      await syncSpecsToProductType();
 
-if (!selectedProductFamily) {
+      if (!selectedProductFamily) {
+        toast.error("Please select product family");
 
-  toast.error("Please select product family");
+        setSaving(false);
 
-  setSaving(false);
+        return;
+      }
 
-  return;
+      const categoryTypeId = selectedCategoryTypes[0]?.id;
 
-}
+      await syncProductsUsingThisFamily(
+        selectedProductFamily.id,
+        selectedProductFamily.name,
+        categoryTypeId,
+        technicalSpecs,
+      );
 
-const categoryTypeId = selectedCategoryTypes[0]?.id;
-
-await syncProductsUsingThisFamily(
-  selectedProductFamily.id,
-  selectedProductFamily.name,
-  categoryTypeId,
-  technicalSpecs
-);
-
-const productRef = await addDoc(collection(db, "products"), {
+      const productRef = await addDoc(collection(db, "products"), {
         productReferenceID: newProductReferenceID,
 
         pricePoint: noSupplier ? "Economy" : pricePoint,
@@ -1132,15 +1081,15 @@ const productRef = await addDoc(collection(db, "products"), {
               company: selectedSupplier!.company,
             },
 
-productFamilies: selectedProductFamily
-  ? [
-      {
-        productFamilyId: selectedProductFamily.id,
-        productFamilyName: selectedProductFamily.name,
-        productUsageId: selectedCategoryTypes[0]?.id || "",
-      },
-    ]
-  : [],
+        productFamilies: selectedProductFamily
+          ? [
+              {
+                productFamilyId: selectedProductFamily.id,
+                productFamilyName: selectedProductFamily.name,
+                productUsageId: selectedCategoryTypes[0]?.id || "",
+              },
+            ]
+          : [],
 
         categoryTypes: selectedCategoryTypes.map((c) => ({
           productUsageId: c.id,
@@ -1387,7 +1336,6 @@ productFamilies: selectedProductFamily
                   >
                     Add Title
                   </Button>
-
                 </div>
               </div>
 
