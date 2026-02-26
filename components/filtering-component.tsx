@@ -292,71 +292,52 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
     setSearch(title, input);
   }, [input]);
 
-  const visible = items.filter((i: string) => {
-    if (!input) return true;
+const visible = items.filter((i: string) => {
+  if (!input) return true;
 
-    const normalize = (str: string) =>
-      str.toLowerCase().replace(/[^0-9a-z.\-]/g, "");
+  const extractNumbers = (str: string) => {
+    const matches = str.match(/(\d+(\.\d+)?)/g);
+    return matches ? matches.map(Number) : [];
+  };
 
-    const extractNumbers = (str: string) => {
-      const matches = str.match(/(\d+(\.\d+)?)/g);
-      return matches ? matches.map(Number) : [];
-    };
+  const itemNums = extractNumbers(i);
+  const inputNums = extractNumbers(input);
 
-    const itemNorm = normalize(i);
-    const inputNorm = normalize(input);
+  /* ============================= */
+  /* CASE 1: INPUT IS RANGE */
+  /* strict: input must be inside item */
+  /* ============================= */
 
-    /* -------------------------------- */
-    /* CASE 1: INPUT IS RANGE */
-    /* example: 150-200K */
-    /* -------------------------------- */
+  if (inputNums.length >= 2 && itemNums.length >= 2) {
+    const inputFrom = inputNums[0];
+    const inputTo = inputNums[1];
 
-    if (inputNorm.includes("-")) {
-      const inputNums = extractNumbers(inputNorm);
-      const itemNums = extractNumbers(itemNorm);
+    const itemFrom = itemNums[0];
+    const itemTo = itemNums[1];
 
-      if (inputNums.length >= 2 && itemNums.length >= 2) {
-        const inputFrom = inputNums[0];
-        const inputTo = inputNums[1];
+    /* STRICT WITHIN */
+    return inputFrom >= itemFrom && inputTo <= itemTo;
+  }
 
-        const itemFrom = itemNums[0];
-        const itemTo = itemNums[1];
+  /* ============================= */
+  /* CASE 2: INPUT SINGLE NUMBER */
+  /* ============================= */
 
-        /* overlap detection */
-        if (inputFrom <= itemTo && inputTo >= itemFrom) {
-          return true;
-        }
-      }
-    }
+  if (inputNums.length === 1 && itemNums.length >= 2) {
+    const num = inputNums[0];
 
-    /* -------------------------------- */
-    /* CASE 2: INPUT IS SINGLE NUMBER */
-    /* example: 250 VAC */
-    /* -------------------------------- */
+    const from = itemNums[0];
+    const to = itemNums[1];
 
-    const inputNums = extractNumbers(inputNorm);
-    const itemNums = extractNumbers(itemNorm);
+    return num >= from && num <= to;
+  }
 
-    if (inputNums.length >= 1 && itemNums.length >= 2) {
-      const num = inputNums[0];
+  /* ============================= */
+  /* CASE 3: EXACT TEXT MATCH */
+  /* ============================= */
 
-      const from = itemNums[0];
-      const to = itemNums[1];
-
-      if (num >= from && num <= to) {
-        return true;
-      }
-    }
-
-    /* -------------------------------- */
-    /* CASE 3: NORMAL FUZZY TEXT */
-    /* -------------------------------- */
-
-    if (itemNorm.includes(inputNorm)) return true;
-
-    return false;
-  });
-
+  return i.toLowerCase().includes(input.toLowerCase());
+});
   return (
     <div className="border rounded p-2 space-y-2">
       <p className="text-sm font-medium">{label ?? title}</p>
