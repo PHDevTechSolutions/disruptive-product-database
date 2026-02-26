@@ -292,57 +292,135 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
     setSearch(title, input);
   }, [input]);
 
-const visible = items.filter((i: string) => {
-  if (!input) return true;
+  /* ============================= */
+  /* FILTER VISIBLE ITEMS */
+  /* ============================= */
+
+  const visible = items.filter((i: string) => {
+    if (!input) return true;
+
+    const extractNumbers = (str: string) => {
+      const matches = str.match(/(\d+(\.\d+)?)/g);
+      return matches ? matches.map(Number) : [];
+    };
+
+    const itemNums = extractNumbers(i);
+    const inputNums = extractNumbers(input);
+
+    if (inputNums.length >= 2 && itemNums.length >= 2) {
+      return (
+        inputNums[0] >= itemNums[0] &&
+        inputNums[1] <= itemNums[1]
+      );
+    }
+
+    if (inputNums.length === 1 && itemNums.length >= 2) {
+      return (
+        inputNums[0] >= itemNums[0] &&
+        inputNums[0] <= itemNums[1]
+      );
+    }
+
+    return i.toLowerCase().includes(input.toLowerCase());
+  });
+
+  /* ============================= */
+  /* DID YOU MEAN */
+  /* ============================= */
+
+  const levenshtein = (a: string, b: string) => {
+    const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
+
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        matrix[i][j] =
+          b[i - 1] === a[j - 1]
+            ? matrix[i - 1][j - 1]
+            : 1 +
+              Math.min(
+                matrix[i - 1][j],
+                matrix[i][j - 1],
+                matrix[i - 1][j - 1],
+              );
+      }
+    }
+
+    return matrix[b.length][a.length];
+  };
+
+const suggestion = (() => {
+  if (!input || visible.length > 0) return null;
 
   const extractNumbers = (str: string) => {
     const matches = str.match(/(\d+(\.\d+)?)/g);
     return matches ? matches.map(Number) : [];
   };
 
-  const itemNums = extractNumbers(i);
   const inputNums = extractNumbers(input);
+  
 
   /* ============================= */
-  /* CASE 1: INPUT IS RANGE */
-  /* strict: input must be inside item */
+  /* CASE 1: NUMBER / RANGE INPUT */
+  /* suggest NEXT HIGHER RANGE */
   /* ============================= */
 
-  if (inputNums.length >= 2 && itemNums.length >= 2) {
-    const inputFrom = inputNums[0];
-    const inputTo = inputNums[1];
+if (inputNums.length > 0) {
+  let bestItem = null;
+  let bestDiff = Infinity;
 
-    const itemFrom = itemNums[0];
-    const itemTo = itemNums[1];
+  items.forEach((item: string) => {
+    const nums = extractNumbers(item);
 
-    /* STRICT WITHIN */
-    return inputFrom >= itemFrom && inputTo <= itemTo;
-  }
+    if (nums.length === 0) return;
+
+    /* get the comparison number */
+    const compareNum = nums[0];
+
+    if (compareNum > inputNums[0]) {
+      const diff = compareNum - inputNums[0];
+
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestItem = item;
+      }
+    }
+  });
+
+  return bestItem;
+}
 
   /* ============================= */
-  /* CASE 2: INPUT SINGLE NUMBER */
+  /* CASE 2: TEXT INPUT */
+  /* original typo logic */
   /* ============================= */
 
-  if (inputNums.length === 1 && itemNums.length >= 2) {
-    const num = inputNums[0];
+  let bestMatch = null;
+  let bestScore = Infinity;
 
-    const from = itemNums[0];
-    const to = itemNums[1];
+  items.forEach((item: string) => {
+    if (/\d/.test(item)) return;
 
-    return num >= from && num <= to;
-  }
+    const score = levenshtein(
+      input.toLowerCase(),
+      item.toLowerCase(),
+    );
 
+    if (score < bestScore && score <= 3) {
+      bestScore = score;
+      bestMatch = item;
+    }
+  });
+
+  return bestMatch;
+})();
   /* ============================= */
-  /* CASE 3: EXACT TEXT MATCH */
-  /* ============================= */
 
-  return i.toLowerCase().includes(input.toLowerCase());
-});
   return (
     <div className="border rounded p-2 space-y-2">
       <p className="text-sm font-medium">{label ?? title}</p>
 
-      {/* ✅ FIX IS HERE */}
       <Command shouldFilter={false}>
         <CommandInput
           placeholder="Type to search..."
@@ -350,7 +428,22 @@ const visible = items.filter((i: string) => {
           onValueChange={setInput}
         />
 
-        {visible.length === 0 && <CommandEmpty>No results</CommandEmpty>}
+        {visible.length === 0 && (
+<CommandEmpty>
+  No results
+
+  {suggestion && (
+    <div
+      className="text-blue-500 cursor-pointer mt-1"
+      onClick={() => setInput(suggestion)}
+    >
+      {/\d/.test(input)
+        ? <>Suggested: <b>{suggestion}</b></>
+        : <>Did you mean: <b>{suggestion}</b></>}
+    </div>
+  )}
+</CommandEmpty>
+        )}
 
         {visible.length > 0 && (
           <CommandGroup>
@@ -358,7 +451,9 @@ const visible = items.filter((i: string) => {
               <CommandItem key={i} onSelect={() => toggle(title, i)}>
                 <Check
                   className={`mr-2 h-4 w-4 ${
-                    filters[title]?.includes(i) ? "opacity-100" : "opacity-0"
+                    filters[title]?.includes(i)
+                      ? "opacity-100"
+                      : "opacity-0"
                   }`}
                 />
                 {i}
