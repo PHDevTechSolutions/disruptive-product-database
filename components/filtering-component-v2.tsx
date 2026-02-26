@@ -101,32 +101,84 @@ const splitValues = (value: string): string[] => {
 
   const productClasses = uniq(products.map((p) => p.productClass));
 
-  /* ================= TECH SPECS ================= */
+/* ================= TECH SPECS ================= */
+/* CTRL+F: TECH SPECS FILTERED SOURCE */
 
-  const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
+const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
 
-  products.forEach((p) => {
-    if (!p?.technicalSpecifications) return;
-    p.technicalSpecifications.forEach((g: any) => {
-      if (!g?.title) return;
-      /* ensure group exists */
-      technicalSpecs[g.title] ??= {};
-      if (!Array.isArray(g.specs)) return;
-      g.specs.forEach((s: any) => {
-        if (!s?.specId) return;
-        const val = formatSpec(s);
-        if (!val) return;
-        /* ✅ PRIORITY: name → title → specId */
-        const specLabel: string = s.specId;
-        /* ensure spec exists */
-        technicalSpecs[g.title][specLabel] ??= new Set<string>();
-        /* add split values */
-        splitValues(val).forEach((single) => {
-          technicalSpecs[g.title][specLabel].add(single);
-        });
+/* ================================================= */
+/* STEP 1: FILTER PRODUCTS BASED ON CURRENT FILTERS */
+/* ================================================= */
+
+const sourceProducts = products.filter((p) => {
+
+  const check = (key: string, value: any) => {
+
+    if (filters[key]?.length) {
+
+      return filters[key].includes(value);
+
+    }
+
+    return true;
+
+  };
+
+  if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName)) return false;
+
+  if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName)) return false;
+
+  if (!check("Product Class", p.productClass)) return false;
+
+  if (!check("Price Point", p.pricePoint)) return false;
+
+  if (!check("Brand Origin", p.brandOrigin)) return false;
+
+  if (!check("Supplier", p.supplier?.company)) return false;
+
+  return true;
+
+});
+
+/* ================================================= */
+/* STEP 2: BUILD TECH SPECS ONLY FROM FILTERED DATA */
+/* ================================================= */
+
+sourceProducts.forEach((p) => {
+
+  if (!p?.technicalSpecifications) return;
+
+  p.technicalSpecifications.forEach((g: any) => {
+
+    if (!g?.title) return;
+
+    technicalSpecs[g.title] ??= {};
+
+    if (!Array.isArray(g.specs)) return;
+
+    g.specs.forEach((s: any) => {
+
+      if (!s?.specId) return;
+
+      const val = formatSpec(s);
+
+      if (!val) return;
+
+      const specLabel: string = s.specId;
+
+      technicalSpecs[g.title][specLabel] ??= new Set<string>();
+
+      splitValues(val).forEach((single) => {
+
+        technicalSpecs[g.title][specLabel].add(single);
+
       });
+
     });
+
   });
+
+});
 
   /* ================= FILTER ENGINE ================= */
 
