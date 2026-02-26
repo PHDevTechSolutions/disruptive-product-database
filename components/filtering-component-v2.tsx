@@ -21,6 +21,9 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     {},
   );
 
+const [selectedUsage, setSelectedUsage] = useState<string | null>(null);
+const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
+
   const uniq = (arr: any[]) => Array.from(new Set(arr.filter(Boolean)));
 
   const formatPHP = (v?: number, d = 2) =>
@@ -70,9 +73,15 @@ const splitValues = (value: string): string[] => {
     products.map((p) => p.categoryTypes?.[0]?.categoryTypeName),
   );
 
-  const productFamilies = uniq(
-    products.map((p) => p.productFamilies?.[0]?.productFamilyName),
-  );
+const productFamilies = uniq(
+  products
+    .filter((p) =>
+      selectedUsage
+        ? p.categoryTypes?.[0]?.categoryTypeName === selectedUsage
+        : true,
+    )
+    .map((p) => p.productFamilies?.[0]?.productFamilyName),
+);
 
   const suppliers = uniq(products.map((p) => p.supplier?.company));
 
@@ -88,7 +97,13 @@ const splitValues = (value: string): string[] => {
 
   const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
 
-  products.forEach((p) => {
+products
+  .filter((p) =>
+    selectedFamily
+      ? p.productFamilies?.[0]?.productFamilyName === selectedFamily
+      : true,
+  )
+  .forEach((p) => {
     if (!p?.technicalSpecifications) return;
     p.technicalSpecifications.forEach((g: any) => {
       if (!g?.title) return;
@@ -176,13 +191,35 @@ const splitValues = (value: string): string[] => {
 
   /* ================= UI ACTIONS ================= */
 
-  const toggle = (title: string, value: string) =>
-    setFilters((prev) => ({
+const toggleRadio = (title: string, value: string) => {
+  setFilters((prev) => {
+    const current = prev[title]?.[0];
+
+    /* UNCHECK */
+    if (current === value) {
+      const newFilters = { ...prev };
+      delete newFilters[title];
+
+      /* HANDLE STEPPER BACK */
+      if (title === "Product Usage") {
+        setSelectedUsage(null);
+        setSelectedFamily(null);
+      }
+
+      if (title === "Product Family") {
+        setSelectedFamily(null);
+      }
+
+      return newFilters;
+    }
+
+    /* SELECT NEW */
+    return {
       ...prev,
-      [title]: prev[title]?.includes(value)
-        ? prev[title].filter((v) => v !== value)
-        : [...(prev[title] || []), value],
-    }));
+      [title]: [value],
+    };
+  });
+};
 
   const setSearch = (title: string, value: string) =>
     setSearchFilters((prev) => ({
@@ -198,87 +235,130 @@ const splitValues = (value: string): string[] => {
 
       <button
         className="border px-3 py-1 rounded text-sm"
-        onClick={() => {
-          setFilters({});
-          setSearchFilters({});
-        }}
+onClick={() => {
+  setFilters({});
+  setSearchFilters({});
+  setSelectedUsage(null);
+  setSelectedFamily(null);
+}}
       >
         Clear Filters
       </button>
 
-      <div className="space-y-3">
-        <Section
-          title="Product Usage"
-          items={productUsages}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
+<div className="space-y-3">
 
-        <Section
-          title="Product Family"
-          items={productFamilies}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
+{/* STEP 1 */}
 
-        {/* ✅ PRICE POINT FILTER */}
-        <Section
-          title="Price Point"
-          items={pricePoints}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
+<Section
+  title="Product Usage"
+  items={productUsages}
+  filters={filters}
+  toggle={(title: string, value: string) => {
+    if (selectedUsage === value) {
+      toggleRadio(title, value);
+    } else {
+      setSelectedUsage(value);
+      setSelectedFamily(null);
+      toggleRadio(title, value);
+    }
+  }}
+  setSearch={setSearch}
+/>
 
-        {/* ✅ BRAND ORIGIN FILTER */}
-        <Section
-          title="Brand Origin"
-          items={brandOrigins}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
 
-        <Section
-          title="Product Class"
-          items={productClasses}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
+{/* STEP 2 */}
 
-        <Section
-          title="Supplier"
-          items={suppliers}
-          filters={filters}
-          toggle={toggle}
-          setSearch={setSearch}
-        />
+{selectedUsage && (
 
-        {/* TECH SPECS */}
+<Section
+  title="Product Family"
+  items={productFamilies}
+  filters={filters}
+  toggle={(title: string, value: string) => {
+    if (selectedFamily === value) {
+      toggleRadio(title, value);
+    } else {
+      setSelectedFamily(value);
+      toggleRadio(title, value);
+    }
+  }}
+  setSearch={setSearch}
+/>
 
-        <h3 className="font-semibold mt-4">Technical Specifications</h3>
+)}
 
-        {Object.entries(technicalSpecs).map(([gt, s]) => (
-          <div key={gt} className="border rounded p-2 space-y-2">
-            <p className="font-semibold text-sm">{gt}</p>
 
-            {Object.entries(s).map(([sn, vals]) => (
-              <Section
-                key={sn}
-                title={`${gt}||${sn}`}
-                label={sn}
-                items={[...vals]}
-                filters={filters}
-                toggle={toggle}
-                setSearch={setSearch}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
+{/* STEP 3 */}
+
+{selectedFamily && (
+
+<>
+
+<Section
+  title="Price Point"
+  items={pricePoints}
+  filters={filters}
+  toggle={toggleRadio}
+  setSearch={setSearch}
+/>
+
+<Section
+  title="Brand Origin"
+  items={brandOrigins}
+  filters={filters}
+  toggle={toggleRadio}
+  setSearch={setSearch}
+/>
+
+<Section
+  title="Product Class"
+  items={productClasses}
+  filters={filters}
+  toggle={toggleRadio}
+  setSearch={setSearch}
+/>
+
+<Section
+  title="Supplier"
+  items={suppliers}
+  filters={filters}
+  toggle={toggleRadio}
+  setSearch={setSearch}
+/>
+
+
+<h3 className="font-semibold mt-4">Technical Specifications</h3>
+
+
+{Object.entries(technicalSpecs).map(([gt, s]) => (
+
+  <div key={gt} className="border rounded p-2 space-y-2">
+
+    <p className="font-semibold text-sm">{gt}</p>
+
+    {Object.entries(s).map(([sn, vals]) => (
+
+      <Section
+        key={sn}
+        title={`${gt}||${sn}`}
+        label={sn}
+        items={[...vals]}
+        filters={filters}
+        toggle={toggleRadio}
+        setSearch={setSearch}
+      />
+
+    ))}
+
+  </div>
+
+))}
+
+</>
+
+)}
+
+</div>
     </div>
   );
 }
