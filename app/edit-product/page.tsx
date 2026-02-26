@@ -1484,9 +1484,6 @@ const syncProductsUsingThisFamily = async () => {
                     Add Title
                   </Button>
 
-                  <Button size="sm" onClick={syncSpecsToProductType}>
-                    Confirm Save
-                  </Button>
                 </div>
               </div>
 

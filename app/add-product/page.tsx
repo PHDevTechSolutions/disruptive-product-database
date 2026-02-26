@@ -1075,9 +1075,18 @@ batch.set(ref, {
       // ================= CLOUDINARY UPLOAD =================
 
       // MAIN IMAGE
-      const newProductReferenceID = await generateProductReferenceID();
+const newProductReferenceID = await generateProductReferenceID();
 
-      const productRef = await addDoc(collection(db, "products"), {
+await syncSpecsToProductType();
+
+await syncProductsUsingThisFamily(
+  selectedProductFamily!.id,
+  selectedProductFamily!.name,
+  selectedProductFamily!.productUsageId,
+  technicalSpecs
+);
+
+const productRef = await addDoc(collection(db, "products"), {
         productReferenceID: newProductReferenceID,
 
         pricePoint: noSupplier ? "Economy" : pricePoint,
@@ -1347,9 +1356,6 @@ batch.set(ref, {
                     Add Title
                   </Button>
 
-                  <Button size="sm" onClick={syncSpecsToProductType}>
-                    Confirm Save
-                  </Button>
                 </div>
               </div>
 
