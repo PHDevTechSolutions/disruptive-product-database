@@ -622,15 +622,43 @@ export default function AddProductPage() {
           ? doc(specsRef, existingSpec.id) // Update existing spec
           : doc(specsRef); // Create new spec
 
-        batch.set(ref, {
-          title: spec.title,
-          specs: spec.specs.map((row) => ({
-            specId: row.specId.trim(),
-            value: row.value?.trim() || "", // Ensuring empty value fields are handled
-          })),
-          isActive: true,
-          updatedAt: serverTimestamp(), // Track when it was last updated
-        });
+batch.set(ref, {
+
+  title: spec.title.trim(),
+
+  specs: spec.specs
+    .filter(row => row.specId.trim() !== "")
+    .map(row => ({
+
+      specId: row.specId.trim(),
+
+      unit: row.unit || "",
+
+      isRanging: row.isRanging || false,
+      isSlashing: row.isSlashing || false,
+      isDimension: row.isDimension || false,
+      isRating: row.isRating || false,
+
+      rangeFrom: row.rangeFrom || "",
+      rangeTo: row.rangeTo || "",
+
+      slashValues: row.slashValues || [""],
+
+      length: row.length || "",
+      width: row.width || "",
+      height: row.height || "",
+
+      ipFirst: row.ipFirst || "",
+      ipSecond: row.ipSecond || ""
+
+      // ❌ NO VALUE
+    })),
+
+  isActive: true,
+
+  updatedAt: serverTimestamp(),
+
+});
       });
 
       // Commit the batch to Firestore
