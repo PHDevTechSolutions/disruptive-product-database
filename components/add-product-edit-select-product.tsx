@@ -64,23 +64,19 @@ export default function AddProductEditSelectProduct({
 
       setSaving(true);
 
-      await updateDoc(
-        doc(
-          db,
-          "categoryTypes",
-          item.productUsageId,
-          "productFamilies",
-          item.id
-        ),
-        {
-          name: value.trim(),
+await updateDoc(
+  doc(
+    db,
+    "productFamilies",
+    item.id
+  ),
+  {
+    name: value.trim(),
 
-          // ✅ ADD THIS
-          whatHappened: "Product Family Edited",
-          date_updated: serverTimestamp(),
-
-        }
-      );
+    whatHappened: "Product Family Edited",
+    date_updated: serverTimestamp(),
+  }
+);
 
 
       /* UPDATE PRODUCTS */
