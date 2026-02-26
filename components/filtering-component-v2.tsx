@@ -246,33 +246,78 @@ sourceProducts.forEach((p) => {
   /* ================= UI ACTIONS ================= */
 
 /* ================= STEP TOGGLE FILTER ================= */
+/* ================= STEP TOGGLE FILTER ================= */
 /* CTRL+F: STEP TOGGLE FILTER */
 
 const toggle = (title: string, value: string) => {
+
   setFilters((prev) => {
-    const updated = {
+
+    const alreadySelected = prev[title]?.includes(value);
+
+    let updated = {
       ...prev,
-      [title]: prev[title]?.includes(value)
+      [title]: alreadySelected
         ? prev[title].filter((v) => v !== value)
         : [...(prev[title] || []), value],
     };
 
-    /* STEP VISIBILITY */
+    const currentIndex = stepOrder.indexOf(title);
 
-    if (!prev[title]?.length) {
-      const currentIndex = stepOrder.indexOf(title);
 
-      if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
-        const nextStep = stepOrder[currentIndex + 1];
+    /* ========================================= */
+    /* IF UNCHECK → CLEAR NEXT STEPS */
+    /* ========================================= */
 
-        setVisibleSteps((vs) =>
-          vs.includes(nextStep) ? vs : [...vs, nextStep],
-        );
-      }
+    if (alreadySelected) {
+
+      const newVisibleSteps = stepOrder.slice(0, currentIndex + 1);
+
+      setVisibleSteps(newVisibleSteps);
+
+
+      /* REMOVE FILTERS OF NEXT STEPS */
+
+      const cleared = { ...updated };
+
+      stepOrder.slice(currentIndex + 1).forEach((step) => {
+
+        delete cleared[step];
+
+      });
+
+      updated = cleared;
+
     }
 
+
+    /* ========================================= */
+    /* IF CHECK → SHOW NEXT STEP */
+    /* ========================================= */
+
+    else {
+
+      if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
+
+        const nextStep = stepOrder[currentIndex + 1];
+
+        setVisibleSteps((prevSteps) =>
+
+          prevSteps.includes(nextStep)
+            ? prevSteps
+            : [...prevSteps, nextStep]
+
+        );
+
+      }
+
+    }
+
+
     return updated;
+
   });
+
 };
 
     
