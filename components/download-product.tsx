@@ -12,8 +12,14 @@ import {
 } from "@/components/ui/dialog";
 
 import { Download } from "lucide-react";
+
 import ExcelJS from "exceljs";
+
 import saveAs from "file-saver";
+
+import { collection, query, where, getDocs } from "firebase/firestore";
+
+import { db } from "@/lib/firebase";
 
 type Props = {
   products: any[];
@@ -27,88 +33,125 @@ export default function DownloadProduct({ products }: Props) {
   const handleDownload = async () => {
     const wb = new ExcelJS.Workbook();
 
+    /* GROUP PRODUCTS BY PRODUCT FAMILY */
+
     const sheetMap = new Map<string, any[]>();
 
     products.forEach((p) => {
-      const productType = p.productFamilies?.[0]?.productFamilyName || "Others";
+      const familyName = p.productFamilies?.[0]?.productFamilyName || "Others";
 
-      if (!sheetMap.has(productType)) sheetMap.set(productType, []);
+      if (!sheetMap.has(familyName)) sheetMap.set(familyName, []);
 
-      sheetMap.get(productType)!.push(p);
+      sheetMap.get(familyName)!.push(p);
     });
+
+    /* PROCESS EACH PRODUCT FAMILY */
 
     for (const [sheetName, sheetProducts] of sheetMap) {
       const ws = wb.addWorksheet(sheetName);
 
-      const groupMap = new Map<string, Set<string>>();
+      /* GET TEMPLATE FROM FIRESTORE */
 
-      sheetProducts.forEach((p) => {
-        p.technicalSpecifications?.forEach((group: any) => {
-          if (!groupMap.has(group.title)) groupMap.set(group.title, new Set());
+      const categoryTypeId =
+        sheetProducts[0]?.categoryTypes?.[0]?.productUsageId;
 
-          group.specs?.forEach((spec: any) => {
-            groupMap.get(group.title)!.add(spec.specId);
-          });
-        });
+      const productFamilyId =
+        sheetProducts[0]?.productFamilies?.[0]?.productFamilyId;
+
+      const templateSnap = await getDocs(
+        query(
+          collection(db, "technicalSpecifications"),
+          where("categoryTypeId", "==", categoryTypeId),
+          where("productFamilyId", "==", productFamilyId),
+          where("isActive", "==", true),
+        ),
+      );
+
+      const groupMap = new Map<string, string[]>();
+
+      templateSnap.forEach((doc) => {
+        const data = doc.data();
+
+        groupMap.set(
+          data.title,
+          data.specs.map((s: any) => s.specId),
+        );
       });
+
+      /* STATIC COLUMNS */
 
       const staticColumns = [
         "Product Usage",
+
         "Product Family",
+
         "Product Class",
+
         "Price Point",
+
         "Brand Origin",
+
         "Supplier",
+
         "Image URL",
       ];
 
       const header1: any[] = [];
+
       const header2: any[] = [];
 
       staticColumns.forEach((col) => {
         header1.push(col);
+
         header2.push("");
       });
 
-      groupMap.forEach((specs, group) => {
-        const specArray = Array.from(specs);
-
-        specArray.forEach((specId, index) => {
+      groupMap.forEach((specIds, groupTitle) => {
+        specIds.forEach((specId, index) => {
           header1.push(specId);
 
-          if (index === 0) header2.push(group);
-          else header2.push("");
+          header2.push(index === 0 ? groupTitle : "");
         });
       });
 
       ws.addRow(header1);
+
       ws.addRow(header2);
+
+      /* STYLE STATIC HEADER */
 
       for (let col = 1; col <= staticColumns.length; col++) {
         const cell = ws.getRow(1).getCell(col);
 
         cell.fill = {
           type: "pattern",
+
           pattern: "solid",
+
           fgColor: { argb: "4472C4" },
         };
 
         cell.font = {
           bold: true,
+
           color: { argb: "FFFFFF" },
         };
 
         cell.alignment = {
           vertical: "middle",
+
           horizontal: "center",
         };
       }
 
+      /* STYLE TEMPLATE HEADER */
+
       let colStart = staticColumns.length + 1;
+
       let groupIndex = 0;
 
-      groupMap.forEach((specs) => {
-        const colEnd = colStart + specs.size - 1;
+      groupMap.forEach((specIds) => {
+        const colEnd = colStart + specIds.length - 1;
 
         ws.mergeCells(2, colStart, 2, colEnd);
 
@@ -117,9 +160,13 @@ export default function DownloadProduct({ products }: Props) {
         for (let col = colStart; col <= colEnd; col++) {
           const headerCell = ws.getRow(1).getCell(col);
 
+          const groupCell = ws.getRow(2).getCell(col);
+
           headerCell.fill = {
             type: "pattern",
+
             pattern: "solid",
+
             fgColor: { argb: color },
           };
 
@@ -127,65 +174,63 @@ export default function DownloadProduct({ products }: Props) {
 
           headerCell.alignment = {
             vertical: "middle",
+
             horizontal: "center",
           };
 
-          headerCell.border = {
-            top: { style: "thin" },
-            bottom: { style: "thin" },
-            left: { style: "thin" },
-            right: { style: "thin" },
-          };
-
-          const groupCell = ws.getRow(2).getCell(col);
-
           groupCell.fill = {
             type: "pattern",
+
             pattern: "solid",
+
             fgColor: { argb: color },
           };
 
           groupCell.font = {
             bold: true,
+
             italic: true,
           };
 
           groupCell.alignment = {
             vertical: "middle",
-            horizontal: "center",
-          };
 
-          groupCell.border = {
-            top: { style: "thin" },
-            bottom: { style: "thin" },
-            left: { style: "thin" },
-            right: { style: "thin" },
+            horizontal: "center",
           };
         }
 
         groupIndex++;
+
         colStart = colEnd + 1;
       });
+
+      /* ADD PRODUCT ROWS */
 
       sheetProducts.forEach((product) => {
         const row: any[] = [];
 
         row.push(product.categoryTypes?.[0]?.categoryTypeName || "");
+
         row.push(product.productFamilies?.[0]?.productFamilyName || "");
+
         row.push(product.productClass || "");
+
         row.push(product.pricePoint || "");
+
         row.push(product.brandOrigin || "");
+
         row.push(product.supplier?.company || "");
+
         row.push(product.mainImage?.url || "");
 
-        groupMap.forEach((specs, group) => {
+        groupMap.forEach((specIds, groupTitle) => {
           const groupData = product.technicalSpecifications?.find(
-            (g: any) => g.title === group
+            (g: any) => g.title === groupTitle,
           );
 
-          Array.from(specs).forEach((specId) => {
+          specIds.forEach((specId) => {
             const spec = groupData?.specs?.find(
-              (s: any) => s.specId === specId
+              (s: any) => s.specId === specId,
             );
 
             row.push(spec?.value || "");
@@ -195,48 +240,14 @@ export default function DownloadProduct({ products }: Props) {
         ws.addRow(row);
       });
 
-      const startRow = 3;
-      const endRow = ws.rowCount;
-      const totalCols = ws.columnCount;
-
-      for (let col = 1; col <= totalCols; col++) {
-        let mergeStart = startRow;
-        let lastValue = ws.getRow(startRow).getCell(col).value;
-
-        for (let row = startRow + 1; row <= endRow + 1; row++) {
-          const currentValue =
-            row <= endRow ? ws.getRow(row).getCell(col).value : null;
-
-          const isDifferent =
-            currentValue !== lastValue ||
-            currentValue === null ||
-            currentValue === "";
-
-          if (isDifferent) {
-            if (
-              row - mergeStart > 1 &&
-              lastValue !== null &&
-              lastValue !== ""
-            ) {
-              ws.mergeCells(mergeStart, col, row - 1, col);
-
-              ws.getCell(mergeStart, col).alignment = {
-                vertical: "middle",
-                horizontal: "center",
-              };
-            }
-
-            mergeStart = row;
-            lastValue = currentValue;
-          }
-        }
-      }
+      /* AUTO WIDTH */
 
       ws.columns.forEach((column) => {
         let max = 15;
 
         column.eachCell?.({ includeEmpty: true }, (cell) => {
-          const len = cell.value ? cell.value.toString().length : 0;
+          const len = cell.value?.toString().length || 0;
+
           if (len > max) max = len;
         });
 
@@ -248,7 +259,7 @@ export default function DownloadProduct({ products }: Props) {
 
     const buffer = await wb.xlsx.writeBuffer();
 
-    saveAs(new Blob([buffer]), `ProductList.xlsx`);
+    saveAs(new Blob([buffer]), "ProductList.xlsx");
 
     setOpen(false);
   };
@@ -272,9 +283,7 @@ export default function DownloadProduct({ products }: Props) {
             Cancel
           </Button>
 
-          <Button onClick={handleDownload}>
-            Download
-          </Button>
+          <Button onClick={handleDownload}>Download</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

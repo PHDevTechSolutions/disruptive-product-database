@@ -83,7 +83,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   const productClasses = uniq(products.map((p) => p.productClass));
 
-
   /* ================= TECH SPECS ================= */
 
   const technicalSpecs: Record<string, Record<string, Set<string>>> = {};
@@ -100,7 +99,7 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         const val = formatSpec(s);
         if (!val) return;
         /* ✅ PRIORITY: name → title → specId */
-        const specLabel: string = s.name || s.title || s.specId;
+        const specLabel: string = s.specId;
         /* ensure spec exists */
         technicalSpecs[g.title][specLabel] ??= new Set<string>();
         /* add split values */
@@ -148,7 +147,7 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         return false;
       if (!check("Price Point", p.pricePoint)) return false;
       if (!check("Brand Origin", p.brandOrigin)) return false;
-      if (!check("Product Class", p.productClass)) return false; 
+      if (!check("Product Class", p.productClass)) return false;
       if (!check("Supplier", p.supplier?.company)) return false;
 
       for (const [k, vals] of Object.entries(filters)) {
@@ -308,17 +307,11 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
     const inputNums = extractNumbers(input);
 
     if (inputNums.length >= 2 && itemNums.length >= 2) {
-      return (
-        inputNums[0] >= itemNums[0] &&
-        inputNums[1] <= itemNums[1]
-      );
+      return inputNums[0] >= itemNums[0] && inputNums[1] <= itemNums[1];
     }
 
     if (inputNums.length === 1 && itemNums.length >= 2) {
-      return (
-        inputNums[0] >= itemNums[0] &&
-        inputNums[0] <= itemNums[1]
-      );
+      return inputNums[0] >= itemNums[0] && inputNums[0] <= itemNums[1];
     }
 
     return i.toLowerCase().includes(input.toLowerCase());
@@ -350,71 +343,67 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
     return matrix[b.length][a.length];
   };
 
-const suggestion = (() => {
-  if (!input || visible.length > 0) return null;
+  const suggestion = (() => {
+    if (!input || visible.length > 0) return null;
 
-  const extractNumbers = (str: string) => {
-    const matches = str.match(/(\d+(\.\d+)?)/g);
-    return matches ? matches.map(Number) : [];
-  };
+    const extractNumbers = (str: string) => {
+      const matches = str.match(/(\d+(\.\d+)?)/g);
+      return matches ? matches.map(Number) : [];
+    };
 
-  const inputNums = extractNumbers(input);
-  
+    const inputNums = extractNumbers(input);
 
-  /* ============================= */
-  /* CASE 1: NUMBER / RANGE INPUT */
-  /* suggest NEXT HIGHER RANGE */
-  /* ============================= */
+    /* ============================= */
+    /* CASE 1: NUMBER / RANGE INPUT */
+    /* suggest NEXT HIGHER RANGE */
+    /* ============================= */
 
-if (inputNums.length > 0) {
-  let bestItem = null;
-  let bestDiff = Infinity;
+    if (inputNums.length > 0) {
+      let bestItem = null;
+      let bestDiff = Infinity;
 
-  items.forEach((item: string) => {
-    const nums = extractNumbers(item);
+      items.forEach((item: string) => {
+        const nums = extractNumbers(item);
 
-    if (nums.length === 0) return;
+        if (nums.length === 0) return;
 
-    /* get the comparison number */
-    const compareNum = nums[0];
+        /* get the comparison number */
+        const compareNum = nums[0];
 
-    if (compareNum > inputNums[0]) {
-      const diff = compareNum - inputNums[0];
+        if (compareNum > inputNums[0]) {
+          const diff = compareNum - inputNums[0];
 
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        bestItem = item;
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestItem = item;
+          }
+        }
+      });
+
+      return bestItem;
+    }
+
+    /* ============================= */
+    /* CASE 2: TEXT INPUT */
+    /* original typo logic */
+    /* ============================= */
+
+    let bestMatch = null;
+    let bestScore = Infinity;
+
+    items.forEach((item: string) => {
+      if (/\d/.test(item)) return;
+
+      const score = levenshtein(input.toLowerCase(), item.toLowerCase());
+
+      if (score < bestScore && score <= 3) {
+        bestScore = score;
+        bestMatch = item;
       }
-    }
-  });
+    });
 
-  return bestItem;
-}
-
-  /* ============================= */
-  /* CASE 2: TEXT INPUT */
-  /* original typo logic */
-  /* ============================= */
-
-  let bestMatch = null;
-  let bestScore = Infinity;
-
-  items.forEach((item: string) => {
-    if (/\d/.test(item)) return;
-
-    const score = levenshtein(
-      input.toLowerCase(),
-      item.toLowerCase(),
-    );
-
-    if (score < bestScore && score <= 3) {
-      bestScore = score;
-      bestMatch = item;
-    }
-  });
-
-  return bestMatch;
-})();
+    return bestMatch;
+  })();
   /* ============================= */
 
   return (
@@ -429,20 +418,25 @@ if (inputNums.length > 0) {
         />
 
         {visible.length === 0 && (
-<CommandEmpty>
-  No results
-
-  {suggestion && (
-    <div
-      className="text-blue-500 cursor-pointer mt-1"
-      onClick={() => setInput(suggestion)}
-    >
-      {/\d/.test(input)
-        ? <>Suggested: <b>{suggestion}</b></>
-        : <>Did you mean: <b>{suggestion}</b></>}
-    </div>
-  )}
-</CommandEmpty>
+          <CommandEmpty>
+            No results
+            {suggestion && (
+              <div
+                className="text-blue-500 cursor-pointer mt-1"
+                onClick={() => setInput(suggestion)}
+              >
+                {/\d/.test(input) ? (
+                  <>
+                    Suggested: <b>{suggestion}</b>
+                  </>
+                ) : (
+                  <>
+                    Did you mean: <b>{suggestion}</b>
+                  </>
+                )}
+              </div>
+            )}
+          </CommandEmpty>
         )}
 
         {visible.length > 0 && (
@@ -451,9 +445,7 @@ if (inputNums.length > 0) {
               <CommandItem key={i} onSelect={() => toggle(title, i)}>
                 <Check
                   className={`mr-2 h-4 w-4 ${
-                    filters[title]?.includes(i)
-                      ? "opacity-100"
-                      : "opacity-0"
+                    filters[title]?.includes(i) ? "opacity-100" : "opacity-0"
                   }`}
                 />
                 {i}
