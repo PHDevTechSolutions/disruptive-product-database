@@ -85,16 +85,27 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     products.map((p) => p.categoryTypes?.[0]?.categoryTypeName),
   );
 
+  /* ================= DEPENDENT PRODUCT FAMILY SOURCE ================= */
+  /* CTRL+F: DEPENDENT PRODUCT FAMILY SOURCE */
+
   const productFamilies = uniq(
-    products.map((p) => p.productFamilies?.[0]?.productFamilyName),
+    products
+      .filter((p) => {
+        /* depend ONLY on Product Usage selection */
+
+        if (filters["Product Usage"]?.length) {
+          return filters["Product Usage"].includes(
+            p.categoryTypes?.[0]?.categoryTypeName,
+          );
+        }
+
+        return true;
+      })
+      .map((p) => p.productFamilies?.[0]?.productFamilyName),
   );
 
-  const suppliers = uniq(products.map((p) => p.supplier?.company));
-
-  /* ✅ PRICE POINT FILTER */
   const pricePoints = uniq(products.map((p) => p.pricePoint));
 
-  /* ✅ BRAND ORIGIN FILTER */
   const brandOrigins = uniq(products.map((p) => p.brandOrigin));
 
   const productClasses = uniq(products.map((p) => p.productClass));
@@ -133,6 +144,32 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
     return true;
   });
+
+  const suppliers = uniq(sourceProducts.map((p) => p.supplier?.company));
+
+  const buildCounts = (
+    list: string[],
+    extractor: (p: any) => string | string[] | undefined,
+  ) => {
+    const counts: Record<string, number> = {};
+
+    list.forEach((val) => (counts[val] = 0));
+
+    sourceProducts.forEach((p) => {
+      const extracted = extractor(p);
+
+      if (Array.isArray(extracted)) {
+        extracted.forEach((v) => {
+          if (counts[v] !== undefined) counts[v]++;
+        });
+      } else {
+        if (counts[extracted as string] !== undefined)
+          counts[extracted as string]++;
+      }
+    });
+
+    return counts;
+  };
 
   /* ================================================= */
   /* STEP 2: BUILD TECH SPECS ONLY FROM FILTERED DATA */
@@ -246,18 +283,25 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           : [...(prev[title] || []), value],
       };
 
-      const currentIndex = stepOrder.indexOf(title);
+      /* ✅ TECH SPEC FIX */
+      /* Do NOT run step clearing logic for technical specs */
 
-      /* ========================================= */
-      /* IF UNCHECK → CLEAR NEXT STEPS */
-      /* ========================================= */
+      if (title.includes("||")) {
+        /* just update filter normally */
+
+        if (updated[title]?.length === 0) delete updated[title];
+
+        return updated;
+      }
+
+      /* NORMAL STEP LOGIC BELOW */
+
+      const currentIndex = stepOrder.indexOf(title);
 
       if (alreadySelected) {
         const newVisibleSteps = stepOrder.slice(0, currentIndex + 1);
 
         setVisibleSteps(newVisibleSteps);
-
-        /* REMOVE FILTERS OF NEXT STEPS */
 
         const cleared = { ...updated };
 
@@ -267,10 +311,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
         updated = cleared;
       } else {
-
-      /* ========================================= */
-      /* IF CHECK → SHOW NEXT STEP */
-      /* ========================================= */
         if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
           const nextStep = stepOrder[currentIndex + 1];
 
@@ -301,113 +341,229 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         onClick={() => {
           setFilters({});
           setSearchFilters({});
+          setVisibleSteps([
+            "Product Usage",
+          ]); /* CTRL+F: RESET STEP VISIBILITY */
         }}
       >
         Clear Filters
       </button>
+      {/* ================= HORIZONTAL STEP CONTAINER ================= */}
 
-      {/* ================= STEP FILTER UI ================= */}
-      {/* CTRL+F: STEP FILTER UI */}
+      <div className="space-y-6">
+        {/* ================= HORIZONTAL STEP CONTAINER ================= */}
+        {/* CTRL+F: HORIZONTAL STEP CONTAINER */}
 
-      <div className="space-y-3">
-        {visibleSteps.includes("Product Usage") && (
-          <Section
-            title="Product Usage"
-            items={productUsages}
-            filters={filters}
-            toggle={toggle}
-            setSearch={setSearch}
-          />
-        )}
+        <div className="overflow-x-auto">
+          <div className="flex gap-4 items-start min-w-max">
+            {/* STEP 1 */}
 
-        {visibleSteps.includes("Product Family") && (
-          <Section
-            title="Product Family"
-            items={productFamilies}
-            filters={filters}
-            toggle={toggle}
-            setSearch={setSearch}
-          />
-        )}
-
-        {visibleSteps.includes("Product Class") && (
-          <Section
-            title="Product Class"
-            items={productClasses}
-            filters={filters}
-            toggle={toggle}
-            setSearch={setSearch}
-          />
-        )}
-
-        {visibleSteps.includes("Price Point") && (
-          <Section
-            title="Price Point"
-            items={pricePoints}
-            filters={filters}
-            toggle={toggle}
-            setSearch={setSearch}
-          />
-        )}
-
-        {visibleSteps.includes("Brand Origin") && (
-          <Section
-            title="Brand Origin"
-            items={brandOrigins}
-            filters={filters}
-            toggle={toggle}
-            setSearch={setSearch}
-          />
-        )}
-
-        {visibleSteps.includes("Supplier") && (
-          <Section
-            title="Supplier"
-            items={suppliers}
-            filters={filters}
-            toggle={toggle}
-            setSearch={setSearch}
-          />
-        )}
-
-        {/* ================= TECH SPECS STEP ================= */}
-
-        {visibleSteps.includes("Supplier") && (
-          <>
-            <h3 className="font-semibold mt-4">Technical Specifications</h3>
-
-            {Object.entries(technicalSpecs).map(([gt, s]) => (
-              <div key={gt} className="border rounded p-2 space-y-2">
-                <p className="font-semibold text-sm">{gt}</p>
-
-                {Object.entries(s).map(([sn, vals]) => (
-                  <Section
-                    key={sn}
-                    title={`${gt}||${sn}`}
-                    label={sn}
-                    items={[...vals]}
-                    filters={filters}
-                    toggle={toggle}
-                    setSearch={setSearch}
-                  />
-                ))}
+            {visibleSteps.includes("Product Usage") && (
+              <div className="w-[260px] shrink-0">
+                <Section
+                  title="Product Usage"
+                  items={productUsages}
+                  filters={filters}
+                  toggle={toggle}
+                  setSearch={setSearch}
+                  sourceProducts={sourceProducts}
+                  products={products}
+                />
               </div>
-            ))}
-          </>
+            )}
+
+            {/* STEP 2 */}
+
+            {visibleSteps.includes("Product Family") && (
+              <div className="w-[260px] shrink-0">
+                <Section
+                  title="Product Family"
+                  items={productFamilies}
+                  filters={filters}
+                  toggle={toggle}
+                  setSearch={setSearch}
+                  sourceProducts={sourceProducts}
+                  products={products}
+                />
+              </div>
+            )}
+
+            {/* STEP 3 */}
+
+            {visibleSteps.includes("Product Class") && (
+              <div className="w-[260px] shrink-0">
+                <Section
+                  title="Product Class"
+                  items={productClasses}
+                  filters={filters}
+                  toggle={toggle}
+                  setSearch={setSearch}
+                  sourceProducts={sourceProducts}
+                  products={products}
+                />
+              </div>
+            )}
+
+            {/* STEP 4 */}
+
+            {visibleSteps.includes("Price Point") && (
+              <div className="w-[260px] shrink-0">
+                <Section
+                  title="Price Point"
+                  items={pricePoints}
+                  filters={filters}
+                  toggle={toggle}
+                  setSearch={setSearch}
+                  sourceProducts={sourceProducts}
+                  products={products}
+                />
+              </div>
+            )}
+
+            {/* STEP 5 */}
+
+            {visibleSteps.includes("Brand Origin") && (
+              <div className="w-[260px] shrink-0">
+                <Section
+                  title="Brand Origin"
+                  items={brandOrigins}
+                  filters={filters}
+                  toggle={toggle}
+                  setSearch={setSearch}
+                  sourceProducts={sourceProducts}
+                  products={products}
+                />
+              </div>
+            )}
+
+            {/* STEP 6 */}
+          </div>
+        </div>
+
+        {/* ================= TECH SPECS NEW ROW ================= */}
+        {/* CTRL+F: TECH SPECS NEW ROW */}
+
+        {visibleSteps.includes("Supplier") && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-base">
+              Technical Specifications
+            </h3>{" "}
+            {visibleSteps.includes("Supplier") && (
+              <div className="w-[260px] shrink-0">
+                <Section
+                  title="Supplier"
+                  items={suppliers}
+                  filters={filters}
+                  toggle={toggle}
+                  setSearch={setSearch}
+                  sourceProducts={sourceProducts}
+                  products={products}
+                />
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(technicalSpecs).map(([gt, s]) => (
+                <div key={gt} className="border rounded p-3 space-y-3 bg-card">
+                  <p className="font-semibold text-sm">{gt}</p>
+
+                  {Object.entries(s).map(([sn, vals]) => (
+                    <Section
+                      key={sn}
+                      title={`${gt}||${sn}`}
+                      label={sn}
+                      items={[...vals]}
+                      filters={filters}
+                      toggle={toggle}
+                      setSearch={setSearch}
+                      sourceProducts={sourceProducts}
+                      products={products}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-/* ================= SECTION ================= */
+/* ================= STEP LABEL CONFIG ================= */
+/* CTRL+F: STEP LABEL CONFIG */
 
-function Section({ title, label, items, filters, toggle, setSearch }: any) {
+const stepLabels: Record<string, string> = {
+  "Product Usage": "STEP 1",
+  "Product Family": "STEP 2",
+  "Product Class": "STEP 3",
+  "Price Point": "STEP 4",
+  "Brand Origin": "STEP 5",
+  Supplier: "STEP 6",
+};
+
+/* ================= SECTION ================= */
+/* CTRL+F: SECTION WITH QUANTITY BADGE COMPLETE FUNCTION */
+
+function Section({
+  title,
+  label,
+  items,
+  filters,
+  toggle,
+  setSearch,
+  sourceProducts,
+  products,
+}: any) {
   const [input, setInput] = useState("");
 
   useEffect(() => {
     setSearch(title, input);
   }, [input]);
+
+  /* ============================= */
+  /* CTRL+F: BUILD COUNTS INSIDE SECTION */
+  /* ============================= */
+
+  const counts: Record<string, number> = {};
+
+  items.forEach((val: string) => (counts[val] = 0));
+
+  const baseList =
+    title === "Supplier"
+      ? sourceProducts // supplier dependent
+      : products; // others global
+
+  baseList?.forEach((p: any) => {
+    let value;
+
+    if (title === "Product Usage")
+      value = p.categoryTypes?.[0]?.categoryTypeName;
+    else if (title === "Product Family")
+      value = p.productFamilies?.[0]?.productFamilyName;
+    else if (title === "Product Class") value = p.productClass;
+    else if (title === "Price Point") value = p.pricePoint;
+    else if (title === "Brand Origin") value = p.brandOrigin;
+    else if (title === "Supplier") value = p.supplier?.company;
+    else if (title.includes("||")) {
+      const [gt, sn] = title.split("||");
+
+      p.technicalSpecifications?.forEach((g: any) => {
+        if (g.title !== gt) return;
+
+        g.specs?.forEach((s: any) => {
+          if (s.specId !== sn) return;
+
+          const val = s.value;
+
+          if (counts[val] !== undefined) counts[val]++;
+        });
+      });
+
+      return;
+    }
+
+    if (counts[value] !== undefined) counts[value]++;
+  });
 
   /* ============================= */
   /* FILTER VISIBLE ITEMS */
@@ -418,19 +574,19 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
 
     const extractNumbers = (str: string) => {
       const matches = str.match(/(\d+(\.\d+)?)/g);
+
       return matches ? matches.map(Number) : [];
     };
 
     const itemNums = extractNumbers(i);
+
     const inputNums = extractNumbers(input);
 
-    if (inputNums.length >= 2 && itemNums.length >= 2) {
+    if (inputNums.length >= 2 && itemNums.length >= 2)
       return inputNums[0] >= itemNums[0] && inputNums[1] <= itemNums[1];
-    }
 
-    if (inputNums.length === 1 && itemNums.length >= 2) {
+    if (inputNums.length === 1 && itemNums.length >= 2)
       return inputNums[0] >= itemNums[0] && inputNums[0] <= itemNums[1];
-    }
 
     return i.toLowerCase().includes(input.toLowerCase());
   });
@@ -452,7 +608,9 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
             : 1 +
               Math.min(
                 matrix[i - 1][j],
+
                 matrix[i][j - 1],
+
                 matrix[i - 1][j - 1],
               );
       }
@@ -466,18 +624,15 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
 
     const extractNumbers = (str: string) => {
       const matches = str.match(/(\d+(\.\d+)?)/g);
+
       return matches ? matches.map(Number) : [];
     };
 
     const inputNums = extractNumbers(input);
 
-    /* ============================= */
-    /* CASE 1: NUMBER / RANGE INPUT */
-    /* suggest NEXT HIGHER RANGE */
-    /* ============================= */
-
     if (inputNums.length > 0) {
       let bestItem = null;
+
       let bestDiff = Infinity;
 
       items.forEach((item: string) => {
@@ -485,7 +640,6 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
 
         if (nums.length === 0) return;
 
-        /* get the comparison number */
         const compareNum = nums[0];
 
         if (compareNum > inputNums[0]) {
@@ -493,6 +647,7 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
 
           if (diff < bestDiff) {
             bestDiff = diff;
+
             bestItem = item;
           }
         }
@@ -501,12 +656,8 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
       return bestItem;
     }
 
-    /* ============================= */
-    /* CASE 2: TEXT INPUT */
-    /* original typo logic */
-    /* ============================= */
-
     let bestMatch = null;
+
     let bestScore = Infinity;
 
     items.forEach((item: string) => {
@@ -516,12 +667,16 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
 
       if (score < bestScore && score <= 3) {
         bestScore = score;
+
         bestMatch = item;
       }
     });
 
     return bestMatch;
   })();
+
+  /* ============================= */
+  /* UI */
   /* ============================= */
 
   return (
@@ -566,7 +721,16 @@ function Section({ title, label, items, filters, toggle, setSearch }: any) {
                     filters[title]?.includes(i) ? "opacity-100" : "opacity-0"
                   }`}
                 />
-                {i}
+
+                {/* CTRL+F: QUANTITY BADGE UI */}
+
+                <div className="flex justify-between w-full">
+                  <span>{i}</span>
+
+                  <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                    {counts[i] ?? 0}
+                  </span>
+                </div>
               </CommandItem>
             ))}
           </CommandGroup>

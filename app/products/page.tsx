@@ -9,13 +9,7 @@ import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AddProductDeleteProductItem from "@/components/add-product-delete-product-item";
-
-// OLD FILTER COMPONENT (COMMENTED)
-// import FilteringComponent from "@/components/filtering-component";
-
-// NEW FILTER COMPONENT V2
 import FilteringComponentV2 from "@/components/filtering-component-v2";
-
 import UploadProductModal from "@/components/upload-product";
 import DownloadProduct from "@/components/download-product";
 
@@ -30,7 +24,34 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const ITEMS_PER_PAGE = 8;
+  const [cardScale, setCardScale] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("productCardScale");
+      return saved ? parseFloat(saved) : 1;
+    }
+    return 1;
+  });
+
+  const ITEMS_PER_PAGE = useMemo(() => {
+    return Math.max(4, Math.round(8 / cardScale));
+  }, [cardScale]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("productCardScale");
+    if (saved) setCardScale(parseFloat(saved));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("productCardScale", cardScale.toString());
+  }, [cardScale]);
+
+  const increaseCardSize = () => {
+    setCardScale((prev) => Math.min(prev + 0.1, 1.6));
+  };
+
+  const decreaseCardSize = () => {
+    setCardScale((prev) => Math.max(prev - 0.1, 0.6));
+  };
 
   useEffect(() => {
     if (!userId) {
@@ -72,28 +93,30 @@ export default function ProductsPage() {
     });
   }, [searchTerm, filteredProducts]);
 
-  const totalPages = Math.ceil(searchedProducts.length / ITEMS_PER_PAGE);
+  const totalPages = useMemo(() => {
+    return Math.ceil(searchedProducts.length / ITEMS_PER_PAGE);
+  }, [searchedProducts.length, ITEMS_PER_PAGE]);
 
   const paginatedProducts = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
 
     return searchedProducts.slice(start, start + ITEMS_PER_PAGE);
-  }, [searchedProducts, currentPage]);
+  }, [searchedProducts, currentPage, ITEMS_PER_PAGE]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filteredProducts]);
+  }, [searchTerm, filteredProducts, cardScale]);
 
   return (
-    <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px]">
+    <div className="h-dvh overflow-y-auto p-4 md:p-6 space-y-6 pb-[160px] md:pb-6">
       <SidebarTrigger className="hidden md:flex" />
 
       {/* HEADER */}
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-semibold">Products</h1>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h1 className="text-xl md:text-2xl font-semibold">Products</h1>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <UploadProductModal />
 
           <DownloadProduct products={products} />
@@ -104,19 +127,49 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* SEARCH */}
+      {/* SEARCH + SCALE */}
 
-      {!loading && products.length > 0 && (
-        <div className="max-w-md">
-          <Input
-            placeholder="Search product..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+      <div className="space-y-4 sticky top-0 z-30 bg-background pb-2">
+        {!loading && products.length > 0 && (
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <Input
+              placeholder="Search product..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full md:max-w-md"
+            />
+
+            <div className="flex items-center justify-center gap-4 select-none">
+              <span
+                onClick={decreaseCardSize}
+                className="cursor-pointer text-xl font-bold"
+              >
+                −
+              </span>
+
+              <span className="text-xs w-12 text-center">
+                {(cardScale * 100).toFixed(0)}%
+              </span>
+
+              <span
+                onClick={increaseCardSize}
+                className="cursor-pointer text-xl font-bold"
+              >
+                +
+              </span>
+            </div>
+          </div>
+        )}
+
+        {!loading && products.length > 0 && (
+          <FilteringComponentV2
+            products={products}
+            onFilter={setFilteredProducts}
           />
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* BODY */}
+      {/* PRODUCTS GRID */}
 
       {loading ? (
         <p className="text-center text-muted-foreground">Loading products...</p>
@@ -125,130 +178,99 @@ export default function ProductsPage() {
           No products available
         </p>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-6">
-          {/* PRODUCT GRID */}
+        <>
+          <div
+            className="grid gap-4 md:gap-6"
+            style={{
+              gridTemplateColumns: `repeat(auto-fill, minmax(${220 * cardScale}px, 1fr))`,
+            }}
+          >
+            {paginatedProducts.map((p) => {
+              const cat = p.categoryTypes?.[0];
+              const prod = p.productTypes?.[0];
 
-          <div>
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-              {paginatedProducts.map((p) => {
-                const cat = p.categoryTypes?.[0];
-
-                const prod = p.productTypes?.[0];
-
-                return (
-                  <div
-                    key={p.id}
-                    className="border rounded-xl bg-card shadow-sm hover:shadow-md transition flex flex-col overflow-hidden"
-                  >
-                    {/* IMAGE */}
-
-                    <div className="aspect-square bg-muted">
-                      {p.mainImage?.url ? (
-                        <img
-                          src={p.mainImage.url}
-                          className="w-full h-full object-cover"
-                          alt={p.productName}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-                          No Image
-                        </div>
-                      )}
-                    </div>
-
-                    {/* INFO */}
-
-                    <div className="p-4 space-y-2 flex-1 flex flex-col">
-                      <h2 className="text-sm font-semibold line-clamp-2">
-                        {p.productName}
-                      </h2>
-
-                      <p className="text-xs text-muted-foreground">
-                        {p.supplier?.company || "-"}
-                      </p>
-
-                      <div className="text-[11px] text-gray-500 space-y-1">
-                        <p>{cat?.categoryTypeName || "-"}</p>
-
-                        <p>{prod?.productTypeName || "-"}</p>
-
-                        <p>Specs: {p.technicalSpecifications?.length || 0}</p>
-                      </div>
-                    </div>
-
-                    {/* ACTION */}
-
-                    <div className="p-3 border-t bg-muted/40 flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => router.push(`/edit-product?id=${p.id}`)}
-                      >
-                        Edit
-                      </Button>
-
-                      <AddProductDeleteProductItem
-                        productId={p.id}
-                        productName={p.productName}
-                        referenceID={userId ?? ""}
-                        onDeleted={(id) =>
-                          setProducts((prev) =>
-                            prev.filter((prod) => prod.id !== id),
-                          )
-                        }
+              return (
+                <div
+                  key={p.id}
+                  className="border rounded-xl bg-card shadow-sm hover:shadow-md transition flex flex-col overflow-hidden"
+                >
+                  <div className="aspect-square bg-muted">
+                    {p.mainImage?.url ? (
+                      <img
+                        src={p.mainImage.url}
+                        className="w-full h-full object-cover"
                       />
-                    </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-xs">
+                        No Image
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
 
-            {/* PAGINATION */}
+                  <div className="p-3 md:p-4 space-y-2 flex-1">
+                    <h2 className="text-xs md:text-sm font-semibold line-clamp-2">
+                      {p.productName}
+                    </h2>
 
-            {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-6">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                >
-                  Prev
-                </Button>
+                    <p className="text-xs text-muted-foreground">
+                      {p.supplier?.company || "-"}
+                    </p>
+                  </div>
 
-                <span className="text-sm px-3 py-2">
-                  Page {currentPage} of {totalPages}
-                </span>
+                  <div className="p-2 md:p-3 border-t bg-muted/40 flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => router.push(`/edit-product?id=${p.id}`)}
+                    >
+                      Edit
+                    </Button>
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
+                    <AddProductDeleteProductItem
+                      productId={p.id}
+                      productName={p.productName}
+                      referenceID={userId ?? ""}
+                      onDeleted={(id) =>
+                        setProducts((prev) =>
+                          prev.filter((prod) => prod.id !== id),
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          {/* OLD FILTER COMPONENT (COMMENTED) */}
+          {/* PAGINATION */}
 
-          {/*
-          <FilteringComponent
-            products={products}
-            onFilter={setFilteredProducts}
-          />
-          */}
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-6 pb-4">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                Prev
+              </Button>
 
-          {/* NEW FILTER COMPONENT V2 */}
+              <span className="text-sm px-3 py-2">
+                Page {currentPage} of {totalPages}
+              </span>
 
-          <FilteringComponentV2
-            products={products}
-            onFilter={setFilteredProducts}
-          />
-        </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

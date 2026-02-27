@@ -4,13 +4,22 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { LayoutDashboard, Package, Truck, History, FileText } from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarSeparator,
+  useSidebar,
+} from "@/components/ui/sidebar";
+
+import { LayoutDashboard, Package, Truck, History } from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
 import { NavUser } from "@/components/nav-user";
-
-/* ================= TYPES ================= */
 
 type UserDetails = {
   Firstname: string;
@@ -20,23 +29,12 @@ type UserDetails = {
   profilePicture: string;
 };
 
-type NavItemProps = {
-  href: string;
-  label: string;
-  icon: React.ReactNode;
-  active?: boolean;
-};
-
-/* ================= COMPONENT ================= */
-
 export function SidebarLeft() {
-  const { isMobile } = useSidebar();
+  const { state, isMobile } = useSidebar();
   const { userId } = useUser();
   const pathname = usePathname();
 
   const [user, setUser] = React.useState<UserDetails | null>(null);
-
-  /* -------- Fetch User Details -------- */
 
   React.useEffect(() => {
     if (!userId) return;
@@ -56,78 +54,163 @@ export function SidebarLeft() {
         });
       })
       .catch((err) => {
-        console.error("Topbar user fetch error:", err);
+        console.error("Sidebar user fetch error:", err);
       });
   }, [userId]);
 
   return (
-    <div
+    <Sidebar
+      collapsible="icon"
       className="
-        fixed top-0 left-0 right-0
-        h-12
         bg-white/90
         backdrop-blur-md
-        border-b border-border/50
-        shadow-sm
-        z-50
-        flex items-center
-        px-3
+        shadow-2xl
+        border-r
+        border-border/50
       "
     >
-      {/* ===== LEFT SECTION ===== */}
-      <div className="flex items-center gap-2">
-        {isMobile && <SidebarTrigger />}
+      {/* HEADER */}
+      <SidebarHeader className="h-16 px-4 flex items-center">
+        {state === "expanded" && (
+          <span className="text-lg font-bold tracking-tight text-gray-900">
+            Inventory
+          </span>
+        )}
+      </SidebarHeader>
 
-        <span className="text-sm font-semibold tracking-tight text-gray-900">
-          Product Database
-        </span>
-      </div>
+      {/* CONTENT */}
+      <SidebarContent className="px-2">
+        <SidebarMenu>
 
-      {/* ===== CENTER NAVIGATION ===== */}
-      <div className="flex-1 flex items-center justify-center gap-3">
-        <NavItem
-          href="/dashboard"
-          label="Dashboard"
-          icon={<LayoutDashboard className="h-3.5 w-3.5" />}
-          active={pathname === "/dashboard"}
-        />
+          {/* DASHBOARD */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              data-active={pathname === "/dashboard"}
+              className="
+                transition-all
+                hover:bg-red-50
+                hover:text-red-700
+                hover:scale-[1.01]
+                data-[active=true]:bg-gradient-to-r
+                data-[active=true]:from-red-600
+                data-[active=true]:to-red-700
+                data-[active=true]:text-white
+                data-[active=true]:shadow-md
+                data-[active=true]:hover:from-red-700
+                data-[active=true]:hover:to-red-800
+              "
+            >
+              <Link href="/dashboard">
+                <LayoutDashboard />
+                {(isMobile || state === "expanded") && (
+                  <span>Dashboard</span>
+                )}
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
 
-        <NavItem
-          href="/products"
-          label="Products"
-          icon={<Package className="h-3.5 w-3.5" />}
-          active={pathname === "/products"}
-        />
+          {/* PRODUCTS */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              data-active={pathname === "/products"}
+              className="
+                transition-all
+                hover:bg-red-50
+                hover:text-red-700
+                hover:scale-[1.01]
+                data-[active=true]:bg-gradient-to-r
+                data-[active=true]:from-red-600
+                data-[active=true]:to-red-700
+                data-[active=true]:text-white
+                data-[active=true]:shadow-md
+                data-[active=true]:hover:from-red-700
+                data-[active=true]:hover:to-red-800
+              "
+            >
+              <Link href="/products">
+                <Package />
+                {(isMobile || state === "expanded") && (
+                  <span>Products</span>
+                )}
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
 
-        <NavItem
-          href="/suppliers"
-          label="Suppliers"
-          icon={<Truck className="h-3.5 w-3.5" />}
-          active={pathname === "/suppliers"}
-        />
+          {/* SUPPLIERS */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              data-active={pathname === "/suppliers"}
+              className="
+                transition-all
+                hover:bg-red-50
+                hover:text-red-700
+                hover:scale-[1.01]
+                data-[active=true]:bg-gradient-to-r
+                data-[active=true]:from-red-600
+                data-[active=true]:to-red-700
+                data-[active=true]:text-white
+                data-[active=true]:shadow-md
+                data-[active=true]:hover:from-red-700
+                data-[active=true]:hover:to-red-800
+              "
+            >
+              <Link href="/suppliers">
+                <Truck />
+                {(isMobile || state === "expanded") && (
+                  <span>Suppliers</span>
+                )}
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
 
-        <NavItem
-          href="/history"
-          label="History"
-          icon={<History className="h-3.5 w-3.5" />}
-          active={pathname === "/history"}
-        />
-      </div>
+          {/* HISTORY (NEW - ADDED TO MATCH TOP VERSION) */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              data-active={pathname === "/history"}
+              className="
+                transition-all
+                hover:bg-red-50
+                hover:text-red-700
+                hover:scale-[1.01]
+                data-[active=true]:bg-gradient-to-r
+                data-[active=true]:from-red-600
+                data-[active=true]:to-red-700
+                data-[active=true]:text-white
+                data-[active=true]:shadow-md
+                data-[active=true]:hover:from-red-700
+                data-[active=true]:hover:to-red-800
+              "
+            >
+              <Link href="/history">
+                <History />
+                {(isMobile || state === "expanded") && (
+                  <span>History</span>
+                )}
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
 
-      {/* ===== RIGHT SECTION - USER ===== */}
-      <div className="flex items-center">
+        </SidebarMenu>
+      </SidebarContent>
+
+      <SidebarSeparator />
+
+      {/* FOOTER */}
+      <SidebarFooter className="p-2">
         {user && userId && (
           <div
             className="
               cursor-pointer
-              rounded-md
+              rounded-xl
               bg-white/80
               backdrop-blur-md
-              shadow-sm
+              shadow-lg
               transition
-              hover:shadow-md
-              scale-[0.80]
-              origin-right
+              hover:shadow-xl
             "
           >
             <NavUser
@@ -143,28 +226,7 @@ export function SidebarLeft() {
             />
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-/* ================= SUB COMPONENT ================= */
-
-function NavItem({ href, label, icon, active }: NavItemProps) {
-  return (
-    <Link
-      href={href}
-      className={`
-        flex items-center gap-1.5
-        px-3 py-1
-        rounded-md
-        transition-all
-        text-xs font-medium
-        ${active ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-sm" : "hover:bg-red-50 hover:text-red-700"}
-      `}
-    >
-      {icon}
-      <span>{label}</span>
-    </Link>
+      </SidebarFooter>
+    </Sidebar>
   );
 }
