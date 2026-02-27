@@ -24,8 +24,6 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [showFilters, setShowFilters] = useState(false);
-
   const [cardScale, setCardScale] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("productCardScale");
@@ -101,7 +99,6 @@ export default function ProductsPage() {
 
   const paginatedProducts = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-
     return searchedProducts.slice(start, start + ITEMS_PER_PAGE);
   }, [searchedProducts, currentPage, ITEMS_PER_PAGE]);
 
@@ -110,191 +107,169 @@ export default function ProductsPage() {
   }, [searchTerm, filteredProducts, cardScale]);
 
   return (
-    <div className="h-dvh overflow-y-auto p-4 md:p-6 space-y-6 pb-[160px] md:pb-6">
-
+    <div className="h-dvh overflow-y-auto p-4 md:p-6 space-y-6">
       <SidebarTrigger className="hidden md:flex" />
 
       {/* HEADER */}
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h1 className="text-xl md:text-2xl font-semibold">Products</h1>
 
-        <h1 className="text-xl md:text-2xl font-semibold">
-          Products
-        </h1>
-
-        <div className="flex gap-2">
-
+        <div className="flex flex-wrap gap-2">
           <UploadProductModal />
 
           <DownloadProduct products={products} />
 
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            {showFilters ? "Hide Filters" : "Show Filters"}
-          </Button>
-
           <Button onClick={() => router.push("/add-product")}>
             + Add Product
           </Button>
-
         </div>
-
       </div>
 
-      {/* SEARCH + SCALE */}
+      {/* SEARCH */}
 
-      <div className="space-y-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <Input
+          placeholder="Search product..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full md:max-w-md"
+        />
 
-        {!loading && products.length > 0 && (
-
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-
-            <Input
-              placeholder="Search product..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full md:max-w-md"
-            />
-
-            <div className="flex items-center gap-4">
-
-              <span
-                onClick={decreaseCardSize}
-                className="cursor-pointer text-xl font-bold"
-              >
-                −
-              </span>
-
-              <span className="text-xs w-12 text-center">
-                {(cardScale * 100).toFixed(0)}%
-              </span>
-
-              <span
-                onClick={increaseCardSize}
-                className="cursor-pointer text-xl font-bold"
-              >
-                +
-              </span>
-
-            </div>
-
-          </div>
-
-        )}
-
-        {/* FILTER */}
-
-        {showFilters && !loading && products.length > 0 && (
-
-          <div className="border rounded-lg p-4">
-
-            <FilteringComponentV2
-              products={products}
-              onFilter={setFilteredProducts}
-            />
-
-          </div>
-
-        )}
-
-      </div>
-
-      {/* PRODUCTS */}
-
-      {loading ? (
-
-        <p className="text-center text-muted-foreground">
-          Loading products...
-        </p>
-
-      ) : (
-
-        <>
-
-          <div
-            className="grid gap-4 md:gap-6"
-            style={{
-              gridTemplateColumns:
-                `repeat(auto-fill, minmax(${220 * cardScale}px, 1fr))`,
-            }}
+        <div className="flex items-center gap-4">
+          <span
+            onClick={decreaseCardSize}
+            className="cursor-pointer text-xl font-bold"
           >
+            −
+          </span>
 
-            {paginatedProducts.map((p) => (
+          <span className="text-xs w-12 text-center">
+            {(cardScale * 100).toFixed(0)}%
+          </span>
 
+          <span
+            onClick={increaseCardSize}
+            className="cursor-pointer text-xl font-bold"
+          >
+            +
+          </span>
+        </div>
+      </div>
+
+      {/* MAIN LAYOUT */}
+
+      <div className="flex gap-6">
+        {/* LEFT SIDE — PRODUCTS */}
+
+        <div className="flex-1">
+          {loading ? (
+            <p className="text-center text-muted-foreground">
+              Loading products...
+            </p>
+          ) : (
+            <>
               <div
-                key={p.id}
-                className="border rounded-xl bg-card shadow-sm hover:shadow-md flex flex-col overflow-hidden"
+                className="grid gap-4 md:gap-6"
+                style={{
+                  gridTemplateColumns: `repeat(auto-fill, minmax(${220 * cardScale}px, 1fr))`,
+                }}
               >
-
-                <div className="aspect-square bg-muted">
-
-                  {p.mainImage?.url ? (
-
-                    <img
-                      src={p.mainImage.url}
-                      className="w-full h-full object-cover"
-                    />
-
-                  ) : (
-
-                    <div className="flex items-center justify-center h-full text-xs">
-                      No Image
+                {paginatedProducts.map((p) => (
+                  <div
+                    key={p.id}
+                    className="border rounded-xl bg-card shadow-sm hover:shadow-md flex flex-col overflow-hidden"
+                  >
+                    <div className="aspect-square bg-muted">
+                      {p.mainImage?.url ? (
+                        <img
+                          src={p.mainImage.url}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-xs">
+                          No Image
+                        </div>
+                      )}
                     </div>
 
-                  )}
+                    <div className="p-3 space-y-2 flex-1">
+                      <h2 className="text-sm font-semibold line-clamp-2">
+                        {p.productName}
+                      </h2>
 
-                </div>
+                      <p className="text-xs text-muted-foreground">
+                        {p.supplier?.company || "-"}
+                      </p>
+                    </div>
 
-                <div className="p-3 space-y-2 flex-1">
+                    <div className="p-2 border-t flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => router.push(`/edit-product?id=${p.id}`)}
+                      >
+                        Edit
+                      </Button>
 
-                  <h2 className="text-sm font-semibold line-clamp-2">
-                    {p.productName}
-                  </h2>
+                      <AddProductDeleteProductItem
+                        productId={p.id}
+                        productName={p.productName}
+                        referenceID={userId ?? ""}
+                        onDeleted={(id) =>
+                          setProducts((prev) =>
+                            prev.filter((prod) => prod.id !== id),
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                  <p className="text-xs text-muted-foreground">
-                    {p.supplier?.company || "-"}
-                  </p>
+              {/* PAGINATION */}
 
-                </div>
+              {totalPages > 1 && (
+                <div className="flex justify-center gap-2 mt-6">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                  >
+                    Prev
+                  </Button>
 
-                <div className="p-2 border-t flex gap-2">
+                  <span className="text-sm px-3 py-2">
+                    Page {currentPage} of {totalPages}
+                  </span>
 
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1"
-                    onClick={() =>
-                      router.push(`/edit-product?id=${p.id}`)
-                    }
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
                   >
-                    Edit
+                    Next
                   </Button>
-
-                  <AddProductDeleteProductItem
-                    productId={p.id}
-                    productName={p.productName}
-                    referenceID={userId ?? ""}
-                    onDeleted={(id) =>
-                      setProducts((prev) =>
-                        prev.filter((prod) => prod.id !== id),
-                      )
-                    }
-                  />
-
                 </div>
+              )}
+            </>
+          )}
+        </div>
 
-              </div>
+        {/* RIGHT SIDE — FILTER */}
 
-            ))}
-
-          </div>
-
-        </>
-
-      )}
-
+        <div className="w-[340px] shrink-0 sticky top-4 self-start">
+          {!loading && products.length > 0 && (
+            <FilteringComponentV2
+              products={products}
+              onFilter={setFilteredProducts}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

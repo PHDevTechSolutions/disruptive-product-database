@@ -33,7 +33,7 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   ];
 
   const [visibleSteps, setVisibleSteps] = useState<string[]>(["Product Usage"]);
-
+const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [searchFilters, setSearchFilters] = useState<Record<string, string>>(
     {},
   );
@@ -440,7 +440,8 @@ const toggle = (title: string, value: string) => {
         {/* CTRL+F: HORIZONTAL STEP CONTAINER */}
 
         <div className="overflow-x-auto">
-          <div className="flex gap-4 items-start min-w-max">
+<div className="space-y-4">
+  <div className="flex flex-col gap-4">
             {/* STEP 1 */}
 
             {visibleSteps.includes("Product Usage") && (
@@ -523,6 +524,7 @@ const toggle = (title: string, value: string) => {
 
             {/* STEP 6 */}
           </div>
+          </div>
         </div>
 
         {/* ================= TECH SPECS NEW ROW ================= */}
@@ -546,7 +548,7 @@ const toggle = (title: string, value: string) => {
                 />
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-4">
               {Object.entries(technicalSpecs).map(([gt, s]) => (
                 <div key={gt} className="border rounded p-3 space-y-3 bg-card">
                   <p className="font-semibold text-sm">{gt}</p>
