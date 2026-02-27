@@ -145,7 +145,53 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     return true;
   });
 
-  const suppliers = uniq(sourceProducts.map((p) => p.supplier?.company));
+  const suppliers = uniq(
+    products
+
+      .filter((p) => {
+        /* apply all filters EXCEPT Supplier */
+
+        if (
+          filters["Product Usage"]?.length &&
+          !filters["Product Usage"].includes(
+            p.categoryTypes?.[0]?.categoryTypeName,
+          )
+        )
+          return false;
+
+        if (
+          filters["Product Family"]?.length &&
+          !filters["Product Family"].includes(
+            p.productFamilies?.[0]?.productFamilyName,
+          )
+        )
+          return false;
+
+        if (
+          filters["Product Class"]?.length &&
+          !filters["Product Class"].includes(p.productClass)
+        )
+          return false;
+
+        if (
+          filters["Price Point"]?.length &&
+          !filters["Price Point"].includes(p.pricePoint)
+        )
+          return false;
+
+        if (
+          filters["Brand Origin"]?.length &&
+          !filters["Brand Origin"].includes(p.brandOrigin)
+        )
+          return false;
+
+        /* DO NOT FILTER SUPPLIER HERE */
+
+        return true;
+      })
+
+      .map((p) => p.supplier?.company),
+  );
 
   const buildCounts = (
     list: string[],
@@ -272,57 +318,94 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   /* ================= STEP TOGGLE FILTER ================= */
   /* CTRL+F: STEP TOGGLE FILTER */
 
-  const toggle = (title: string, value: string) => {
-    setFilters((prev) => {
-      const alreadySelected = prev[title]?.includes(value);
+const toggle = (title: string, value: string) => {
+  setFilters((prev) => {
+    const alreadySelected = prev[title]?.includes(value);
 
-      let updated = {
-        ...prev,
-        [title]: alreadySelected
-          ? prev[title].filter((v) => v !== value)
-          : [...(prev[title] || []), value],
-      };
+    let updated = {
+      ...prev,
+      [title]: alreadySelected
+        ? prev[title].filter((v) => v !== value)
+        : [...(prev[title] || []), value],
+    };
 
-      /* ✅ TECH SPEC FIX */
-      /* Do NOT run step clearing logic for technical specs */
+    /* ✅ TECH SPEC FIX */
+    /* Do NOT run step clearing logic for technical specs */
 
-      if (title.includes("||")) {
-        /* just update filter normally */
+    if (title.includes("||")) {
+      /* just update filter normally */
 
-        if (updated[title]?.length === 0) delete updated[title];
+      if (updated[title]?.length === 0) delete updated[title];
 
-        return updated;
-      }
+      return updated;
+    }
 
-      /* NORMAL STEP LOGIC BELOW */
+    /* NORMAL STEP LOGIC BELOW */
 
-      const currentIndex = stepOrder.indexOf(title);
+    const currentIndex = stepOrder.indexOf(title);
 
-      if (alreadySelected) {
-        const newVisibleSteps = stepOrder.slice(0, currentIndex + 1);
+    if (alreadySelected) {
+      const remaining = updated[title];
+
+      /* ONLY go back if NONE selected anymore */
+
+      if (!remaining || remaining.length === 0) {
+        /* ========================= */
+        /* SPECIAL RULE FOR SUPPLIER */
+        /* DO NOT CLEAR TECH SPECS */
+        /* ========================= */
+
+        if (title === "Supplier") {
+          /* keep Supplier step visible */
+
+          const newVisibleSteps = stepOrder.slice(0, currentIndex + 1);
+
+          setVisibleSteps(newVisibleSteps);
+
+          /* DO NOT DELETE TECH SPECS */
+          /* DO NOT DELETE SUPPLIER */
+          /* JUST REMOVE SUPPLIER FILTER */
+
+          delete updated["Supplier"];
+
+          return updated;
+        }
+
+        /* ========================= */
+        /* NORMAL STEPS */
+        /* ========================= */
+
+        const newVisibleSteps = stepOrder.slice(0, currentIndex);
 
         setVisibleSteps(newVisibleSteps);
 
         const cleared = { ...updated };
 
-        stepOrder.slice(currentIndex + 1).forEach((step) => {
+        stepOrder.slice(currentIndex).forEach((step) => {
           delete cleared[step];
         });
 
         updated = cleared;
-      } else {
-        if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
-          const nextStep = stepOrder[currentIndex + 1];
-
-          setVisibleSteps((prevSteps) =>
-            prevSteps.includes(nextStep) ? prevSteps : [...prevSteps, nextStep],
-          );
-        }
       }
+    } else {
+      if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
+        const nextStep = stepOrder[currentIndex + 1];
 
-      return updated;
-    });
-  };
+        setVisibleSteps((prevSteps) =>
+          prevSteps.includes(nextStep) ? prevSteps : [...prevSteps, nextStep],
+        );
+      }
+    }
+
+    /* Ensure Product Usage is always in the visible steps */
+    if (!updated["Product Usage"]?.length) {
+      updated["Product Usage"] = ["Some default value"]; // Or keep it as empty to indicate active state
+      setVisibleSteps((prev) => ["Product Usage", ...prev]);
+    }
+
+    return updated;
+  });
+};
 
   const setSearch = (title: string, value: string) =>
     setSearchFilters((prev) => ({
@@ -520,18 +603,55 @@ function Section({
     setSearch(title, input);
   }, [input]);
 
-  /* ============================= */
-  /* CTRL+F: BUILD COUNTS INSIDE SECTION */
-  /* ============================= */
-
   const counts: Record<string, number> = {};
 
   items.forEach((val: string) => (counts[val] = 0));
 
-  const baseList =
-    title === "Supplier"
-      ? sourceProducts // supplier dependent
-      : products; // others global
+  /* ============================================ */
+  /* CTRL+F: ADDED FOR DISABLED AND FILTERED COUNTS */
+  /* Use sourceProducts for ALL steps so counts reflect filters */
+  /* ============================================ */
+
+  /* ============================================ */
+  /* CTRL+F: FACET COUNTS FIX */
+  /* Correct counts per step */
+  /* ============================================ */
+
+  const stepOrder = [
+    "Product Usage",
+    "Product Family",
+    "Product Class",
+    "Price Point",
+    "Brand Origin",
+    "Supplier",
+  ];
+
+  const currentStepIndex = stepOrder.indexOf(title);
+
+  const baseList = products.filter((p: any) => {
+    return stepOrder.every((step, index) => {
+      /* IGNORE FUTURE STEPS */
+      if (index > currentStepIndex) return true;
+
+      /* IGNORE CURRENT STEP */
+      if (index === currentStepIndex) return true;
+
+      if (!filters[step]?.length) return true;
+
+      let value;
+
+      if (step === "Product Usage")
+        value = p.categoryTypes?.[0]?.categoryTypeName;
+      else if (step === "Product Family")
+        value = p.productFamilies?.[0]?.productFamilyName;
+      else if (step === "Product Class") value = p.productClass;
+      else if (step === "Price Point") value = p.pricePoint;
+      else if (step === "Brand Origin") value = p.brandOrigin;
+      else if (step === "Supplier") value = p.supplier?.company;
+
+      return filters[step].includes(value);
+    });
+  });
 
   baseList?.forEach((p: any) => {
     let value;
@@ -565,21 +685,15 @@ function Section({
     if (counts[value] !== undefined) counts[value]++;
   });
 
-  /* ============================= */
-  /* FILTER VISIBLE ITEMS */
-  /* ============================= */
-
   const visible = items.filter((i: string) => {
     if (!input) return true;
 
     const extractNumbers = (str: string) => {
       const matches = str.match(/(\d+(\.\d+)?)/g);
-
       return matches ? matches.map(Number) : [];
     };
 
     const itemNums = extractNumbers(i);
-
     const inputNums = extractNumbers(input);
 
     if (inputNums.length >= 2 && itemNums.length >= 2)
@@ -590,10 +704,6 @@ function Section({
 
     return i.toLowerCase().includes(input.toLowerCase());
   });
-
-  /* ============================= */
-  /* DID YOU MEAN */
-  /* ============================= */
 
   const levenshtein = (a: string, b: string) => {
     const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
@@ -608,9 +718,7 @@ function Section({
             : 1 +
               Math.min(
                 matrix[i - 1][j],
-
                 matrix[i][j - 1],
-
                 matrix[i - 1][j - 1],
               );
       }
@@ -624,7 +732,6 @@ function Section({
 
     const extractNumbers = (str: string) => {
       const matches = str.match(/(\d+(\.\d+)?)/g);
-
       return matches ? matches.map(Number) : [];
     };
 
@@ -632,12 +739,10 @@ function Section({
 
     if (inputNums.length > 0) {
       let bestItem = null;
-
       let bestDiff = Infinity;
 
       items.forEach((item: string) => {
         const nums = extractNumbers(item);
-
         if (nums.length === 0) return;
 
         const compareNum = nums[0];
@@ -647,7 +752,6 @@ function Section({
 
           if (diff < bestDiff) {
             bestDiff = diff;
-
             bestItem = item;
           }
         }
@@ -657,7 +761,6 @@ function Section({
     }
 
     let bestMatch = null;
-
     let bestScore = Infinity;
 
     items.forEach((item: string) => {
@@ -667,17 +770,12 @@ function Section({
 
       if (score < bestScore && score <= 3) {
         bestScore = score;
-
         bestMatch = item;
       }
     });
 
     return bestMatch;
   })();
-
-  /* ============================= */
-  /* UI */
-  /* ============================= */
 
   return (
     <div className="border rounded p-2 space-y-2">
@@ -698,15 +796,7 @@ function Section({
                 className="text-blue-500 cursor-pointer mt-1"
                 onClick={() => setInput(suggestion)}
               >
-                {/\d/.test(input) ? (
-                  <>
-                    Suggested: <b>{suggestion}</b>
-                  </>
-                ) : (
-                  <>
-                    Did you mean: <b>{suggestion}</b>
-                  </>
-                )}
+                Did you mean: <b>{suggestion}</b>
               </div>
             )}
           </CommandEmpty>
@@ -714,25 +804,36 @@ function Section({
 
         {visible.length > 0 && (
           <CommandGroup>
-            {visible.map((i: string) => (
-              <CommandItem key={i} onSelect={() => toggle(title, i)}>
-                <Check
-                  className={`mr-2 h-4 w-4 ${
-                    filters[title]?.includes(i) ? "opacity-100" : "opacity-0"
-                  }`}
-                />
+            {visible.map((i: string) => {
+              const isDisabled = (counts[i] ?? 0) === 0;
 
-                {/* CTRL+F: QUANTITY BADGE UI */}
+              return (
+                <CommandItem
+                  key={i}
+                  /* CTRL+F: DISABLED CLICK FIX */
+                  onSelect={() => {
+                    if (isDisabled) return;
+                    toggle(title, i);
+                  }}
+                  /* CTRL+F: DISABLED STYLE */
+                  className={isDisabled ? "opacity-40 pointer-events-none" : ""}
+                >
+                  <Check
+                    className={`mr-2 h-4 w-4 ${
+                      filters[title]?.includes(i) ? "opacity-100" : "opacity-0"
+                    }`}
+                  />
 
-                <div className="flex justify-between w-full">
-                  <span>{i}</span>
+                  <div className="flex justify-between w-full">
+                    <span>{i}</span>
 
-                  <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                    {counts[i] ?? 0}
-                  </span>
-                </div>
-              </CommandItem>
-            ))}
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                      {counts[i] ?? 0}
+                    </span>
+                  </div>
+                </CommandItem>
+              );
+            })}
           </CommandGroup>
         )}
       </Command>
