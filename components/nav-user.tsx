@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-import { db } from "@/lib/firebase";
+import { dbLogs } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 import { useUser } from "@/contexts/UserContext";
@@ -62,7 +62,7 @@ export function NavUser({
     try {
       const deviceId = localStorage.getItem("deviceId") || "unknown-device";
 
-      await addDoc(collection(db, "activity_logs"), {
+      await addDoc(collection(dbLogs, "activity_logs"), {
         userId,
         email: user.email,
         status: "logout",
@@ -83,7 +83,7 @@ export function NavUser({
     setIsLoggingOut(true);
 
     try {
-      logLogoutActivity().catch(console.error);
+      logLogoutActivity().catch(console.error); // Log the logout activity
       await fetch("/api/logout", { method: "POST" });
     } catch (err) {
       console.error("Logout failed:", err);

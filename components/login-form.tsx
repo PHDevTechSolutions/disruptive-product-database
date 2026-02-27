@@ -1,4 +1,5 @@
 "use client";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -8,29 +9,73 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 
+import { dbLogs } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
   const router = useRouter();
+
   const { setUserId } = useUser();
 
   const [email, setEmail] = useState("");
+
   const [password, setPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
+
+  async function logLoginActivity(userId: string, email: string) {
+    try {
+      const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
+
+      localStorage.setItem("deviceId", deviceId);
+
+      await addDoc(collection(dbLogs, "activity_logs"), {
+        userId,
+
+        email,
+
+        status: "login",
+
+        timestamp: new Date().toISOString(),
+
+        deviceId,
+
+        location: null,
+
+        browser: navigator.userAgent,
+
+        os: navigator.platform,
+
+        date_created: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Login log failed:", error);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
     setLoading(true);
+
     setError(null);
 
     try {
       const res = await fetch("/api/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
         body: JSON.stringify({
           Email: email,
+
           Password: password,
         }),
       });
@@ -39,10 +84,14 @@ export function LoginForm({
 
       if (!res.ok) {
         setError(data.message || "Login failed");
+
         return;
       }
 
       setUserId(data.userId);
+
+      await logLoginActivity(data.userId, email);
+
       router.push("/splash-screen");
     } catch {
       setError("Something went wrong.");
@@ -56,16 +105,17 @@ export function LoginForm({
       onSubmit={handleSubmit}
       className={cn(
         "w-full max-w-md rounded-2xl bg-white/90 backdrop-blur-md p-8 shadow-2xl",
+
         className,
       )}
       {...props}
     >
       <FieldGroup>
-        {/* HEADER */}
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">
             Login to your account
           </h1>
+
           <p className="mt-2 text-sm text-muted-foreground">
             Disruptive Solutions Inc. · Internal Operations Portal
           </p>
@@ -79,6 +129,7 @@ export function LoginForm({
 
         <Field>
           <FieldLabel>Email</FieldLabel>
+
           <Input
             type="email"
             required
@@ -90,6 +141,7 @@ export function LoginForm({
 
         <Field>
           <FieldLabel>Password</FieldLabel>
+
           <Input
             type="password"
             required
