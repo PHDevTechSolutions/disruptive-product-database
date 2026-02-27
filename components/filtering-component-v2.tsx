@@ -327,81 +327,39 @@ const toggle = (title: string, value: string) => {
     let updated = {
       ...prev,
       [title]: alreadySelected
-        ? prev[title].filter((v) => v !== value)
-        : [...(prev[title] || []), value],
+        ? prev[title].filter((v) => v !== value)  // Unselect if already selected
+        : [...(prev[title] || []), value],  // Add if not selected
     };
-
-    /* ✅ TECH SPEC FIX */
-    /* Do NOT run step clearing logic for technical specs */
-
-    if (title.includes("||")) {
-      /* just update filter normally */
-
-      if (updated[title]?.length === 0) delete updated[title];
-
-      return updated;
-    }
-
-    /* NORMAL STEP LOGIC BELOW */
 
     const currentIndex = stepOrder.indexOf(title);
 
+    // If the filter was unselected
     if (alreadySelected) {
       const remaining = updated[title];
 
-      /* ONLY go back if NONE selected anymore */
-
+      // If no values remain for this step, treat it as unchecked
       if (!remaining || remaining.length === 0) {
-        /* ========================= */
-        /* SPECIAL RULE FOR SUPPLIER */
-        /* DO NOT CLEAR TECH SPECS */
-        /* ========================= */
-
-        if (title === "Supplier") {
-          /* keep Supplier step visible */
-
-          const newVisibleSteps = stepOrder.slice(0, currentIndex + 1);
-
-          setVisibleSteps(newVisibleSteps);
-
-          /* DO NOT DELETE TECH SPECS */
-          /* DO NOT DELETE SUPPLIER */
-          /* JUST REMOVE SUPPLIER FILTER */
-
-          delete updated["Supplier"];
-
-          return updated;
-        }
-
-        /* ========================= */
-        /* NORMAL STEPS */
-        /* ========================= */
-
         const newVisibleSteps = stepOrder.slice(0, currentIndex);
 
-        setVisibleSteps(newVisibleSteps);
-
+        setVisibleSteps(newVisibleSteps); // Hide subsequent steps if no values are selected
         const cleared = { ...updated };
-
         stepOrder.slice(currentIndex).forEach((step) => {
-          delete cleared[step];
+          delete cleared[step];  // Clear out subsequent filters
         });
-
         updated = cleared;
       }
     } else {
+      // If the filter was selected, make the next step visible
       if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
         const nextStep = stepOrder[currentIndex + 1];
-
         setVisibleSteps((prevSteps) =>
           prevSteps.includes(nextStep) ? prevSteps : [...prevSteps, nextStep],
         );
       }
     }
 
-    /* Ensure Product Usage is always in the visible steps */
-    if (!updated["Product Usage"]?.length) {
-      updated["Product Usage"] = ["Some default value"]; // Or keep it as empty to indicate active state
+    // Ensure Product Usage is always visible even if no filters are selected
+    if (Object.keys(updated).length === 0) {
       setVisibleSteps((prev) => ["Product Usage", ...prev]);
     }
 
