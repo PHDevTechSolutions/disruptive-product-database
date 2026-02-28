@@ -12,6 +12,7 @@ import AddProductDeleteProductItem from "@/components/add-product-delete-product
 import FilteringComponentV2 from "@/components/filtering-component-v2";
 import UploadProductModal from "@/components/upload-product";
 import DownloadProduct from "@/components/download-product";
+import ViewProduct from "@/components/view-product";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -203,7 +204,7 @@ export default function ProductsPage() {
                       </p>
                     </div>
 
-                    <div className="p-2 border-t flex gap-2">
+                    <div className="p-2 border-t flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -222,6 +223,11 @@ export default function ProductsPage() {
                             prev.filter((prod) => prod.id !== id),
                           )
                         }
+                      />
+
+                      <ViewProduct
+                        productId={p.id}
+                        referenceID={userId ?? ""}
                       />
                     </div>
                   </div>

@@ -1,0 +1,239 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+type Props = {
+  productId: string;
+  referenceID: string;
+};
+
+type ProductData = {
+  productName?: string;
+
+  mainImage?: {
+    url: string;
+  };
+
+  supplier?: {
+    company: string;
+  } | null;
+
+  pricePoint?: string;
+  brandOrigin?: string;
+  productClass?: string;
+
+  categoryTypes?: {
+    categoryTypeName: string;
+  }[];
+
+  productFamilies?: {
+    productFamilyName: string;
+  }[];
+
+  technicalSpecifications?: {
+    title: string;
+    specs: {
+      specId: string;
+      value: string;
+    }[];
+  }[];
+};
+
+type UserData = {
+  Firstname: string;
+  Lastname: string;
+  Role: string;
+};
+
+export default function ViewProduct({ productId, referenceID }: Props) {
+  const [open, setOpen] = useState(false);
+
+  const [product, setProduct] = useState<ProductData | null>(null);
+
+  const [user, setUser] = useState<UserData | null>(null);
+
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    async function fetchAll() {
+      setLoading(true);
+
+      const ref = doc(db, "products", productId);
+
+      const snap = await getDoc(ref);
+
+      if (snap.exists()) {
+        setProduct(snap.data() as ProductData);
+      }
+
+      const res = await fetch(`/api/users?id=${referenceID}`);
+
+      const userData = await res.json();
+
+      setUser(userData);
+
+      setLoading(false);
+    }
+
+    fetchAll();
+  }, [open, productId, referenceID]);
+
+  const supplier = product?.supplier?.company ?? "No Supplier";
+
+  const usage = product?.categoryTypes?.[0]?.categoryTypeName ?? "-";
+
+  const family = product?.productFamilies?.[0]?.productFamilyName ?? "-";
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="secondary"
+        className="w-full"
+        onClick={() => setOpen(true)}
+      >
+        View
+      </Button>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center">
+          <div className="bg-white w-[1000px] max-h-[90vh] overflow-auto rounded-xl p-6">
+            {/* HEADER */}
+
+            <div className="flex justify-between mb-4">
+              <h2 className="text-lg font-semibold">{product?.productName}</h2>
+
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Close
+              </Button>
+            </div>
+
+            {loading ? (
+              <p>Loading...</p>
+            ) : (
+              <div className="flex gap-6">
+                {/* LEFT PANEL */}
+
+                <div className="w-[320px] space-y-4">
+                  {/* IMAGE */}
+
+                  {product?.mainImage?.url ? (
+                    <img
+                      src={product.mainImage.url}
+                      className="border rounded"
+                    />
+                  ) : (
+                    <div className="border h-[300px] flex items-center justify-center">
+                      No Image
+                    </div>
+                  )}
+
+                  {/* ADDED BY */}
+
+                  <div className="text-sm">
+                    <div className="font-semibold">Added By</div>
+
+                    <div>
+                      {user
+                        ? `${user.Firstname} ${user.Lastname} (${user.Role})`
+                        : "-"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT PANEL */}
+
+                <div className="flex-1">
+                  {/* PRODUCT DETAILS TABLE */}
+
+                  <div className="mb-6">
+                    <table className="w-full border-collapse">
+                      <tbody>
+                        <tr>
+                          <td className="border p-2 font-semibold w-[40%]">
+                            Supplier / Company
+                          </td>
+                          <td className="border p-2">{supplier}</td>
+                        </tr>
+
+                        <tr>
+                          <td className="border p-2 font-semibold">
+                            Price Point
+                          </td>
+                          <td className="border p-2">
+                            {product?.pricePoint || "-"}
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="border p-2 font-semibold">
+                            Brand Origin
+                          </td>
+                          <td className="border p-2">
+                            {product?.brandOrigin || "-"}
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="border p-2 font-semibold">
+                            Product Class
+                          </td>
+                          <td className="border p-2">
+                            {product?.productClass || "-"}
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="border p-2 font-semibold">
+                            Product Usage
+                          </td>
+                          <td className="border p-2">{usage}</td>
+                        </tr>
+
+                        <tr>
+                          <td className="border p-2 font-semibold">
+                            Product Family
+                          </td>
+                          <td className="border p-2">{family}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* TECHNICAL SPECIFICATIONS TABLE */}
+
+                  {product?.technicalSpecifications?.map((group, i) => (
+                    <div key={i} className="mb-4">
+                      {group.title && (
+                        <div className="font-semibold mb-2">{group.title}</div>
+                      )}
+
+                      <table className="w-full border">
+                        <tbody>
+                          {group.specs.map((spec, s) => (
+                            <tr key={s}>
+                              <td className="border p-2 font-semibold w-[40%]">
+                                {spec.specId}
+                              </td>
+
+                              <td className="border p-2">{spec.value}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
