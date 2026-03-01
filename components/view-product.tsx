@@ -83,11 +83,11 @@ export default function ViewProduct({ productId, referenceID }: Props) {
     fetchAll();
   }, [open, productId, referenceID]);
 
-  const supplier = product?.supplier?.company ?? "No Supplier";
+  const supplier = product?.supplier?.company || "-";
 
-  const usage = product?.categoryTypes?.[0]?.categoryTypeName ?? "-";
+  const usage = product?.categoryTypes?.[0]?.categoryTypeName || "-";
 
-  const family = product?.productFamilies?.[0]?.productFamilyName ?? "-";
+  const family = product?.productFamilies?.[0]?.productFamilyName || "-";
 
   return (
     <>
@@ -103,10 +103,10 @@ export default function ViewProduct({ productId, referenceID }: Props) {
       {open && (
         <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center">
           <div className="bg-white w-[1000px] max-h-[90vh] overflow-auto rounded-xl p-6">
-            {/* HEADER */}
-
             <div className="flex justify-between mb-4">
-              <h2 className="text-lg font-semibold">{product?.productName}</h2>
+              <h2 className="text-lg font-semibold">
+                {product?.productName || "-"}
+              </h2>
 
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Close
@@ -117,11 +117,7 @@ export default function ViewProduct({ productId, referenceID }: Props) {
               <p>Loading...</p>
             ) : (
               <div className="flex gap-6">
-                {/* LEFT PANEL */}
-
                 <div className="w-[320px] space-y-4">
-                  {/* IMAGE */}
-
                   {product?.mainImage?.url ? (
                     <img
                       src={product.mainImage.url}
@@ -129,39 +125,33 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                     />
                   ) : (
                     <div className="border h-[300px] flex items-center justify-center">
-                      No Image
+                      -
                     </div>
                   )}
-
-                  {/* ADDED BY */}
 
                   <div className="text-sm">
                     <div className="font-semibold">Added By</div>
 
                     <div>
                       {user
-                        ? `${user.Firstname} ${user.Lastname} (${user.Role})`
+                        ? `${user.Firstname || "-"} ${user.Lastname || "-"} (${user.Role || "-"})`
                         : "-"}
                     </div>
                   </div>
                 </div>
 
-                {/* RIGHT PANEL */}
-
                 <div className="flex-1">
-                  {/* PRODUCT DETAILS TABLE */}
-
                   <div className="mb-6">
                     <table className="w-full border-collapse">
                       <tbody>
-                        <tr>
+                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
                           <td className="border p-2 font-semibold w-[40%]">
                             Supplier / Company
                           </td>
                           <td className="border p-2">{supplier}</td>
                         </tr>
 
-                        <tr>
+                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
                           <td className="border p-2 font-semibold">
                             Price Point
                           </td>
@@ -170,7 +160,7 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                           </td>
                         </tr>
 
-                        <tr>
+                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
                           <td className="border p-2 font-semibold">
                             Brand Origin
                           </td>
@@ -179,7 +169,7 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                           </td>
                         </tr>
 
-                        <tr>
+                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
                           <td className="border p-2 font-semibold">
                             Product Class
                           </td>
@@ -188,14 +178,14 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                           </td>
                         </tr>
 
-                        <tr>
+                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
                           <td className="border p-2 font-semibold">
                             Product Usage
                           </td>
                           <td className="border p-2">{usage}</td>
                         </tr>
 
-                        <tr>
+                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
                           <td className="border p-2 font-semibold">
                             Product Family
                           </td>
@@ -204,8 +194,6 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                       </tbody>
                     </table>
                   </div>
-
-                  {/* TECHNICAL SPECIFICATIONS TABLE */}
 
                   {product?.technicalSpecifications?.map((group, i) => (
                     <div key={i} className="mb-4">
@@ -216,12 +204,17 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                       <table className="w-full border">
                         <tbody>
                           {group.specs.map((spec, s) => (
-                            <tr key={s}>
+                            <tr
+                              key={s}
+                              className="odd:bg-[#f5f5f5] even:bg-white"
+                            >
                               <td className="border p-2 font-semibold w-[40%]">
-                                {spec.specId}
+                                {spec.specId || "-"}
                               </td>
 
-                              <td className="border p-2">{spec.value}</td>
+                              <td className="border p-2">
+                                {spec.value || "-"}
+                              </td>
                             </tr>
                           ))}
                         </tbody>

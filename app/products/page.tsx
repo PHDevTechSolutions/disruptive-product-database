@@ -179,13 +179,13 @@ export default function ProductsPage() {
                 {paginatedProducts.map((p) => (
                   <div
                     key={p.id}
-                    className="border rounded-xl bg-card shadow-sm hover:shadow-md flex flex-col overflow-hidden"
+                    className="border rounded-xl bg-card shadow-sm hover:shadow-md flex flex-col overflow-hidden h-full"
                   >
-                    <div className="aspect-square bg-muted">
+                    <div className="h-[180px] bg-muted flex items-center justify-center overflow-hidden p-2">
                       {p.mainImage?.url ? (
                         <img
                           src={p.mainImage.url}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       ) : (
                         <div className="flex items-center justify-center h-full text-xs">
@@ -194,12 +194,12 @@ export default function ProductsPage() {
                       )}
                     </div>
 
-                    <div className="p-3 space-y-2 flex-1">
+                    <div className="p-3 space-y-2 flex-1 min-h-[70px] flex flex-col justify-start">
                       <h2 className="text-sm font-semibold line-clamp-2">
                         {p.productName}
                       </h2>
 
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground line-clamp-1">
                         {p.supplier?.company || "-"}
                       </p>
                     </div>
