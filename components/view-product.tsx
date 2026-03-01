@@ -12,27 +12,13 @@ type Props = {
 
 type ProductData = {
   productName?: string;
-
-  mainImage?: {
-    url: string;
-  };
-
-  supplier?: {
-    company: string;
-  } | null;
-
+  mainImage?: { url: string };
+  supplier?: { company: string } | null;
   pricePoint?: string;
   brandOrigin?: string;
   productClass?: string;
-
-  categoryTypes?: {
-    categoryTypeName: string;
-  }[];
-
-  productFamilies?: {
-    productFamilyName: string;
-  }[];
-
+  categoryTypes?: { categoryTypeName: string }[];
+  productFamilies?: { productFamilyName: string }[];
   technicalSpecifications?: {
     title: string;
     specs: {
@@ -102,8 +88,10 @@ export default function ViewProduct({ productId, referenceID }: Props) {
 
       {open && (
         <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center">
-          <div className="bg-white w-[1000px] max-h-[90vh] overflow-auto rounded-xl p-6">
-            <div className="flex justify-between mb-4">
+          <div className="bg-white w-full md:w-[1000px] h-[90vh] rounded-xl flex flex-col overflow-hidden">
+            {/* HEADER */}
+
+            <div className="border-b px-6 py-4 flex justify-between items-center">
               <h2 className="text-lg font-semibold">
                 {product?.productName || "-"}
               </h2>
@@ -113,21 +101,23 @@ export default function ViewProduct({ productId, referenceID }: Props) {
               </Button>
             </div>
 
-            {loading ? (
-              <p>Loading...</p>
-            ) : (
-              <div className="flex gap-6">
-                <div className="w-[320px] space-y-4">
-                  {product?.mainImage?.url ? (
-                    <img
-                      src={product.mainImage.url}
-                      className="border rounded"
-                    />
-                  ) : (
-                    <div className="border h-[300px] flex items-center justify-center">
-                      -
-                    </div>
-                  )}
+            {/* BODY */}
+
+            <div className="flex flex-col md:flex-row flex-1 overflow-hidden px-4 md:px-6 py-4 gap-6">
+              {/* LEFT */}
+
+              <div className="w-full md:w-[320px] shrink-0">
+                <div className="space-y-4">
+                  <div className="w-full h-[320px] border rounded bg-white flex items-center justify-center">
+                    {product?.mainImage?.url ? (
+                      <img
+                        src={product.mainImage.url}
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    ) : (
+                      <span>-</span>
+                    )}
+                  </div>
 
                   <div className="text-sm">
                     <div className="font-semibold">Added By</div>
@@ -139,91 +129,105 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex-1">
-                  <div className="mb-6">
-                    <table className="w-full border-collapse">
-                      <tbody>
-                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
-                          <td className="border p-2 font-semibold w-[40%]">
-                            Supplier / Company
-                          </td>
-                          <td className="border p-2">{supplier}</td>
-                        </tr>
+              {/* RIGHT */}
 
-                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
-                          <td className="border p-2 font-semibold">
-                            Price Point
-                          </td>
-                          <td className="border p-2">
-                            {product?.pricePoint || "-"}
-                          </td>
-                        </tr>
-
-                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
-                          <td className="border p-2 font-semibold">
-                            Brand Origin
-                          </td>
-                          <td className="border p-2">
-                            {product?.brandOrigin || "-"}
-                          </td>
-                        </tr>
-
-                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
-                          <td className="border p-2 font-semibold">
-                            Product Class
-                          </td>
-                          <td className="border p-2">
-                            {product?.productClass || "-"}
-                          </td>
-                        </tr>
-
-                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
-                          <td className="border p-2 font-semibold">
-                            Product Usage
-                          </td>
-                          <td className="border p-2">{usage}</td>
-                        </tr>
-
-                        <tr className="odd:bg-[#f5f5f5] even:bg-white">
-                          <td className="border p-2 font-semibold">
-                            Product Family
-                          </td>
-                          <td className="border p-2">{family}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {product?.technicalSpecifications?.map((group, i) => (
-                    <div key={i} className="mb-4">
-                      {group.title && (
-                        <div className="font-semibold mb-2">{group.title}</div>
-                      )}
-
-                      <table className="w-full border">
+              <div className="flex-1 overflow-auto pr-2 pb-[140px] md:pb-0">
+                {loading ? (
+                  <p>Loading...</p>
+                ) : (
+                  <>
+                    <div className="mb-6">
+                      <table className="w-full border-collapse">
                         <tbody>
-                          {group.specs.map((spec, s) => (
-                            <tr
-                              key={s}
-                              className="odd:bg-[#f5f5f5] even:bg-white"
-                            >
-                              <td className="border p-2 font-semibold w-[40%]">
-                                {spec.specId || "-"}
-                              </td>
+                          <tr className="odd:bg-[#f5f5f5]">
+                            <td className="border p-2 font-semibold w-[40%]">
+                              Supplier / Company
+                            </td>
+                            <td className="border p-2">{supplier}</td>
+                          </tr>
 
-                              <td className="border p-2">
-                                {spec.value || "-"}
-                              </td>
-                            </tr>
-                          ))}
+                          <tr className="odd:bg-[#f5f5f5]">
+                            <td className="border p-2 font-semibold">
+                              Price Point
+                            </td>
+                            <td className="border p-2">
+                              {product?.pricePoint || "-"}
+                            </td>
+                          </tr>
+
+                          <tr className="odd:bg-[#f5f5f5]">
+                            <td className="border p-2 font-semibold">
+                              Brand Origin
+                            </td>
+                            <td className="border p-2">
+                              {product?.brandOrigin || "-"}
+                            </td>
+                          </tr>
+
+                          <tr className="odd:bg-[#f5f5f5]">
+                            <td className="border p-2 font-semibold">
+                              Product Class
+                            </td>
+                            <td className="border p-2">
+                              {product?.productClass || "-"}
+                            </td>
+                          </tr>
+
+                          <tr className="odd:bg-[#f5f5f5]">
+                            <td className="border p-2 font-semibold">
+                              Product Usage
+                            </td>
+                            <td className="border p-2">{usage}</td>
+                          </tr>
+
+                          <tr className="odd:bg-[#f5f5f5]">
+                            <td className="border p-2 font-semibold">
+                              Product Family
+                            </td>
+                            <td className="border p-2">{family}</td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>
-                  ))}
-                </div>
+
+                    {!product?.technicalSpecifications ||
+                    product.technicalSpecifications.length === 0 ? (
+                      <div className="border p-4 text-center">-</div>
+                    ) : (
+                      product.technicalSpecifications.map((group, i) => (
+                        <div key={i} className="mb-4">
+                          <div className="font-semibold mb-2">
+                            {group.title || "-"}
+                          </div>
+
+                          {!group.specs || group.specs.length === 0 ? (
+                            <div className="border p-2 text-center">-</div>
+                          ) : (
+                            <table className="w-full border">
+                              <tbody>
+                                {group.specs.map((spec, s) => (
+                                  <tr key={s} className="odd:bg-[#f5f5f5]">
+                                    <td className="border p-2 font-semibold w-[40%]">
+                                      {spec.specId || "-"}
+                                    </td>
+
+                                    <td className="border p-2">
+                                      {spec.value || "-"}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
