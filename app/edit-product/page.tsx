@@ -1451,7 +1451,9 @@ export default function EditProductPage() {
                           className="border-orange-300 focus-visible:ring-orange-400 bg-white"
                           placeholder="Enter title..."
                           value={item.title}
-                          onChange={(e) => updateTitle(index, e.target.value)}
+                          onChange={(e) =>
+                            updateTitle(index, e.target.value.toUpperCase())
+                          }
                         />
 
                         {item.id &&
@@ -1516,7 +1518,9 @@ export default function EditProductPage() {
                                 index,
                                 rIndex,
                                 "specId",
-                                e.target.value,
+                                e.target.value.replace(/\b\w/g, (char) =>
+                                  char.toUpperCase(),
+                                ),
                               )
                             }
                           />
