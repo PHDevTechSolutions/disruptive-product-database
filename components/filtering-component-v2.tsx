@@ -561,6 +561,15 @@ function Section({
 }: any) {
   const [input, setInput] = useState("");
 
+  const splitValues = (value: string): string[] => {
+  if (!value) return [];
+
+  return value
+    .split("|")
+    .map((v: string) => v.trim())
+    .filter(Boolean);
+};
+
   useEffect(() => {
     setSearch(title, input);
   }, [input]);
@@ -626,23 +635,25 @@ function Section({
     else if (title === "Price Point") value = p.pricePoint;
     else if (title === "Brand Origin") value = p.brandOrigin;
     else if (title === "Supplier") value = p.supplier?.company;
-    else if (title.includes("||")) {
-      const [gt, sn] = title.split("||");
+else if (title.includes("||")) {
+  const [gt, sn] = title.split("||");
 
-      p.technicalSpecifications?.forEach((g: any) => {
-        if (g.title !== gt) return;
+  p.technicalSpecifications?.forEach((g: any) => {
+    if (g.title !== gt) return;
 
-        g.specs?.forEach((s: any) => {
-          if (s.specId !== sn) return;
+    g.specs?.forEach((s: any) => {
+      if (s.specId !== sn) return;
 
-          const val = s.value;
+      const val = s.value || "";
 
-          if (counts[val] !== undefined) counts[val]++;
-        });
+      splitValues(val).forEach((single: string) => {
+        if (counts[single] !== undefined) counts[single]++;
       });
+    });
+  });
 
-      return;
-    }
+  return;
+}
 
     if (counts[value] !== undefined) counts[value]++;
   });
