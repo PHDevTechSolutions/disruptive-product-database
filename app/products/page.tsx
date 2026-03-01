@@ -108,7 +108,7 @@ export default function ProductsPage() {
   }, [searchTerm, filteredProducts, cardScale]);
 
   return (
-    <div className="h-dvh overflow-y-auto p-4 md:p-6 space-y-6">
+    <div className="h-dvh overflow-y-auto p-4 md:p-6 space-y-6 pb-[140px] md:pb-6">
       <SidebarTrigger className="hidden md:flex" />
 
       {/* HEADER */}
@@ -160,10 +160,10 @@ export default function ProductsPage() {
 
       {/* MAIN LAYOUT */}
 
-      <div className="flex gap-6">
+      <div className="flex flex-col md:flex-row gap-6 items-start">
         {/* LEFT SIDE — PRODUCTS */}
 
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {loading ? (
             <p className="text-center text-muted-foreground">
               Loading products...
@@ -267,7 +267,7 @@ export default function ProductsPage() {
 
         {/* RIGHT SIDE — FILTER */}
 
-        <div className="w-[340px] shrink-0 sticky top-4 self-start">
+        <div className="w-full md:w-[340px] shrink-0 sticky top-4 self-start max-h-[calc(100vh-160px)] overflow-y-auto">
           {!loading && products.length > 0 && (
             <FilteringComponentV2
               products={products}
