@@ -94,19 +94,14 @@ export default function ViewProduct({ productId, referenceID }: Props) {
 
       {open && (
         <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-start md:items-center pt-4 md:pt-0">
-
           {/* CTRL + F: EXPAND CONTAINER */}
           <div
             className={`bg-white h-[calc(100svh-140px)] md:h-[90vh] mb-0 md:mb-0 rounded-xl flex flex-col md:flex-row overflow-hidden transition-all duration-300 ${
-              openTDS
-  ? "w-full md:w-[1400px]"
-  : "w-full md:w-[1000px]"
+              openTDS ? "w-full md:w-[1400px]" : "w-full md:w-[1000px]"
             }`}
           >
-
             {/* CTRL + F: LEFT PANEL (VIEW PRODUCT) */}
             <div className="flex flex-col flex-1 md:flex-1 border-b md:border-b-0 md:border-r min-h-0">
-
               {/* HEADER */}
               <div className="border-b px-6 py-4 flex justify-between items-center">
                 <h2 className="text-lg font-semibold">
@@ -114,7 +109,6 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                 </h2>
 
                 <div className="flex gap-2">
-
                   <Button
                     onClick={() => setOpenTDS(true)}
                     className="bg-green-600 hover:bg-green-700 text-white"
@@ -125,17 +119,14 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                   <Button variant="outline" onClick={() => setOpen(false)}>
                     Close
                   </Button>
-
                 </div>
               </div>
 
               {/* BODY */}
               <div className="flex flex-col md:flex-row flex-1 overflow-hidden px-4 md:px-6 py-4 gap-6">
-
                 {/* LEFT IMAGE */}
                 <div className="w-full md:w-[320px] shrink-0">
                   <div className="space-y-4">
-
                     <div className="w-full h-[320px] border rounded bg-white flex items-center justify-center">
                       {product?.mainImage?.url ? (
                         <img
@@ -155,25 +146,19 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                           ? `${user.Firstname || "-"} ${user.Lastname || "-"} (${user.Role || "-"})`
                           : "-"}
                       </div>
-
                     </div>
-
                   </div>
                 </div>
 
-
                 {/* RIGHT DETAILS */}
                 <div className="flex-1 overflow-auto pr-2 pb-[140px] md:pb-0">
-
                   {loading ? (
                     <p>Loading...</p>
                   ) : (
                     <>
                       <div className="mb-6">
-
                         <table className="w-full border-collapse">
                           <tbody>
-
                             <tr className="odd:bg-[#f5f5f5]">
                               <td className="border p-2 font-semibold w-[40%]">
                                 Supplier / Company
@@ -221,78 +206,51 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                               </td>
                               <td className="border p-2">{family}</td>
                             </tr>
-
                           </tbody>
                         </table>
-
                       </div>
-
 
                       {!product?.technicalSpecifications ? (
                         <div className="border p-4 text-center">-</div>
                       ) : (
                         product.technicalSpecifications.map((group, i) => (
-
                           <div key={i} className="mb-4">
-
                             <div className="font-semibold mb-2">
                               {group.title}
                             </div>
 
                             <table className="w-full border">
-
                               <tbody>
-
                                 {group.specs.map((spec, s) => (
                                   <tr key={s}>
-<td className="border p-2 font-semibold w-[40%]">
-  {spec.specId ? spec.specId : "-"}
-</td>
-<td className="border p-2">
-  {spec.value ? spec.value : "-"}
-</td>
+                                    <td className="border p-2 font-semibold w-[40%]">
+                                      {spec.specId ? spec.specId : "-"}
+                                    </td>
+                                    <td className="border p-2">
+                                      {spec.value ? spec.value : "-"}
+                                    </td>
                                   </tr>
                                 ))}
-
                               </tbody>
-
                             </table>
-
                           </div>
-
                         ))
                       )}
-
                     </>
                   )}
-
                 </div>
-
               </div>
-
             </div>
-
 
             {/* CTRL + F: RIGHT PANEL (TDS SIDE) */}
             {openTDS && (
-
               <div className="w-full md:w-[400px] flex flex-col flex-1 md:flex-none border-t md:border-t-0 md:border-l min-h-0">
-
-                <GenerateTDS
-                  open={openTDS}
-                  onClose={() => setOpenTDS(false)}
-                />
-
+                <GenerateTDS open={openTDS} onClose={() => setOpenTDS(false)} />
               </div>
-
             )}
-
-
           </div>
-
         </div>
       )}
-
     </>
   );
 }
