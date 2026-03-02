@@ -57,7 +57,6 @@ export function NavUser({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  /* ---------------- Logout Activity ---------------- */
   const logLogoutActivity = async () => {
     try {
       const deviceId = localStorage.getItem("deviceId") || "unknown-device";
@@ -78,19 +77,15 @@ export function NavUser({
     }
   };
 
-  /* ---------------- Logout Action ---------------- */
   const doLogout = async () => {
     setIsLoggingOut(true);
 
     try {
-      logLogoutActivity().catch(console.error); // Log the logout activity
+      logLogoutActivity().catch(console.error);
       await fetch("/api/logout", { method: "POST" });
     } catch (err) {
       console.error("Logout failed:", err);
     } finally {
-      // 🔥 HARD CLEAN — IMPORTANT FIX
-      localStorage.removeItem("userid"); // ✅ CORRECT KEY
-      localStorage.removeItem("deviceId"); // optional
       setUserId(null);
 
       setIsLoggingOut(false);
@@ -140,6 +135,7 @@ export function NavUser({
                 <div className="flex items-center gap-2 px-1 py-1.5">
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage src={user.avatar} alt={user.name} />
+
                     <AvatarFallback className="rounded-lg">
                       {user.name?.charAt(0) ?? "U"}
                     </AvatarFallback>
@@ -149,6 +145,7 @@ export function NavUser({
                     <span className="truncate font-medium capitalize">
                       {user.name}
                     </span>
+
                     {user.position && (
                       <span className="truncate text-xs text-muted-foreground">
                         {user.position}
@@ -165,6 +162,7 @@ export function NavUser({
                   <Link href={`/profile?id=${encodeURIComponent(userId)}`}>
                     <div className="flex items-center gap-2 cursor-pointer">
                       <BadgeCheck className="size-4" />
+
                       <span>Account</span>
                     </div>
                   </Link>
@@ -179,6 +177,7 @@ export function NavUser({
                 disabled={isLoggingOut}
               >
                 <LogOut className="size-4" />
+
                 <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -190,6 +189,7 @@ export function NavUser({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Logout</DialogTitle>
+
             <DialogDescription>
               Are you sure you want to log out?
             </DialogDescription>

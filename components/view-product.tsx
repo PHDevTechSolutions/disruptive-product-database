@@ -95,10 +95,18 @@ export default function ViewProduct({ productId, referenceID }: Props) {
               <h2 className="text-lg font-semibold">
                 {product?.productName || "-"}
               </h2>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {}}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Generate TDS
+                </Button>
 
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                Close
-              </Button>
+                <Button variant="outline" onClick={() => setOpen(false)}>
+                  Close
+                </Button>
+              </div>
             </div>
 
             {/* BODY */}
