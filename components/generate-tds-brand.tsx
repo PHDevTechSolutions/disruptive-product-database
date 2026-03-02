@@ -51,7 +51,6 @@ export default function GenerateTDSBrand({
 
   return (
     <div className="w-full flex justify-center bg-white pb-6">
-
       <div
         className="bg-white flex flex-col relative shadow-lg"
         style={{
@@ -59,7 +58,6 @@ export default function GenerateTDSBrand({
           height: "1056px",
         }}
       >
-
         <Image
           src={selected.header}
           alt="Header"
@@ -70,9 +68,7 @@ export default function GenerateTDSBrand({
         />
 
         <div className="px-8 pt-6 pb-4 flex flex-col flex-1 bg-white">
-
           <div className="grid grid-cols-[220px_1fr] gap-6 items-center mb-6">
-
             <div className="border border-black h-[150px] flex items-center justify-center bg-white">
               {mainImage?.url && (
                 <img
@@ -89,67 +85,46 @@ export default function GenerateTDSBrand({
 
               <div className="border-b border-black mt-4"></div>
             </div>
-
           </div>
-
 
           {/* ✅ BRAND + ITEM CODE TABLE */}
           <table className="w-full border border-black border-collapse text-sm mb-4 bg-white">
-
             <tbody>
-
               <tr>
-
                 <td className="border border-black px-2 py-1 w-[300px]">
                   Brand :
                 </td>
 
-<td className="border border-black px-2 py-1 font-bold uppercase">
-  {company || "-"}
-</td>
-
+                <td className="border border-black px-2 py-1 font-bold uppercase">
+                  {company || "-"}
+                </td>
               </tr>
 
               <tr>
-
-                <td className="border border-black px-2 py-1">
-                  Item Code :
-                </td>
+                <td className="border border-black px-2 py-1">Item Code :</td>
 
                 <td className="border border-black px-2 py-1">
                   {itemCode || "-"}
                 </td>
-
               </tr>
-
             </tbody>
-
           </table>
 
-
           <table className="w-full border border-black border-collapse text-sm">
-
             <tbody>
-
               {technicalSpecifications?.map((group, i) => (
-
                 <React.Fragment key={i}>
-
                   <tr>
-
                     <td
                       colSpan={2}
                       className="border border-black px-2 py-1 font-semibold bg-gray-300"
                     >
                       {group.title}
                     </td>
-
                   </tr>
 
                   {group.specs.map((spec, s) => (
-
                     <tr key={`${i}-${s}`}>
-
                       <td className="border border-black px-2 py-1 w-[300px]">
                         {spec.specId || "-"} :
                       </td>
@@ -157,50 +132,29 @@ export default function GenerateTDSBrand({
                       <td className="border border-black px-2 py-1">
                         {spec.value || "-"}
                       </td>
-
                     </tr>
-
                   ))}
-
                 </React.Fragment>
-
               ))}
-
             </tbody>
-
           </table>
 
-
           <div className="flex flex-col flex-1">
-
             <div className="grid grid-cols-2 mt-6 text-sm flex-1">
-
               <div className="flex flex-col min-h-[350px]">
-
-                <div className="font-semibold">
-                  Dimensional Drawing
-                </div>
+                <div className="font-semibold">Dimensional Drawing</div>
 
                 <div className="flex-1"></div>
-
               </div>
 
               <div className="flex flex-col min-h-[350px]">
-
-                <div className="font-semibold">
-                  Illuminance Level
-                </div>
+                <div className="font-semibold">Illuminance Level</div>
 
                 <div className="flex-1"></div>
-
               </div>
-
             </div>
-
           </div>
-
         </div>
-
 
         <Image
           src={selected.footer}
@@ -210,9 +164,7 @@ export default function GenerateTDSBrand({
           priority
           className="w-full h-auto"
         />
-
       </div>
-
     </div>
   );
 }

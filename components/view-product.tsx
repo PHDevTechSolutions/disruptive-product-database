@@ -257,12 +257,12 @@ export default function ViewProduct({ productId, referenceID }: Props) {
             {/* CTRL + F: RIGHT PANEL */}
             {openTDS && (
               <div className="flex flex-col min-h-0 md:w-1/2 border-t md:border-t-0 md:border-l">
-<GenerateTDS
-  open={openTDS}
-  onClose={() => setOpenTDS(false)}
-  mainImage={product?.mainImage}
-  technicalSpecifications={product?.technicalSpecifications}
-/>
+                <GenerateTDS
+                  open={openTDS}
+                  onClose={() => setOpenTDS(false)}
+                  mainImage={product?.mainImage}
+                  technicalSpecifications={product?.technicalSpecifications}
+                />
               </div>
             )}
           </div>

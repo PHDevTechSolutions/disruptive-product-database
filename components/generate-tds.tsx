@@ -28,7 +28,6 @@ export default function GenerateTDS({
   const [selectedBrand, setSelectedBrand] = useState("");
 
   const [itemCode, setItemCode] = useState("");
-
   const [productName, setProductName] = useState("");
 
   if (!open) return null;
@@ -52,17 +51,18 @@ export default function GenerateTDS({
 
       <div className="p-6 flex-1 overflow-auto space-y-6 bg-gray-100">
 
-        <div className="space-y-2">
-          <p className="text-sm font-semibold">Product Name</p>
 
-          <input
-            type="text"
-            value={productName}
-            onChange={(e) => setProductName(e.target.value)}
-            placeholder="Enter product name..."
-            className="w-full border rounded-md h-10 px-3 text-sm bg-white"
-          />
-        </div>
+<div className="space-y-2">
+  <p className="text-sm font-semibold">Product Name</p>
+
+  <input
+    type="text"
+    value={productName}
+    onChange={(e) => setProductName(e.target.value)}
+    placeholder="Enter product name..."
+    className="w-full border rounded-md h-10 px-3 text-sm bg-white"
+  />
+</div>
 
         <div className="space-y-2">
           <p className="text-sm font-semibold">Item Code</p>
@@ -122,7 +122,7 @@ export default function GenerateTDS({
 <GenerateTDSBrand
   open={true}
   company={selectedBrand as "Lit" | "Lumera" | "Ecoshift"}
-  productName={productName}
+productName={productName}
   itemCode={itemCode}
   mainImage={mainImage}
   technicalSpecifications={technicalSpecifications}
