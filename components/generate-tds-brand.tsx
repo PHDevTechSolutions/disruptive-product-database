@@ -2,17 +2,26 @@
 
 import Image from "next/image";
 
+type TechnicalSpecification = {
+  title: string;
+  specs: {
+    specId: string;
+    value: string;
+  }[];
+};
+
 type Props = {
   open: boolean;
 
-  /* CTRL + F: COMPANY PROP */
   company: "Lit" | "Lumera" | "Ecoshift" | "";
 
-  /* CTRL + F: BRAND PROP */
   brand: string;
 
-  /* CTRL + F: ITEM CODE PROP */
   itemCode: string;
+
+  mainImage?: { url: string };
+
+  technicalSpecifications?: TechnicalSpecification[];
 };
 
 export default function GenerateTDSBrand({
@@ -20,6 +29,8 @@ export default function GenerateTDSBrand({
   company,
   brand,
   itemCode,
+  mainImage,
+  technicalSpecifications,
 }: Props) {
   if (!open || !company) return null;
 
@@ -46,14 +57,12 @@ export default function GenerateTDSBrand({
 
   return (
     <div className="w-full flex justify-center px-2 md:px-0">
-      {/* PAPER */}
       <div
         className="bg-white shadow-xl flex flex-col relative w-full max-w-[216mm]"
         style={{
           minHeight: "279mm",
         }}
       >
-        {/* HEADER */}
         <Image
           src={selected.header}
           alt="Header"
@@ -63,12 +72,9 @@ export default function GenerateTDSBrand({
           className="w-full h-auto"
         />
 
-        {/* BODY */}
         <div className="flex-1 p-4 md:p-[20mm] space-y-6">
 
-          {/* CTRL + F: BRAND DISPLAY */}
           <div className="grid grid-cols-2 gap-4 text-sm">
-
             <div>
               <span className="font-semibold">Brand:</span>
               <div>{brand || "-"}</div>
@@ -78,37 +84,77 @@ export default function GenerateTDSBrand({
               <span className="font-semibold">Item Code:</span>
               <div>{itemCode || "-"}</div>
             </div>
-
           </div>
 
-
-          {/* EXISTING GRID */}
           <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-6">
 
-            {/* LEFT SIDE */}
             <div className="space-y-4">
 
-              <div className="border p-4">
-                Product Image
+              <div className="border p-4 flex justify-center items-center min-h-[200px]">
+                {mainImage?.url ? (
+                  <img
+                    src={mainImage.url}
+                    className="max-h-[180px] object-contain"
+                  />
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    No Image
+                  </span>
+                )}
               </div>
 
-              <div className="border p-4">
+              <div className="border p-4 text-sm">
                 Fixture Details Table
               </div>
 
             </div>
 
-
-            {/* RIGHT SIDE */}
             <div className="border p-4">
-              Technical Specifications Table
+
+              {!technicalSpecifications?.length && (
+                <div className="text-sm text-muted-foreground text-center">
+                  No Technical Specifications
+                </div>
+              )}
+
+              {technicalSpecifications?.map((group, i) => (
+                <div key={i} className="mb-4">
+
+                  <div className="font-semibold mb-2">
+                    {group.title}
+                  </div>
+
+                  <table className="w-full border text-sm">
+
+                    <tbody>
+
+                      {group.specs.map((spec, s) => (
+                        <tr key={s}>
+
+                          <td className="border p-2 font-semibold w-[50%]">
+                            {spec.specId || "-"}
+                          </td>
+
+                          <td className="border p-2">
+                            {spec.value || "-"}
+                          </td>
+
+                        </tr>
+                      ))}
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+              ))}
+
             </div>
 
-
           </div>
+
         </div>
 
-        {/* FOOTER */}
         <Image
           src={selected.footer}
           alt="Footer"

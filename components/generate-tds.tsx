@@ -4,18 +4,31 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import GenerateTDSBrand from "@/components/generate-tds-brand";
 
+type TechnicalSpecification = {
+  title: string;
+  specs: {
+    specId: string;
+    value: string;
+  }[];
+};
+
 type Props = {
   open: boolean;
   onClose: () => void;
+  mainImage?: { url: string };
+  technicalSpecifications?: TechnicalSpecification[];
 };
 
-export default function GenerateTDS({ open, onClose }: Props) {
+export default function GenerateTDS({
+  open,
+  onClose,
+  mainImage,
+  technicalSpecifications,
+}: Props) {
   const [selectedCompany, setSelectedCompany] = useState("");
 
-  /* CTRL + F: BRAND FIELD */
   const [brand, setBrand] = useState("");
 
-  /* CTRL + F: ITEM CODE FIELD */
   const [itemCode, setItemCode] = useState("");
 
   if (!open) return null;
@@ -24,14 +37,11 @@ export default function GenerateTDS({ open, onClose }: Props) {
     <div
       className="
         flex flex-col bg-white
-
         md:h-full md:relative
-
         fixed inset-0 z-50
         md:inset-auto md:z-auto
       "
     >
-      {/* HEADER */}
       <div className="border-b px-6 py-4 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Generate TDS</h2>
 
@@ -40,10 +50,8 @@ export default function GenerateTDS({ open, onClose }: Props) {
         </Button>
       </div>
 
-      {/* BODY */}
       <div className="p-6 flex-1 overflow-auto space-y-6 bg-gray-100">
 
-        {/* CTRL + F: BRAND INPUT */}
         <div className="space-y-2">
           <p className="text-sm font-semibold">Brand</p>
 
@@ -56,7 +64,6 @@ export default function GenerateTDS({ open, onClose }: Props) {
           />
         </div>
 
-        {/* CTRL + F: ITEM CODE INPUT */}
         <div className="space-y-2">
           <p className="text-sm font-semibold">Item Code</p>
 
@@ -69,7 +76,6 @@ export default function GenerateTDS({ open, onClose }: Props) {
           />
         </div>
 
-        {/* SELECT */}
         <div className="space-y-3">
           <p className="text-sm font-semibold">Select Company</p>
 
@@ -104,8 +110,8 @@ export default function GenerateTDS({ open, onClose }: Props) {
           </label>
         </div>
 
-        {/* PDF PREVIEW */}
         <div className="flex justify-center">
+
           {!selectedCompany && (
             <div className="text-muted-foreground text-sm">
               Select company to preview TDS
@@ -118,13 +124,17 @@ export default function GenerateTDS({ open, onClose }: Props) {
               company={selectedCompany as "Lit" | "Lumera" | "Ecoshift"}
               brand={brand}
               itemCode={itemCode}
+              mainImage={mainImage}
+              technicalSpecifications={technicalSpecifications}
             />
           )}
+
         </div>
+
       </div>
 
-      {/* FOOTER */}
       <div className="border-t px-6 py-4 flex justify-end gap-2">
+
         <Button className="bg-green-600 hover:bg-green-700 text-white">
           Generate
         </Button>
@@ -132,7 +142,9 @@ export default function GenerateTDS({ open, onClose }: Props) {
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
+
       </div>
+
     </div>
   );
 }
