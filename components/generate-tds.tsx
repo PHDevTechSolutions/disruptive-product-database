@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-
-/* CTRL + F: IMPORT LIT */
-import GenerateTDSLit from "@/components/generate-tds-lit";
+import GenerateTDSBrand from "@/components/generate-tds-brand";
 
 type Props = {
   open: boolean;
@@ -17,7 +15,17 @@ export default function GenerateTDS({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="h-full flex flex-col bg-white">
+<div
+  className="
+    flex flex-col bg-white
+
+    md:h-full md:relative
+
+    fixed inset-0 z-50
+    md:inset-auto md:z-auto
+  "
+>
+      {/* HEADER */}
       <div className="border-b px-6 py-4 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Generate TDS</h2>
 
@@ -26,7 +34,9 @@ export default function GenerateTDS({ open, onClose }: Props) {
         </Button>
       </div>
 
+      {/* BODY */}
       <div className="p-6 flex-1 overflow-auto space-y-6 bg-gray-100">
+        {/* SELECT */}
         <div className="space-y-3">
           <p className="text-sm font-semibold">Select Company</p>
 
@@ -61,6 +71,7 @@ export default function GenerateTDS({ open, onClose }: Props) {
           </label>
         </div>
 
+        {/* PDF PREVIEW */}
         <div className="flex justify-center">
           {!selectedCompany && (
             <div className="text-muted-foreground text-sm">
@@ -68,24 +79,16 @@ export default function GenerateTDS({ open, onClose }: Props) {
             </div>
           )}
 
-          {selectedCompany === "Lit" && (
-            <GenerateTDSLit open={true} />
-          )}
-
-          {selectedCompany === "Lumera" && (
-            <div className="w-[210mm] min-h-[297mm] bg-white shadow-xl p-10">
-              Lumera Preview
-            </div>
-          )}
-
-          {selectedCompany === "Ecoshift" && (
-            <div className="w-[210mm] min-h-[297mm] bg-white shadow-xl p-10">
-              Ecoshift Preview
-            </div>
+          {selectedCompany && (
+            <GenerateTDSBrand
+              open={true}
+              company={selectedCompany as "Lit" | "Lumera" | "Ecoshift"}
+            />
           )}
         </div>
       </div>
 
+      {/* FOOTER */}
       <div className="border-t px-6 py-4 flex justify-end gap-2">
         <Button className="bg-green-600 hover:bg-green-700 text-white">
           Generate
