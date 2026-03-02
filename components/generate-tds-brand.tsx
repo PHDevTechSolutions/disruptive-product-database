@@ -18,6 +18,8 @@ type Props = {
   itemCode: string;
   mainImage?: { url: string };
   technicalSpecifications?: TechnicalSpecification[];
+  dimensionalDrawing?: File | null; // New prop for Dimensional Drawing
+  illuminanceLevel?: File | null; // New prop for Illuminance Level
 };
 
 export default function GenerateTDSBrand({
@@ -27,6 +29,8 @@ export default function GenerateTDSBrand({
   itemCode,
   mainImage,
   technicalSpecifications,
+  dimensionalDrawing,
+  illuminanceLevel,
 }: Props) {
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -120,9 +124,17 @@ export default function GenerateTDSBrand({
                   )}
                 </div>
 
-                <div>
-                  <div className="text-xl font-semibold text-center">
-                    {productName || "Product Name"}
+                <div className="w-full">
+                  <div className="text-xl font-semibold text-center break-words overflow-hidden">
+                    {/* Added break-words to allow wrapping */}
+                    <div
+                      style={{
+                        fontSize: `${productName.length > 20 ? '14px' : '18px'}`,
+                        lineHeight: '1.5',
+                      }}
+                    >
+                      {productName || "Product Name"}
+                    </div>
                   </div>
                   <div className="border-b border-black mt-4"></div>
                 </div>
@@ -150,7 +162,6 @@ export default function GenerateTDSBrand({
                 </tbody>
               </table>
 
-              {/* TECH SPECS */}
               {/* TECH SPECS */}
               <table className="w-full border border-black border-collapse text-sm">
                 <tbody>
@@ -180,12 +191,29 @@ export default function GenerateTDSBrand({
               </table>
 
               {/* DRAWING */}
-              <div className="grid grid-cols-2 mt-4 text-sm min-h-[120px]">
-                <div className="flex justify-center">
-                  <div className="font-semibold">Dimensional Drawing</div>
+              <div className="grid grid-cols-2 gap-4 mt-4 text-sm min-h-[120px]">
+                {/* Dimensional Drawing Image */}
+                <div className="flex flex-col items-center">
+                  <div className="font-semibold mb-2">Dimensional Drawing</div>
+                  {dimensionalDrawing && (
+                    <img
+                      src={URL.createObjectURL(dimensionalDrawing)}
+                      alt="Dimensional Drawing"
+                      className="w-[200px] h-[100px] object-contain" // 200px by 100px container while preserving aspect ratio
+                    />
+                  )}
                 </div>
-                <div className="flex justify-center">
-                  <div className="font-semibold">Illuminance Level</div>
+
+                {/* Illuminance Level Image */}
+                <div className="flex flex-col items-center">
+                  <div className="font-semibold mb-2">Illuminance Level</div>
+                  {illuminanceLevel && (
+                    <img
+                      src={URL.createObjectURL(illuminanceLevel)}
+                      alt="Illuminance Level"
+                      className="w-[200px] h-[100px] object-contain" // 200px by 100px container while preserving aspect ratio
+                    />
+                  )}
                 </div>
               </div>
             </div>
