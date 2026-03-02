@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
+/* CTRL + F: IMPORT LIT */
+import GenerateTDSLit from "@/components/generate-tds-lit";
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -15,7 +18,6 @@ export default function GenerateTDS({ open, onClose }: Props) {
 
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* HEADER */}
       <div className="border-b px-6 py-4 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Generate TDS</h2>
 
@@ -24,9 +26,7 @@ export default function GenerateTDS({ open, onClose }: Props) {
         </Button>
       </div>
 
-      {/* BODY */}
       <div className="p-6 flex-1 overflow-auto space-y-6 bg-gray-100">
-        {/* SELECT */}
         <div className="space-y-3">
           <p className="text-sm font-semibold">Select Company</p>
 
@@ -61,7 +61,6 @@ export default function GenerateTDS({ open, onClose }: Props) {
           </label>
         </div>
 
-        {/* PDF PREVIEW */}
         <div className="flex justify-center">
           {!selectedCompany && (
             <div className="text-muted-foreground text-sm">
@@ -70,80 +69,23 @@ export default function GenerateTDS({ open, onClose }: Props) {
           )}
 
           {selectedCompany === "Lit" && (
-            <div className="w-[210mm] min-h-[297mm] bg-white shadow-xl p-10">
-              <div className="text-center mb-8">
-                <h1 className="text-2xl font-bold text-orange-600">
-                  Lit Technical Data Sheet
-                </h1>
-              </div>
-
-              <table className="w-full border">
-                <tbody>
-                  <tr>
-                    <td className="border p-2 font-semibold">Product Name</td>
-                    <td className="border p-2">Sample Lit Product</td>
-                  </tr>
-
-                  <tr>
-                    <td className="border p-2 font-semibold">Power</td>
-                    <td className="border p-2">12W</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <GenerateTDSLit open={true} />
           )}
 
           {selectedCompany === "Lumera" && (
             <div className="w-[210mm] min-h-[297mm] bg-white shadow-xl p-10">
-              <div className="text-center mb-8">
-                <h1 className="text-2xl font-bold text-blue-600">
-                  Lumera Technical Data Sheet
-                </h1>
-              </div>
-
-              <table className="w-full border">
-                <tbody>
-                  <tr>
-                    <td className="border p-2 font-semibold">Product Name</td>
-                    <td className="border p-2">Sample Lumera Product</td>
-                  </tr>
-
-                  <tr>
-                    <td className="border p-2 font-semibold">Voltage</td>
-                    <td className="border p-2">220V</td>
-                  </tr>
-                </tbody>
-              </table>
+              Lumera Preview
             </div>
           )}
 
           {selectedCompany === "Ecoshift" && (
             <div className="w-[210mm] min-h-[297mm] bg-white shadow-xl p-10">
-              <div className="text-center mb-8">
-                <h1 className="text-2xl font-bold text-green-600">
-                  Ecoshift Technical Data Sheet
-                </h1>
-              </div>
-
-              <table className="w-full border">
-                <tbody>
-                  <tr>
-                    <td className="border p-2 font-semibold">Product Name</td>
-                    <td className="border p-2">Sample Ecoshift Product</td>
-                  </tr>
-
-                  <tr>
-                    <td className="border p-2 font-semibold">Efficiency</td>
-                    <td className="border p-2">95%</td>
-                  </tr>
-                </tbody>
-              </table>
+              Ecoshift Preview
             </div>
           )}
         </div>
       </div>
 
-      {/* FOOTER */}
       <div className="border-t px-6 py-4 flex justify-end gap-2">
         <Button className="bg-green-600 hover:bg-green-700 text-white">
           Generate
