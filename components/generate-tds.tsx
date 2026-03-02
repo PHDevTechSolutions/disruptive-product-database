@@ -25,11 +25,11 @@ export default function GenerateTDS({
   mainImage,
   technicalSpecifications,
 }: Props) {
-  const [selectedCompany, setSelectedCompany] = useState("");
-
-  const [brand, setBrand] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState("");
 
   const [itemCode, setItemCode] = useState("");
+
+  const [productName, setProductName] = useState("");
 
   if (!open) return null;
 
@@ -53,13 +53,13 @@ export default function GenerateTDS({
       <div className="p-6 flex-1 overflow-auto space-y-6 bg-gray-100">
 
         <div className="space-y-2">
-          <p className="text-sm font-semibold">Brand</p>
+          <p className="text-sm font-semibold">Product Name</p>
 
           <input
             type="text"
-            value={brand}
-            onChange={(e) => setBrand(e.target.value)}
-            placeholder="Enter brand..."
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+            placeholder="Enter product name..."
             className="w-full border rounded-md h-10 px-3 text-sm bg-white"
           />
         </div>
@@ -77,14 +77,14 @@ export default function GenerateTDS({
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-semibold">Select Company</p>
+          <p className="text-sm font-semibold">Select Brand</p>
 
           <label className="flex items-center gap-2">
             <input
               type="radio"
               value="Lit"
-              checked={selectedCompany === "Lit"}
-              onChange={(e) => setSelectedCompany(e.target.value)}
+              checked={selectedBrand === "Lit"}
+              onChange={(e) => setSelectedBrand(e.target.value)}
             />
             Lit
           </label>
@@ -93,8 +93,8 @@ export default function GenerateTDS({
             <input
               type="radio"
               value="Lumera"
-              checked={selectedCompany === "Lumera"}
-              onChange={(e) => setSelectedCompany(e.target.value)}
+              checked={selectedBrand === "Lumera"}
+              onChange={(e) => setSelectedBrand(e.target.value)}
             />
             Lumera
           </label>
@@ -103,8 +103,8 @@ export default function GenerateTDS({
             <input
               type="radio"
               value="Ecoshift"
-              checked={selectedCompany === "Ecoshift"}
-              onChange={(e) => setSelectedCompany(e.target.value)}
+              checked={selectedBrand === "Ecoshift"}
+              onChange={(e) => setSelectedBrand(e.target.value)}
             />
             Ecoshift
           </label>
@@ -112,21 +112,21 @@ export default function GenerateTDS({
 
         <div className="flex justify-center">
 
-          {!selectedCompany && (
+          {!selectedBrand && (
             <div className="text-muted-foreground text-sm">
-              Select company to preview TDS
+              Select brand to preview TDS
             </div>
           )}
 
-          {selectedCompany && (
-            <GenerateTDSBrand
-              open={true}
-              company={selectedCompany as "Lit" | "Lumera" | "Ecoshift"}
-              brand={brand}
-              itemCode={itemCode}
-              mainImage={mainImage}
-              technicalSpecifications={technicalSpecifications}
-            />
+          {selectedBrand && (
+<GenerateTDSBrand
+  open={true}
+  company={selectedBrand as "Lit" | "Lumera" | "Ecoshift"}
+  productName={productName}
+  itemCode={itemCode}
+  mainImage={mainImage}
+  technicalSpecifications={technicalSpecifications}
+/>
           )}
 
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import React from "react";
 
 type TechnicalSpecification = {
   title: string;
@@ -12,22 +13,17 @@ type TechnicalSpecification = {
 
 type Props = {
   open: boolean;
-
   company: "Lit" | "Lumera" | "Ecoshift" | "";
-
-  brand: string;
-
+  productName: string;
   itemCode: string;
-
   mainImage?: { url: string };
-
   technicalSpecifications?: TechnicalSpecification[];
 };
 
 export default function GenerateTDSBrand({
   open,
   company,
-  brand,
+  productName,
   itemCode,
   mainImage,
   technicalSpecifications,
@@ -39,12 +35,10 @@ export default function GenerateTDSBrand({
       header: "/lit-header.png",
       footer: "/lit-footer.png",
     },
-
     Lumera: {
       header: "/lumera-header.png",
       footer: "/lumera-footer.png",
     },
-
     Ecoshift: {
       header: "/ecoshift-header.png",
       footer: "/ecoshift-footer.png",
@@ -56,13 +50,16 @@ export default function GenerateTDSBrand({
   if (!selected) return null;
 
   return (
-    <div className="w-full flex justify-center px-2 md:px-0">
+    <div className="w-full flex justify-center bg-white pb-6">
+
       <div
-        className="bg-white shadow-xl flex flex-col relative w-full max-w-[216mm]"
+        className="bg-white flex flex-col relative shadow-lg"
         style={{
-          minHeight: "279mm",
+          width: "816px",
+          height: "1056px",
         }}
       >
+
         <Image
           src={selected.header}
           alt="Header"
@@ -72,88 +69,138 @@ export default function GenerateTDSBrand({
           className="w-full h-auto"
         />
 
-        <div className="flex-1 p-4 md:p-[20mm] space-y-6">
+        <div className="px-8 pt-6 pb-4 flex flex-col flex-1 bg-white">
 
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-semibold">Brand:</span>
-              <div>{brand || "-"}</div>
+          <div className="grid grid-cols-[220px_1fr] gap-6 items-center mb-6">
+
+            <div className="border border-black h-[150px] flex items-center justify-center bg-white">
+              {mainImage?.url && (
+                <img
+                  src={mainImage.url}
+                  className="max-h-[140px] object-contain"
+                />
+              )}
             </div>
 
             <div>
-              <span className="font-semibold">Item Code:</span>
-              <div>{itemCode || "-"}</div>
+              <div className="text-xl font-semibold text-center">
+                {productName || "Product Name"}
+              </div>
+
+              <div className="border-b border-black mt-4"></div>
             </div>
+
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-6">
 
-            <div className="space-y-4">
+          {/* ✅ BRAND + ITEM CODE TABLE */}
+          <table className="w-full border border-black border-collapse text-sm mb-4 bg-white">
 
-              <div className="border p-4 flex justify-center items-center min-h-[200px]">
-                {mainImage?.url ? (
-                  <img
-                    src={mainImage.url}
-                    className="max-h-[180px] object-contain"
-                  />
-                ) : (
-                  <span className="text-sm text-muted-foreground">
-                    No Image
-                  </span>
-                )}
-              </div>
+            <tbody>
 
-              <div className="border p-4 text-sm">
-                Fixture Details Table
-              </div>
+              <tr>
 
-            </div>
+                <td className="border border-black px-2 py-1 w-[300px]">
+                  Brand :
+                </td>
 
-            <div className="border p-4">
+<td className="border border-black px-2 py-1 font-bold uppercase">
+  {company || "-"}
+</td>
 
-              {!technicalSpecifications?.length && (
-                <div className="text-sm text-muted-foreground text-center">
-                  No Technical Specifications
-                </div>
-              )}
+              </tr>
+
+              <tr>
+
+                <td className="border border-black px-2 py-1">
+                  Item Code :
+                </td>
+
+                <td className="border border-black px-2 py-1">
+                  {itemCode || "-"}
+                </td>
+
+              </tr>
+
+            </tbody>
+
+          </table>
+
+
+          <table className="w-full border border-black border-collapse text-sm">
+
+            <tbody>
 
               {technicalSpecifications?.map((group, i) => (
-                <div key={i} className="mb-4">
 
-                  <div className="font-semibold mb-2">
-                    {group.title}
-                  </div>
+                <React.Fragment key={i}>
 
-                  <table className="w-full border text-sm">
+                  <tr>
 
-                    <tbody>
+                    <td
+                      colSpan={2}
+                      className="border border-black px-2 py-1 font-semibold bg-gray-300"
+                    >
+                      {group.title}
+                    </td>
 
-                      {group.specs.map((spec, s) => (
-                        <tr key={s}>
+                  </tr>
 
-                          <td className="border p-2 font-semibold w-[50%]">
-                            {spec.specId || "-"}
-                          </td>
+                  {group.specs.map((spec, s) => (
 
-                          <td className="border p-2">
-                            {spec.value || "-"}
-                          </td>
+                    <tr key={`${i}-${s}`}>
 
-                        </tr>
-                      ))}
+                      <td className="border border-black px-2 py-1 w-[300px]">
+                        {spec.specId || "-"} :
+                      </td>
 
-                    </tbody>
+                      <td className="border border-black px-2 py-1">
+                        {spec.value || "-"}
+                      </td>
 
-                  </table>
+                    </tr>
 
-                </div>
+                  ))}
+
+                </React.Fragment>
+
               ))}
+
+            </tbody>
+
+          </table>
+
+
+          <div className="flex flex-col flex-1">
+
+            <div className="grid grid-cols-2 mt-6 text-sm flex-1">
+
+              <div className="flex flex-col min-h-[350px]">
+
+                <div className="font-semibold">
+                  Dimensional Drawing
+                </div>
+
+                <div className="flex-1"></div>
+
+              </div>
+
+              <div className="flex flex-col min-h-[350px]">
+
+                <div className="font-semibold">
+                  Illuminance Level
+                </div>
+
+                <div className="flex-1"></div>
+
+              </div>
 
             </div>
 
           </div>
 
         </div>
+
 
         <Image
           src={selected.footer}
@@ -163,7 +210,9 @@ export default function GenerateTDSBrand({
           priority
           className="w-full h-auto"
         />
+
       </div>
+
     </div>
   );
 }
