@@ -11,7 +11,7 @@ export default function GenerateTDS({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="h-full border-l bg-white flex flex-col">
+    <div className="h-full flex flex-col bg-white">
 
       {/* HEADER */}
       <div className="border-b px-6 py-4 flex justify-between items-center">

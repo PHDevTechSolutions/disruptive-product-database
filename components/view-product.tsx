@@ -93,17 +93,19 @@ export default function ViewProduct({ productId, referenceID }: Props) {
       </Button>
 
       {open && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center">
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-start md:items-center pt-4 md:pt-0">
 
           {/* CTRL + F: EXPAND CONTAINER */}
           <div
-            className={`bg-white h-[90vh] rounded-xl flex overflow-hidden transition-all duration-300 ${
-              openTDS ? "w-[1400px]" : "w-[1000px]"
+            className={`bg-white h-[calc(100svh-140px)] md:h-[90vh] mb-0 md:mb-0 rounded-xl flex flex-col md:flex-row overflow-hidden transition-all duration-300 ${
+              openTDS
+  ? "w-full md:w-[1400px]"
+  : "w-full md:w-[1000px]"
             }`}
           >
 
             {/* CTRL + F: LEFT PANEL (VIEW PRODUCT) */}
-            <div className="flex flex-col flex-1 border-r">
+            <div className="flex flex-col flex-1 md:flex-1 border-b md:border-b-0 md:border-r min-h-0">
 
               {/* HEADER */}
               <div className="border-b px-6 py-4 flex justify-between items-center">
@@ -243,12 +245,12 @@ export default function ViewProduct({ productId, referenceID }: Props) {
 
                                 {group.specs.map((spec, s) => (
                                   <tr key={s}>
-                                    <td className="border p-2 font-semibold w-[40%]">
-                                      {spec.specId}
-                                    </td>
-                                    <td className="border p-2">
-                                      {spec.value}
-                                    </td>
+<td className="border p-2 font-semibold w-[40%]">
+  {spec.specId ? spec.specId : "-"}
+</td>
+<td className="border p-2">
+  {spec.value ? spec.value : "-"}
+</td>
                                   </tr>
                                 ))}
 
@@ -274,7 +276,7 @@ export default function ViewProduct({ productId, referenceID }: Props) {
             {/* CTRL + F: RIGHT PANEL (TDS SIDE) */}
             {openTDS && (
 
-              <div className="w-[400px] flex-shrink-0">
+              <div className="w-full md:w-[400px] flex flex-col flex-1 md:flex-none border-t md:border-t-0 md:border-l min-h-0">
 
                 <GenerateTDS
                   open={openTDS}
