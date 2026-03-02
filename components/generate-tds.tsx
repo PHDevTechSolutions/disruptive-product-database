@@ -12,19 +12,25 @@ type Props = {
 export default function GenerateTDS({ open, onClose }: Props) {
   const [selectedCompany, setSelectedCompany] = useState("");
 
+  /* CTRL + F: BRAND FIELD */
+  const [brand, setBrand] = useState("");
+
+  /* CTRL + F: ITEM CODE FIELD */
+  const [itemCode, setItemCode] = useState("");
+
   if (!open) return null;
 
   return (
-<div
-  className="
-    flex flex-col bg-white
+    <div
+      className="
+        flex flex-col bg-white
 
-    md:h-full md:relative
+        md:h-full md:relative
 
-    fixed inset-0 z-50
-    md:inset-auto md:z-auto
-  "
->
+        fixed inset-0 z-50
+        md:inset-auto md:z-auto
+      "
+    >
       {/* HEADER */}
       <div className="border-b px-6 py-4 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Generate TDS</h2>
@@ -36,6 +42,33 @@ export default function GenerateTDS({ open, onClose }: Props) {
 
       {/* BODY */}
       <div className="p-6 flex-1 overflow-auto space-y-6 bg-gray-100">
+
+        {/* CTRL + F: BRAND INPUT */}
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">Brand</p>
+
+          <input
+            type="text"
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+            placeholder="Enter brand..."
+            className="w-full border rounded-md h-10 px-3 text-sm bg-white"
+          />
+        </div>
+
+        {/* CTRL + F: ITEM CODE INPUT */}
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">Item Code</p>
+
+          <input
+            type="text"
+            value={itemCode}
+            onChange={(e) => setItemCode(e.target.value)}
+            placeholder="Enter item code..."
+            className="w-full border rounded-md h-10 px-3 text-sm bg-white"
+          />
+        </div>
+
         {/* SELECT */}
         <div className="space-y-3">
           <p className="text-sm font-semibold">Select Company</p>
@@ -83,6 +116,8 @@ export default function GenerateTDS({ open, onClose }: Props) {
             <GenerateTDSBrand
               open={true}
               company={selectedCompany as "Lit" | "Lumera" | "Ecoshift"}
+              brand={brand}
+              itemCode={itemCode}
             />
           )}
         </div>
