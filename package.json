@@ -62,6 +62,7 @@
     "input-otp": "^1.4.2",
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
     "jszip": "^3.10.1",
     "libphonenumber-js": "^1.12.35",
     "lucide-react": "^0.562.0",

@@ -55,109 +55,44 @@ export default function GenerateTDS({
   };
 
 const downloadPDF = async () => {
-  const pdf = new jsPDF("p", "pt", "a4");
+  if (!previewRef.current) return;
 
+  const pdf = new jsPDF("p", "pt", "a4");
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
-  const margin = 40;
-  let y = 60;
+  const canvas = await html2canvas(previewRef.current, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: "#ffffff",
+    onclone: (clonedDoc) => {
+      const all = clonedDoc.querySelectorAll("*");
 
-  // HEADER IMAGE
-  if (selectedBrand === "Lit") {
-    pdf.addImage("/lit-header.png", "PNG", 0, 0, pageWidth, 100);
-  }
+      all.forEach((el: any) => {
+        const style = window.getComputedStyle(el);
 
-  if (selectedBrand === "Lumera") {
-    pdf.addImage("/lumera-header.png", "PNG", 0, 0, pageWidth, 100);
-  }
-
-  if (selectedBrand === "Ecoshift") {
-    pdf.addImage("/ecoshift-header.png", "PNG", 0, 0, pageWidth, 100);
-  }
-
-  y = 120;
-
-  // PRODUCT IMAGE
-  if (mainImage?.url) {
-    const img = await fetch(mainImage.url)
-      .then((res) => res.blob())
-      .then(
-        (blob) =>
-          new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          })
-      );
-
-    pdf.addImage(img, "PNG", margin, y, 150, 150);
-  }
-
-  // PRODUCT INFO
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(18);
-  pdf.text(productName || "Product Name", 220, y + 30);
-
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(12);
-  pdf.text(`Brand: ${selectedBrand}`, 220, y + 60);
-  pdf.text(`Item Code: ${itemCode}`, 220, y + 80);
-
-  y += 200;
-
-  // TECHNICAL SPECIFICATIONS
-  if (technicalSpecifications) {
-    technicalSpecifications.forEach((group) => {
-      pdf.setFont("helvetica", "bold");
-      pdf.text(group.title, margin, y);
-      y += 20;
-
-      pdf.setFont("helvetica", "normal");
-
-      group.specs.forEach((spec) => {
-        pdf.text(`${spec.specId}: ${spec.value}`, margin + 20, y);
-        y += 18;
+        if (style.color.includes("lab")) el.style.color = "#000000";
+        if (style.backgroundColor.includes("lab"))
+          el.style.backgroundColor = "#ffffff";
+        if (style.borderColor.includes("lab"))
+          el.style.borderColor = "#000000";
       });
+    },
+  });
 
-      y += 10;
-    });
-  }
+  const imgData = canvas.toDataURL("image/png");
 
-  // DIMENSIONAL DRAWING
-  if (dimensionalDrawing) {
-    const img = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.readAsDataURL(dimensionalDrawing);
-    });
+  const imgWidth = canvas.width;
+  const imgHeight = canvas.height;
 
-    pdf.addImage(img, "PNG", margin, pageHeight - 250, 200, 120);
-  }
+// 🔥 FORCE FULL PAGE (REMOVE WHITE BORDER)
+const finalWidth = pageWidth;
+const finalHeight = pageHeight;
 
-  // ILLUMINANCE LEVEL
-  if (illuminanceLevel) {
-    const img = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.readAsDataURL(illuminanceLevel);
-    });
+const x = 0;
+const y = 0;
 
-    pdf.addImage(img, "PNG", pageWidth - 240, pageHeight - 250, 200, 120);
-  }
-
-  // FOOTER IMAGE
-  if (selectedBrand === "Lit") {
-    pdf.addImage("/lit-footer.png", "PNG", 0, pageHeight - 80, pageWidth, 80);
-  }
-
-  if (selectedBrand === "Lumera") {
-    pdf.addImage("/lumera-footer.png", "PNG", 0, pageHeight - 80, pageWidth, 80);
-  }
-
-  if (selectedBrand === "Ecoshift") {
-    pdf.addImage("/ecoshift-footer.png", "PNG", 0, pageHeight - 80, pageWidth, 80);
-  }
+  pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
 
   pdf.save(`${productName || "Product"}-${itemCode || "Item"}-TDS.pdf`);
 };

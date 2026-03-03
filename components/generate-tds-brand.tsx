@@ -86,7 +86,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
     if (!selected) return null;
 
     return (
-      <div ref={ref} className="w-full flex justify-center bg-white pb-6">
+      <div ref={ref} className="w-full flex justify-center bg-white">
         <div
           className="bg-white relative shadow-lg overflow-hidden"
           style={{
