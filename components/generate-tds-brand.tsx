@@ -127,14 +127,18 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
               <div ref={contentRef} className="px-8 pt-6 pb-2 bg-white">
                 {/* IMAGE + PRODUCT NAME */}
                 <div className="grid grid-cols-[220px_1fr] gap-6 items-center mb-4">
-                  <div className="border border-black h-[150px] flex items-center justify-center">
-                    {mainImage?.url && (
-                      <img
-                        src={mainImage.url}
-                        className="max-h-[140px] object-contain"
-                      />
-                    )}
-                  </div>
+<div className="w-[220px] h-[150px] border-2 border-black flex items-center justify-center bg-white">
+  {mainImage?.url ? (
+    <img
+      src={mainImage.url}
+      className="max-h-[130px] max-w-[200px] object-contain"
+    />
+  ) : (
+    <span className="text-xs text-gray-400">
+      PRODUCT IMAGE
+    </span>
+  )}
+</div>
 
                   <div className="w-full">
                     <div className="text-xl font-semibold text-center break-words overflow-hidden">

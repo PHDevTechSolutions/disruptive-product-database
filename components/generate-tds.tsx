@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import autoTable from "jspdf-autotable";
 import GenerateTDSBrand from "@/components/generate-tds-brand";
 
 type TechnicalSpecification = {
@@ -54,45 +54,174 @@ export default function GenerateTDS({
     }
   };
 
-const downloadPDF = async () => {
-  if (!previewRef.current) return;
 
+
+const downloadPDF = async () => {
   const pdf = new jsPDF("p", "pt", "a4");
+
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
-  const canvas = await html2canvas(previewRef.current, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: "#ffffff",
-    onclone: (clonedDoc) => {
-      const all = clonedDoc.querySelectorAll("*");
+  const headerHeight = 100;
+  const footerHeight = 30;
 
-      all.forEach((el: any) => {
-        const style = window.getComputedStyle(el);
+  let y = headerHeight + 20;
 
-        if (style.color.includes("lab")) el.style.color = "#000000";
-        if (style.backgroundColor.includes("lab"))
-          el.style.backgroundColor = "#ffffff";
-        if (style.borderColor.includes("lab"))
-          el.style.borderColor = "#000000";
-      });
+  /* ================= HEADER ================= */
+  if (selectedBrand === "Lit") {
+    pdf.addImage("/lit-header.png", "PNG", 0, 0, pageWidth, headerHeight);
+  }
+
+  /* ================= PRODUCT IMAGE ================= */
+  const imageWidth = 100;
+  const imageX = pageWidth / 2 - imageWidth - 60;
+
+  if (mainImage?.url) {
+    const img = await fetch(mainImage.url)
+      .then(r => r.blob())
+      .then(
+        blob =>
+          new Promise<string>(resolve => {
+            const reader = new FileReader();
+            reader.onloadend = () =>
+              resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          })
+      );
+
+    pdf.addImage(img, "PNG", imageX, y, imageWidth, 100);
+  }
+
+  /* ================= TITLE ================= */
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(14);
+  pdf.text(productName || "Product Name", pageWidth / 2 + 40, y + 35, {
+    align: "center",
+  });
+
+  pdf.line(
+    pageWidth / 2 - 10,
+    y + 50,
+    pageWidth / 2 + 90,
+    y + 50
+  );
+
+  y += 130;
+
+  /* ================= BUILD TABLE ================= */
+
+  const tableRows: any[] = [];
+
+  tableRows.push(["Brand :", selectedBrand]);
+  tableRows.push(["Item Code :", itemCode]);
+
+  technicalSpecifications?.forEach(group => {
+    tableRows.push([
+      {
+        content: group.title + " :",
+        colSpan: 2,
+        styles: {
+          fillColor: [210, 215, 220],
+          fontStyle: "bold",
+        },
+      },
+    ]);
+
+    group.specs.forEach(spec => {
+      tableRows.push([spec.specId + " :", spec.value || ""]);
+    });
+  });
+
+  /* ================= AUTO SCALE ================= */
+
+  const maxTableHeight =
+    pageHeight - footerHeight - y - 130;
+
+  let fontSize = 9;
+
+  while (fontSize > 6) {
+    const testPdf = new jsPDF("p", "pt", "a4");
+
+    autoTable(testPdf, {
+      startY: y,
+      theme: "grid",
+      styles: { fontSize },
+      body: tableRows,
+      margin: { left: 0 },
+      tableWidth: 450,
+    });
+
+    const finalY = (testPdf as any).lastAutoTable.finalY;
+
+    if (finalY - y <= maxTableHeight) break;
+
+    fontSize -= 0.5;
+  }
+
+  /* ================= CENTER TABLE ================= */
+
+  const tableWidth = 450;
+  const tableX = (pageWidth - tableWidth) / 2;
+
+  autoTable(pdf, {
+    startY: y,
+    theme: "grid",
+    pageBreak: "avoid",
+    tableWidth: tableWidth,
+    margin: { left: tableX },
+    styles: {
+      fontSize,
+      cellPadding: 3,
+    },
+    body: tableRows,
+    columnStyles: {
+      0: { cellWidth: 230 },
+      1: { cellWidth: 220 },
     },
   });
 
-  const imgData = canvas.toDataURL("image/png");
+  /* ================= DRAWINGS (INANGAT) ================= */
 
-  const imgWidth = canvas.width;
-  const imgHeight = canvas.height;
+  const drawingY = pageHeight - footerHeight - 140; // 🔥 inangat
 
-// 🔥 FORCE FULL PAGE (REMOVE WHITE BORDER)
-const finalWidth = pageWidth;
-const finalHeight = pageHeight;
+  pdf.setFontSize(8);
+  pdf.text("Dimensional Drawing", tableX, drawingY - 12);
+  pdf.text("Illuminance Level", tableX + 240, drawingY - 12);
 
-const x = 0;
-const y = 0;
+  if (dimensionalDrawing) {
+    const img = await new Promise<string>(resolve => {
+      const reader = new FileReader();
+      reader.onloadend = () =>
+        resolve(reader.result as string);
+      reader.readAsDataURL(dimensionalDrawing);
+    });
 
-  pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
+    pdf.addImage(img, "PNG", tableX, drawingY, 120, 80);
+  }
+
+  if (illuminanceLevel) {
+    const img2 = await new Promise<string>(resolve => {
+      const reader = new FileReader();
+      reader.onloadend = () =>
+        resolve(reader.result as string);
+      reader.readAsDataURL(illuminanceLevel);
+    });
+
+    pdf.addImage(img2, "PNG", tableX + 240, drawingY, 120, 80);
+  }
+
+  /* ================= FOOTER ================= */
+
+  if (selectedBrand === "Lit") {
+    pdf.addImage(
+      "/lit-footer.png",
+      "PNG",
+      0,
+      pageHeight - footerHeight,
+      pageWidth,
+      footerHeight
+    );
+  }
 
   pdf.save(`${productName || "Product"}-${itemCode || "Item"}-TDS.pdf`);
 };
