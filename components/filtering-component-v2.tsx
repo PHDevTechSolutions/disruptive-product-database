@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Command,
   CommandGroup,
@@ -9,8 +9,6 @@ import {
   CommandEmpty,
 } from "@/components/ui/command";
 import { Check } from "lucide-react";
-
-
 
 type Props = {
   products: any[];
@@ -33,6 +31,28 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   ];
 
   const [visibleSteps, setVisibleSteps] = useState<string[]>(["Product Usage"]);
+
+  /* ================= STEP ANCHOR REFS ================= */
+  /* CTRL+F: STEP ANCHOR REFS */
+
+  /* ================= STEP ANCHOR REFS CLEAN ================= */
+  /* CTRL+F: STEP ANCHOR REFS CLEAN */
+
+  const stepRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const setStepRef = (step: string) => (el: HTMLDivElement | null) => {
+    stepRefs.current[step] = el;
+  };
+
+  const scrollToStep = (step: string) => {
+    setTimeout(() => {
+      stepRefs.current[step]?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+  };
+
   const [searchFilters, setSearchFilters] = useState<Record<string, string>>(
     {},
   );
@@ -319,63 +339,65 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   /* ================= STEP TOGGLE FILTER ================= */
   /* CTRL+F: STEP TOGGLE FILTER */
 
-const toggle = (title: string, value: string) => {
-  setFilters((prev) => {
-    const alreadySelected = prev[title]?.includes(value);
+  const toggle = (title: string, value: string) => {
+    setFilters((prev) => {
+      const alreadySelected = prev[title]?.includes(value);
 
-    const updated = {
-      ...prev,
-      [title]: alreadySelected
-        ? prev[title].filter((v) => v !== value)
-        : [...(prev[title] || []), value],
-    };
+      const updated = {
+        ...prev,
+        [title]: alreadySelected
+          ? prev[title].filter((v) => v !== value)
+          : [...(prev[title] || []), value],
+      };
 
+      const currentIndex = stepOrder.indexOf(title);
+
+      // ONLY handle forward visibility when selecting
+      if (!alreadySelected) {
+        if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
+          const nextStep = stepOrder[currentIndex + 1];
+
+          setVisibleSteps((prevSteps) => {
+            if (!prevSteps.includes(nextStep)) {
+              scrollToStep(nextStep);
+              return [...prevSteps, nextStep];
+            }
+            return prevSteps;
+          });
+        }
+      }
+
+      // ❌ NO AUTO CLEAR HERE ANYMORE
+      // ❌ NO AUTO HIDING
+
+      return updated;
+    });
+  };
+
+  const handleBack = (title: string) => {
     const currentIndex = stepOrder.indexOf(title);
+    if (currentIndex <= 0) return;
 
-    // ONLY handle forward visibility when selecting
-    if (!alreadySelected) {
-      if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
-        const nextStep = stepOrder[currentIndex + 1];
+    setVisibleSteps(stepOrder.slice(0, currentIndex));
 
-        setVisibleSteps((prevSteps) =>
-          prevSteps.includes(nextStep)
-            ? prevSteps
-            : [...prevSteps, nextStep],
-        );
-      }
-    }
+    setFilters((prev) => {
+      const updated = { ...prev };
 
-    // ❌ NO AUTO CLEAR HERE ANYMORE
-    // ❌ NO AUTO HIDING
+      // Remove current step + next steps
+      stepOrder.slice(currentIndex).forEach((step) => {
+        delete updated[step];
+      });
 
-    return updated;
-  });
-};
+      // 🔥 ALSO remove all technical spec filters
+      Object.keys(updated).forEach((key) => {
+        if (key.includes("||")) {
+          delete updated[key];
+        }
+      });
 
-const handleBack = (title: string) => {
-  const currentIndex = stepOrder.indexOf(title);
-  if (currentIndex <= 0) return;
-
-  setVisibleSteps(stepOrder.slice(0, currentIndex));
-
-  setFilters((prev) => {
-    const updated = { ...prev };
-
-    // Remove current step + next steps
-    stepOrder.slice(currentIndex).forEach((step) => {
-      delete updated[step];
+      return updated;
     });
-
-    // 🔥 ALSO remove all technical spec filters
-    Object.keys(updated).forEach((key) => {
-      if (key.includes("||")) {
-        delete updated[key];
-      }
-    });
-
-    return updated;
-  });
-};
+  };
   const setSearch = (title: string, value: string) =>
     setSearchFilters((prev) => ({
       ...prev,
@@ -407,143 +429,157 @@ const handleBack = (title: string) => {
         {/* CTRL+F: HORIZONTAL STEP CONTAINER */}
 
         <div className="overflow-x-auto">
-<div className="space-y-4">
-  <div className="flex flex-col gap-4">
-            {/* STEP 1 */}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-4">
+              {/* STEP 1 */}
 
-            {visibleSteps.includes("Product Usage") && (
-              <div className="w-[260px] shrink-0">
-                <Section
-                  title="Product Usage"
-                  items={productUsages}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+              {visibleSteps.includes("Product Usage") && (
+                <div
+                  ref={setStepRef("Product Usage")}
+                  className="w-[260px] shrink-0 scroll-mt-24"
+                >
+                  <Section
+                    title="Product Usage"
+                    items={productUsages}
+                    filters={filters}
+                    toggle={toggle}
+                    setSearch={setSearch}
+                    sourceProducts={sourceProducts}
+                    products={products}
+                  />
+                </div>
+              )}
 
-            {/* STEP 2 */}
+              {/* STEP 2 */}
 
-{visibleSteps.includes("Product Family") && (
-  <div className="w-[260px] shrink-0 space-y-2">
-    <button
-      className="text-xs text-blue-600 underline"
-      onClick={() => handleBack("Product Family")}
-    >
-      ← Back
-    </button>
-                <Section
-                  title="Product Family"
-                  items={productFamilies}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+              {visibleSteps.includes("Product Family") && (
+                <div
+                  ref={setStepRef("Product Family")}
+                  className="w-[260px] shrink-0 space-y-2 scroll-mt-24"
+                >
+                  <button
+                    className="text-xs text-blue-600 underline"
+                    onClick={() => handleBack("Product Family")}
+                  >
+                    ← Back
+                  </button>
+                  <Section
+                    title="Product Family"
+                    items={productFamilies}
+                    filters={filters}
+                    toggle={toggle}
+                    setSearch={setSearch}
+                    sourceProducts={sourceProducts}
+                    products={products}
+                  />
+                </div>
+              )}
 
-            {/* STEP 3 */}
+              {/* STEP 3 */}
 
-{visibleSteps.includes("Product Class") && (
-  <div className="w-[260px] shrink-0 space-y-2">
-    <button
-      className="text-xs text-blue-600 underline"
-      onClick={() => handleBack("Product Class")}
-    >
-      ← Back
-    </button>
-                <Section
-                  title="Product Class"
-                  items={productClasses}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+              {visibleSteps.includes("Product Class") && (
+                <div
+                  ref={setStepRef("Product Class")}
+                  className="w-[260px] shrink-0 space-y-2 scroll-mt-24"
+                >
+                  <button
+                    className="text-xs text-blue-600 underline"
+                    onClick={() => handleBack("Product Class")}
+                  >
+                    ← Back
+                  </button>
+                  <Section
+                    title="Product Class"
+                    items={productClasses}
+                    filters={filters}
+                    toggle={toggle}
+                    setSearch={setSearch}
+                    sourceProducts={sourceProducts}
+                    products={products}
+                  />
+                </div>
+              )}
 
-            {/* STEP 4 */}
+              {/* STEP 4 */}
 
-{visibleSteps.includes("Price Point") && (
-  <div className="w-[260px] shrink-0 space-y-2">
-    <button
-      className="text-xs text-blue-600 underline"
-      onClick={() => handleBack("Price Point")}
-    >
-      ← Back
-    </button>
-                <Section
-                  title="Price Point"
-                  items={pricePoints}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+              {visibleSteps.includes("Price Point") && (
+                <div
+                  ref={setStepRef("Price Point")}
+                  className="w-[260px] shrink-0 space-y-2 scroll-mt-24"
+                >
+                  <button
+                    className="text-xs text-blue-600 underline"
+                    onClick={() => handleBack("Price Point")}
+                  >
+                    ← Back
+                  </button>
+                  <Section
+                    title="Price Point"
+                    items={pricePoints}
+                    filters={filters}
+                    toggle={toggle}
+                    setSearch={setSearch}
+                    sourceProducts={sourceProducts}
+                    products={products}
+                  />
+                </div>
+              )}
 
-            {/* STEP 5 */}
+              {/* STEP 5 */}
 
-{visibleSteps.includes("Brand Origin") && (
-  <div className="w-[260px] shrink-0 space-y-2">
-    <button
-      className="text-xs text-blue-600 underline"
-      onClick={() => handleBack("Brand Origin")}
-    >
-      ← Back
-    </button>
-                <Section
-                  title="Brand Origin"
-                  items={brandOrigins}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+              {visibleSteps.includes("Brand Origin") && (
+                <div
+                  ref={setStepRef("Brand Origin")}
+                  className="w-[260px] shrink-0 space-y-2 scroll-mt-24"
+                >
+                  <button
+                    className="text-xs text-blue-600 underline"
+                    onClick={() => handleBack("Brand Origin")}
+                  >
+                    ← Back
+                  </button>
+                  <Section
+                    title="Brand Origin"
+                    items={brandOrigins}
+                    filters={filters}
+                    toggle={toggle}
+                    setSearch={setSearch}
+                    sourceProducts={sourceProducts}
+                    products={products}
+                  />
+                </div>
+              )}
 
-            {/* STEP 6 */}
-          </div>
+              {/* STEP 6 */}
+            </div>
           </div>
         </div>
 
         {/* ================= TECH SPECS NEW ROW ================= */}
         {/* CTRL+F: TECH SPECS NEW ROW */}
 
-{visibleSteps.includes("Supplier") && (
-  <div className="space-y-4">
-    <button
-      className="text-xs text-blue-600 underline"
-      onClick={() => handleBack("Supplier")}
-    >
-      ← Back
-    </button>
+        {visibleSteps.includes("Supplier") && (
+          <div ref={setStepRef("Supplier")} className="space-y-4 scroll-mt-24">
+            <button
+              className="text-xs text-blue-600 underline"
+              onClick={() => handleBack("Supplier")}
+            >
+              ← Back
+            </button>
             <h3 className="font-semibold text-base">
               Technical Specifications
             </h3>{" "}
-              <div className="w-[260px] shrink-0">
-                <Section
-                  title="Supplier"
-                  items={suppliers}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-
+            <div className="w-[260px] shrink-0">
+              <Section
+                title="Supplier"
+                items={suppliers}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
+            </div>
             <div className="flex flex-col gap-4">
               {Object.entries(technicalSpecs).map(([gt, s]) => (
                 <div key={gt} className="border rounded p-3 space-y-3 bg-card">
@@ -600,13 +636,13 @@ function Section({
   const [input, setInput] = useState("");
 
   const splitValues = (value: string): string[] => {
-  if (!value) return [];
+    if (!value) return [];
 
-  return value
-    .split("|")
-    .map((v: string) => v.trim())
-    .filter(Boolean);
-};
+    return value
+      .split("|")
+      .map((v: string) => v.trim())
+      .filter(Boolean);
+  };
 
   useEffect(() => {
     setSearch(title, input);
@@ -673,25 +709,25 @@ function Section({
     else if (title === "Price Point") value = p.pricePoint;
     else if (title === "Brand Origin") value = p.brandOrigin;
     else if (title === "Supplier") value = p.supplier?.company;
-else if (title.includes("||")) {
-  const [gt, sn] = title.split("||");
+    else if (title.includes("||")) {
+      const [gt, sn] = title.split("||");
 
-  p.technicalSpecifications?.forEach((g: any) => {
-    if (g.title !== gt) return;
+      p.technicalSpecifications?.forEach((g: any) => {
+        if (g.title !== gt) return;
 
-    g.specs?.forEach((s: any) => {
-      if (s.specId !== sn) return;
+        g.specs?.forEach((s: any) => {
+          if (s.specId !== sn) return;
 
-      const val = s.value || "";
+          const val = s.value || "";
 
-      splitValues(val).forEach((single: string) => {
-        if (counts[single] !== undefined) counts[single]++;
+          splitValues(val).forEach((single: string) => {
+            if (counts[single] !== undefined) counts[single]++;
+          });
+        });
       });
-    });
-  });
 
-  return;
-}
+      return;
+    }
 
     if (counts[value] !== undefined) counts[value]++;
   });
