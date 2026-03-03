@@ -33,9 +33,8 @@ export default function ProductsPage() {
     return 1;
   });
 
-  const ITEMS_PER_PAGE = useMemo(() => {
-    return Math.max(4, Math.round(8 / cardScale));
-  }, [cardScale]);
+  // ✅ FIXED ITEMS PER PAGE (Stable)
+  const ITEMS_PER_PAGE = 12;
 
   useEffect(() => {
     const saved = localStorage.getItem("productCardScale");
@@ -94,40 +93,46 @@ export default function ProductsPage() {
     });
   }, [searchTerm, filteredProducts]);
 
-  const totalPages = useMemo(() => {
-    return Math.ceil(searchedProducts.length / ITEMS_PER_PAGE);
-  }, [searchedProducts.length, ITEMS_PER_PAGE]);
+  // ✅ STABLE TOTAL PAGES
+  const totalPages = Math.max(
+    1,
+    Math.ceil(searchedProducts.length / ITEMS_PER_PAGE)
+  );
 
+  // ✅ STABLE PAGINATION SLICE
   const paginatedProducts = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return searchedProducts.slice(start, start + ITEMS_PER_PAGE);
-  }, [searchedProducts, currentPage, ITEMS_PER_PAGE]);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return searchedProducts.slice(startIndex, endIndex);
+  }, [searchedProducts, currentPage]);
 
+  // ✅ Prevent invalid page
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  // Reset to page 1 when searching or filtering
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filteredProducts, cardScale]);
+  }, [searchTerm, filteredProducts]);
 
   return (
     <div className="h-dvh overflow-y-auto p-4 md:p-6 space-y-6 pb-[140px] md:pb-6">
       <SidebarTrigger className="hidden md:flex" />
-
-      {/* HEADER */}
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 className="text-xl md:text-2xl font-semibold">Products</h1>
 
         <div className="flex flex-wrap gap-2">
           <UploadProductModal />
-
           <DownloadProduct products={products} />
-
           <Button onClick={() => router.push("/add-product")}>
             + Add Product
           </Button>
         </div>
       </div>
-
-      {/* SEARCH */}
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <Input
@@ -138,31 +143,15 @@ export default function ProductsPage() {
         />
 
         <div className="flex items-center gap-4">
-          <span
-            onClick={decreaseCardSize}
-            className="cursor-pointer text-xl font-bold"
-          >
-            −
-          </span>
-
+          <span onClick={decreaseCardSize} className="cursor-pointer text-xl font-bold">−</span>
           <span className="text-xs w-12 text-center">
             {(cardScale * 100).toFixed(0)}%
           </span>
-
-          <span
-            onClick={increaseCardSize}
-            className="cursor-pointer text-xl font-bold"
-          >
-            +
-          </span>
+          <span onClick={increaseCardSize} className="cursor-pointer text-xl font-bold">+</span>
         </div>
       </div>
 
-      {/* MAIN LAYOUT */}
-
       <div className="flex flex-col md:flex-row gap-6 items-start">
-        {/* LEFT SIDE — PRODUCTS */}
-
         <div className="flex-1 min-w-0">
           {loading ? (
             <p className="text-center text-muted-foreground">
@@ -194,7 +183,7 @@ export default function ProductsPage() {
                       )}
                     </div>
 
-                    <div className="p-3 space-y-2 flex-1 min-h-[70px] flex flex-col justify-start">
+                    <div className="p-3 flex-1 flex flex-col">
                       <h2 className="text-sm font-semibold line-clamp-2">
                         {p.productName}
                       </h2>
@@ -204,7 +193,7 @@ export default function ProductsPage() {
                       </p>
                     </div>
 
-                    <div className="p-2 border-t flex flex-wrap gap-2">
+                    <div className="p-2 border-t flex flex-wrap gap-2 mt-auto">
                       <Button
                         size="sm"
                         variant="outline"
@@ -220,7 +209,7 @@ export default function ProductsPage() {
                         referenceID={userId ?? ""}
                         onDeleted={(id) =>
                           setProducts((prev) =>
-                            prev.filter((prod) => prod.id !== id),
+                            prev.filter((prod) => prod.id !== id)
                           )
                         }
                       />
@@ -234,10 +223,17 @@ export default function ProductsPage() {
                 ))}
               </div>
 
-              {/* PAGINATION */}
-
               {totalPages > 1 && (
-                <div className="flex justify-center gap-2 mt-6">
+                <div className="flex justify-center items-center gap-2 mt-8">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(1)}
+                  >
+                    First
+                  </Button>
+
                   <Button
                     size="sm"
                     variant="outline"
@@ -247,7 +243,7 @@ export default function ProductsPage() {
                     Prev
                   </Button>
 
-                  <span className="text-sm px-3 py-2">
+                  <span className="text-sm px-4">
                     Page {currentPage} of {totalPages}
                   </span>
 
@@ -259,13 +255,20 @@ export default function ProductsPage() {
                   >
                     Next
                   </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                  >
+                    Last
+                  </Button>
                 </div>
               )}
             </>
           )}
         </div>
-
-        {/* RIGHT SIDE — FILTER */}
 
         <div className="w-full md:w-[340px] shrink-0 sticky top-4 self-start max-h-[calc(100vh-160px)] overflow-y-auto">
           {!loading && products.length > 0 && (

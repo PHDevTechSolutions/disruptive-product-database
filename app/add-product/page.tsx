@@ -107,6 +107,8 @@ export default function AddProductPage() {
     }
   }, []);
 
+
+
   const router = useRouter();
   const { userId } = useUser();
 
