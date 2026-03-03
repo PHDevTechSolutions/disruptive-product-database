@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/command";
 import { Check } from "lucide-react";
 
+
+
 type Props = {
   products: any[];
   onFilter: (filtered: any[]) => void;
@@ -353,19 +355,22 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       const currentIndex = stepOrder.indexOf(title);
 
       // ONLY handle forward visibility when selecting
-      if (!alreadySelected) {
-        if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
-          const nextStep = stepOrder[currentIndex + 1];
+if (!alreadySelected) {
+  if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
+    const nextStep = stepOrder[currentIndex + 1];
 
-          setVisibleSteps((prevSteps) => {
-            if (!prevSteps.includes(nextStep)) {
-              scrollToStep(nextStep);
-              return [...prevSteps, nextStep];
-            }
-            return prevSteps;
-          });
-        }
+    setVisibleSteps((prevSteps) => {
+      // ensure visible
+      if (!prevSteps.includes(nextStep)) {
+        return [...prevSteps, nextStep];
       }
+      return prevSteps;
+    });
+
+    // 🔥 ALWAYS SCROLL
+    scrollToStep(nextStep);
+  }
+}
 
       // ❌ NO AUTO CLEAR HERE ANYMORE
       // ❌ NO AUTO HIDING
@@ -407,24 +412,24 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   /* ================= UI ================= */
 
   return (
-    <div className="border rounded-lg p-4 bg-card space-y-4">
-      <h2 className="font-semibold">Filters</h2>
+    <div className="border rounded-lg bg-card">
+<div className="sticky top-0 z-10 bg-card p-4 border-b space-y-3">
+  <h2 className="font-semibold">Filters</h2>
 
-      <button
-        className="border px-3 py-1 rounded text-sm"
-        onClick={() => {
-          setFilters({});
-          setSearchFilters({});
-          setVisibleSteps([
-            "Product Usage",
-          ]); /* CTRL+F: RESET STEP VISIBILITY */
-        }}
-      >
-        Clear Filters
-      </button>
+<button
+  className="border px-2 py-1 rounded text-xs bg-neutral-100 hover:bg-neutral-200 transition-colors"
+  onClick={() => {
+    setFilters({});
+    setSearchFilters({});
+    setVisibleSteps(["Product Usage"]);
+  }}
+>
+  Clear Filters
+</button>
+</div>
       {/* ================= HORIZONTAL STEP CONTAINER ================= */}
 
-      <div className="space-y-6">
+      <div className="p-4 space-y-6">
         {/* ================= HORIZONTAL STEP CONTAINER ================= */}
         {/* CTRL+F: HORIZONTAL STEP CONTAINER */}
 
