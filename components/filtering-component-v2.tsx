@@ -33,7 +33,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   ];
 
   const [visibleSteps, setVisibleSteps] = useState<string[]>(["Product Usage"]);
-const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [searchFilters, setSearchFilters] = useState<Record<string, string>>(
     {},
   );
@@ -324,49 +323,59 @@ const toggle = (title: string, value: string) => {
   setFilters((prev) => {
     const alreadySelected = prev[title]?.includes(value);
 
-    let updated = {
+    const updated = {
       ...prev,
       [title]: alreadySelected
-        ? prev[title].filter((v) => v !== value)  // Unselect if already selected
-        : [...(prev[title] || []), value],  // Add if not selected
+        ? prev[title].filter((v) => v !== value)
+        : [...(prev[title] || []), value],
     };
 
     const currentIndex = stepOrder.indexOf(title);
 
-    // If the filter was unselected
-    if (alreadySelected) {
-      const remaining = updated[title];
-
-      // If no values remain for this step, treat it as unchecked
-      if (!remaining || remaining.length === 0) {
-        const newVisibleSteps = stepOrder.slice(0, currentIndex);
-
-        setVisibleSteps(newVisibleSteps); // Hide subsequent steps if no values are selected
-        const cleared = { ...updated };
-        stepOrder.slice(currentIndex).forEach((step) => {
-          delete cleared[step];  // Clear out subsequent filters
-        });
-        updated = cleared;
-      }
-    } else {
-      // If the filter was selected, make the next step visible
+    // ONLY handle forward visibility when selecting
+    if (!alreadySelected) {
       if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
         const nextStep = stepOrder[currentIndex + 1];
+
         setVisibleSteps((prevSteps) =>
-          prevSteps.includes(nextStep) ? prevSteps : [...prevSteps, nextStep],
+          prevSteps.includes(nextStep)
+            ? prevSteps
+            : [...prevSteps, nextStep],
         );
       }
     }
 
-    // Ensure Product Usage is always visible even if no filters are selected
-    if (Object.keys(updated).length === 0) {
-      setVisibleSteps((prev) => ["Product Usage", ...prev]);
-    }
+    // ❌ NO AUTO CLEAR HERE ANYMORE
+    // ❌ NO AUTO HIDING
 
     return updated;
   });
 };
 
+const handleBack = (title: string) => {
+  const currentIndex = stepOrder.indexOf(title);
+  if (currentIndex <= 0) return;
+
+  setVisibleSteps(stepOrder.slice(0, currentIndex));
+
+  setFilters((prev) => {
+    const updated = { ...prev };
+
+    // Remove current step + next steps
+    stepOrder.slice(currentIndex).forEach((step) => {
+      delete updated[step];
+    });
+
+    // 🔥 ALSO remove all technical spec filters
+    Object.keys(updated).forEach((key) => {
+      if (key.includes("||")) {
+        delete updated[key];
+      }
+    });
+
+    return updated;
+  });
+};
   const setSearch = (title: string, value: string) =>
     setSearchFilters((prev) => ({
       ...prev,
@@ -418,8 +427,14 @@ const toggle = (title: string, value: string) => {
 
             {/* STEP 2 */}
 
-            {visibleSteps.includes("Product Family") && (
-              <div className="w-[260px] shrink-0">
+{visibleSteps.includes("Product Family") && (
+  <div className="w-[260px] shrink-0 space-y-2">
+    <button
+      className="text-xs text-blue-600 underline"
+      onClick={() => handleBack("Product Family")}
+    >
+      ← Back
+    </button>
                 <Section
                   title="Product Family"
                   items={productFamilies}
@@ -434,8 +449,14 @@ const toggle = (title: string, value: string) => {
 
             {/* STEP 3 */}
 
-            {visibleSteps.includes("Product Class") && (
-              <div className="w-[260px] shrink-0">
+{visibleSteps.includes("Product Class") && (
+  <div className="w-[260px] shrink-0 space-y-2">
+    <button
+      className="text-xs text-blue-600 underline"
+      onClick={() => handleBack("Product Class")}
+    >
+      ← Back
+    </button>
                 <Section
                   title="Product Class"
                   items={productClasses}
@@ -450,8 +471,14 @@ const toggle = (title: string, value: string) => {
 
             {/* STEP 4 */}
 
-            {visibleSteps.includes("Price Point") && (
-              <div className="w-[260px] shrink-0">
+{visibleSteps.includes("Price Point") && (
+  <div className="w-[260px] shrink-0 space-y-2">
+    <button
+      className="text-xs text-blue-600 underline"
+      onClick={() => handleBack("Price Point")}
+    >
+      ← Back
+    </button>
                 <Section
                   title="Price Point"
                   items={pricePoints}
@@ -466,8 +493,14 @@ const toggle = (title: string, value: string) => {
 
             {/* STEP 5 */}
 
-            {visibleSteps.includes("Brand Origin") && (
-              <div className="w-[260px] shrink-0">
+{visibleSteps.includes("Brand Origin") && (
+  <div className="w-[260px] shrink-0 space-y-2">
+    <button
+      className="text-xs text-blue-600 underline"
+      onClick={() => handleBack("Brand Origin")}
+    >
+      ← Back
+    </button>
                 <Section
                   title="Brand Origin"
                   items={brandOrigins}
@@ -488,12 +521,17 @@ const toggle = (title: string, value: string) => {
         {/* ================= TECH SPECS NEW ROW ================= */}
         {/* CTRL+F: TECH SPECS NEW ROW */}
 
-        {visibleSteps.includes("Supplier") && (
-          <div className="space-y-4">
+{visibleSteps.includes("Supplier") && (
+  <div className="space-y-4">
+    <button
+      className="text-xs text-blue-600 underline"
+      onClick={() => handleBack("Supplier")}
+    >
+      ← Back
+    </button>
             <h3 className="font-semibold text-base">
               Technical Specifications
             </h3>{" "}
-            {visibleSteps.includes("Supplier") && (
               <div className="w-[260px] shrink-0">
                 <Section
                   title="Supplier"
@@ -505,7 +543,7 @@ const toggle = (title: string, value: string) => {
                   products={products}
                 />
               </div>
-            )}
+
             <div className="flex flex-col gap-4">
               {Object.entries(technicalSpecs).map(([gt, s]) => (
                 <div key={gt} className="border rounded p-3 space-y-3 bg-card">
