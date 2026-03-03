@@ -72,25 +72,54 @@ const downloadPDF = async () => {
     pdf.addImage("/lit-header.png", "PNG", 0, 0, pageWidth, headerHeight);
   }
 
-  /* ================= PRODUCT IMAGE ================= */
-  const imageWidth = 100;
-  const imageX = pageWidth / 2 - imageWidth - 60;
+/* ================= PRODUCT IMAGE ================= */
 
-  if (mainImage?.url) {
-    const img = await fetch(mainImage.url)
-      .then(r => r.blob())
-      .then(
-        blob =>
-          new Promise<string>(resolve => {
-            const reader = new FileReader();
-            reader.onloadend = () =>
-              resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          })
-      );
+const maxWidth = 120;
+const maxHeight = 120;
+const imageX = pageWidth / 2 - maxWidth - 60;
 
-    pdf.addImage(img, "PNG", imageX, y, imageWidth, 100);
-  }
+if (mainImage?.url) {
+  const imgData = await fetch(mainImage.url)
+    .then(r => r.blob())
+    .then(
+      blob =>
+        new Promise<string>(resolve => {
+          const reader = new FileReader();
+          reader.onloadend = () =>
+            resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        })
+    );
+
+  const img = new Image();
+  img.src = imgData;
+
+  await new Promise(resolve => {
+    img.onload = resolve;
+  });
+
+  const imgWidth = img.width;
+  const imgHeight = img.height;
+
+  const ratio = Math.min(
+    maxWidth / imgWidth,
+    maxHeight / imgHeight
+  );
+
+  const finalWidth = imgWidth * ratio;
+  const finalHeight = imgHeight * ratio;
+
+  const centeredY = y + (maxHeight - finalHeight) / 2;
+
+  pdf.addImage(
+    imgData,
+    "PNG",
+    imageX,
+    centeredY,
+    finalWidth,
+    finalHeight
+  );
+}
 
   /* ================= TITLE ================= */
   pdf.setFont("helvetica", "bold");

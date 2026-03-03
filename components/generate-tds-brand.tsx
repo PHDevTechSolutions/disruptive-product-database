@@ -1,12 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import React, {
-  useRef,
-  useEffect,
-  useState,
-  forwardRef,
-} from "react";
+import React, { useRef, useEffect, useState, forwardRef } from "react";
 
 type TechnicalSpecification = {
   title: string;
@@ -39,7 +34,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
       dimensionalDrawing,
       illuminanceLevel,
     },
-    ref
+    ref,
   ) => {
     const contentRef = useRef<HTMLDivElement>(null);
     const [scale, setScale] = useState(1);
@@ -57,12 +52,16 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
       if (contentHeight === 0) return;
 
       const newScale =
-        contentHeight > CONTENT_AREA
-          ? CONTENT_AREA / contentHeight
-          : 1;
+        contentHeight > CONTENT_AREA ? CONTENT_AREA / contentHeight : 1;
 
       setScale(newScale);
-    }, [technicalSpecifications, productName, itemCode, dimensionalDrawing, illuminanceLevel]);
+    }, [
+      technicalSpecifications,
+      productName,
+      itemCode,
+      dimensionalDrawing,
+      illuminanceLevel,
+    ]);
 
     if (!open || !company) return null;
 
@@ -120,32 +119,31 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
               style={{
                 transform: `scale(${scale})`,
                 transformOrigin: "top center",
-                width: `${820 / scale}px`,
-                margin: "0 20px",
+                width: `${780 / scale}px`,
+                margin: "0",
               }}
             >
-              <div ref={contentRef} className="px-8 pt-6 pb-2 bg-white">
+              <div ref={contentRef} className="px-4 pt-6 pb-2 bg-white">
                 {/* IMAGE + PRODUCT NAME */}
                 <div className="grid grid-cols-[220px_1fr] gap-6 items-center mb-4">
-<div className="w-[220px] h-[150px] border-2 border-black flex items-center justify-center bg-white">
-  {mainImage?.url ? (
-    <img
-      src={mainImage.url}
-      className="max-h-[130px] max-w-[200px] object-contain"
-    />
-  ) : (
-    <span className="text-xs text-gray-400">
-      PRODUCT IMAGE
-    </span>
-  )}
-</div>
+                  <div className="w-[220px] h-[150px] border-2 border-black flex items-center justify-center bg-white">
+                    {mainImage?.url ? (
+                      <img
+                        src={mainImage.url}
+                        className="max-h-[130px] max-w-[200px] object-contain"
+                      />
+                    ) : (
+                      <span className="text-xs text-gray-400">
+                        PRODUCT IMAGE
+                      </span>
+                    )}
+                  </div>
 
                   <div className="w-full">
                     <div className="text-xl font-semibold text-center break-words overflow-hidden">
                       <div
                         style={{
-                          fontSize:
-                            productName.length > 20 ? "14px" : "18px",
+                          fontSize: productName.length > 20 ? "18px" : "24px",
                           lineHeight: "1.5",
                         }}
                       >
@@ -157,7 +155,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                 </div>
 
                 {/* BRAND TABLE */}
-                <table className="w-full border border-black border-collapse text-sm mb-3">
+                <table className="w-full border border-black border-collapse text-[16px] mb-3">
                   <tbody>
                     <tr>
                       <td className="border border-black px-2 py-1 w-[300px]">
@@ -179,7 +177,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                 </table>
 
                 {/* TECH SPECS */}
-                <table className="w-full border border-black border-collapse text-sm">
+                <table className="w-full border border-black border-collapse text-[16px]">
                   <tbody>
                     {technicalSpecifications?.map((group, i) => (
                       <React.Fragment key={i}>
@@ -207,7 +205,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                 </table>
 
                 {/* DRAWINGS */}
-                <div className="grid grid-cols-2 gap-4 mt-4 text-sm min-h-[120px]">
+                <div className="grid grid-cols-2 gap-4 mt-4 text-[15px] min-h-[120px]">
                   <div className="flex flex-col items-center">
                     <div className="font-semibold mb-2">
                       Dimensional Drawing
@@ -221,9 +219,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                   </div>
 
                   <div className="flex flex-col items-center">
-                    <div className="font-semibold mb-2">
-                      Illuminance Level
-                    </div>
+                    <div className="font-semibold mb-2">Illuminance Level</div>
                     {illuminanceLevel && (
                       <img
                         src={URL.createObjectURL(illuminanceLevel)}
@@ -248,7 +244,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
         </div>
       </div>
     );
-  }
+  },
 );
 
 GenerateTDSBrand.displayName = "GenerateTDSBrand";
