@@ -1,7 +1,6 @@
-"use client";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import jsPDF from "jspdf";
 import GenerateTDSBrand from "@/components/generate-tds-brand";
 
 type TechnicalSpecification = {
@@ -26,7 +25,6 @@ export default function GenerateTDS({
   technicalSpecifications,
 }: Props) {
   const [selectedBrand, setSelectedBrand] = useState("");
-
   const [itemCode, setItemCode] = useState("");
   const [productName, setProductName] = useState("");
 
@@ -46,20 +44,66 @@ export default function GenerateTDS({
     }
   };
 
+  // Function to download the PDF
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+
+    const headerImage = selectedBrand === "Lit" ? "/lit-header.png" : "/lumera-header.png";
+    const footerImage = selectedBrand === "Lit" ? "/lit-footer.png" : "/lumera-footer.png";
+
+    // Set margins
+    const margin = 10;
+
+    // Header Section
+    doc.addImage(headerImage, "PNG", margin, margin, 180, 40);
+
+    // Product Info Section
+    doc.setFontSize(14);
+    doc.text(`Product Name: ${productName}`, margin, 60);
+    doc.text(`Item Code: ${itemCode}`, margin, 70);
+
+    // Technical Specifications
+    let yPosition = 80;
+    if (technicalSpecifications) {
+      technicalSpecifications.forEach((specGroup) => {
+        doc.setFontSize(12);
+        doc.text(specGroup.title, margin, yPosition); // Title of technical specifications
+        yPosition += 10;
+
+        specGroup.specs.forEach((spec) => {
+          doc.text(`${spec.specId}: ${spec.value}`, margin + 10, yPosition); // Technical specification details
+          yPosition += 10;
+        });
+      });
+    }
+
+    // Dimensional Drawing Image
+    if (dimensionalDrawing) {
+      const imgURL = URL.createObjectURL(dimensionalDrawing);
+      doc.addImage(imgURL, "JPEG", margin, yPosition, 60, 40); // Dimensional Drawing image placement
+      yPosition += 50;
+    }
+
+    // Illuminance Level Image
+    if (illuminanceLevel) {
+      const imgURL = URL.createObjectURL(illuminanceLevel);
+      doc.addImage(imgURL, "JPEG", margin + 70, yPosition, 60, 40); // Illuminance Level image placement
+      yPosition += 50;
+    }
+
+    // Footer Section
+    doc.addImage(footerImage, "PNG", margin, 250, 180, 40);
+
+    // Save the PDF
+    doc.save(`${productName}-${itemCode}-TDS.pdf`);
+  };
+
   if (!open) return null;
 
   return (
-    <div
-      className="
-        flex flex-col bg-white
-        md:h-full md:relative
-        fixed inset-0 z-50
-        md:inset-auto md:z-auto
-      "
-    >
+    <div className="flex flex-col bg-white md:h-full md:relative fixed inset-0 z-50 md:inset-auto md:z-auto">
       <div className="border-b px-6 py-4 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Generate TDS</h2>
-
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
@@ -68,7 +112,6 @@ export default function GenerateTDS({
       <div className="p-6 flex-1 overflow-auto space-y-6 bg-gray-100">
         <div className="space-y-2">
           <p className="text-sm font-semibold">Product Name</p>
-
           <input
             type="text"
             value={productName}
@@ -80,7 +123,6 @@ export default function GenerateTDS({
 
         <div className="space-y-2">
           <p className="text-sm font-semibold">Item Code</p>
-
           <input
             type="text"
             value={itemCode}
@@ -92,7 +134,6 @@ export default function GenerateTDS({
 
         <div className="space-y-3">
           <p className="text-sm font-semibold">Select Brand</p>
-
           <label className="flex items-center gap-2">
             <input
               type="radio"
@@ -102,7 +143,6 @@ export default function GenerateTDS({
             />
             Lit
           </label>
-
           <label className="flex items-center gap-2">
             <input
               type="radio"
@@ -112,7 +152,6 @@ export default function GenerateTDS({
             />
             Lumera
           </label>
-
           <label className="flex items-center gap-2">
             <input
               type="radio"
@@ -167,8 +206,8 @@ export default function GenerateTDS({
       </div>
 
       <div className="border-t px-6 py-4 flex justify-end gap-2">
-        <Button className="bg-green-600 hover:bg-green-700 text-white">
-          Generate
+        <Button onClick={downloadPDF} className="bg-green-600 hover:bg-green-700 text-white">
+          Download PDF
         </Button>
 
         <Button variant="secondary" onClick={onClose}>

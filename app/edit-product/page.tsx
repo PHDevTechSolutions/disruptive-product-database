@@ -1518,9 +1518,7 @@ export default function EditProductPage() {
                                 index,
                                 rIndex,
                                 "specId",
-                                e.target.value.replace(/\b\w/g, (char) =>
-                                  char.toUpperCase(),
-                                ),
+                                e.target.value,
                               )
                             }
                           />
