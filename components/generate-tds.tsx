@@ -1,6 +1,9 @@
-import { useState } from "react";
+"use client";
+
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import GenerateTDSBrand from "@/components/generate-tds-brand";
 
 type TechnicalSpecification = {
@@ -28,75 +31,136 @@ export default function GenerateTDS({
   const [itemCode, setItemCode] = useState("");
   const [productName, setProductName] = useState("");
 
-  // State for Dimensional Drawing and Illuminance Level images
-  const [dimensionalDrawing, setDimensionalDrawing] = useState<File | null>(null);
-  const [illuminanceLevel, setIlluminanceLevel] = useState<File | null>(null);
+  const [dimensionalDrawing, setDimensionalDrawing] =
+    useState<File | null>(null);
+  const [illuminanceLevel, setIlluminanceLevel] =
+    useState<File | null>(null);
 
-  const handleDimensionalDrawingChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  const handleDimensionalDrawingChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     if (event.target.files) {
       setDimensionalDrawing(event.target.files[0]);
     }
   };
 
-  const handleIlluminanceLevelChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleIlluminanceLevelChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     if (event.target.files) {
       setIlluminanceLevel(event.target.files[0]);
     }
   };
 
-  // Function to download the PDF
-  const downloadPDF = () => {
-    const doc = new jsPDF();
+const downloadPDF = async () => {
+  const pdf = new jsPDF("p", "pt", "a4");
 
-    const headerImage = selectedBrand === "Lit" ? "/lit-header.png" : "/lumera-header.png";
-    const footerImage = selectedBrand === "Lit" ? "/lit-footer.png" : "/lumera-footer.png";
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
 
-    // Set margins
-    const margin = 10;
+  const margin = 40;
+  let y = 60;
 
-    // Header Section
-    doc.addImage(headerImage, "PNG", margin, margin, 180, 40);
+  // HEADER IMAGE
+  if (selectedBrand === "Lit") {
+    pdf.addImage("/lit-header.png", "PNG", 0, 0, pageWidth, 100);
+  }
 
-    // Product Info Section
-    doc.setFontSize(14);
-    doc.text(`Product Name: ${productName}`, margin, 60);
-    doc.text(`Item Code: ${itemCode}`, margin, 70);
+  if (selectedBrand === "Lumera") {
+    pdf.addImage("/lumera-header.png", "PNG", 0, 0, pageWidth, 100);
+  }
 
-    // Technical Specifications
-    let yPosition = 80;
-    if (technicalSpecifications) {
-      technicalSpecifications.forEach((specGroup) => {
-        doc.setFontSize(12);
-        doc.text(specGroup.title, margin, yPosition); // Title of technical specifications
-        yPosition += 10;
+  if (selectedBrand === "Ecoshift") {
+    pdf.addImage("/ecoshift-header.png", "PNG", 0, 0, pageWidth, 100);
+  }
 
-        specGroup.specs.forEach((spec) => {
-          doc.text(`${spec.specId}: ${spec.value}`, margin + 10, yPosition); // Technical specification details
-          yPosition += 10;
-        });
+  y = 120;
+
+  // PRODUCT IMAGE
+  if (mainImage?.url) {
+    const img = await fetch(mainImage.url)
+      .then((res) => res.blob())
+      .then(
+        (blob) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          })
+      );
+
+    pdf.addImage(img, "PNG", margin, y, 150, 150);
+  }
+
+  // PRODUCT INFO
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(18);
+  pdf.text(productName || "Product Name", 220, y + 30);
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(12);
+  pdf.text(`Brand: ${selectedBrand}`, 220, y + 60);
+  pdf.text(`Item Code: ${itemCode}`, 220, y + 80);
+
+  y += 200;
+
+  // TECHNICAL SPECIFICATIONS
+  if (technicalSpecifications) {
+    technicalSpecifications.forEach((group) => {
+      pdf.setFont("helvetica", "bold");
+      pdf.text(group.title, margin, y);
+      y += 20;
+
+      pdf.setFont("helvetica", "normal");
+
+      group.specs.forEach((spec) => {
+        pdf.text(`${spec.specId}: ${spec.value}`, margin + 20, y);
+        y += 18;
       });
-    }
 
-    // Dimensional Drawing Image
-    if (dimensionalDrawing) {
-      const imgURL = URL.createObjectURL(dimensionalDrawing);
-      doc.addImage(imgURL, "JPEG", margin, yPosition, 60, 40); // Dimensional Drawing image placement
-      yPosition += 50;
-    }
+      y += 10;
+    });
+  }
 
-    // Illuminance Level Image
-    if (illuminanceLevel) {
-      const imgURL = URL.createObjectURL(illuminanceLevel);
-      doc.addImage(imgURL, "JPEG", margin + 70, yPosition, 60, 40); // Illuminance Level image placement
-      yPosition += 50;
-    }
+  // DIMENSIONAL DRAWING
+  if (dimensionalDrawing) {
+    const img = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(dimensionalDrawing);
+    });
 
-    // Footer Section
-    doc.addImage(footerImage, "PNG", margin, 250, 180, 40);
+    pdf.addImage(img, "PNG", margin, pageHeight - 250, 200, 120);
+  }
 
-    // Save the PDF
-    doc.save(`${productName}-${itemCode}-TDS.pdf`);
-  };
+  // ILLUMINANCE LEVEL
+  if (illuminanceLevel) {
+    const img = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(illuminanceLevel);
+    });
+
+    pdf.addImage(img, "PNG", pageWidth - 240, pageHeight - 250, 200, 120);
+  }
+
+  // FOOTER IMAGE
+  if (selectedBrand === "Lit") {
+    pdf.addImage("/lit-footer.png", "PNG", 0, pageHeight - 80, pageWidth, 80);
+  }
+
+  if (selectedBrand === "Lumera") {
+    pdf.addImage("/lumera-footer.png", "PNG", 0, pageHeight - 80, pageWidth, 80);
+  }
+
+  if (selectedBrand === "Ecoshift") {
+    pdf.addImage("/ecoshift-footer.png", "PNG", 0, pageHeight - 80, pageWidth, 80);
+  }
+
+  pdf.save(`${productName || "Product"}-${itemCode || "Item"}-TDS.pdf`);
+};
 
   if (!open) return null;
 
@@ -110,6 +174,7 @@ export default function GenerateTDS({
       </div>
 
       <div className="p-6 flex-1 overflow-auto space-y-6 bg-gray-100">
+        {/* PRODUCT NAME */}
         <div className="space-y-2">
           <p className="text-sm font-semibold">Product Name</p>
           <input
@@ -121,6 +186,7 @@ export default function GenerateTDS({
           />
         </div>
 
+        {/* ITEM CODE */}
         <div className="space-y-2">
           <p className="text-sm font-semibold">Item Code</p>
           <input
@@ -132,37 +198,24 @@ export default function GenerateTDS({
           />
         </div>
 
+        {/* BRAND SELECT */}
         <div className="space-y-3">
           <p className="text-sm font-semibold">Select Brand</p>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              value="Lit"
-              checked={selectedBrand === "Lit"}
-              onChange={(e) => setSelectedBrand(e.target.value)}
-            />
-            Lit
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              value="Lumera"
-              checked={selectedBrand === "Lumera"}
-              onChange={(e) => setSelectedBrand(e.target.value)}
-            />
-            Lumera
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              value="Ecoshift"
-              checked={selectedBrand === "Ecoshift"}
-              onChange={(e) => setSelectedBrand(e.target.value)}
-            />
-            Ecoshift
-          </label>
+
+          {["Lit", "Lumera", "Ecoshift"].map((brand) => (
+            <label key={brand} className="flex items-center gap-2">
+              <input
+                type="radio"
+                value={brand}
+                checked={selectedBrand === brand}
+                onChange={(e) => setSelectedBrand(e.target.value)}
+              />
+              {brand}
+            </label>
+          ))}
         </div>
 
+        {/* DIMENSIONAL DRAWING */}
         <div className="space-y-2">
           <p className="text-sm font-semibold">Dimensional Drawing</p>
           <input
@@ -173,6 +226,7 @@ export default function GenerateTDS({
           />
         </div>
 
+        {/* ILLUMINANCE LEVEL */}
         <div className="space-y-2">
           <p className="text-sm font-semibold">Illuminance Level</p>
           <input
@@ -183,6 +237,7 @@ export default function GenerateTDS({
           />
         </div>
 
+        {/* PREVIEW */}
         <div className="flex justify-center">
           {!selectedBrand && (
             <div className="text-muted-foreground text-sm">
@@ -192,6 +247,7 @@ export default function GenerateTDS({
 
           {selectedBrand && (
             <GenerateTDSBrand
+              ref={previewRef}
               open={true}
               company={selectedBrand as "Lit" | "Lumera" | "Ecoshift"}
               productName={productName}
@@ -205,8 +261,12 @@ export default function GenerateTDS({
         </div>
       </div>
 
+      {/* FOOTER BUTTONS */}
       <div className="border-t px-6 py-4 flex justify-end gap-2">
-        <Button onClick={downloadPDF} className="bg-green-600 hover:bg-green-700 text-white">
+        <Button
+          onClick={downloadPDF}
+          className="bg-green-600 hover:bg-green-700 text-white"
+        >
           Download PDF
         </Button>
 
