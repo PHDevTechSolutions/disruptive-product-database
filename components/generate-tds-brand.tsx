@@ -186,7 +186,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                             colSpan={2}
                             className="border border-black px-2 py-1 font-semibold bg-gray-300"
                           >
-                            {group.title} :
+                            {group.title} 
                           </td>
                         </tr>
                         {group.specs.map((spec, s) => (
