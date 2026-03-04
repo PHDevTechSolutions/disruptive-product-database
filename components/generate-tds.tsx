@@ -31,15 +31,15 @@ export default function GenerateTDS({
   const [itemCode, setItemCode] = useState("");
   const [productName, setProductName] = useState("");
 
-  const [dimensionalDrawing, setDimensionalDrawing] =
-    useState<File | null>(null);
-  const [illuminanceLevel, setIlluminanceLevel] =
-    useState<File | null>(null);
+  const [dimensionalDrawing, setDimensionalDrawing] = useState<File | null>(
+    null,
+  );
+  const [illuminanceLevel, setIlluminanceLevel] = useState<File | null>(null);
 
   const previewRef = useRef<HTMLDivElement>(null);
 
   const handleDimensionalDrawingChange = (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (event.target.files) {
       setDimensionalDrawing(event.target.files[0]);
@@ -47,231 +47,263 @@ export default function GenerateTDS({
   };
 
   const handleIlluminanceLevelChange = (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (event.target.files) {
       setIlluminanceLevel(event.target.files[0]);
     }
   };
 
+  const downloadPDF = async () => {
+    const pdf = new jsPDF("p", "pt", "a4");
 
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
 
-const downloadPDF = async () => {
-  const pdf = new jsPDF("p", "pt", "a4");
+    const headerHeight = 100;
+    const footerHeight = 30;
 
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
+    let y = headerHeight + 20;
 
-  const headerHeight = 100;
-  const footerHeight = 30;
+    /* ================= HEADER ================= */
+    if (selectedBrand === "Lit") {
+      pdf.addImage("/lit-header.png", "PNG", 0, 0, pageWidth, headerHeight);
+    }
 
-  let y = headerHeight + 20;
+    /* ================= PRODUCT IMAGE ================= */
 
-  /* ================= HEADER ================= */
-  if (selectedBrand === "Lit") {
-    pdf.addImage("/lit-header.png", "PNG", 0, 0, pageWidth, headerHeight);
-  }
+    const boxWidth = 150;
+    const boxHeight = 120;
+    const imageX = pageWidth / 2 - boxWidth - 60;
+    const imageY = y;
 
-/* ================= PRODUCT IMAGE ================= */
+    /* ===== DRAW BORDER BOX (LIKE PREVIEW) ===== */
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(1.5);
+    pdf.rect(imageX, imageY, boxWidth, boxHeight);
 
-const boxWidth = 150;
-const boxHeight = 120;
-const imageX = pageWidth / 2 - boxWidth - 60;
-const imageY = y;
+    /* ===== INSERT IMAGE INSIDE BOX ===== */
+    if (mainImage?.url) {
+      const imgData = await fetch(mainImage.url)
+        .then((r) => r.blob())
+        .then(
+          (blob) =>
+            new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            }),
+        );
 
-/* ===== DRAW BORDER BOX (LIKE PREVIEW) ===== */
-pdf.setDrawColor(0, 0, 0);
-pdf.setLineWidth(1.5);
-pdf.rect(imageX, imageY, boxWidth, boxHeight);
+      const img = new Image();
+      img.src = imgData;
 
-/* ===== INSERT IMAGE INSIDE BOX ===== */
-if (mainImage?.url) {
-  const imgData = await fetch(mainImage.url)
-    .then(r => r.blob())
-    .then(
-      blob =>
-        new Promise<string>(resolve => {
-          const reader = new FileReader();
-          reader.onloadend = () =>
-            resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-        })
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+
+      const imgWidth = img.width;
+      const imgHeight = img.height;
+
+      const padding = 10; // space inside box
+
+      const ratio = Math.min(
+        (boxWidth - padding * 2) / imgWidth,
+        (boxHeight - padding * 2) / imgHeight,
+      );
+
+      const finalWidth = imgWidth * ratio;
+      const finalHeight = imgHeight * ratio;
+
+      const centeredX = imageX + (boxWidth - finalWidth) / 2;
+      const centeredY = imageY + (boxHeight - finalHeight) / 2;
+
+      pdf.addImage(
+        imgData,
+        "PNG",
+        centeredX,
+        centeredY,
+        finalWidth,
+        finalHeight,
+      );
+    }
+
+    /* ================= TITLE ================= */
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+
+    /* ================= TITLE ================= */
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+
+    const gap = 60;
+    const textColumnX = imageX + boxWidth + gap;
+    const textColumnWidth = boxWidth + 40; // adjust width of right side
+
+    pdf.text(
+      productName || "Product Name",
+      textColumnX + textColumnWidth / 2,
+      imageY + boxHeight / 2,
+      { align: "center", baseline: "middle" },
     );
 
-  const img = new Image();
-  img.src = imgData;
+    y += 150;
 
-  await new Promise(resolve => {
-    img.onload = resolve;
-  });
+    /* ================= BUILD TABLE ================= */
 
-  const imgWidth = img.width;
-  const imgHeight = img.height;
+    const tableRows: any[] = [];
 
-  const padding = 10; // space inside box
-
-  const ratio = Math.min(
-    (boxWidth - padding * 2) / imgWidth,
-    (boxHeight - padding * 2) / imgHeight
-  );
-
-  const finalWidth = imgWidth * ratio;
-  const finalHeight = imgHeight * ratio;
-
-  const centeredX = imageX + (boxWidth - finalWidth) / 2;
-  const centeredY = imageY + (boxHeight - finalHeight) / 2;
-
-  pdf.addImage(
-    imgData,
-    "PNG",
-    centeredX,
-    centeredY,
-    finalWidth,
-    finalHeight
-  );
-}
-
-  /* ================= TITLE ================= */
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(14);
-pdf.setFont("helvetica", "bold");
-pdf.setFontSize(14);
-
-/* ================= TITLE ================= */
-pdf.setFont("helvetica", "bold");
-pdf.setFontSize(14);
-
-const gap = 60;
-const textColumnX = imageX + boxWidth + gap;
-const textColumnWidth = boxWidth + 40; // adjust width of right side
-
-pdf.text(
-  productName || "Product Name",
-  textColumnX + textColumnWidth / 2,
-  imageY + boxHeight / 2,
-  { align: "center", baseline: "middle" }
-);
-
-
-  y += 130;
-
-  /* ================= BUILD TABLE ================= */
-
-  const tableRows: any[] = [];
-
-  tableRows.push(["Brand :", selectedBrand]);
-  tableRows.push(["Item Code :", itemCode]);
-
-  technicalSpecifications?.forEach(group => {
     tableRows.push([
+      "Brand :",
       {
-        content: group.title + " :",
-        colSpan: 2,
-        styles: {
-          fillColor: [210, 215, 220],
-          fontStyle: "bold",
-        },
+        content: selectedBrand.toUpperCase(),
+        styles: { fontStyle: "bold" },
       },
     ]);
+    tableRows.push(["Item Code :", itemCode]);
 
-    group.specs.forEach(spec => {
-      tableRows.push([spec.specId + " :", spec.value || ""]);
+    technicalSpecifications?.forEach((group) => {
+      tableRows.push([
+        {
+          content: group.title,
+          colSpan: 2,
+          styles: {
+            fillColor: [210, 215, 220],
+            fontStyle: "bold",
+          },
+        },
+      ]);
+
+      group.specs.forEach((spec) => {
+        tableRows.push([spec.specId + " :", spec.value || ""]);
+      });
     });
-  });
 
-  /* ================= AUTO SCALE ================= */
+    /* ================= AUTO SCALE ================= */
 
-  const maxTableHeight =
-    pageHeight - footerHeight - y - 130;
+    const maxTableHeight = pageHeight - footerHeight - y - 130;
 
-  let fontSize = 9;
+    let fontSize = 9;
 
-  while (fontSize > 6) {
-    const testPdf = new jsPDF("p", "pt", "a4");
+    while (fontSize > 6) {
+      const testPdf = new jsPDF("p", "pt", "a4");
 
-    autoTable(testPdf, {
+      autoTable(testPdf, {
+        startY: y,
+        theme: "grid",
+        styles: { fontSize },
+        body: tableRows,
+        margin: { left: 0 },
+        tableWidth: 450,
+      });
+
+      const finalY = (testPdf as any).lastAutoTable.finalY;
+
+      if (finalY - y <= maxTableHeight) break;
+
+      fontSize -= 0.5;
+    }
+
+    /* ================= CENTER TABLE ================= */
+
+    const tableWidth = 450;
+    const tableX = (pageWidth - tableWidth) / 2;
+
+    autoTable(pdf, {
       startY: y,
       theme: "grid",
-      styles: { fontSize },
+      pageBreak: "avoid",
+      tableWidth: tableWidth,
+      margin: { left: tableX },
+      styles: {
+        fontSize,
+        cellPadding: 3,
+      },
       body: tableRows,
-      margin: { left: 0 },
-      tableWidth: 450,
+      columnStyles: {
+        0: { cellWidth: 230 },
+        1: { cellWidth: 220 },
+      },
     });
 
-    const finalY = (testPdf as any).lastAutoTable.finalY;
+    /* ================= DRAWINGS (INANGAT) ================= */
 
-    if (finalY - y <= maxTableHeight) break;
+    /* ================= DRAWINGS (AFTER TABLE - CENTERED) ================= */
 
-    fontSize -= 0.5;
-  }
+    // Get end of table
+    const tableEndY = (pdf as any).lastAutoTable.finalY;
 
-  /* ================= CENTER TABLE ================= */
+    // Space after table (konting gap lang)
+    const drawingY = tableEndY + 50;
 
-  const tableWidth = 450;
-  const tableX = (pageWidth - tableWidth) / 2;
+    // Total drawing container width
+    const drawingWidth = 120;
+    const gapBetween = 80;
+    const totalWidth = drawingWidth * 2 + gapBetween;
 
-  autoTable(pdf, {
-    startY: y,
-    theme: "grid",
-    pageBreak: "avoid",
-    tableWidth: tableWidth,
-    margin: { left: tableX },
-    styles: {
-      fontSize,
-      cellPadding: 3,
-    },
-    body: tableRows,
-    columnStyles: {
-      0: { cellWidth: 230 },
-      1: { cellWidth: 220 },
-    },
-  });
+    // Center whole drawing group
+    const startX = (pageWidth - totalWidth) / 2;
 
-  /* ================= DRAWINGS (INANGAT) ================= */
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "bold");
 
-  const drawingY = pageHeight - footerHeight - 140; // 🔥 inangat
-
-  pdf.setFontSize(8);
-  pdf.text("Dimensional Drawing", tableX, drawingY - 12);
-  pdf.text("Illuminance Level", tableX + 240, drawingY - 12);
-
-  if (dimensionalDrawing) {
-    const img = await new Promise<string>(resolve => {
-      const reader = new FileReader();
-      reader.onloadend = () =>
-        resolve(reader.result as string);
-      reader.readAsDataURL(dimensionalDrawing);
+    // Centered labels
+    pdf.text("Dimensional Drawing", startX + drawingWidth / 2, drawingY - 10, {
+      align: "center",
     });
 
-    pdf.addImage(img, "PNG", tableX, drawingY, 120, 80);
-  }
-
-  if (illuminanceLevel) {
-    const img2 = await new Promise<string>(resolve => {
-      const reader = new FileReader();
-      reader.onloadend = () =>
-        resolve(reader.result as string);
-      reader.readAsDataURL(illuminanceLevel);
-    });
-
-    pdf.addImage(img2, "PNG", tableX + 240, drawingY, 120, 80);
-  }
-
-  /* ================= FOOTER ================= */
-
-  if (selectedBrand === "Lit") {
-    pdf.addImage(
-      "/lit-footer.png",
-      "PNG",
-      0,
-      pageHeight - footerHeight,
-      pageWidth,
-      footerHeight
+    pdf.text(
+      "Illuminance Level",
+      startX + drawingWidth + gapBetween + drawingWidth / 2,
+      drawingY - 10,
+      { align: "center" },
     );
-  }
 
-  pdf.save(`${productName || "Product"}-${itemCode || "Item"}-TDS.pdf`);
-};
+    // Draw images centered under labels
+    if (dimensionalDrawing) {
+      const img = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(dimensionalDrawing);
+      });
+
+      pdf.addImage(img, "PNG", startX, drawingY, drawingWidth, 80);
+    }
+
+    if (illuminanceLevel) {
+      const img2 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(illuminanceLevel);
+      });
+
+      pdf.addImage(
+        img2,
+        "PNG",
+        startX + drawingWidth + gapBetween,
+        drawingY,
+        drawingWidth,
+        80,
+      );
+    }
+
+    /* ================= FOOTER ================= */
+
+    if (selectedBrand === "Lit") {
+      pdf.addImage(
+        "/lit-footer.png",
+        "PNG",
+        0,
+        pageHeight - footerHeight,
+        pageWidth,
+        footerHeight,
+      );
+    }
+
+    pdf.save(`${productName || "Product"}-${itemCode || "Item"}-TDS.pdf`);
+  };
 
   if (!open) return null;
 
@@ -285,32 +317,8 @@ pdf.text(
       </div>
 
       <div className="p-6 flex-1 overflow-auto space-y-6 bg-gray-100">
-        {/* PRODUCT NAME */}
-        <div className="space-y-2">
-          <p className="text-sm font-semibold">Product Name</p>
-          <input
-            type="text"
-            value={productName}
-            onChange={(e) => setProductName(e.target.value)}
-            placeholder="Enter product name..."
-            className="w-full border rounded-md h-10 px-3 text-sm bg-white"
-          />
-        </div>
-
-        {/* ITEM CODE */}
-        <div className="space-y-2">
-          <p className="text-sm font-semibold">Item Code</p>
-          <input
-            type="text"
-            value={itemCode}
-            onChange={(e) => setItemCode(e.target.value)}
-            placeholder="Enter item code..."
-            className="w-full border rounded-md h-10 px-3 text-sm bg-white"
-          />
-        </div>
-
-        {/* BRAND SELECT */}
-        <div className="space-y-3">
+        {/* ================= BRAND SELECT (ALWAYS VISIBLE) ================= */}
+        <div className="space-y-3 bg-white p-4 rounded-md shadow-sm">
           <p className="text-sm font-semibold">Select Brand</p>
 
           {["Lit", "Lumera", "Ecoshift"].map((brand) => (
@@ -326,57 +334,85 @@ pdf.text(
           ))}
         </div>
 
-        {/* DIMENSIONAL DRAWING */}
-        <div className="space-y-2">
-          <p className="text-sm font-semibold">Dimensional Drawing</p>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleDimensionalDrawingChange}
-            className="w-full border rounded-md h-10 px-3 text-sm bg-white"
-          />
-        </div>
+        {/* ================= HIDE EVERYTHING UNTIL BRAND SELECTED ================= */}
+        {!selectedBrand && (
+          <div className="text-center text-sm text-muted-foreground py-10">
+            Please select a brand first to continue.
+          </div>
+        )}
 
-        {/* ILLUMINANCE LEVEL */}
-        <div className="space-y-2">
-          <p className="text-sm font-semibold">Illuminance Level</p>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleIlluminanceLevelChange}
-            className="w-full border rounded-md h-10 px-3 text-sm bg-white"
-          />
-        </div>
-
-        {/* PREVIEW */}
-        <div className="flex justify-center">
-          {!selectedBrand && (
-            <div className="text-muted-foreground text-sm">
-              Select brand to preview TDS
+        {selectedBrand && (
+          <>
+            {/* PRODUCT NAME */}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Product Name</p>
+              <input
+                type="text"
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="Enter product name..."
+                className="w-full border rounded-md h-10 px-3 text-sm bg-white"
+              />
             </div>
-          )}
 
-          {selectedBrand && (
-            <GenerateTDSBrand
-              ref={previewRef}
-              open={true}
-              company={selectedBrand as "Lit" | "Lumera" | "Ecoshift"}
-              productName={productName}
-              itemCode={itemCode}
-              mainImage={mainImage}
-              technicalSpecifications={technicalSpecifications}
-              dimensionalDrawing={dimensionalDrawing}
-              illuminanceLevel={illuminanceLevel}
-            />
-          )}
-        </div>
+            {/* ITEM CODE */}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Item Code</p>
+              <input
+                type="text"
+                value={itemCode}
+                onChange={(e) => setItemCode(e.target.value)}
+                placeholder="Enter item code..."
+                className="w-full border rounded-md h-10 px-3 text-sm bg-white"
+              />
+            </div>
+
+            {/* DIMENSIONAL DRAWING */}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Dimensional Drawing</p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleDimensionalDrawingChange}
+                className="w-full border rounded-md h-10 px-3 text-sm bg-white"
+              />
+            </div>
+
+            {/* ILLUMINANCE LEVEL */}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Illuminance Level</p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleIlluminanceLevelChange}
+                className="w-full border rounded-md h-10 px-3 text-sm bg-white"
+              />
+            </div>
+
+            {/* PREVIEW */}
+            <div className="flex justify-center">
+              <GenerateTDSBrand
+                ref={previewRef}
+                open={true}
+                company={selectedBrand as "Lit" | "Lumera" | "Ecoshift"}
+                productName={productName}
+                itemCode={itemCode}
+                mainImage={mainImage}
+                technicalSpecifications={technicalSpecifications}
+                dimensionalDrawing={dimensionalDrawing}
+                illuminanceLevel={illuminanceLevel}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {/* FOOTER BUTTONS */}
       <div className="border-t px-6 py-4 flex justify-end gap-2">
         <Button
           onClick={downloadPDF}
-          className="bg-green-600 hover:bg-green-700 text-white"
+          disabled={!selectedBrand}
+          className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
         >
           Download PDF
         </Button>
