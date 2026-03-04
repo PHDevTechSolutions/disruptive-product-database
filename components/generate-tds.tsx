@@ -203,11 +203,20 @@ export default function GenerateTDS({
 
     /* ================= AUTO SCALE ================= */
 
-    const maxTableHeight = pageHeight - footerHeight - y - 130;
+const DRAWING_BLOCK_HEIGHT = 140; // drawings + labels
+const FOOTER_REAL_HEIGHT = 80; // visual footer
+const SAFE_MARGIN = 20; // space before footer
+
+const maxTableHeight =
+  pageHeight -
+  FOOTER_REAL_HEIGHT -
+  DRAWING_BLOCK_HEIGHT -
+  SAFE_MARGIN -
+  y;
 
     let fontSize = 9;
 
-    while (fontSize > 6) {
+    while (fontSize > 5) {
       const testPdf = new jsPDF("p", "pt", "a4");
 
       autoTable(testPdf, {
@@ -237,10 +246,11 @@ export default function GenerateTDS({
       pageBreak: "avoid",
       tableWidth: tableWidth,
       margin: { left: tableX },
-      styles: {
-        fontSize,
-        cellPadding: 3,
-      },
+styles: {
+  fontSize,
+  cellPadding: 2,
+  overflow: "linebreak",
+},
       body: tableRows,
       columnStyles: {
         0: { cellWidth: 230 },
@@ -256,7 +266,7 @@ export default function GenerateTDS({
     const tableEndY = (pdf as any).lastAutoTable.finalY;
 
     // Space after table (konting gap lang)
-    const drawingY = tableEndY + 50;
+    const drawingY = tableEndY + 35;
 
     // Total drawing container width
     const drawingWidth = 120;
