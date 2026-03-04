@@ -74,10 +74,17 @@ const downloadPDF = async () => {
 
 /* ================= PRODUCT IMAGE ================= */
 
-const maxWidth = 120;
-const maxHeight = 120;
-const imageX = pageWidth / 2 - maxWidth - 60;
+const boxWidth = 150;
+const boxHeight = 120;
+const imageX = pageWidth / 2 - boxWidth - 60;
+const imageY = y;
 
+/* ===== DRAW BORDER BOX (LIKE PREVIEW) ===== */
+pdf.setDrawColor(0, 0, 0);
+pdf.setLineWidth(1.5);
+pdf.rect(imageX, imageY, boxWidth, boxHeight);
+
+/* ===== INSERT IMAGE INSIDE BOX ===== */
 if (mainImage?.url) {
   const imgData = await fetch(mainImage.url)
     .then(r => r.blob())
@@ -101,20 +108,23 @@ if (mainImage?.url) {
   const imgWidth = img.width;
   const imgHeight = img.height;
 
+  const padding = 10; // space inside box
+
   const ratio = Math.min(
-    maxWidth / imgWidth,
-    maxHeight / imgHeight
+    (boxWidth - padding * 2) / imgWidth,
+    (boxHeight - padding * 2) / imgHeight
   );
 
   const finalWidth = imgWidth * ratio;
   const finalHeight = imgHeight * ratio;
 
-  const centeredY = y + (maxHeight - finalHeight) / 2;
+  const centeredX = imageX + (boxWidth - finalWidth) / 2;
+  const centeredY = imageY + (boxHeight - finalHeight) / 2;
 
   pdf.addImage(
     imgData,
     "PNG",
-    imageX,
+    centeredX,
     centeredY,
     finalWidth,
     finalHeight
@@ -124,16 +134,24 @@ if (mainImage?.url) {
   /* ================= TITLE ================= */
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(14);
-  pdf.text(productName || "Product Name", pageWidth / 2 + 40, y + 35, {
-    align: "center",
-  });
+pdf.setFont("helvetica", "bold");
+pdf.setFontSize(14);
 
-  pdf.line(
-    pageWidth / 2 - 10,
-    y + 50,
-    pageWidth / 2 + 90,
-    y + 50
-  );
+/* ================= TITLE ================= */
+pdf.setFont("helvetica", "bold");
+pdf.setFontSize(14);
+
+const gap = 60;
+const textColumnX = imageX + boxWidth + gap;
+const textColumnWidth = boxWidth + 40; // adjust width of right side
+
+pdf.text(
+  productName || "Product Name",
+  textColumnX + textColumnWidth / 2,
+  imageY + boxHeight / 2,
+  { align: "center", baseline: "middle" }
+);
+
 
   y += 130;
 
