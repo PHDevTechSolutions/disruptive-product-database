@@ -422,34 +422,33 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   return (
     <div className="border rounded-lg bg-card">
+      <div className="sticky top-0 z-10 bg-card p-4 border-b">
+        <div className="flex justify-between items-center">
+          <h2 className="font-semibold">Filters</h2>
 
-<div className="sticky top-0 z-10 bg-card p-4 border-b">
-  <div className="flex justify-between items-center">
-    <h2 className="font-semibold">Filters</h2>
+          <div className="flex items-center gap-3">
+            <button
+              className="border px-2 py-1 rounded text-xs bg-neutral-100 hover:bg-neutral-200 transition-colors"
+              onClick={() => {
+                setFilters({});
+                setSearchFilters({});
+                setVisibleSteps(["Product Usage"]);
+              }}
+            >
+              Clear Filters
+            </button>
 
-    <div className="flex items-center gap-3">
-      <button
-        className="border px-2 py-1 rounded text-xs bg-neutral-100 hover:bg-neutral-200 transition-colors"
-        onClick={() => {
-          setFilters({});
-          setSearchFilters({});
-          setVisibleSteps(["Product Usage"]);
-        }}
-      >
-        Clear Filters
-      </button>
-
-      {getPreviousStep() && (
-        <button
-          className="text-xs text-blue-600 underline whitespace-nowrap"
-          onClick={() => handleBack(getPreviousStep()!)}
-        >
-          ← Back
-        </button>
-      )}
-    </div>
-  </div>
-</div>
+            {getPreviousStep() && (
+              <button
+                className="text-xs text-blue-600 underline whitespace-nowrap"
+                onClick={() => handleBack(getPreviousStep()!)}
+              >
+                ← Back
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
       {/* ================= HORIZONTAL STEP CONTAINER ================= */}
 
       <div className="p-4 space-y-6">

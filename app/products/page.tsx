@@ -34,7 +34,7 @@ export default function ProductsPage() {
   });
 
   // ✅ FIXED ITEMS PER PAGE (Stable)
-  const ITEMS_PER_PAGE = 12;
+  const [itemsPerPage, setItemsPerPage] = useState(12);
 
   useEffect(() => {
     const saved = localStorage.getItem("productCardScale");
@@ -52,6 +52,27 @@ export default function ProductsPage() {
   const decreaseCardSize = () => {
     setCardScale((prev) => Math.max(prev - 0.1, 0.6));
   };
+
+  useEffect(() => {
+  const calculateItems = () => {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    const cardWidth = 220 * cardScale;
+    const cardHeight = 280;
+
+    const cols = Math.max(1, Math.floor(width / cardWidth));
+    const rows = Math.max(1, Math.floor((height - 320) / cardHeight));
+
+    setItemsPerPage(cols * rows);
+  };
+
+  calculateItems();
+
+  window.addEventListener("resize", calculateItems);
+
+  return () => window.removeEventListener("resize", calculateItems);
+}, [cardScale]);
 
   useEffect(() => {
     if (!userId) {
@@ -96,13 +117,13 @@ export default function ProductsPage() {
   // ✅ STABLE TOTAL PAGES
   const totalPages = Math.max(
     1,
-    Math.ceil(searchedProducts.length / ITEMS_PER_PAGE)
+    Math.ceil(searchedProducts.length / itemsPerPage)
   );
 
   // ✅ STABLE PAGINATION SLICE
   const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
+const startIndex = (currentPage - 1) * itemsPerPage;
+const endIndex = startIndex + itemsPerPage;
     return searchedProducts.slice(startIndex, endIndex);
   }, [searchedProducts, currentPage]);
 
