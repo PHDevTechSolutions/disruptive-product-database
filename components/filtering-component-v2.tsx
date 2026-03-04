@@ -10,8 +10,6 @@ import {
 } from "@/components/ui/command";
 import { Check } from "lucide-react";
 
-
-
 type Props = {
   products: any[];
   onFilter: (filtered: any[]) => void;
@@ -33,6 +31,17 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   ];
 
   const [visibleSteps, setVisibleSteps] = useState<string[]>(["Product Usage"]);
+
+  const getPreviousStep = () => {
+    if (visibleSteps.length <= 1) return null;
+
+    const lastVisible = visibleSteps[visibleSteps.length - 1];
+    const lastIndex = stepOrder.indexOf(lastVisible);
+
+    if (lastIndex <= 0) return null;
+
+    return lastVisible;
+  };
 
   /* ================= STEP ANCHOR REFS ================= */
   /* CTRL+F: STEP ANCHOR REFS */
@@ -355,22 +364,22 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       const currentIndex = stepOrder.indexOf(title);
 
       // ONLY handle forward visibility when selecting
-if (!alreadySelected) {
-  if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
-    const nextStep = stepOrder[currentIndex + 1];
+      if (!alreadySelected) {
+        if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
+          const nextStep = stepOrder[currentIndex + 1];
 
-    setVisibleSteps((prevSteps) => {
-      // ensure visible
-      if (!prevSteps.includes(nextStep)) {
-        return [...prevSteps, nextStep];
+          setVisibleSteps((prevSteps) => {
+            // ensure visible
+            if (!prevSteps.includes(nextStep)) {
+              return [...prevSteps, nextStep];
+            }
+            return prevSteps;
+          });
+
+          // 🔥 ALWAYS SCROLL
+          scrollToStep(nextStep);
+        }
       }
-      return prevSteps;
-    });
-
-    // 🔥 ALWAYS SCROLL
-    scrollToStep(nextStep);
-  }
-}
 
       // ❌ NO AUTO CLEAR HERE ANYMORE
       // ❌ NO AUTO HIDING
@@ -413,19 +422,33 @@ if (!alreadySelected) {
 
   return (
     <div className="border rounded-lg bg-card">
-<div className="sticky top-0 z-10 bg-card p-4 border-b space-y-3">
-  <h2 className="font-semibold">Filters</h2>
 
-<button
-  className="border px-2 py-1 rounded text-xs bg-neutral-100 hover:bg-neutral-200 transition-colors"
-  onClick={() => {
-    setFilters({});
-    setSearchFilters({});
-    setVisibleSteps(["Product Usage"]);
-  }}
->
-  Clear Filters
-</button>
+<div className="sticky top-0 z-10 bg-card p-4 border-b">
+  <div className="flex justify-between items-center">
+    <h2 className="font-semibold">Filters</h2>
+
+    <div className="flex items-center gap-3">
+      <button
+        className="border px-2 py-1 rounded text-xs bg-neutral-100 hover:bg-neutral-200 transition-colors"
+        onClick={() => {
+          setFilters({});
+          setSearchFilters({});
+          setVisibleSteps(["Product Usage"]);
+        }}
+      >
+        Clear Filters
+      </button>
+
+      {getPreviousStep() && (
+        <button
+          className="text-xs text-blue-600 underline whitespace-nowrap"
+          onClick={() => handleBack(getPreviousStep()!)}
+        >
+          ← Back
+        </button>
+      )}
+    </div>
+  </div>
 </div>
       {/* ================= HORIZONTAL STEP CONTAINER ================= */}
 
