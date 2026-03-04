@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useUser } from "@/contexts/UserContext";
@@ -34,6 +34,7 @@ export default function ProductsPage() {
   });
 
   // ✅ FIXED ITEMS PER PAGE (Stable)
+  const gridRef = useRef<HTMLDivElement | null>(null);
   const [itemsPerPage, setItemsPerPage] = useState(12);
 
   useEffect(() => {
@@ -45,6 +46,40 @@ export default function ProductsPage() {
     localStorage.setItem("productCardScale", cardScale.toString());
   }, [cardScale]);
 
+  useEffect(() => {
+    const saved = localStorage.getItem("productCardScale");
+    if (saved) setCardScale(parseFloat(saved));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("productCardScale", cardScale.toString());
+  }, [cardScale]);
+
+  // ⭐ ADD THIS HERE
+  useEffect(() => {
+    const updateGridPagination = () => {
+      if (!gridRef.current) return;
+
+      const containerWidth = gridRef.current.offsetWidth;
+
+      const cardMinWidth = 220 * cardScale;
+
+      const columns = Math.max(1, Math.floor(containerWidth / cardMinWidth));
+
+      const rows = 4;
+
+      const calculatedItems = columns * rows;
+
+      setItemsPerPage(calculatedItems);
+    };
+
+    updateGridPagination();
+
+    window.addEventListener("resize", updateGridPagination);
+
+    return () => window.removeEventListener("resize", updateGridPagination);
+  }, [cardScale]);
+
   const increaseCardSize = () => {
     setCardScale((prev) => Math.min(prev + 0.1, 1.6));
   };
@@ -52,27 +87,6 @@ export default function ProductsPage() {
   const decreaseCardSize = () => {
     setCardScale((prev) => Math.max(prev - 0.1, 0.6));
   };
-
-  useEffect(() => {
-  const calculateItems = () => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    const cardWidth = 220 * cardScale;
-    const cardHeight = 280;
-
-    const cols = Math.max(1, Math.floor(width / cardWidth));
-    const rows = Math.max(1, Math.floor((height - 320) / cardHeight));
-
-    setItemsPerPage(cols * rows);
-  };
-
-  calculateItems();
-
-  window.addEventListener("resize", calculateItems);
-
-  return () => window.removeEventListener("resize", calculateItems);
-}, [cardScale]);
 
   useEffect(() => {
     if (!userId) {
@@ -117,15 +131,15 @@ export default function ProductsPage() {
   // ✅ STABLE TOTAL PAGES
   const totalPages = Math.max(
     1,
-    Math.ceil(searchedProducts.length / itemsPerPage)
+    Math.ceil(searchedProducts.length / itemsPerPage),
   );
 
   // ✅ STABLE PAGINATION SLICE
   const paginatedProducts = useMemo(() => {
-const startIndex = (currentPage - 1) * itemsPerPage;
-const endIndex = startIndex + itemsPerPage;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
     return searchedProducts.slice(startIndex, endIndex);
-  }, [searchedProducts, currentPage]);
+  }, [searchedProducts, currentPage, itemsPerPage]);
 
   // ✅ Prevent invalid page
   useEffect(() => {
@@ -164,11 +178,21 @@ const endIndex = startIndex + itemsPerPage;
         />
 
         <div className="flex items-center gap-4">
-          <span onClick={decreaseCardSize} className="cursor-pointer text-xl font-bold">−</span>
+          <span
+            onClick={decreaseCardSize}
+            className="cursor-pointer text-xl font-bold"
+          >
+            −
+          </span>
           <span className="text-xs w-12 text-center">
             {(cardScale * 100).toFixed(0)}%
           </span>
-          <span onClick={increaseCardSize} className="cursor-pointer text-xl font-bold">+</span>
+          <span
+            onClick={increaseCardSize}
+            className="cursor-pointer text-xl font-bold"
+          >
+            +
+          </span>
         </div>
       </div>
 
@@ -181,6 +205,7 @@ const endIndex = startIndex + itemsPerPage;
           ) : (
             <>
               <div
+                ref={gridRef}
                 className="grid gap-4 md:gap-6"
                 style={{
                   gridTemplateColumns: `repeat(auto-fill, minmax(${220 * cardScale}px, 1fr))`,
@@ -230,7 +255,7 @@ const endIndex = startIndex + itemsPerPage;
                         referenceID={userId ?? ""}
                         onDeleted={(id) =>
                           setProducts((prev) =>
-                            prev.filter((prod) => prod.id !== id)
+                            prev.filter((prod) => prod.id !== id),
                           )
                         }
                       />
@@ -244,31 +269,31 @@ const endIndex = startIndex + itemsPerPage;
                 ))}
               </div>
 
-{totalPages > 1 && (
-  <div className="flex justify-center items-center gap-2 mt-8">
-    <Button
-      size="sm"
-      variant="outline"
-      disabled={currentPage === 1}
-      onClick={() => setCurrentPage((p) => p - 1)}
-    >
-      Prev
-    </Button>
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-8">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                  >
+                    Prev
+                  </Button>
 
-    <span className="text-sm px-4">
-      Page {currentPage} of {totalPages}
-    </span>
+                  <span className="text-sm px-4">
+                    Page {currentPage} of {totalPages}
+                  </span>
 
-    <Button
-      size="sm"
-      variant="outline"
-      disabled={currentPage === totalPages}
-      onClick={() => setCurrentPage((p) => p + 1)}
-    >
-      Next
-    </Button>
-  </div>
-)}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>

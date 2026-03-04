@@ -152,13 +152,12 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   /* ================================================= */
 
   const sourceProducts = products.filter((p) => {
-    const check = (key: string, value: any) => {
-      if (filters[key]?.length) {
-        return filters[key].includes(value);
-      }
+const check = (key: string, value: any) => {
+  if (!filters[key]?.length) return true;
 
-      return true;
-    };
+  // multi-select support
+  return filters[key].includes(value);
+};
 
     if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName))
       return false;
@@ -321,7 +320,7 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       if (!check("Product Class", p.productClass)) return false;
       if (!check("Supplier", p.supplier?.company)) return false;
 
-      for (const [k, vals] of Object.entries(filters)) {
+      for (const [k, vals] of Object.entries(filters) as [string, string[]][]) {
         if (!k.includes("||")) continue;
         const [gt, sn] = k.split("||");
         const pv: string[] = [];
@@ -347,10 +346,14 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   /* ================= UI ACTIONS ================= */
 
   /* ================= STEP TOGGLE FILTER ================= */
-  /* ================= STEP TOGGLE FILTER ================= */
   /* CTRL+F: STEP TOGGLE FILTER */
 
   const toggle = (title: string, value: string) => {
+    const isSupplier = title === "Supplier";
+
+    const supplierAnchor = stepRefs.current["Supplier"];
+    const anchorTop = supplierAnchor?.getBoundingClientRect().top;
+
     setFilters((prev) => {
       const alreadySelected = prev[title]?.includes(value);
 
@@ -363,31 +366,37 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
       const currentIndex = stepOrder.indexOf(title);
 
-      // ONLY handle forward visibility when selecting
-      if (!alreadySelected) {
+      if (!alreadySelected && title !== "Supplier") {
         if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
           const nextStep = stepOrder[currentIndex + 1];
 
           setVisibleSteps((prevSteps) => {
-            // ensure visible
             if (!prevSteps.includes(nextStep)) {
               return [...prevSteps, nextStep];
             }
             return prevSteps;
           });
 
-          // 🔥 ALWAYS SCROLL
           scrollToStep(nextStep);
         }
       }
 
-      // ❌ NO AUTO CLEAR HERE ANYMORE
-      // ❌ NO AUTO HIDING
-
       return updated;
     });
-  };
 
+    // 🔥 restore Supplier anchor position
+    if (isSupplier && supplierAnchor) {
+      requestAnimationFrame(() => {
+        const newTop = supplierAnchor.getBoundingClientRect().top;
+        const diff = newTop - (anchorTop ?? 0);
+
+        window.scrollBy({
+          top: diff,
+          behavior: "auto",
+        });
+      });
+    }
+  };
   const handleBack = (title: string) => {
     const currentIndex = stepOrder.indexOf(title);
     if (currentIndex <= 0) return;
@@ -585,11 +594,11 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         {/* ================= TECH SPECS NEW ROW ================= */}
         {/* CTRL+F: TECH SPECS NEW ROW */}
 
-{visibleSteps.includes("Supplier") && (
-  <div
-    ref={setStepRef("Supplier")}
-    className="space-y-4 scroll-mt-24 bg-pink-100 p-3 rounded"
-  >
+        {visibleSteps.includes("Supplier") && (
+          <div
+            ref={setStepRef("Supplier")}
+            className="space-y-4 scroll-mt-24 bg-pink-100 p-3 rounded"
+          >
             <button
               className="text-xs text-blue-600 underline"
               onClick={() => handleBack("Supplier")}
@@ -654,12 +663,12 @@ const stepLabels: Record<string, string> = {
 /* CTRL+F: SECTION WITH QUANTITY BADGE COMPLETE FUNCTION */
 
 const stepColors: Record<string, string> = {
-  "Product Usage": "bg-blue-50",
-  "Product Family": "bg-green-50",
-  "Product Class": "bg-yellow-50",
-  "Price Point": "bg-purple-50",
-  "Brand Origin": "bg-orange-50",
-  Supplier: "bg-pink-50",
+  "Product Usage": "bg-blue-100",
+  "Product Family": "bg-green-100",
+  "Product Class": "bg-yellow-100",
+  "Price Point": "bg-purple-100",
+  "Brand Origin": "bg-orange-100",
+  Supplier: "bg-pink-100",
 };
 
 function Section({
@@ -712,31 +721,31 @@ function Section({
 
   const currentStepIndex = stepOrder.indexOf(title);
 
-  const baseList = products.filter((p: any) => {
-    return stepOrder.every((step, index) => {
-      /* IGNORE FUTURE STEPS */
-      if (index > currentStepIndex) return true;
+const baseList = title.includes("||")
+  ? sourceProducts
+  : products.filter((p: any) => {
+      const stepMatch = stepOrder.every((step, index) => {
+        if (index > currentStepIndex) return true;
+        if (index === currentStepIndex) return true;
 
-      /* IGNORE CURRENT STEP */
-      if (index === currentStepIndex) return true;
+        if (!filters[step]?.length) return true;
 
-      if (!filters[step]?.length) return true;
+        let value;
 
-      let value;
+        if (step === "Product Usage")
+          value = p.categoryTypes?.[0]?.categoryTypeName;
+        else if (step === "Product Family")
+          value = p.productFamilies?.[0]?.productFamilyName;
+        else if (step === "Product Class") value = p.productClass;
+        else if (step === "Price Point") value = p.pricePoint;
+        else if (step === "Brand Origin") value = p.brandOrigin;
+        else if (step === "Supplier") value = p.supplier?.company;
 
-      if (step === "Product Usage")
-        value = p.categoryTypes?.[0]?.categoryTypeName;
-      else if (step === "Product Family")
-        value = p.productFamilies?.[0]?.productFamilyName;
-      else if (step === "Product Class") value = p.productClass;
-      else if (step === "Price Point") value = p.pricePoint;
-      else if (step === "Brand Origin") value = p.brandOrigin;
-      else if (step === "Supplier") value = p.supplier?.company;
+        return filters[step].includes(value);
+      });
 
-      return filters[step].includes(value);
+      return stepMatch;
     });
-  });
-
   baseList?.forEach((p: any) => {
     let value;
 
@@ -813,6 +822,20 @@ function Section({
     return matrix[b.length][a.length];
   };
 
+  const suggestionPhrases = [
+    "Did you mean",
+    "Closest match",
+    "Maybe you meant",
+    "Try this instead",
+    "Nearest value",
+    "Best match",
+    "Closest available",
+    "You might be looking for",
+  ];
+
+  const pickPhrase = () =>
+    suggestionPhrases[Math.floor(Math.random() * suggestionPhrases.length)];
+
   const suggestion = (() => {
     if (!input || visible.length > 0) return null;
 
@@ -827,11 +850,21 @@ function Section({
       let bestItem = null;
       let bestDiff = Infinity;
 
+      /* CTRL+F: HIGHEST VALUE FALLBACK */
+      let highestItem = null;
+      let highestValue = -Infinity;
+
       items.forEach((item: string) => {
         const nums = extractNumbers(item);
         if (nums.length === 0) return;
 
         const compareNum = nums[0];
+
+        /* track highest value */
+        if (compareNum > highestValue) {
+          highestValue = compareNum;
+          highestItem = item;
+        }
 
         if (compareNum > inputNums[0]) {
           const diff = compareNum - inputNums[0];
@@ -843,7 +876,13 @@ function Section({
         }
       });
 
-      return bestItem;
+      /* if no higher found → return highest */
+      if (!bestItem && highestItem)
+        return { value: highestItem, phrase: "Highest available" };
+
+      if (bestItem) return { value: bestItem, phrase: pickPhrase() };
+
+      return null;
     }
 
     let bestMatch = null;
@@ -860,13 +899,15 @@ function Section({
       }
     });
 
-    return bestMatch;
+    if (bestMatch) return { value: bestMatch, phrase: pickPhrase() };
+
+    return null;
   })();
 
-const stepColor = stepColors[title] ?? "bg-gray-50";
+  const stepColor = stepColors[title] ?? "bg-gray-50";
 
-return (
-  <div className={`border rounded p-2 space-y-2 ${stepColor}`}>
+  return (
+    <div className={`border rounded p-2 space-y-2 ${stepColor}`}>
       <p className="text-sm font-medium">{label ?? title}</p>
 
       <Command shouldFilter={false}>
@@ -882,9 +923,9 @@ return (
             {suggestion && (
               <div
                 className="text-blue-500 cursor-pointer mt-1"
-                onClick={() => setInput(suggestion)}
+                onClick={() => setInput(suggestion.value)}
               >
-                Did you mean: <b>{suggestion}</b>
+                {suggestion.phrase}: <b>{suggestion.value}</b>
               </div>
             )}
           </CommandEmpty>
@@ -893,18 +934,19 @@ return (
         {visible.length > 0 && (
           <CommandGroup>
             {visible.map((i: string) => {
-              const isDisabled = (counts[i] ?? 0) === 0;
+const isDisabled =
+  (counts[i] ?? 0) === 0 && !filters[title]?.includes(i);
 
               return (
                 <CommandItem
                   key={i}
                   /* CTRL+F: DISABLED CLICK FIX */
-                  onSelect={() => {
-                    if (isDisabled) return;
-                    toggle(title, i);
-                  }}
+onSelect={() => {
+  if (isDisabled) return; // block selecting zero-count options
+  toggle(title, i);
+}}
                   /* CTRL+F: DISABLED STYLE */
-                  className={isDisabled ? "opacity-40 pointer-events-none" : ""}
+                  className={isDisabled ? "opacity-40" : ""}
                 >
                   <Check
                     className={`mr-2 h-4 w-4 ${
