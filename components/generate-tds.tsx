@@ -30,6 +30,7 @@ export default function GenerateTDS({
   const [selectedBrand, setSelectedBrand] = useState("");
   const [itemCode, setItemCode] = useState("");
   const [productName, setProductName] = useState("");
+  const [hideEmptySpecs, setHideEmptySpecs] = useState(true);
 
   const [dimensionalDrawing, setDimensionalDrawing] = useState<File | null>(
     null,
@@ -165,6 +166,21 @@ export default function GenerateTDS({
     tableRows.push(["Item Code :", itemCode]);
 
     technicalSpecifications?.forEach((group) => {
+      // Decide which specs to render based on toggle
+      const specsToRender = hideEmptySpecs
+        ? group.specs.filter((spec) => {
+            const hasValue =
+              spec.value &&
+              typeof spec.value === "string" &&
+              spec.value.trim() !== "";
+            return hasValue;
+          })
+        : group.specs;
+
+      // If ON and no valid specs → remove entire group
+      if (hideEmptySpecs && specsToRender.length === 0) return;
+
+      // Add group title
       tableRows.push([
         {
           content: group.title,
@@ -176,8 +192,12 @@ export default function GenerateTDS({
         },
       ]);
 
-      group.specs.forEach((spec) => {
-        tableRows.push([spec.specId + " :", spec.value || ""]);
+      // Add specs
+      specsToRender.forEach((spec) => {
+        tableRows.push([
+          spec.specId ? spec.specId + " :" : "",
+          spec.value || "",
+        ]);
       });
     });
 
@@ -291,16 +311,29 @@ export default function GenerateTDS({
 
     /* ================= FOOTER ================= */
 
-    if (selectedBrand === "Lit") {
-      pdf.addImage(
-        "/lit-footer.png",
-        "PNG",
-        0,
-        pageHeight - footerHeight,
-        pageWidth,
-        footerHeight,
-      );
-    }
+if (selectedBrand === "Lit") {
+  const footerImg = new Image();
+  footerImg.src = "/lit-footer.png";
+
+  await new Promise((resolve) => {
+    footerImg.onload = resolve;
+  });
+
+  const imgWidth = footerImg.width;
+  const imgHeight = footerImg.height;
+
+  const ratio = pageWidth / imgWidth;
+  const finalHeight = imgHeight * ratio;
+
+  pdf.addImage(
+    "/lit-footer.png",
+    "PNG",
+    0,
+    pageHeight - finalHeight,
+    pageWidth,
+    finalHeight
+  );
+}
 
     pdf.save(`${productName || "Product"}-${itemCode || "Item"}-TDS.pdf`);
   };
@@ -366,7 +399,6 @@ export default function GenerateTDS({
                 className="w-full border rounded-md h-10 px-3 text-sm bg-white"
               />
             </div>
-
             {/* DIMENSIONAL DRAWING */}
             <div className="space-y-2">
               <p className="text-sm font-semibold">Dimensional Drawing</p>
@@ -389,7 +421,33 @@ export default function GenerateTDS({
               />
             </div>
 
+
+
             {/* PREVIEW */}
+<div className="flex justify-center font-bold text-base mb-3">
+  TDS PREVIEW
+</div>
+            {/* REMOVE EMPTY SPECIFICATIONS TOGGLE */}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">
+                Remove Empty Specifications
+              </p>
+
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hideEmptySpecs}
+                  onChange={(e) => setHideEmptySpecs(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm">
+                  {hideEmptySpecs
+                    ? "ON - Empty specs hidden"
+                    : "OFF - Show all specs"}
+                </span>
+              </label>
+            </div>
+
             <div className="flex justify-center">
               <GenerateTDSBrand
                 ref={previewRef}
@@ -401,6 +459,7 @@ export default function GenerateTDS({
                 technicalSpecifications={technicalSpecifications}
                 dimensionalDrawing={dimensionalDrawing}
                 illuminanceLevel={illuminanceLevel}
+                hideEmptySpecs={hideEmptySpecs}
               />
             </div>
           </>

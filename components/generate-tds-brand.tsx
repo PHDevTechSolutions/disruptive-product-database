@@ -20,6 +20,7 @@ type Props = {
   technicalSpecifications?: TechnicalSpecification[];
   dimensionalDrawing?: File | null;
   illuminanceLevel?: File | null;
+  hideEmptySpecs?: boolean;
 };
 
 const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
@@ -33,6 +34,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
       technicalSpecifications,
       dimensionalDrawing,
       illuminanceLevel,
+      hideEmptySpecs,
     },
     ref,
   ) => {
@@ -42,26 +44,33 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
     const PAPER_HEIGHT = 1056;
     const HEADER_HEIGHT = 120;
     const FOOTER_HEIGHT = 100;
-    const CONTENT_AREA = PAPER_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT;
+const SAFE_BOTTOM_MARGIN = 20;
+const CONTENT_AREA =
+  PAPER_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - SAFE_BOTTOM_MARGIN;
 
-    useEffect(() => {
-      if (!contentRef.current) return;
+useEffect(() => {
+  if (!contentRef.current) return;
 
-      const contentHeight = contentRef.current.scrollHeight;
+  const contentHeight = contentRef.current.scrollHeight;
 
-      if (contentHeight === 0) return;
+  if (!contentHeight) return;
 
-      const newScale =
-        contentHeight > CONTENT_AREA ? CONTENT_AREA / contentHeight : 1;
+  const availableHeight = CONTENT_AREA;
 
-      setScale(newScale);
-    }, [
-      technicalSpecifications,
-      productName,
-      itemCode,
-      dimensionalDrawing,
-      illuminanceLevel,
-    ]);
+  if (contentHeight > availableHeight) {
+    const newScale = availableHeight / contentHeight;
+    setScale(newScale);
+  } else {
+    setScale(1);
+  }
+}, [
+  technicalSpecifications,
+  productName,
+  itemCode,
+  dimensionalDrawing,
+  illuminanceLevel,
+  hideEmptySpecs,
+]);
 
     if (!open || !company) return null;
 
@@ -119,7 +128,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
               style={{
                 transform: `scale(${scale})`,
                 transformOrigin: "top center",
-                width: `${780 / scale}px`,
+                width: "780px",
                 margin: "0",
               }}
             >
@@ -178,30 +187,41 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
 
                 {/* TECH SPECS */}
                 <table className="w-full border border-black border-collapse text-[16px]">
-                  <tbody>
-                    {technicalSpecifications?.map((group, i) => (
-                      <React.Fragment key={i}>
-                        <tr>
-                          <td
-                            colSpan={2}
-                            className="border border-black px-2 py-1 font-semibold bg-gray-300"
-                          >
-                            {group.title} 
-                          </td>
-                        </tr>
-                        {group.specs.map((spec, s) => (
-                          <tr key={s}>
-                            <td className="border border-black px-2 py-1 w-[300px]">
-                              {spec.specId} :
-                            </td>
-                            <td className="border border-black px-2 py-1">
-                              {spec.value}
-                            </td>
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
+<tbody>
+  {technicalSpecifications?.map((group, i) => {
+    const specsToRender = hideEmptySpecs
+      ? group.specs.filter(
+          (spec) => spec.value && spec.value.trim() !== ""
+        )
+      : group.specs;
+
+    if (hideEmptySpecs && specsToRender.length === 0) return null;
+
+    return (
+      <React.Fragment key={i}>
+        <tr>
+          <td
+            colSpan={2}
+            className="border border-black px-2 py-1 font-semibold bg-gray-300"
+          >
+            {group.title}
+          </td>
+        </tr>
+
+        {specsToRender.map((spec, s) => (
+          <tr key={s}>
+            <td className="border border-black px-2 py-1 w-[300px]">
+              {spec.specId} :
+            </td>
+            <td className="border border-black px-2 py-1">
+              {spec.value}
+            </td>
+          </tr>
+        ))}
+      </React.Fragment>
+    );
+  })}
+</tbody>
                 </table>
 
                 {/* DRAWINGS */}
