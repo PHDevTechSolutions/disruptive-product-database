@@ -223,49 +223,31 @@ export default function ProductsPage() {
                 ))}
               </div>
 
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-8">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(1)}
-                  >
-                    First
-                  </Button>
+{totalPages > 1 && (
+  <div className="flex justify-center items-center gap-2 mt-8">
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={currentPage === 1}
+      onClick={() => setCurrentPage((p) => p - 1)}
+    >
+      Prev
+    </Button>
 
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => p - 1)}
-                  >
-                    Prev
-                  </Button>
+    <span className="text-sm px-4">
+      Page {currentPage} of {totalPages}
+    </span>
 
-                  <span className="text-sm px-4">
-                    Page {currentPage} of {totalPages}
-                  </span>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(totalPages)}
-                  >
-                    Last
-                  </Button>
-                </div>
-              )}
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={currentPage === totalPages}
+      onClick={() => setCurrentPage((p) => p + 1)}
+    >
+      Next
+    </Button>
+  </div>
+)}
             </>
           )}
         </div>
