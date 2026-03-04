@@ -721,44 +721,37 @@ function Section({
 
   const currentStepIndex = stepOrder.indexOf(title);
 
-const baseList = title.includes("||")
-  ? sourceProducts
-  : products.filter((p: any) => {
-      const stepMatch = stepOrder.every((step, index) => {
-        if (index > currentStepIndex) return true;
-        if (index === currentStepIndex) return true;
+  const baseList = products.filter((p: any) => {
+    /* APPLY NORMAL STEP FILTERS */
+    const stepMatch = stepOrder.every((step, index) => {
+      if (index > currentStepIndex) return true;
+      if (index === currentStepIndex) return true;
 
-        if (!filters[step]?.length) return true;
+      if (!filters[step]?.length) return true;
 
-        let value;
+      let value;
 
-        if (step === "Product Usage")
-          value = p.categoryTypes?.[0]?.categoryTypeName;
-        else if (step === "Product Family")
-          value = p.productFamilies?.[0]?.productFamilyName;
-        else if (step === "Product Class") value = p.productClass;
-        else if (step === "Price Point") value = p.pricePoint;
-        else if (step === "Brand Origin") value = p.brandOrigin;
-        else if (step === "Supplier") value = p.supplier?.company;
+      if (step === "Product Usage")
+        value = p.categoryTypes?.[0]?.categoryTypeName;
+      else if (step === "Product Family")
+        value = p.productFamilies?.[0]?.productFamilyName;
+      else if (step === "Product Class") value = p.productClass;
+      else if (step === "Price Point") value = p.pricePoint;
+      else if (step === "Brand Origin") value = p.brandOrigin;
+      else if (step === "Supplier") value = p.supplier?.company;
 
-        return filters[step].includes(value);
-      });
-
-      return stepMatch;
+      return filters[step].includes(value);
     });
-  baseList?.forEach((p: any) => {
-    let value;
 
-    if (title === "Product Usage")
-      value = p.categoryTypes?.[0]?.categoryTypeName;
-    else if (title === "Product Family")
-      value = p.productFamilies?.[0]?.productFamilyName;
-    else if (title === "Product Class") value = p.productClass;
-    else if (title === "Price Point") value = p.pricePoint;
-    else if (title === "Brand Origin") value = p.brandOrigin;
-    else if (title === "Supplier") value = p.supplier?.company;
-    else if (title.includes("||")) {
-      const [gt, sn] = title.split("||");
+    if (!stepMatch) return false;
+
+    /* APPLY TECHNICAL SPEC FILTERS */
+    for (const [k, vals] of Object.entries(filters) as [string, string[]][]) {
+      if (!k.includes("||")) continue;
+
+      const [gt, sn] = k.split("||");
+
+      const productVals: string[] = [];
 
       p.technicalSpecifications?.forEach((g: any) => {
         if (g.title !== gt) return;
@@ -768,17 +761,74 @@ const baseList = title.includes("||")
 
           const val = s.value || "";
 
-          splitValues(val).forEach((single: string) => {
-            if (counts[single] !== undefined) counts[single]++;
+          splitValues(val).forEach((v: string) => {
+            productVals.push(v);
           });
         });
       });
 
-      return;
+      if (vals.length && !vals.some((v) => productVals.includes(v)))
+        return false;
     }
 
-    if (counts[value] !== undefined) counts[value]++;
+    return true;
   });
+baseList?.forEach((p: any) => {
+  let value;
+
+  if (title === "Product Usage") {
+    value = p.categoryTypes?.[0]?.categoryTypeName;
+  } 
+  else if (title === "Product Family") {
+    value = p.productFamilies?.[0]?.productFamilyName;
+  } 
+  else if (title === "Product Class") {
+    value = p.productClass;
+  } 
+  else if (title === "Price Point") {
+    value = p.pricePoint;
+  } 
+  else if (title === "Brand Origin") {
+    value = p.brandOrigin;
+  } 
+  else if (title === "Supplier") {
+    value = p.supplier?.company;
+  }
+
+  /* ================= TECHNICAL SPEC COUNTS FIX ================= */
+  else if (title.includes("||")) {
+
+    const [groupTitle, specName] = title.split("||");
+
+    const values: string[] = [];
+
+    p.technicalSpecifications?.forEach((g: any) => {
+      if (g.title !== groupTitle) return;
+
+      g.specs?.forEach((s: any) => {
+        if (s.specId !== specName) return;
+
+        const val = s.value || "";
+
+        splitValues(val).forEach((single: string) => {
+          values.push(single);
+        });
+      });
+    });
+
+    values.forEach((v) => {
+      if (counts[v] !== undefined) {
+        counts[v]++;
+      }
+    });
+
+    return;
+  }
+
+  if (counts[value] !== undefined) {
+    counts[value]++;
+  }
+});
 
   const visible = items.filter((i: string) => {
     if (!input) return true;
