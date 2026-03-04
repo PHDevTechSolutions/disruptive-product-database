@@ -143,12 +143,17 @@ export default function GenerateTDS({
     const textColumnX = imageX + boxWidth + gap;
     const textColumnWidth = boxWidth + 40; // adjust width of right side
 
-    pdf.text(
-      productName || "Product Name",
-      textColumnX + textColumnWidth / 2,
-      imageY + boxHeight / 2,
-      { align: "center", baseline: "middle" },
-    );
+pdf.setFont("helvetica", "bold");
+pdf.setFontSize(18);
+
+pdf.text(
+  productName || "Product Name",
+  textColumnX,
+  imageY + boxHeight / 2,
+  {
+    maxWidth: textColumnWidth,
+  }
+);
 
     y += 140;
 

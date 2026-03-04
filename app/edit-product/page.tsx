@@ -1264,25 +1264,41 @@ export default function EditProductPage() {
               </CardHeader>
 
               <CardContent>
-                <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg h-56 cursor-pointer">
-                  {preview ? (
-                    <img src={preview} className="h-full object-contain" />
-                  ) : (
-                    <>
-                      <ImagePlus className="h-10 w-10 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground mt-2">
-                        CLICK TO UPLOAD
-                      </span>
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={(e) =>
-                      handleImageChange(e.target.files?.[0] || null)
-                    }
-                  />
-                </label>
+<label
+  className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg h-56 cursor-pointer hover:border-blue-400 transition"
+  onDragOver={(e) => e.preventDefault()}
+  onDrop={(e) => {
+    e.preventDefault();
+
+    const file = e.dataTransfer.files?.[0];
+
+    if (file && file.type.startsWith("image/")) {
+      handleImageChange(file);
+    } else {
+      toast.error("Only image files are allowed");
+    }
+  }}
+>
+  {preview ? (
+    <img src={preview} className="h-full object-contain" />
+  ) : (
+    <>
+      <ImagePlus className="h-10 w-10 text-muted-foreground" />
+      <span className="text-sm text-muted-foreground mt-2">
+        CLICK OR DRAG IMAGE HERE
+      </span>
+    </>
+  )}
+
+  <input
+    type="file"
+    accept="image/*"
+    className="hidden"
+    onChange={(e) =>
+      handleImageChange(e.target.files?.[0] || null)
+    }
+  />
+</label>
               </CardContent>
             </Card>
 

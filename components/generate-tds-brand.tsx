@@ -149,17 +149,17 @@ useEffect(() => {
                   </div>
 
                   <div className="w-full">
-                    <div className="text-xl font-semibold text-center break-words overflow-hidden">
-                      <div
-                        className="w-full text-center font-semibold break-words"
-                        style={{
-                          fontSize: productName.length > 20 ? "18px" : "24px",
-                          lineHeight: "1.5",
-                        }}
-                      >
-                        {productName || "Product Name"}
-                      </div>
-                    </div>
+<div className="text-xl font-semibold break-words overflow-hidden">
+  <div
+    className="w-full text-left font-semibold break-words"
+    style={{
+      fontSize: productName.length > 20 ? "20px" : "28px",
+      lineHeight: "1.4",
+    }}
+  >
+    {productName || "Product Name"}
+  </div>
+</div>
                   </div>
                 </div>
 
