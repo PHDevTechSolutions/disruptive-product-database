@@ -585,8 +585,11 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         {/* ================= TECH SPECS NEW ROW ================= */}
         {/* CTRL+F: TECH SPECS NEW ROW */}
 
-        {visibleSteps.includes("Supplier") && (
-          <div ref={setStepRef("Supplier")} className="space-y-4 scroll-mt-24">
+{visibleSteps.includes("Supplier") && (
+  <div
+    ref={setStepRef("Supplier")}
+    className="space-y-4 scroll-mt-24 bg-pink-100 p-3 rounded"
+  >
             <button
               className="text-xs text-blue-600 underline"
               onClick={() => handleBack("Supplier")}
@@ -649,6 +652,15 @@ const stepLabels: Record<string, string> = {
 
 /* ================= SECTION ================= */
 /* CTRL+F: SECTION WITH QUANTITY BADGE COMPLETE FUNCTION */
+
+const stepColors: Record<string, string> = {
+  "Product Usage": "bg-blue-50",
+  "Product Family": "bg-green-50",
+  "Product Class": "bg-yellow-50",
+  "Price Point": "bg-purple-50",
+  "Brand Origin": "bg-orange-50",
+  Supplier: "bg-pink-50",
+};
 
 function Section({
   title,
@@ -851,8 +863,10 @@ function Section({
     return bestMatch;
   })();
 
-  return (
-    <div className="border rounded p-2 space-y-2">
+const stepColor = stepColors[title] ?? "bg-gray-50";
+
+return (
+  <div className={`border rounded p-2 space-y-2 ${stepColor}`}>
       <p className="text-sm font-medium">{label ?? title}</p>
 
       <Command shouldFilter={false}>
