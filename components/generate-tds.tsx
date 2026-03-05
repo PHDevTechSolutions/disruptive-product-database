@@ -208,9 +208,9 @@ pdf.text(
 
     /* ================= AUTO SCALE ================= */
 
-const DRAWING_BLOCK_HEIGHT = 140; // drawings + labels
-const FOOTER_REAL_HEIGHT = 80; // visual footer
-const SAFE_MARGIN = 20; // space before footer
+const DRAWING_BLOCK_HEIGHT = 120; // drawings + labels
+const FOOTER_REAL_HEIGHT = 70; // visual footer
+const SAFE_MARGIN = 10; // space before footer
 
 const maxTableHeight =
   pageHeight -
