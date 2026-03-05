@@ -1409,130 +1409,138 @@ export default function EditProductPage() {
               </CardContent>
             </Card>
 
-            {/* ================= SUPPLIER SELECT ================= */}
-            <div className="space-y-2">
-              <Label>Supplier / Company</Label>
+{/* ================= SUPPLIER / PRICE / BRAND / CLASS ================= */}
 
-              {/* ✅ NO SUPPLIER CHECKBOX */}
-              <div className="flex items-center gap-2 mb-2">
-                <input
-                  type="checkbox"
-                  checked={noSupplier}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setNoSupplier(checked);
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                    if (checked) {
-                      setSelectedSupplier(null);
+  {/* ================= SUPPLIER SELECT ================= */}
+<div className="space-y-2">
 
-                      // ✅ Force defaults
-                      setPricePoint("Economy");
-                      setBrandOrigin("China");
-                    }
-                  }}
-                />
+  {/* LABEL + CHECKBOX */}
+  <div className="flex items-center justify-between">
+    <Label>Supplier / Company</Label>
 
-                <span className="text-sm text-muted-foreground">
-                  Check if no supplier
-                </span>
-              </div>
+    <label className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer">
+      <input
+        type="checkbox"
+        checked={noSupplier}
+        onChange={(e) => {
+          const checked = e.target.checked;
+          setNoSupplier(checked);
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    disabled={noSupplier}
-                    className="w-[360px] justify-between"
-                  >
-                    <span className="truncate text-left max-w-[85%]">
-                      {selectedSupplier
-                        ? selectedSupplier.company
-                        : "Select supplier..."}
-                    </span>
+          if (checked) {
+            setSelectedSupplier(null);
 
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
+            // ✅ Force defaults
+            setPricePoint("Economy");
+            setBrandOrigin("China");
+          }
+        }}
+      />
+      Check if no supplier
+    </label>
+  </div>
 
-                <PopoverContent className="p-0 w-[360px]">
-                  <Command>
-                    <CommandInput placeholder="Search supplier..." />
-                    <CommandEmpty>No supplier found.</CommandEmpty>
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button
+        variant="outline"
+        role="combobox"
+        disabled={noSupplier}
+        className="w-full justify-between"
+      >
+        <span className="truncate text-left max-w-[85%]">
+          {selectedSupplier
+            ? selectedSupplier.company
+            : "Select supplier..."}
+        </span>
 
-                    <CommandGroup>
-                      {suppliers.map((supplier) => (
-                        <CommandItem
-                          key={supplier.supplierId}
-                          value={supplier.company}
-                          onSelect={() => setSelectedSupplier(supplier)}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedSupplier?.supplierId ===
-                                supplier.supplierId
-                                ? "opacity-100"
-                                : "opacity-0",
-                            )}
-                          />
-                          <span className="truncate">{supplier.company}</span>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    </PopoverTrigger>
 
-            {/* ================= PRICE POINT SELECT ================= */}
-            <div className="space-y-2">
-              <Label>Price Point</Label>
+    <PopoverContent className="p-0 w-full">
+      <Command>
+        <CommandInput placeholder="Search supplier..." />
+        <CommandEmpty>No supplier found.</CommandEmpty>
 
-              <select
-                value={noSupplier ? "Economy" : pricePoint}
-                disabled={noSupplier}
-                onChange={(e) => setPricePoint(e.target.value)}
-                className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
-              >
-                <option value="">Select price point...</option>
-                <option value="Economy">Economy</option>
-                <option value="Mid-End">Mid-End</option>
-                <option value="High-End">High-End</option>
-              </select>
-            </div>
+        <CommandGroup>
+          {suppliers.map((supplier) => (
+            <CommandItem
+              key={supplier.supplierId}
+              value={supplier.company}
+              onSelect={() => setSelectedSupplier(supplier)}
+            >
+              <Check
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  selectedSupplier?.supplierId === supplier.supplierId
+                    ? "opacity-100"
+                    : "opacity-0"
+                )}
+              />
+              <span className="truncate">{supplier.company}</span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </Command>
+    </PopoverContent>
+  </Popover>
 
-            {/* ================= BRAND ORIGIN SELECT ================= */}
-            <div className="space-y-2">
-              <Label>Brand Origin</Label>
+</div>
 
-              <select
-                value={noSupplier ? "China" : brandOrigin}
-                disabled={noSupplier}
-                onChange={(e) => setBrandOrigin(e.target.value)}
-                className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
-              >
-                <option value="">Select brand origin...</option>
-                <option value="China">China</option>
-                <option value="Non-China">Non-China</option>
-              </select>
-            </div>
 
-            {/* ================= PRODUCT CLASS SELECT ================= */}
+  {/* ================= PRICE POINT SELECT ================= */}
+  <div className="space-y-2">
+    <Label>Price Point</Label>
 
-            <div className="space-y-2">
-              <Label>Product Class</Label>
+    <select
+      value={noSupplier ? "Economy" : pricePoint}
+      disabled={noSupplier}
+      onChange={(e) => setPricePoint(e.target.value)}
+      className="w-full border rounded-md h-10 px-3 text-sm bg-background"
+    >
+      <option value="">Select price point...</option>
+      <option value="Economy">Economy</option>
+      <option value="Mid-End">Mid-End</option>
+      <option value="High-End">High-End</option>
+    </select>
+  </div>
 
-              <select
-                value={productClass}
-                onChange={(e) => setProductClass(e.target.value)}
-                className="w-[360px] border rounded-md h-10 px-3 text-sm bg-background"
-              >
-                <option value="">Select product class...</option>
-                <option value="Standard">Standard</option>
-                <option value="SPF">SPF</option>
-              </select>
-            </div>
+
+  {/* ================= BRAND ORIGIN SELECT ================= */}
+  <div className="space-y-2">
+    <Label>Brand Origin</Label>
+
+    <select
+      value={noSupplier ? "China" : brandOrigin}
+      disabled={noSupplier}
+      onChange={(e) => setBrandOrigin(e.target.value)}
+      className="w-full border rounded-md h-10 px-3 text-sm bg-background"
+    >
+      <option value="">Select brand origin...</option>
+      <option value="China">China</option>
+      <option value="Non-China">Non-China</option>
+    </select>
+  </div>
+
+
+  {/* ================= PRODUCT CLASS SELECT ================= */}
+  <div className="space-y-2">
+    <Label>Product Class</Label>
+
+    <select
+      value={productClass}
+      onChange={(e) => setProductClass(e.target.value)}
+      className="w-full border rounded-md h-10 px-3 text-sm bg-background"
+    >
+      <option value="">Select product class...</option>
+      <option value="Standard">Standard</option>
+      <option value="SPF">SPF</option>
+    </select>
+  </div>
+
+</div>
 
             {/* ================= COMMERCIAL DETAILS ================= */}
 
