@@ -221,7 +221,21 @@ export default function DownloadProduct({ products }: Props) {
 
         row.push(product.supplier?.company || "");
 
-        row.push(product.mainImage?.url || "");
+let imageURL = product.mainImage?.url || "";
+
+/* GOOGLE DRIVE LINK PARSER */
+
+if (imageURL.includes("drive.google.com")) {
+  const match = imageURL.match(/\/d\/(.*?)\//);
+
+  if (match && match[1]) {
+    const fileId = match[1];
+
+    imageURL = `https://drive.google.com/uc?export=download&id=${fileId}`;
+  }
+}
+
+row.push(imageURL);
 
         groupMap.forEach((specIds, groupTitle) => {
           const groupData = product.technicalSpecifications?.find(

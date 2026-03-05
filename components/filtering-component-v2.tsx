@@ -830,26 +830,57 @@ baseList?.forEach((p: any) => {
   }
 });
 
-  const visible = items.filter((i: string) => {
-    if (!input) return true;
+const visible = items.filter((i: string) => {
+  if (!input) return true;
 
-    const extractNumbers = (str: string) => {
-      const matches = str.match(/(\d+(\.\d+)?)/g);
-      return matches ? matches.map(Number) : [];
-    };
+  const extractNumbers = (str: string) => {
+    const matches = str.match(/(\d+(\.\d+)?)/g);
+    return matches ? matches.map(Number) : [];
+  };
 
-    const itemNums = extractNumbers(i);
-    const inputNums = extractNumbers(input);
+  const itemNums = extractNumbers(i);
+  const inputNums = extractNumbers(input);
 
-    if (inputNums.length >= 2 && itemNums.length >= 2)
-      return inputNums[0] >= itemNums[0] && inputNums[1] <= itemNums[1];
-
-    if (inputNums.length === 1 && itemNums.length >= 2)
-      return inputNums[0] >= itemNums[0] && inputNums[0] <= itemNums[1];
-
+  if (itemNums.length === 0) {
     return i.toLowerCase().includes(input.toLowerCase());
-  });
+  }
 
+  /* ================= RANGE INPUT ================= */
+  if (inputNums.length >= 2) {
+    const inputMin = inputNums[0];
+    const inputMax = inputNums[1];
+
+    if (itemNums.length === 1) {
+      const val = itemNums[0];
+      return val >= inputMin && val <= inputMax;
+    }
+
+    if (itemNums.length >= 2) {
+      const itemMin = itemNums[0];
+      const itemMax = itemNums[1];
+
+      return !(itemMax < inputMin || itemMin > inputMax);
+    }
+  }
+
+  /* ================= SINGLE NUMBER INPUT ================= */
+  if (inputNums.length === 1) {
+    const inputVal = inputNums[0];
+
+    if (itemNums.length === 1) {
+      return itemNums[0] >= inputVal;
+    }
+
+    if (itemNums.length >= 2) {
+      const itemMin = itemNums[0];
+      const itemMax = itemNums[1];
+
+      return itemMax >= inputVal;
+    }
+  }
+
+  return i.toLowerCase().includes(input.toLowerCase());
+});
   const levenshtein = (a: string, b: string) => {
     const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
 

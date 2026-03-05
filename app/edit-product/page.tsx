@@ -125,6 +125,7 @@ export default function EditProductPage() {
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [gdriveLink, setGdriveLink] = useState("");
 
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
@@ -358,8 +359,24 @@ export default function EditProductPage() {
         setBrandOrigin(data.brandOrigin || "China");
       }
 
+      /* ================= DETECT GOOGLE DRIVE IMAGE ================= */
+
       if (data.mainImage?.url) {
-        setPreview(data.mainImage.url);
+        const imageUrl = data.mainImage.url;
+
+        setPreview(imageUrl);
+
+        // Detect Google Drive thumbnail and rebuild original link
+        if (imageUrl.includes("drive.google.com")) {
+          const match = imageUrl.match(/id=(.*?)&/);
+
+          if (match && match[1]) {
+            const fileId = match[1];
+            const originalLink = `https://drive.google.com/file/d/${fileId}/view`;
+
+            setGdriveLink(originalLink);
+          }
+        }
       }
 
       if (Array.isArray(data.categoryTypes)) {
@@ -777,11 +794,48 @@ export default function EditProductPage() {
     );
   };
 
-  const handleImageChange = (file: File | null) => {
+  const handleImageChange = async (file: File | string | null) => {
     if (!file) return;
+
+    /* ================= GOOGLE DRIVE LINK SUPPORT ================= */
+
+    if (typeof file === "string") {
+      try {
+        let imageURL = file.trim();
+
+        if (imageURL.includes("drive.google.com")) {
+          const match = imageURL.match(/\/d\/(.*?)\//);
+
+          if (match && match[1]) {
+            const fileId = match[1];
+            imageURL = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+          }
+        }
+
+        setMainImage(null);
+        setPreview(imageURL);
+        setGdriveLink(file);
+
+        toast.success("Image detected from link");
+
+        return;
+      } catch (error) {
+        console.error(error);
+        toast.error("Invalid image link");
+        return;
+      }
+    }
+
+    /* ================= NORMAL IMAGE UPLOAD ================= */
+
     setMainImage(file);
+
     if (preview) URL.revokeObjectURL(preview);
+
     setPreview(URL.createObjectURL(file));
+
+    /* CLEAR GOOGLE DRIVE FIELD */
+    setGdriveLink("");
   };
 
   const handleAddCategoryType = async () => {
@@ -1218,8 +1272,17 @@ export default function EditProductPage() {
 
       await syncProductsUsingThisFamily();
 
-      if (mainImage) uploadProductMedia(productId!);
-
+      if (mainImage) {
+        uploadProductMedia(productId!);
+      } else if (preview) {
+        await updateDoc(productRef, {
+          mainImage: {
+            url: preview,
+            name: "External Image",
+          },
+          mediaStatus: "done",
+        });
+      }
       toast.success("Product saved successfully");
 
       router.push("/products");
@@ -1263,42 +1326,67 @@ export default function EditProductPage() {
                 </CardTitle>
               </CardHeader>
 
-              <CardContent>
-<label
-  className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg h-56 cursor-pointer hover:border-blue-400 transition"
-  onDragOver={(e) => e.preventDefault()}
-  onDrop={(e) => {
-    e.preventDefault();
+              <CardContent className="space-y-4">
+                {/* UPLOAD IMAGE */}
+                <label
+                  className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg h-56 cursor-pointer hover:border-blue-400 transition"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
 
-    const file = e.dataTransfer.files?.[0];
+                    const file = e.dataTransfer.files?.[0];
 
-    if (file && file.type.startsWith("image/")) {
-      handleImageChange(file);
-    } else {
-      toast.error("Only image files are allowed");
-    }
-  }}
->
-  {preview ? (
-    <img src={preview} className="h-full object-contain" />
-  ) : (
-    <>
-      <ImagePlus className="h-10 w-10 text-muted-foreground" />
-      <span className="text-sm text-muted-foreground mt-2">
-        CLICK OR DRAG IMAGE HERE
-      </span>
-    </>
-  )}
+                    if (file && file.type.startsWith("image/")) {
+                      handleImageChange(file);
+                    } else {
+                      toast.error("Only image files are allowed");
+                    }
+                  }}
+                >
+                  {preview ? (
+                    <img src={preview} className="h-full object-contain" />
+                  ) : (
+                    <>
+                      <ImagePlus className="h-10 w-10 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground mt-2">
+                        CLICK OR DRAG IMAGE HERE
+                      </span>
+                    </>
+                  )}
 
-  <input
-    type="file"
-    accept="image/*"
-    className="hidden"
-    onChange={(e) =>
-      handleImageChange(e.target.files?.[0] || null)
-    }
-  />
-</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      handleImageChange(e.target.files?.[0] || null)
+                    }
+                  />
+                </label>
+
+                {/* OR DIVIDER */}
+                <div className="flex items-center gap-2">
+                  <Separator className="flex-1" />
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    OR
+                  </span>
+                  <Separator className="flex-1" />
+                </div>
+
+                {/* GOOGLE DRIVE LINK */}
+                <Input
+                  value={gdriveLink}
+                  placeholder="Paste Google Drive image link..."
+                  onChange={(e) => {
+                    const value = e.target.value;
+
+                    setGdriveLink(value);
+
+                    if (value.startsWith("http")) {
+                      handleImageChange(value);
+                    }
+                  }}
+                />
               </CardContent>
             </Card>
 
