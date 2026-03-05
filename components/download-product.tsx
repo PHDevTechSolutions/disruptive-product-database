@@ -82,40 +82,44 @@ export default function DownloadProduct({ products }: Props) {
 
       const staticColumns = [
         "Product Usage",
-
         "Product Family",
-
         "Product Class",
-
         "Price Point",
-
         "Brand Origin",
-
         "Supplier",
-
         "Image URL",
       ];
 
       const header1: any[] = [];
-
       const header2: any[] = [];
 
       staticColumns.forEach((col) => {
         header1.push(col);
-
         header2.push("");
       });
 
       groupMap.forEach((specIds, groupTitle) => {
         specIds.forEach((specId, index) => {
           header1.push(specId);
-
           header2.push(index === 0 ? groupTitle : "");
         });
       });
 
-      ws.addRow(header1);
+      /* ================= COMMERCIAL DETAILS HEADER ================= */
 
+      const commercialColumns = [
+        "Unit Cost",
+        "Packaging Dimension",
+        "Factory Address",
+        "Port Of Discharge",
+      ];
+
+      commercialColumns.forEach((col, index) => {
+        header1.push(col);
+        header2.push(index === 0 ? "COMMERCIAL DETAILS" : "");
+      });
+
+      ws.addRow(header1);
       ws.addRow(header2);
 
       /* STYLE STATIC HEADER */
@@ -125,21 +129,17 @@ export default function DownloadProduct({ products }: Props) {
 
         cell.fill = {
           type: "pattern",
-
           pattern: "solid",
-
           fgColor: { argb: "4472C4" },
         };
 
         cell.font = {
           bold: true,
-
           color: { argb: "FFFFFF" },
         };
 
         cell.alignment = {
           vertical: "middle",
-
           horizontal: "center",
         };
       }
@@ -147,7 +147,6 @@ export default function DownloadProduct({ products }: Props) {
       /* STYLE TEMPLATE HEADER */
 
       let colStart = staticColumns.length + 1;
-
       let groupIndex = 0;
 
       groupMap.forEach((specIds) => {
@@ -159,14 +158,11 @@ export default function DownloadProduct({ products }: Props) {
 
         for (let col = colStart; col <= colEnd; col++) {
           const headerCell = ws.getRow(1).getCell(col);
-
           const groupCell = ws.getRow(2).getCell(col);
 
           headerCell.fill = {
             type: "pattern",
-
             pattern: "solid",
-
             fgColor: { argb: color },
           };
 
@@ -174,35 +170,70 @@ export default function DownloadProduct({ products }: Props) {
 
           headerCell.alignment = {
             vertical: "middle",
-
             horizontal: "center",
           };
 
           groupCell.fill = {
             type: "pattern",
-
             pattern: "solid",
-
             fgColor: { argb: color },
           };
 
           groupCell.font = {
             bold: true,
-
             italic: true,
           };
 
           groupCell.alignment = {
             vertical: "middle",
-
             horizontal: "center",
           };
         }
 
         groupIndex++;
-
         colStart = colEnd + 1;
       });
+
+      /* ================= STYLE COMMERCIAL DETAILS ================= */
+
+      const commercialStart = header1.length - 3;
+      const commercialEnd = header1.length;
+
+      ws.mergeCells(2, commercialStart, 2, commercialEnd);
+
+      for (let col = commercialStart; col <= commercialEnd; col++) {
+        const headerCell = ws.getRow(1).getCell(col);
+        const groupCell = ws.getRow(2).getCell(col);
+
+        headerCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "D9D9D9" },
+        };
+
+        headerCell.font = { bold: true };
+
+        headerCell.alignment = {
+          vertical: "middle",
+          horizontal: "center",
+        };
+
+        groupCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "D9D9D9" },
+        };
+
+        groupCell.font = {
+          bold: true,
+          italic: true,
+        };
+
+        groupCell.alignment = {
+          vertical: "middle",
+          horizontal: "center",
+        };
+      }
 
       /* ADD PRODUCT ROWS */
 
@@ -210,32 +241,26 @@ export default function DownloadProduct({ products }: Props) {
         const row: any[] = [];
 
         row.push(product.categoryTypes?.[0]?.categoryTypeName || "");
-
         row.push(product.productFamilies?.[0]?.productFamilyName || "");
-
         row.push(product.productClass || "");
-
         row.push(product.pricePoint || "");
-
         row.push(product.brandOrigin || "");
-
         row.push(product.supplier?.company || "");
 
-let imageURL = product.mainImage?.url || "";
+        let imageURL = product.mainImage?.url || "";
 
-/* GOOGLE DRIVE LINK PARSER */
+        /* GOOGLE DRIVE LINK PARSER */
 
-if (imageURL.includes("drive.google.com")) {
-  const match = imageURL.match(/\/d\/(.*?)\//);
+        if (imageURL.includes("drive.google.com")) {
+          const match = imageURL.match(/\/d\/(.*?)\//);
 
-  if (match && match[1]) {
-    const fileId = match[1];
+          if (match && match[1]) {
+            const fileId = match[1];
+            imageURL = `https://drive.google.com/uc?export=download&id=${fileId}`;
+          }
+        }
 
-    imageURL = `https://drive.google.com/uc?export=download&id=${fileId}`;
-  }
-}
-
-row.push(imageURL);
+        row.push(imageURL);
 
         groupMap.forEach((specIds, groupTitle) => {
           const groupData = product.technicalSpecifications?.find(
@@ -251,46 +276,45 @@ row.push(imageURL);
           });
         });
 
+        /* ================= COMMERCIAL DETAILS VALUES ================= */
+
+        row.push(product.commercialDetails?.unitCost || "");
+        row.push(product.commercialDetails?.packagingDimension || "");
+        row.push(product.commercialDetails?.factoryAddress || "");
+        row.push(product.commercialDetails?.portOfDischarge || "");
+
         ws.addRow(row);
       });
 
       const mergeColumns = staticColumns.length;
 
-for (let col = 1; col <= mergeColumns; col++) {
+      for (let col = 1; col <= mergeColumns; col++) {
+        let startRow = 3;
+        let lastValue = ws.getRow(3).getCell(col).value;
 
-  let startRow = 3; // data starts at row 3
-  let lastValue = ws.getRow(3).getCell(col).value;
+        for (let row = 4; row <= ws.rowCount + 1; row++) {
+          const currentValue =
+            row <= ws.rowCount
+              ? ws.getRow(row).getCell(col).value
+              : "__END__";
 
-  for (let row = 4; row <= ws.rowCount + 1; row++) {
+          if (currentValue !== lastValue) {
+            if (row - startRow > 1) {
+              ws.mergeCells(startRow, col, row - 1, col);
 
-    const currentValue =
-      row <= ws.rowCount
-        ? ws.getRow(row).getCell(col).value
-        : "__END__";
+              const cell = ws.getRow(startRow).getCell(col);
 
-    if (currentValue !== lastValue) {
+              cell.alignment = {
+                vertical: "middle",
+                horizontal: "center",
+              };
+            }
 
-      if (row - startRow > 1) {
-
-        ws.mergeCells(startRow, col, row - 1, col);
-
-        const cell = ws.getRow(startRow).getCell(col);
-
-        cell.alignment = {
-          vertical: "middle",
-          horizontal: "center",
-        };
-
+            startRow = row;
+            lastValue = currentValue;
+          }
+        }
       }
-
-      startRow = row;
-      lastValue = currentValue;
-
-    }
-
-  }
-
-}
 
       /* AUTO WIDTH */
 

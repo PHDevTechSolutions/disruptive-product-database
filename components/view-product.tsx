@@ -224,29 +224,33 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                       {!product?.technicalSpecifications ? (
                         <div className="border p-4 text-center">-</div>
                       ) : (
-                        product.technicalSpecifications.map((group, i) => (
-                          <div key={i} className="mb-4">
-                            <div className="font-semibold mb-2">
-                              {group.title}
+                        product.technicalSpecifications
+                          .filter(
+                            (group) => group.title !== "COMMERCIAL DETAILS",
+                          )
+                          .map((group, i) => (
+                            <div key={i} className="mb-4">
+                              <div className="font-semibold mb-2">
+                                {group.title}
+                              </div>
+
+                              <table className="w-full border">
+                                <tbody>
+                                  {group.specs.map((spec, s) => (
+                                    <tr key={s}>
+                                      <td className="border p-2 font-semibold w-[40%]">
+                                        {spec.specId || "-"}
+                                      </td>
+
+                                      <td className="border p-2">
+                                        {spec.value || "-"}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
-
-                            <table className="w-full border">
-                              <tbody>
-                                {group.specs.map((spec, s) => (
-                                  <tr key={s}>
-                                    <td className="border p-2 font-semibold w-[40%]">
-                                      {spec.specId || "-"}
-                                    </td>
-
-                                    <td className="border p-2">
-                                      {spec.value || "-"}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        ))
+                          ))
                       )}
                     </>
                   )}

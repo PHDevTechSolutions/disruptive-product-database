@@ -117,6 +117,13 @@ export default function EditProductPage() {
   const [brandOrigin, setBrandOrigin] = useState("");
   const [productClass, setProductClass] = useState("");
 
+  /* ===== COMMERCIAL DETAILS ===== */
+
+  const [unitCost, setUnitCost] = useState("");
+  const [packagingDimension, setPackagingDimension] = useState("");
+  const [factoryAddress, setFactoryAddress] = useState("");
+  const [portOfDischarge, setPortOfDischarge] = useState("");
+
   const isInitialLoad = useRef(true);
 
   const [user, setUser] = useState<UserData | null>(null);
@@ -342,6 +349,11 @@ export default function EditProductPage() {
       setBrandOrigin(data.brandOrigin || "");
 
       setProductClass(data.productClass || "");
+
+      setUnitCost(data.commercialDetails?.unitCost || "");
+      setPackagingDimension(data.commercialDetails?.packagingDimension || "");
+      setFactoryAddress(data.commercialDetails?.factoryAddress || "");
+      setPortOfDischarge(data.commercialDetails?.portOfDischarge || "");
 
       if (data.supplier) {
         setSelectedSupplier({
@@ -1221,6 +1233,13 @@ export default function EditProductPage() {
         brandOrigin: noSupplier ? "China" : brandOrigin,
         productClass,
 
+        commercialDetails: {
+          unitCost,
+          packagingDimension,
+          factoryAddress,
+          portOfDischarge,
+        },
+
         supplier: noSupplier
           ? null
           : {
@@ -1514,6 +1533,58 @@ export default function EditProductPage() {
                 <option value="SPF">SPF</option>
               </select>
             </div>
+
+            {/* ================= COMMERCIAL DETAILS ================= */}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-center text-sm">
+                  COMMERCIAL DETAILS
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* UNIT COST */}
+                <div className="space-y-1">
+                  <Label>Unit Cost</Label>
+                  <Input
+                    placeholder="Enter unit cost..."
+                    value={unitCost}
+                    onChange={(e) => setUnitCost(e.target.value)}
+                  />
+                </div>
+
+                {/* PACKAGING DIMENSION */}
+                <div className="space-y-1">
+                  <Label>Packaging Dimension</Label>
+                  <Input
+                    placeholder="Enter packaging dimension..."
+                    value={packagingDimension}
+                    onChange={(e) => setPackagingDimension(e.target.value)}
+                  />
+                </div>
+
+                {/* FACTORY ADDRESS */}
+                <div className="space-y-1">
+                  <Label>Factory Address</Label>
+                  <Input
+                    placeholder="Enter factory address..."
+                    value={factoryAddress}
+                    onChange={(e) => setFactoryAddress(e.target.value)}
+                  />
+                </div>
+
+                {/* PORT OF DISCHARGE */}
+                <div className="space-y-1">
+                  <Label>Port of Discharge</Label>
+                  <Input
+                    placeholder="Enter port of discharge..."
+                    value={portOfDischarge}
+                    onChange={(e) => setPortOfDischarge(e.target.value)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             {/* ===== TECHNICAL SPECIFICATIONS (EDITABLE) ===== */}
 

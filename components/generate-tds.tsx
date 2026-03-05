@@ -70,7 +70,20 @@ export default function GenerateTDS({
     if (selectedBrand === "Lit") {
       pdf.addImage("/lit-header.png", "PNG", 0, 0, pageWidth, headerHeight);
     }
+    if (selectedBrand === "Lumera") {
+      pdf.addImage("/lumera-header.png", "PNG", 0, 0, pageWidth, headerHeight);
+    }
 
+    if (selectedBrand === "Ecoshift") {
+      pdf.addImage(
+        "/ecoshift-header.png",
+        "PNG",
+        0,
+        0,
+        pageWidth,
+        headerHeight,
+      );
+    }
     /* ================= PRODUCT IMAGE ================= */
 
     const boxWidth = 150;
@@ -143,17 +156,17 @@ export default function GenerateTDS({
     const textColumnX = imageX + boxWidth + gap;
     const textColumnWidth = boxWidth + 40; // adjust width of right side
 
-pdf.setFont("helvetica", "bold");
-pdf.setFontSize(18);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
 
-pdf.text(
-  productName || "Product Name",
-  textColumnX,
-  imageY + boxHeight / 2,
-  {
-    maxWidth: textColumnWidth,
-  }
-);
+    pdf.text(
+      productName || "Product Name",
+      textColumnX,
+      imageY + boxHeight / 2,
+      {
+        maxWidth: textColumnWidth,
+      },
+    );
 
     y += 140;
 
@@ -208,16 +221,12 @@ pdf.text(
 
     /* ================= AUTO SCALE ================= */
 
-const DRAWING_BLOCK_HEIGHT = 120; // drawings + labels
-const FOOTER_REAL_HEIGHT = 70; // visual footer
-const SAFE_MARGIN = 10; // space before footer
+    const DRAWING_BLOCK_HEIGHT = 120; // drawings + labels
+    const FOOTER_REAL_HEIGHT = 70; // visual footer
+    const SAFE_MARGIN = 10; // space before footer
 
-const maxTableHeight =
-  pageHeight -
-  FOOTER_REAL_HEIGHT -
-  DRAWING_BLOCK_HEIGHT -
-  SAFE_MARGIN -
-  y;
+    const maxTableHeight =
+      pageHeight - FOOTER_REAL_HEIGHT - DRAWING_BLOCK_HEIGHT - SAFE_MARGIN - y;
 
     let fontSize = 9;
 
@@ -251,11 +260,11 @@ const maxTableHeight =
       pageBreak: "avoid",
       tableWidth: tableWidth,
       margin: { left: tableX },
-styles: {
-  fontSize,
-  cellPadding: 2,
-  overflow: "linebreak",
-},
+      styles: {
+        fontSize,
+        cellPadding: 2,
+        overflow: "linebreak",
+      },
       body: tableRows,
       columnStyles: {
         0: { cellWidth: 230 },
@@ -350,6 +359,54 @@ if (selectedBrand === "Lit") {
   );
 }
 
+if (selectedBrand === "Lumera") {
+  const footerImg = new Image();
+  footerImg.src = "/lumera-footer.png";
+
+  await new Promise((resolve) => {
+    footerImg.onload = resolve;
+  });
+
+  const imgWidth = footerImg.width;
+  const imgHeight = footerImg.height;
+
+  const ratio = pageWidth / imgWidth;
+  const finalHeight = imgHeight * ratio;
+
+  pdf.addImage(
+    "/lumera-footer.png",
+    "PNG",
+    0,
+    pageHeight - finalHeight,
+    pageWidth,
+    finalHeight
+  );
+}
+
+if (selectedBrand === "Ecoshift") {
+  const footerImg = new Image();
+  footerImg.src = "/ecoshift-footer.png";
+
+  await new Promise((resolve) => {
+    footerImg.onload = resolve;
+  });
+
+  const imgWidth = footerImg.width;
+  const imgHeight = footerImg.height;
+
+  const ratio = pageWidth / imgWidth;
+  const finalHeight = imgHeight * ratio;
+
+  pdf.addImage(
+    "/ecoshift-footer.png",
+    "PNG",
+    0,
+    pageHeight - finalHeight,
+    pageWidth,
+    finalHeight
+  );
+}
+
     pdf.save(`${productName || "Product"}-${itemCode || "Item"}-TDS.pdf`);
   };
 
@@ -436,12 +493,10 @@ if (selectedBrand === "Lit") {
               />
             </div>
 
-
-
             {/* PREVIEW */}
-<div className="flex justify-center font-bold text-base mb-3">
-  TDS PREVIEW
-</div>
+            <div className="flex justify-center font-bold text-base mb-3">
+              TDS PREVIEW
+            </div>
             {/* REMOVE EMPTY SPECIFICATIONS TOGGLE */}
             <div className="space-y-2">
               <p className="text-sm font-semibold">
