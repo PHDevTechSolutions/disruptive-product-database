@@ -80,15 +80,15 @@ export default function DownloadProduct({ products }: Props) {
 
       /* STATIC COLUMNS */
 
-      const staticColumns = [
-        "Product Usage",
-        "Product Family",
-        "Product Class",
-        "Price Point",
-        "Brand Origin",
-        "Supplier",
-        "Image URL",
-      ];
+const staticColumns = [
+  "Product Usage",
+  "Product Family",
+  "Product Class",
+  "Price Point",
+  "Brand Origin",
+  "Supplier Brand",
+  "Image URL",
+];
 
       const header1: any[] = [];
       const header2: any[] = [];
@@ -190,7 +190,7 @@ export default function DownloadProduct({ products }: Props) {
         row.push(product.productClass || "");
         row.push(product.pricePoint || "");
         row.push(product.brandOrigin || "");
-        row.push(product.supplier?.company || "");
+        row.push(product.supplier?.supplierBrand || "");
 
         let imageURL = product.mainImage?.url || "";
 

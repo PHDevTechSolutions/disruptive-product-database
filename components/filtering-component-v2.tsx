@@ -21,14 +21,14 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   /* ================= STEP VISIBILITY CONTROL ================= */
   /* CTRL+F: STEP VISIBILITY CONTROL */
 
-  const stepOrder = [
-    "Product Usage",
-    "Product Family",
-    "Product Class",
-    "Price Point",
-    "Brand Origin",
-    "Supplier",
-  ];
+const stepOrder = [
+  "Product Usage",
+  "Product Family",
+  "Product Class",
+  "Price Point",
+  "Brand Origin",
+  "Supplier Brand",
+];
 
   const [visibleSteps, setVisibleSteps] = useState<string[]>(["Product Usage"]);
 
@@ -171,7 +171,7 @@ const check = (key: string, value: any) => {
 
     if (!check("Brand Origin", p.brandOrigin)) return false;
 
-    if (!check("Supplier", p.supplier?.company)) return false;
+    if (!check("Supplier Brand", p.supplier?.supplierBrand)) return false;
 
     return true;
   });
@@ -221,7 +221,7 @@ const check = (key: string, value: any) => {
         return true;
       })
 
-      .map((p) => p.supplier?.company),
+      .map((p) => p.supplier?.supplierBrand),
   );
 
   const buildCounts = (
@@ -594,14 +594,14 @@ const check = (key: string, value: any) => {
         {/* ================= TECH SPECS NEW ROW ================= */}
         {/* CTRL+F: TECH SPECS NEW ROW */}
 
-        {visibleSteps.includes("Supplier") && (
+        {visibleSteps.includes("Supplier Brand") && (
           <div
-            ref={setStepRef("Supplier")}
+           ref={setStepRef("Supplier Brand")}
             className="space-y-4 scroll-mt-24 bg-pink-100 p-3 rounded"
           >
             <button
               className="text-xs text-blue-600 underline"
-              onClick={() => handleBack("Supplier")}
+              onClick={() => handleBack("Supplier Brand")}
             >
               ← Back
             </button>
@@ -610,7 +610,7 @@ const check = (key: string, value: any) => {
             </h3>{" "}
             <div className="w-[260px] shrink-0">
               <Section
-                title="Supplier"
+                title="Supplier Brand"
                 items={suppliers}
                 filters={filters}
                 toggle={toggle}
@@ -656,7 +656,7 @@ const stepLabels: Record<string, string> = {
   "Product Class": "STEP 3",
   "Price Point": "STEP 4",
   "Brand Origin": "STEP 5",
-  Supplier: "STEP 6",
+  "Supplier Brand": "STEP 6",
 };
 
 /* ================= SECTION ================= */
@@ -668,7 +668,7 @@ const stepColors: Record<string, string> = {
   "Product Class": "bg-yellow-100",
   "Price Point": "bg-purple-100",
   "Brand Origin": "bg-orange-100",
-  Supplier: "bg-pink-100",
+  "Supplier Brand": "bg-pink-100",
 };
 
 function Section({
@@ -738,7 +738,7 @@ function Section({
       else if (step === "Product Class") value = p.productClass;
       else if (step === "Price Point") value = p.pricePoint;
       else if (step === "Brand Origin") value = p.brandOrigin;
-      else if (step === "Supplier") value = p.supplier?.company;
+      else if (step === "Supplier Brand") value = p.supplier?.supplierBrand;
 
       return filters[step].includes(value);
     });
@@ -791,9 +791,9 @@ baseList?.forEach((p: any) => {
   else if (title === "Brand Origin") {
     value = p.brandOrigin;
   } 
-  else if (title === "Supplier") {
-    value = p.supplier?.company;
-  }
+else if (title === "Supplier Brand") {
+  value = p.supplier?.supplierBrand;
+}
 
   /* ================= TECHNICAL SPEC COUNTS FIX ================= */
   else if (title.includes("||")) {

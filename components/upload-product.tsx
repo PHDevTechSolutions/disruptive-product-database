@@ -44,6 +44,7 @@ type ProductFamily = {
 type Supplier = {
   supplierId: string;
   company: string;
+  supplierBrand?: string;
 };
 
 type TemplateSpec = {
@@ -126,25 +127,28 @@ export default function UploadProduct({}: Props) {
 
   /* ---------------- FIND SUPPLIER ---------------- */
 
-  const findSupplier = async (company: string): Promise<Supplier | null> => {
-    if (!company) return null;
+const findSupplier = async (brand: string): Promise<Supplier | null> => {
+  if (!brand) return null;
 
-    const q = query(
-      collection(db, "suppliers"),
-      where("company", "==", company),
-      where("isActive", "==", true),
-    );
+  const q = query(
+    collection(db, "suppliers"),
+    where("supplierBrand", "==", brand),
+    where("isActive", "==", true),
+  );
 
-    const snap = await getDocs(q);
+  const snap = await getDocs(q);
 
-    if (snap.empty) return null;
+  if (snap.empty) return null;
 
-    return {
-      supplierId: snap.docs[0].id,
-      company,
-    };
+  const doc = snap.docs[0];
+  const data = doc.data();
+
+  return {
+    supplierId: doc.id,
+    company: data.company,
+    supplierBrand: data.supplierBrand || "",
   };
-
+};
   /* ---------------- AUTO CREATE TEMPLATE ---------------- */
 
   const createMissingTemplateSpecs = async (
@@ -346,7 +350,7 @@ export default function UploadProduct({}: Props) {
           let pricePoint = row.getCell(4).value?.toString() || lastPricePoint;
           let brandOrigin = row.getCell(5).value?.toString() || lastBrandOrigin;
 
-          let supplierName = row.getCell(6).value?.toString() || lastSupplier;
+          let supplierBrand = row.getCell(6).value?.toString() || lastSupplier;
           let imageURL = row.getCell(7).value?.toString() || lastImage;
 
           /* GOOGLE DRIVE LINK PARSER */
@@ -368,7 +372,7 @@ export default function UploadProduct({}: Props) {
           lastClass = productClass;
           lastPricePoint = pricePoint;
           lastBrandOrigin = brandOrigin;
-          lastSupplier = supplierName;
+          lastSupplier = supplierBrand;
           lastImage = imageURL;
 
           if (!usage || !family) continue;
@@ -379,7 +383,7 @@ export default function UploadProduct({}: Props) {
           const productFamily = await findProductFamily(category.id, family);
           if (!productFamily) continue;
 
-          const supplier = await findSupplier(supplierName);
+          const supplier = await findSupplier(supplierBrand);
 
           /* UNIQUE SYNC KEY */
 

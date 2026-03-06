@@ -279,41 +279,41 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
       /* ===============================
        1️⃣ UPDATE SUPPLIER (MASTER)
     =============================== */
-await updateDoc(doc(db, "suppliers", supplier.id), {
-  supplierId: supplier.id,
-  supplierbrandId: supplier.id,
+      await updateDoc(doc(db, "suppliers", supplier.id), {
+        supplierId: supplier.id,
+        supplierbrandId: supplier.id,
 
-  company: company.trim(),
-  supplierBrand: supplierBrand.trim(),
+        company: company.trim(),
+        supplierBrand: supplierBrand.trim(),
 
-  internalCode: internalCode.filter(Boolean),
+        internalCode: internalCode.filter(Boolean),
 
-  addresses: addresses.filter(Boolean),
+        addresses: addresses.filter(Boolean),
 
-  emails: emails.filter(Boolean),
+        emails: emails.filter(Boolean),
 
-  website: website.filter(Boolean),
+        website: website.filter(Boolean),
 
-  contacts: contactNames
-    .map((name, index) => ({
-      name,
-      phone: contactNumbers[index] || "",
-    }))
-    .filter((c) => c.name || c.phone),
+        contacts: contactNames
+          .map((name, index) => ({
+            name,
+            phone: contactNumbers[index] || "",
+          }))
+          .filter((c) => c.name || c.phone),
 
-  forteProducts: forteProducts.filter(Boolean),
+        forteProducts: forteProducts.filter(Boolean),
 
-  products: products.filter(Boolean),
+        products: products.filter(Boolean),
 
-  certificates: certificates.filter(Boolean),
+        certificates: certificates.filter(Boolean),
 
-  referenceID: user?.ReferenceID || supplier.referenceID || null,
+        referenceID: user?.ReferenceID || supplier.referenceID || null,
 
-  whatHappened: "Supplier Edited",
-  date_updated: serverTimestamp(),
+        whatHappened: "Supplier Edited",
+        date_updated: serverTimestamp(),
 
-  updatedAt: serverTimestamp(),
-});
+        updatedAt: serverTimestamp(),
+      });
       /* =========================================
        2️⃣ FETCH PRODUCTS USING THIS SUPPLIER ID
     ========================================= */
@@ -335,7 +335,8 @@ await updateDoc(doc(db, "suppliers", supplier.id), {
           return updateDoc(p.ref, {
             supplier: {
               ...data.supplier,
-              company: company.trim(), // 👈 SYNC NAME
+              company: company.trim(),
+              supplierBrand: supplierBrand.trim(),
             },
           });
         }),
