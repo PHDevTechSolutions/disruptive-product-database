@@ -43,6 +43,7 @@ type UploadSupplierProps = {
 
 type ExcelRow = {
   "Company Name"?: string;
+  "Supplier Brand"?: string; // ✅ ADD
   "Internal Code"?: string;
   Addresses?: string;
   Emails?: string;
@@ -53,6 +54,9 @@ type ExcelRow = {
   "Product(s)"?: string;
   "Certificate(s)"?: string;
 };
+
+
+
 
 /* ---------------- Supplier Code Helpers ---------------- */
 const normalizeCompanyPrefix = (name: string) => {
@@ -85,24 +89,26 @@ const generateSupplierCode = (companyName: string) => {
   return `${prefix}-SUPP-${generateAlphaNumeric(6)}`;
 };
 
-const safeSplit = (value: any) => {
 
+const safeSplit = (value: any) => {
   if (Array.isArray(value))
-    return value.map(String).map(v => v.trim()).filter(Boolean);
+    return value
+      .map(String)
+      .map((v) => v.trim())
+      .filter(Boolean);
 
   if (typeof value === "string")
     return value
       .split("|")
-      .map(v => v.trim())
+      .map((v) => v.trim())
       .filter(Boolean);
 
   if (value == null) return [];
 
   return String(value)
     .split("|")
-    .map(v => v.trim())
+    .map((v) => v.trim())
     .filter(Boolean);
-
 };
 const normalizeJoin = (arr?: string[]) =>
   arr && arr.length ? arr.join(" | ") : "";
@@ -142,62 +148,55 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   }, [userId]);
 
   /* ---------------- Read Excel ---------------- */
-const readExcel = async (file: File) => {
+  const readExcel = async (file: File) => {
+    try {
+      if (!file) return;
 
-  try {
+      if (file.size === 0) {
+        toast.error("File is empty");
+        return;
+      }
 
-    if (!file) return;
+      const arrayBuffer = await file.arrayBuffer();
 
-    if (file.size === 0) {
-      toast.error("File is empty");
-      return;
+      const workbook = XLSX.read(arrayBuffer, {
+        type: "array",
+        cellDates: true,
+        raw: false,
+      });
+
+      const sheetName = workbook.SheetNames[0];
+
+      if (!sheetName) {
+        toast.error("Excel has no sheets");
+        return;
+      }
+
+      const sheet = workbook.Sheets[sheetName];
+
+      const json = XLSX.utils.sheet_to_json(sheet, {
+        defval: "",
+      }) as ExcelRow[];
+
+      if (!json.length) {
+        toast.error("Excel file is empty");
+        return;
+      }
+
+      setRows(json);
+
+      toast.success("Excel loaded", {
+        description: `${json.length} rows detected`,
+      });
+
+      // ✅ RESET INPUT (IMPORTANT FIX)
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (error) {
+      console.error(error);
+
+      toast.error("Invalid or corrupted Excel file");
     }
-
-    const arrayBuffer = await file.arrayBuffer();
-
-    const workbook = XLSX.read(arrayBuffer, {
-      type: "array",
-      cellDates: true,
-      raw: false,
-    });
-
-    const sheetName = workbook.SheetNames[0];
-
-    if (!sheetName) {
-      toast.error("Excel has no sheets");
-      return;
-    }
-
-    const sheet = workbook.Sheets[sheetName];
-
-    const json = XLSX.utils.sheet_to_json(sheet, {
-      defval: "",
-    }) as ExcelRow[];
-
-    if (!json.length) {
-      toast.error("Excel file is empty");
-      return;
-    }
-
-    setRows(json);
-
-    toast.success("Excel loaded", {
-      description: `${json.length} rows detected`,
-    });
-
-    // ✅ RESET INPUT (IMPORTANT FIX)
-    if (fileInputRef.current)
-      fileInputRef.current.value = "";
-
-  } catch (error) {
-
-    console.error(error);
-
-    toast.error("Invalid or corrupted Excel file");
-
-  }
-
-};
+  };
 
   /* ---------------- Drag & Drop ---------------- */
   const handleDrop = (e: React.DragEvent) => {
@@ -212,10 +211,9 @@ const readExcel = async (file: File) => {
       return;
     }
 
-readExcel(file);
+    readExcel(file);
 
-if (fileInputRef.current)
-  fileInputRef.current.value = "";
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   /* ✅ CLICK FILE PICKER (ADDED) */
@@ -228,10 +226,9 @@ if (fileInputRef.current)
       return;
     }
 
-readExcel(file);
+    readExcel(file);
 
-if (fileInputRef.current)
-  fileInputRef.current.value = "";
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   /* ---------------- Confirm Upload ---------------- */
@@ -295,6 +292,7 @@ if (fileInputRef.current)
           const existingData = existing.data;
 
           const incomingData = {
+            supplierBrand: String(row["Supplier Brand"] ?? "").trim(), // ✅ ADD
             internalCode: row["Internal Code"] || "",
             addresses: safeSplit(row.Addresses),
             emails: safeSplit(row.Emails),
@@ -309,6 +307,7 @@ if (fileInputRef.current)
           };
 
           const isDifferent =
+            (existingData.supplierBrand || "") !== incomingData.supplierBrand ||
             (existingData.internalCode || "") !== incomingData.internalCode ||
             normalizeJoin(existingData.addresses) !==
               normalizeJoin(incomingData.addresses) ||
@@ -352,28 +351,33 @@ if (fileInputRef.current)
           const names = splitPipe(row["Contact Name(s)"]);
           const phones = splitPipe(row["Phone Number(s)"]);
 
-          await updateDoc(doc(db, "suppliers", existing.id), {
-            whatHappened: "Supplier Added",
-date_updated: serverTimestamp(),
-            supplierId: existing.id, // 👈 ADD THIS
+const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
 
-            companyCode:
-              (existing as any)?.companyCode || generateSupplierCode(company),
+await updateDoc(doc(db, "suppliers", existing.id), {
+  whatHappened: "Supplier Added",
+  date_updated: serverTimestamp(),
+  supplierId: existing.id,
 
-            internalCode: row["Internal Code"] || "",
-            addresses: splitPipe(row.Addresses),
-            emails: splitPipe(row.Emails),
-            website: row.Website || "",
-            contacts: names.map((n, i) => ({
-              name: n,
-              phone: phones[i] || "",
-            })),
-            forteProducts: splitPipe(row["Forte Product(s)"]),
-            products: splitPipe(row["Product(s)"]),
-            certificates: splitPipe(row["Certificate(s)"]),
-            isActive: true,
-            updatedAt: serverTimestamp(),
-          });
+  supplierBrand,
+supplierbrandId: existing.id,
+
+  companyCode:
+    (existing as any)?.companyCode || generateSupplierCode(company),
+
+  internalCode: row["Internal Code"] || "",
+  addresses: splitPipe(row.Addresses),
+  emails: splitPipe(row.Emails),
+  website: row.Website || "",
+  contacts: names.map((n, i) => ({
+    name: n,
+    phone: phones[i] || "",
+  })),
+  forteProducts: splitPipe(row["Forte Product(s)"]),
+  products: splitPipe(row["Product(s)"]),
+  certificates: splitPipe(row["Certificate(s)"]),
+  isActive: true,
+  updatedAt: serverTimestamp(),
+});
 
           supplierMap.set(key, { ...existing, isActive: true });
           reactivated++;
@@ -389,28 +393,33 @@ date_updated: serverTimestamp(),
           phone: contactPhones[i] || "",
         }));
 
-        // 1️⃣ Create supplier (Firestore auto-generates ID)
-        const docRef = await addDoc(collection(db, "suppliers"), {
-          company,
-          companyCode: generateSupplierCode(company),
-          internalCode: row["Internal Code"] || "",
-          addresses: safeSplit(row.Addresses),
-          emails: safeSplit(row.Emails),
-          website: row.Website || "",
-          contacts,
-          forteProducts: safeSplit(row["Forte Product(s)"]),
-          products: safeSplit(row["Product(s)"]),
-          certificates: safeSplit(row["Certificate(s)"]),
-          createdBy: userId,
-          referenceID: user.ReferenceID,
-          isActive: true,
-          createdAt: serverTimestamp(),
-        });
+const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
+
+const docRef = await addDoc(collection(db, "suppliers"), {
+  company,
+  supplierBrand,
+
+  companyCode: generateSupplierCode(company),
+
+  internalCode: row["Internal Code"] || "",
+  addresses: safeSplit(row.Addresses),
+  emails: safeSplit(row.Emails),
+  website: row.Website || "",
+  contacts,
+  forteProducts: safeSplit(row["Forte Product(s)"]),
+  products: safeSplit(row["Product(s)"]),
+  certificates: safeSplit(row["Certificate(s)"]),
+  createdBy: userId,
+  referenceID: user.ReferenceID,
+  isActive: true,
+  createdAt: serverTimestamp(),
+});
 
         // 2️⃣ Save Firestore ID as companyId
         // 2️⃣ Save Firestore ID as supplierId
 await updateDoc(doc(db, "suppliers", docRef.id), {
   supplierId: docRef.id,
+  supplierbrandId: docRef.id,
   whatHappened: "Supplier Added",
   date_updated: serverTimestamp(),
 });
@@ -451,175 +460,142 @@ await updateDoc(doc(db, "suppliers", docRef.id), {
   /* ---------------- UI ---------------- */
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl">
-        <DialogHeader>
-          <DialogTitle>Upload Suppliers (Excel)</DialogTitle>
-        </DialogHeader>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Upload Suppliers (Excel)</DialogTitle>
+          </DialogHeader>
 
-        <Separator />
+          <Separator />
 
-        {/* ✅ CLICK + DRAG ZONE */}
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragActive(true);
-          }}
-          onDragLeave={() => setDragActive(false)}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-md p-6 text-center text-sm cursor-pointer
-            ${dragActive ? "border-primary bg-muted/40" : "border-muted"}`}
-        >
-          Click or drag & drop Excel file here
-          <div className="text-xs text-muted-foreground mt-1">
-            (.xlsx, .xls, .csv)
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            className="hidden"
-            onChange={handleFileSelect}
-          />
-        </div>
-
-        {rows.length > 0 && (
-          <div className="mt-4 border rounded-md overflow-x-auto max-h-[300px]">
-            <table className="min-w-[1400px] text-sm">
-              <thead className="sticky top-0 bg-background border-b">
-                <tr>
-                  <th className="p-2">Company Name</th>
-                  <th className="p-2">Internal Code</th>
-                  <th className="p-2">Addresses</th>
-                  <th className="p-2">Emails</th>
-                  <th className="p-2">Website</th>
-                  <th className="p-2">Contact Name(s)</th>
-                  <th className="p-2">Phone Number(s)</th>
-                  <th className="p-2">Forte Product(s)</th>
-                  <th className="p-2">Product(s)</th>
-                  <th className="p-2">Certificate(s)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, i) => (
-                  <tr key={i}>
-                    <td className="p-2">{row["Company Name"] || "-"}</td>
-                    <td className="p-2">{row["Internal Code"] || "-"}</td>
-                    <td className="p-2">{row.Addresses || "-"}</td>
-                    <td className="p-2">{row.Emails || "-"}</td>
-                    <td className="p-2">{row.Website || "-"}</td>
-                    <td className="p-2">{row["Contact Name(s)"] || "-"}</td>
-                    <td className="p-2">{row["Phone Number(s)"] || "-"}</td>
-                    <td className="p-2">{row["Forte Product(s)"] || "-"}</td>
-                    <td className="p-2">{row["Product(s)"] || "-"}</td>
-                    <td className="p-2">{row["Certificate(s)"] || "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <DialogFooter className="gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setRows([]);
-              onOpenChange(false);
+          {/* ✅ CLICK + DRAG ZONE */}
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragActive(true);
             }}
-            disabled={loading}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-md p-6 text-center text-sm cursor-pointer
+            ${dragActive ? "border-primary bg-muted/40" : "border-muted"}`}
           >
-            Cancel
-          </Button>
+            Click or drag & drop Excel file here
+            <div className="text-xs text-muted-foreground mt-1">
+              (.xlsx, .xls, .csv)
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+          </div>
 
-          <Button
-            onClick={handleConfirmUpload}
-            disabled={loading || rows.length === 0}
-          >
-            {loading ? "Uploading..." : "Go / Confirm Upload"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+          {rows.length > 0 && (
+            <div className="mt-4 border rounded-md overflow-x-auto max-h-[300px]">
+              <table className="min-w-[1400px] text-sm">
+                <thead className="sticky top-0 bg-background border-b">
+                  <tr>
+                    <th className="p-2">Company Name</th>
+                    <th className="p-2">Supplier Brand</th>
+                    <th className="p-2">Internal Code</th>
+                    <th className="p-2">Addresses</th>
+                    <th className="p-2">Emails</th>
+                    <th className="p-2">Website</th>
+                    <th className="p-2">Contact Name(s)</th>
+                    <th className="p-2">Phone Number(s)</th>
+                    <th className="p-2">Forte Product(s)</th>
+                    <th className="p-2">Product(s)</th>
+                    <th className="p-2">Certificate(s)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={i}>
+                      <td className="p-2">{row["Company Name"] || "-"}</td>
+                      <td className="p-2">{row["Supplier Brand"] || "-"}</td>
+                      <td className="p-2">{row["Internal Code"] || "-"}</td>
+                      <td className="p-2">{row.Addresses || "-"}</td>
+                      <td className="p-2">{row.Emails || "-"}</td>
+                      <td className="p-2">{row.Website || "-"}</td>
+                      <td className="p-2">{row["Contact Name(s)"] || "-"}</td>
+                      <td className="p-2">{row["Phone Number(s)"] || "-"}</td>
+                      <td className="p-2">{row["Forte Product(s)"] || "-"}</td>
+                      <td className="p-2">{row["Product(s)"] || "-"}</td>
+                      <td className="p-2">{row["Certificate(s)"] || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-      <UploadSupplierWarning
-        open={warningOpen}
-        conflicts={conflicts}
-        performedByReferenceID={user?.ReferenceID}
-        onCancel={() => {
-          setConflicts([]);
-          setWarningOpen(false);
-        }}
-        onProceed={async () => {
-          setWarningOpen(false);
-          setLoading(true);
+          <DialogFooter className="gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setRows([]);
+                onOpenChange(false);
+              }}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
 
-          for (const c of conflicts) {
-            await updateDoc(doc(db, "suppliers", c.supplierId), {
-              internalCode: c.incoming.internalCode,
-              addresses: c.incoming.addresses,
-              emails: c.incoming.emails,
-              website: c.incoming.website,
-              contacts: c.incoming.contacts,
-              forteProducts: c.incoming.forteProducts,
-              products: c.incoming.products,
-              certificates: c.incoming.certificates,
-              updatedAt: serverTimestamp(),
-              updatedBy: userId,
-              updatedByReferenceID: user?.ReferenceID,
+            <Button
+              onClick={handleConfirmUpload}
+              disabled={loading || rows.length === 0}
+            >
+              {loading ? "Uploading..." : "Go / Confirm Upload"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+
+        <UploadSupplierWarning
+          open={warningOpen}
+          conflicts={conflicts}
+          performedByReferenceID={user?.ReferenceID}
+          onCancel={() => {
+            setConflicts([]);
+            setWarningOpen(false);
+          }}
+          onProceed={async () => {
+            setWarningOpen(false);
+            setLoading(true);
+
+            for (const c of conflicts) {
+await updateDoc(doc(db, "suppliers", c.supplierId), {
+  supplierBrand: c.incoming.supplierBrand,
+supplierbrandId: c.supplierId,
+
+  internalCode: c.incoming.internalCode,
+  addresses: c.incoming.addresses,
+  emails: c.incoming.emails,
+  website: c.incoming.website,
+  contacts: c.incoming.contacts,
+  forteProducts: c.incoming.forteProducts,
+  products: c.incoming.products,
+  certificates: c.incoming.certificates,
+  updatedAt: serverTimestamp(),
+  updatedBy: userId,
+  updatedByReferenceID: user?.ReferenceID,
+});
+            }
+
+            toast.success("Suppliers updated", {
+              description: `${conflicts.length} supplier(s) overwritten`,
             });
-          }
 
-          toast.success("Suppliers updated", {
-            description: `${conflicts.length} supplier(s) overwritten`,
-          });
-
-          setConflicts([]);
-          onOpenChange(false);
-          setLoading(false);
-        }}
-      />
-</Dialog>
-
-<UploadSupplierWarning
-  open={warningOpen}
-  conflicts={conflicts}
-  performedByReferenceID={user?.ReferenceID}
-  onCancel={() => {
-    setConflicts([]);
-    setWarningOpen(false);
-  }}
-  onProceed={async () => {
-    setWarningOpen(false);
-    setLoading(true);
-
-    for (const c of conflicts) {
-      await updateDoc(doc(db, "suppliers", c.supplierId), {
-        internalCode: c.incoming.internalCode,
-        addresses: c.incoming.addresses,
-        emails: c.incoming.emails,
-        website: c.incoming.website,
-        contacts: c.incoming.contacts,
-        forteProducts: c.incoming.forteProducts,
-        products: c.incoming.products,
-        certificates: c.incoming.certificates,
-        updatedAt: serverTimestamp(),
-        updatedBy: userId,
-        updatedByReferenceID: user?.ReferenceID,
-      });
-    }
-
-    toast.success("Suppliers updated", {
-      description: `${conflicts.length} supplier(s) overwritten`,
-    });
-
-    setConflicts([]);
-    onOpenChange(false);
-    setLoading(false);
-  }}
-/>
-</>
-);
+            setConflicts([]);
+            onOpenChange(false);
+            setLoading(false);
+          }}
+        />
+      </Dialog>
+    </>
+  );
 }
 
 export default UploadSupplier;

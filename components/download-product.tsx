@@ -105,20 +105,6 @@ export default function DownloadProduct({ products }: Props) {
         });
       });
 
-      /* ================= COMMERCIAL DETAILS HEADER ================= */
-
-      const commercialColumns = [
-        "Unit Cost",
-        "Packaging Dimension",
-        "Factory Address",
-        "Port Of Discharge",
-      ];
-
-      commercialColumns.forEach((col, index) => {
-        header1.push(col);
-        header2.push(index === 0 ? "COMMERCIAL DETAILS" : "");
-      });
-
       ws.addRow(header1);
       ws.addRow(header2);
 
@@ -194,47 +180,6 @@ export default function DownloadProduct({ products }: Props) {
         colStart = colEnd + 1;
       });
 
-      /* ================= STYLE COMMERCIAL DETAILS ================= */
-
-      const commercialStart = header1.length - 3;
-      const commercialEnd = header1.length;
-
-      ws.mergeCells(2, commercialStart, 2, commercialEnd);
-
-      for (let col = commercialStart; col <= commercialEnd; col++) {
-        const headerCell = ws.getRow(1).getCell(col);
-        const groupCell = ws.getRow(2).getCell(col);
-
-        headerCell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "D9D9D9" },
-        };
-
-        headerCell.font = { bold: true };
-
-        headerCell.alignment = {
-          vertical: "middle",
-          horizontal: "center",
-        };
-
-        groupCell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "D9D9D9" },
-        };
-
-        groupCell.font = {
-          bold: true,
-          italic: true,
-        };
-
-        groupCell.alignment = {
-          vertical: "middle",
-          horizontal: "center",
-        };
-      }
-
       /* ADD PRODUCT ROWS */
 
       sheetProducts.forEach((product) => {
@@ -276,13 +221,6 @@ export default function DownloadProduct({ products }: Props) {
           });
         });
 
-        /* ================= COMMERCIAL DETAILS VALUES ================= */
-
-        row.push(product.commercialDetails?.unitCost || "");
-        row.push(product.commercialDetails?.packagingDimension || "");
-        row.push(product.commercialDetails?.factoryAddress || "");
-        row.push(product.commercialDetails?.portOfDischarge || "");
-
         ws.addRow(row);
       });
 
@@ -294,9 +232,7 @@ export default function DownloadProduct({ products }: Props) {
 
         for (let row = 4; row <= ws.rowCount + 1; row++) {
           const currentValue =
-            row <= ws.rowCount
-              ? ws.getRow(row).getCell(col).value
-              : "__END__";
+            row <= ws.rowCount ? ws.getRow(row).getCell(col).value : "__END__";
 
           if (currentValue !== lastValue) {
             if (row - startRow > 1) {

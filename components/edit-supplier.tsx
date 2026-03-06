@@ -62,6 +62,7 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
 
   /* ---------------- Base Fields ---------------- */
   const [company, setCompany] = useState("");
+  const [supplierBrand, setSupplierBrand] = useState("");
   const [internalCode, setInternalCode] = useState<string[]>([""]);
   const [addresses, setAddresses] = useState<string[]>([""]);
   const [emails, setEmails] = useState<string[]>([""]);
@@ -146,6 +147,7 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
     if (!supplier) return;
 
     setCompany(supplier.company || "");
+    setSupplierBrand(supplier.supplierBrand || "");
     setInternalCode(
       supplier.internalCode && supplier.internalCode.length > 0
         ? supplier.internalCode
@@ -278,10 +280,11 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
        1️⃣ UPDATE SUPPLIER (MASTER)
     =============================== */
 await updateDoc(doc(db, "suppliers", supplier.id), {
-
   supplierId: supplier.id,
+  supplierbrandId: supplier.id,
 
   company: company.trim(),
+  supplierBrand: supplierBrand.trim(),
 
   internalCode: internalCode.filter(Boolean),
 
@@ -310,7 +313,6 @@ await updateDoc(doc(db, "suppliers", supplier.id), {
   date_updated: serverTimestamp(),
 
   updatedAt: serverTimestamp(),
-
 });
       /* =========================================
        2️⃣ FETCH PRODUCTS USING THIS SUPPLIER ID
@@ -377,17 +379,30 @@ await updateDoc(doc(db, "suppliers", supplier.id), {
         )}
 
         <div className="space-y-6 mt-4">
-          {/* Company */}
-          <div className="space-y-1">
-            <Label>Company</Label>
-            <Input
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="Company name"
-            />
-            {companyError && (
-              <p className="text-sm text-red-600">{companyError}</p>
-            )}
+          {/* Company + Supplier Brand */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Company */}
+            <div className="space-y-1">
+              <Label>Company</Label>
+              <Input
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder="Company name"
+              />
+              {companyError && (
+                <p className="text-sm text-red-600">{companyError}</p>
+              )}
+            </div>
+
+            {/* Supplier Brand */}
+            <div className="space-y-1">
+              <Label>Supplier Brand</Label>
+              <Input
+                value={supplierBrand}
+                onChange={(e) => setSupplierBrand(e.target.value)}
+                placeholder="Brand name"
+              />
+            </div>
           </div>
 
           {/* Internal Code */}

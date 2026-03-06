@@ -336,13 +336,6 @@ export default function UploadProduct({}: Props) {
         let lastSupplier = "";
         let lastImage = "";
 
-        /* ================= COMMERCIAL DETAILS TRACKER ================= */
-
-        let lastUnitCost = "";
-        let lastPackagingDimension = "";
-        let lastFactoryAddress = "";
-        let lastPortOfDischarge = "";
-
         for (let r = 3; r <= ws.rowCount; r++) {
           const row = ws.getRow(r);
 
@@ -355,21 +348,6 @@ export default function UploadProduct({}: Props) {
 
           let supplierName = row.getCell(6).value?.toString() || lastSupplier;
           let imageURL = row.getCell(7).value?.toString() || lastImage;
-
-          let unitCost =
-            row.getCell(ws.columnCount - 3).value?.toString() || lastUnitCost;
-
-          let packagingDimension =
-            row.getCell(ws.columnCount - 2).value?.toString() ||
-            lastPackagingDimension;
-
-          let factoryAddress =
-            row.getCell(ws.columnCount - 1).value?.toString() ||
-            lastFactoryAddress;
-
-          let portOfDischarge =
-            row.getCell(ws.columnCount).value?.toString() ||
-            lastPortOfDischarge;
 
           /* GOOGLE DRIVE LINK PARSER */
 
@@ -392,10 +370,6 @@ export default function UploadProduct({}: Props) {
           lastBrandOrigin = brandOrigin;
           lastSupplier = supplierName;
           lastImage = imageURL;
-          lastUnitCost = unitCost;
-          lastPackagingDimension = packagingDimension;
-          lastFactoryAddress = factoryAddress;
-          lastPortOfDischarge = portOfDischarge;
 
           if (!usage || !family) continue;
 
@@ -468,13 +442,6 @@ export default function UploadProduct({}: Props) {
             supplier,
 
             mainImage: imageURL ? { url: imageURL } : null,
-
-            commercialDetails: {
-              unitCost,
-              packagingDimension,
-              factoryAddress,
-              portOfDischarge,
-            },
 
             categoryTypes: [
               {

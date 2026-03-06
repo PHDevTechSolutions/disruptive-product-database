@@ -225,9 +225,6 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                         <div className="border p-4 text-center">-</div>
                       ) : (
                         product.technicalSpecifications
-                          .filter(
-                            (group) => group.title !== "COMMERCIAL DETAILS",
-                          )
                           .map((group, i) => (
                             <div key={i} className="mb-4">
                               <div className="font-semibold mb-2">

@@ -60,6 +60,8 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
 
   /* ---------------- Base Fields ---------------- */
   const [company, setCompany] = useState("");
+  const [supplierBrand, setSupplierBrand] = useState("");
+
   const [companyCode, setCompanyCode] = useState("");
   const [internalCode, setInternalCode] = useState<string[]>([""]);
   const [addresses, setAddresses] = useState<string[]>([""]);
@@ -135,7 +137,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
       setCompanyCode("");
       return;
     }
-
     setCompanyCode(generateSupplierCode(company));
   }, [company]);
 
@@ -237,6 +238,7 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
       }
       const supplierData = {
         company,
+        supplierBrand,
         companyCode,
         internalCode: internalCode.filter(Boolean),
         addresses: addresses.filter(Boolean),
@@ -262,17 +264,19 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
       const docRef = await addDoc(collection(db, "suppliers"), supplierData);
 
       // 2️⃣ SAVE supplierId (same as Firestore document ID)
-await updateDoc(doc(db, "suppliers", docRef.id), {
-  supplierId: docRef.id,
-  whatHappened: "Supplier Added",
-  date_updated: serverTimestamp(),
-});
-
+      await updateDoc(doc(db, "suppliers", docRef.id), {
+        supplierId: docRef.id,
+        supplierbrandId: docRef.id,
+        whatHappened: "Supplier Added",
+        date_updated: serverTimestamp(),
+      });
       toast.success("Supplier saved successfully", {
         description: company,
       });
 
       setCompany("");
+      setSupplierBrand("");
+
       setInternalCode([""]);
       setAddresses([""]);
       setEmails([""]);
@@ -318,17 +322,28 @@ await updateDoc(doc(db, "suppliers", docRef.id), {
           </div>
         )}
         <div className="space-y-6">
-          {/* Company */}
-          <div className="space-y-1">
-            <Label>Company</Label>
-            <Input
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="Company name"
-            />
-            {companyError && (
-              <p className="text-sm text-red-600">{companyError}</p>
-            )}
+          {/* Company + Supplier Brand */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>Company</Label>
+              <Input
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder="Company name"
+              />
+              {companyError && (
+                <p className="text-sm text-red-600">{companyError}</p>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <Label>Supplier Brand</Label>
+              <Input
+                value={supplierBrand}
+                onChange={(e) => setSupplierBrand(e.target.value)}
+                placeholder="Brand name"
+              />
+            </div>
           </div>
 
           {/* Supplier Code */}

@@ -145,8 +145,7 @@ export default function GenerateTDS({
     /* ================= TITLE ================= */
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(14);
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(14);
+
 
     /* ================= TITLE ================= */
     pdf.setFont("helvetica", "bold");
@@ -221,7 +220,7 @@ export default function GenerateTDS({
 
     /* ================= AUTO SCALE ================= */
 
-    const DRAWING_BLOCK_HEIGHT = 120; // drawings + labels
+    const DRAWING_BLOCK_HEIGHT = 170; // drawings + labels
     const FOOTER_REAL_HEIGHT = 70; // visual footer
     const SAFE_MARGIN = 10; // space before footer
 
@@ -283,9 +282,10 @@ export default function GenerateTDS({
     const drawingY = tableEndY + 35;
 
     // Total drawing container width
-    const drawingWidth = 120;
-    const gapBetween = 80;
-    const totalWidth = drawingWidth * 2 + gapBetween;
+const drawingWidth = 220;
+const drawingHeight = 120;
+const gapBetween = 60;
+const totalWidth = drawingWidth * 2 + gapBetween;
 
     // Center whole drawing group
     const startX = (pageWidth - totalWidth) / 2;
@@ -313,7 +313,7 @@ export default function GenerateTDS({
         reader.readAsDataURL(dimensionalDrawing);
       });
 
-      pdf.addImage(img, "PNG", startX, drawingY, drawingWidth, 80);
+      pdf.addImage(img, "PNG", startX, drawingY, drawingWidth, drawingHeight);
     }
 
     if (illuminanceLevel) {
@@ -323,14 +323,14 @@ export default function GenerateTDS({
         reader.readAsDataURL(illuminanceLevel);
       });
 
-      pdf.addImage(
-        img2,
-        "PNG",
-        startX + drawingWidth + gapBetween,
-        drawingY,
-        drawingWidth,
-        80,
-      );
+pdf.addImage(
+  img2,
+  "PNG",
+  startX + drawingWidth + gapBetween,
+  drawingY,
+  drawingWidth,
+  drawingHeight,
+);
     }
 
     /* ================= FOOTER ================= */

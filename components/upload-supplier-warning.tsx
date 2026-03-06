@@ -19,27 +19,29 @@ export type SupplierConflict = {
   supplierId: string; // firestore doc id (important for update)
   company: string;
 
-  existing: {
-    internalCode?: string;
-    addresses?: string[];
-    emails?: string[];
-    website?: string;
-    contacts?: { name: string; phone: string }[];
-    forteProducts?: string[];
-    products?: string[];
-    certificates?: string[];
-  };
+existing: {
+  supplierBrand?: string; // ✅ ADD
+  internalCode?: string;
+  addresses?: string[];
+  emails?: string[];
+  website?: string;
+  contacts?: { name: string; phone: string }[];
+  forteProducts?: string[];
+  products?: string[];
+  certificates?: string[];
+};
 
-  incoming: {
-    internalCode?: string;
-    addresses?: string[];
-    emails?: string[];
-    website?: string;
-    contacts?: { name: string; phone: string }[];
-    forteProducts?: string[];
-    products?: string[];
-    certificates?: string[];
-  };
+incoming: {
+  supplierBrand?: string; // ✅ ADD
+  internalCode?: string;
+  addresses?: string[];
+  emails?: string[];
+  website?: string;
+  contacts?: { name: string; phone: string }[];
+  forteProducts?: string[];
+  products?: string[];
+  certificates?: string[];
+};
 };
 
 type UploadSupplierWarningProps = {
@@ -117,6 +119,7 @@ export default function UploadSupplierWarning({
                       Existing Data
                     </h4>
 
+                    <div><b>Supplier Brand:</b> {c.existing.supplierBrand || "-"}</div>
                     <div><b>Internal Code:</b> {c.existing.internalCode || "-"}</div>
                     <div><b>Addresses:</b> {join(c.existing.addresses)}</div>
                     <div><b>Emails:</b> {join(c.existing.emails)}</div>
@@ -133,6 +136,7 @@ export default function UploadSupplierWarning({
                       Incoming (Excel)
                     </h4>
 
+                    <div><b>Supplier Brand:</b> {c.incoming.supplierBrand || "-"}</div>
                     <div><b>Internal Code:</b> {c.incoming.internalCode || "-"}</div>
                     <div><b>Addresses:</b> {join(c.incoming.addresses)}</div>
                     <div><b>Emails:</b> {join(c.incoming.emails)}</div>

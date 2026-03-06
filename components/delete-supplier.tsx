@@ -43,6 +43,7 @@ type DeleteSupplierProps = {
   supplier: {
     id: string;
     company: string;
+    supplierBrand?: string; // ✅ ADD
   };
 };
 
@@ -86,48 +87,41 @@ function DeleteSupplier({ open, onOpenChange, supplier }: DeleteSupplierProps) {
       });
   }, [userId]);
 
-/* ---------------- Soft Delete Supplier + Remove from Products ---------------- */
+  /* ---------------- Soft Delete Supplier + Remove from Products ---------------- */
 
-const handleDeleteSupplier = async () => {
-  try {
-    if (!user?.ReferenceID) {
-      toast.error("User reference not loaded");
-      return;
-    }
+  const handleDeleteSupplier = async () => {
+    try {
+      if (!user?.ReferenceID) {
+        toast.error("User reference not loaded");
+        return;
+      }
 
-    setLoading(true);
+      setLoading(true);
 
-    /* ✅ STEP 1: SOFT DELETE SUPPLIER */
+      /* ✅ STEP 1: SOFT DELETE SUPPLIER */
 
-    await updateDoc(
-      doc(db, "suppliers", supplier.id),
-      {
+      await updateDoc(doc(db, "suppliers", supplier.id), {
         isActive: false,
         deletedBy: user.ReferenceID,
         deletedAt: serverTimestamp(),
         whatHappened: "Supplier Deleted",
         date_updated: serverTimestamp(),
-      }
-    );
+      });
 
-    /* ✅ STEP 2: REMOVE SUPPLIER FROM ALL PRODUCTS
+      /* ✅ STEP 2: REMOVE SUPPLIER FROM ALL PRODUCTS
        AND APPLY DEFAULT VALUES */
 
-    const snapshot = await getDocs(collection(db, "products"));
+      const snapshot = await getDocs(collection(db, "products"));
 
-    const batch = writeBatch(db);
+      const batch = writeBatch(db);
 
-    snapshot.forEach((productDoc) => {
+      snapshot.forEach((productDoc) => {
+        const data = productDoc.data();
 
-      const data = productDoc.data();
+        if (!data.supplier) return;
 
-      if (!data.supplier) return;
-
-      if (data.supplier.supplierId === supplier.id) {
-
-        batch.update(
-          doc(db, "products", productDoc.id),
-          {
+        if (data.supplier?.supplierId === supplier.id) {
+          batch.update(doc(db, "products", productDoc.id), {
             supplier: null,
 
             // ✅ APPLY DEFAULT VALUES
@@ -138,37 +132,27 @@ const handleDeleteSupplier = async () => {
             whatHappened: "Supplier Deleted - Defaults Applied",
 
             date_updated: serverTimestamp(),
-          }
-        );
+          });
+        }
+      });
 
-      }
+      await batch.commit();
 
-    });
+      /* ✅ SUCCESS */
 
-    await batch.commit();
+      toast.success("Supplier deleted", {
+        description: supplier.company,
+      });
 
-    /* ✅ SUCCESS */
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Soft delete supplier error:", error);
 
-    toast.success("Supplier deleted", {
-      description: supplier.company,
-    });
-
-    onOpenChange(false);
-
-  }
-  catch (error) {
-
-    console.error("Soft delete supplier error:", error);
-
-    toast.error("Failed to delete supplier");
-
-  }
-  finally {
-
-    setLoading(false);
-
-  }
-};
+      toast.error("Failed to delete supplier");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   /* ---------------- UI ---------------- */
 
@@ -186,7 +170,14 @@ const handleDeleteSupplier = async () => {
         <div className="space-y-2 text-sm">
           <p>Are you sure you want to delete this supplier?</p>
 
-          <p className="font-medium text-destructive">{supplier.company}</p>
+          <p className="font-medium text-destructive">
+            {supplier.company}
+            {supplier.supplierBrand && (
+              <span className="block text-xs text-muted-foreground">
+                Brand: {supplier.supplierBrand}
+              </span>
+            )}
+          </p>
         </div>
 
         <DialogFooter className="gap-2">

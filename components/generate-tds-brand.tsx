@@ -233,7 +233,7 @@ useEffect(() => {
                     {dimensionalDrawing && (
                       <img
                         src={URL.createObjectURL(dimensionalDrawing)}
-                        className="w-[200px] h-[100px] object-contain"
+                        className="w-[220px] h-[120px] object-contain"
                       />
                     )}
                   </div>
@@ -243,7 +243,7 @@ useEffect(() => {
                     {illuminanceLevel && (
                       <img
                         src={URL.createObjectURL(illuminanceLevel)}
-                        className="w-[200px] h-[100px] object-contain"
+                        className="w-[220px] h-[120px] object-contain"
                       />
                     )}
                   </div>
