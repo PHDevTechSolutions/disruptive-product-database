@@ -95,6 +95,7 @@ type CategoryType = {
 type Supplier = {
   supplierId: string;
   company: string;
+  supplierBrand?: string;
 };
 
 export default function AddProductPage() {
@@ -114,6 +115,8 @@ export default function AddProductPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
     null,
   );
+  const [selectedSupplierBrand, setSelectedSupplierBrand] =
+  useState<Supplier | null>(null);
   const [noSupplier, setNoSupplier] = useState(false);
 
   const [pricePoint, setPricePoint] = useState("");
@@ -311,6 +314,8 @@ export default function AddProductPage() {
       const SUPPLIER_LIST = snapshot.docs.map((doc) => ({
         supplierId: doc.id,
         company: doc.data().company,
+        supplierBrand:
+          doc.data().supplierBrand || doc.data().supplierBrandName || "",
       }));
 
       SUPPLIER_LIST.sort((a, b) => a.company.localeCompare(b.company));
@@ -992,6 +997,10 @@ export default function AddProductPage() {
     );
   }, [classificationTypes, classificationSearch]);
 
+  const handleSelectSupplierBrand = (supplier: Supplier) => {
+  setSelectedSupplierBrand(supplier);
+  setSelectedSupplier(supplier);
+};
   const filteredBrands = React.useMemo(() => {
     return brands.filter((item) =>
       item.name.toLowerCase().includes(brandSearch.toLowerCase()),
@@ -1113,12 +1122,13 @@ export default function AddProductPage() {
         brandOrigin: noSupplier ? "China" : brandOrigin,
         productClass,
 
-        supplier: noSupplier
-          ? null
-          : {
-              supplierId: selectedSupplier!.supplierId,
-              company: selectedSupplier!.company,
-            },
+supplier: noSupplier
+  ? null
+  : {
+      supplierId: selectedSupplier!.supplierId,
+      company: selectedSupplier!.company,
+      supplierBrand: selectedSupplierBrand?.supplierBrand || "",
+    },
 
         productFamilies: selectedProductFamily
           ? [
@@ -1337,7 +1347,10 @@ export default function AddProductPage() {
                           <CommandItem
                             key={supplier.supplierId}
                             value={supplier.company}
-                            onSelect={() => setSelectedSupplier(supplier)}
+                            onSelect={() => {
+  setSelectedSupplier(supplier);
+  setSelectedSupplierBrand(supplier);
+}}
                           >
                             <Check
                               className={cn(
@@ -1356,7 +1369,59 @@ export default function AddProductPage() {
                   </PopoverContent>
                 </Popover>
               </div>
+{/* ================= SUPPLIER BRAND SELECT ================= */}
+<div className="space-y-2">
+  <Label>Supplier Brand</Label>
 
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button
+        variant="outline"
+        role="combobox"
+        disabled={noSupplier}
+        className="w-full justify-between"
+      >
+        <span className="truncate text-left max-w-[85%]">
+          {selectedSupplierBrand
+            ? selectedSupplierBrand.supplierBrand || "No brand"
+            : "Select brand..."}
+        </span>
+
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    </PopoverTrigger>
+
+    <PopoverContent className="p-0 w-full">
+      <Command>
+        <CommandInput placeholder="Search brand..." />
+        <CommandEmpty>No brand found.</CommandEmpty>
+
+        <CommandGroup>
+          {suppliers.map((supplier) => (
+            <CommandItem
+              key={supplier.supplierId}
+              value={supplier.supplierBrand}
+              onSelect={() => handleSelectSupplierBrand(supplier)}
+            >
+              <Check
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  selectedSupplierBrand?.supplierId === supplier.supplierId
+                    ? "opacity-100"
+                    : "opacity-0",
+                )}
+              />
+
+              <span className="truncate">
+                {supplier.supplierBrand || "No Brand"}
+              </span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </Command>
+    </PopoverContent>
+  </Popover>
+</div>
               {/* ================= PRICE POINT SELECT ================= */}
               <div className="space-y-2">
                 <Label>Price Point</Label>
