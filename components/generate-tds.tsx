@@ -20,18 +20,6 @@ type Props = {
   mainImage?: { url: string };
   technicalSpecifications?: TechnicalSpecification[];
 };
-function convertGoogleDriveUrl(url: string) {
-  if (!url) return url;
-
-  if (url.includes("drive.google.com")) {
-    const match = url.match(/\/d\/(.*?)\//);
-    if (match && match[1]) {
-      return `https://drive.google.com/uc?export=view&id=${match[1]}`;
-    }
-  }
-
-  return url;
-}
 
 export default function GenerateTDS({
   open,
@@ -110,49 +98,48 @@ export default function GenerateTDS({
 
     /* ===== INSERT IMAGE INSIDE BOX ===== */
     if (mainImage?.url) {
-const imgUrl = convertGoogleDriveUrl(mainImage.url);
+      const imgData = await fetch(mainImage.url)
+        .then((r) => r.blob())
+        .then(
+          (blob) =>
+            new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            }),
+        );
 
-const img = new Image();
-img.crossOrigin = "anonymous";
-img.src = imgUrl;
+      const img = new Image();
+      img.src = imgData;
 
-await new Promise((resolve) => {
-  img.onload = resolve;
-  img.onerror = () => {
-    console.warn("Image failed to load:", imgUrl);
-    resolve(null);
-  };
-});
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
 
-const imgWidth = img.width;
-const imgHeight = img.height;
+      const imgWidth = img.width;
+      const imgHeight = img.height;
 
-const padding = 10;
+      const padding = 10; // space inside box
 
-const ratio = Math.min(
-  (boxWidth - padding * 2) / imgWidth,
-  (boxHeight - padding * 2) / imgHeight
-);
+      const ratio = Math.min(
+        (boxWidth - padding * 2) / imgWidth,
+        (boxHeight - padding * 2) / imgHeight,
+      );
 
-const finalWidth = imgWidth * ratio;
-const finalHeight = imgHeight * ratio;
+      const finalWidth = imgWidth * ratio;
+      const finalHeight = imgHeight * ratio;
 
-const centeredX = imageX + (boxWidth - finalWidth) / 2;
-const centeredY = imageY + (boxHeight - finalHeight) / 2;
+      const centeredX = imageX + (boxWidth - finalWidth) / 2;
+      const centeredY = imageY + (boxHeight - finalHeight) / 2;
 
-if (img.complete && img.naturalWidth > 0) {
-  pdf.addImage(
-    img,
-    "PNG",
-    centeredX,
-    centeredY,
-    finalWidth,
-    finalHeight
-  );
-}
-
-
-
+      pdf.addImage(
+        imgData,
+        "PNG",
+        centeredX,
+        centeredY,
+        finalWidth,
+        finalHeight,
+      );
     }
 
     /* ================= TITLE ================= */
@@ -231,58 +218,60 @@ if (img.complete && img.naturalWidth > 0) {
       });
     });
 
-    /* ================= AUTO SCALE ================= */
+/* ================= AUTO SCALE TO 1 PAGE ================= */
 
-    const DRAWING_BLOCK_HEIGHT = 170; // drawings + labels
-    const FOOTER_REAL_HEIGHT = 70; // visual footer
-    const SAFE_MARGIN = 10; // space before footer
+const DRAWING_BLOCK_HEIGHT = 200; // drawings + labels
+const FOOTER_REAL_HEIGHT = 80;
+const SAFE_MARGIN = 10;
 
-    const maxTableHeight =
-      pageHeight - FOOTER_REAL_HEIGHT - DRAWING_BLOCK_HEIGHT - SAFE_MARGIN - y;
+const maxTableHeight =
+  pageHeight - FOOTER_REAL_HEIGHT - DRAWING_BLOCK_HEIGHT - SAFE_MARGIN - y;
 
-    let fontSize = 9;
+let fontSize = 9;
+let tableHeight = 0;
 
-    while (fontSize > 5) {
-      const testPdf = new jsPDF("p", "pt", "a4");
+while (fontSize > 4) {
+  const testPdf = new jsPDF("p", "pt", "a4");
 
-      autoTable(testPdf, {
-        startY: y,
-        theme: "grid",
-        styles: { fontSize },
-        body: tableRows,
-        margin: { left: 0 },
-        tableWidth: 450,
-      });
+  autoTable(testPdf, {
+    startY: y,
+    theme: "grid",
+    styles: { fontSize, cellPadding: 2 },
+    body: tableRows,
+    tableWidth: 450,
+    pageBreak: "avoid",
+  });
 
-      const finalY = (testPdf as any).lastAutoTable.finalY;
+  const finalY = (testPdf as any).lastAutoTable.finalY;
+  tableHeight = finalY - y;
 
-      if (finalY - y <= maxTableHeight) break;
+  if (tableHeight <= maxTableHeight) break;
 
-      fontSize -= 0.5;
-    }
+  fontSize -= 0.4; // shrink table gradually
+}
 
     /* ================= CENTER TABLE ================= */
 
     const tableWidth = 450;
     const tableX = (pageWidth - tableWidth) / 2;
 
-    autoTable(pdf, {
-      startY: y,
-      theme: "grid",
-      pageBreak: "avoid",
-      tableWidth: tableWidth,
-      margin: { left: tableX },
-      styles: {
-        fontSize,
-        cellPadding: 2,
-        overflow: "linebreak",
-      },
-      body: tableRows,
-      columnStyles: {
-        0: { cellWidth: 230 },
-        1: { cellWidth: 220 },
-      },
-    });
+autoTable(pdf, {
+  startY: y,
+  theme: "grid",
+  pageBreak: "avoid",
+  tableWidth: tableWidth,
+  margin: { left: tableX },
+  styles: {
+    fontSize,
+    cellPadding: 2,
+    overflow: "linebreak",
+  },
+  body: tableRows,
+  columnStyles: {
+    0: { cellWidth: 230 },
+    1: { cellWidth: 220 },
+  },
+});
 
     /* ================= DRAWINGS (INANGAT) ================= */
 

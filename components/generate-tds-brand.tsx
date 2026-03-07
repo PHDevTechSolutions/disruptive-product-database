@@ -57,33 +57,33 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
     const PAPER_HEIGHT = 1056;
     const HEADER_HEIGHT = 120;
     const FOOTER_HEIGHT = 100;
-const SAFE_BOTTOM_MARGIN = 20;
-const CONTENT_AREA =
-  PAPER_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - SAFE_BOTTOM_MARGIN;
+    const SAFE_BOTTOM_MARGIN = 20;
+    const CONTENT_AREA =
+      PAPER_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - SAFE_BOTTOM_MARGIN;
 
-useEffect(() => {
-  if (!contentRef.current) return;
+    useEffect(() => {
+      if (!contentRef.current) return;
 
-  const contentHeight = contentRef.current.scrollHeight;
+      const contentHeight = contentRef.current.scrollHeight;
 
-  if (!contentHeight) return;
+      if (!contentHeight) return;
 
-  const availableHeight = CONTENT_AREA;
+      const availableHeight = CONTENT_AREA;
 
-  if (contentHeight > availableHeight) {
-    const newScale = availableHeight / contentHeight;
-    setScale(newScale);
-  } else {
-    setScale(1);
-  }
-}, [
-  technicalSpecifications,
-  productName,
-  itemCode,
-  dimensionalDrawing,
-  illuminanceLevel,
-  hideEmptySpecs,
-]);
+      if (contentHeight > availableHeight) {
+        const newScale = availableHeight / contentHeight;
+        setScale(newScale);
+      } else {
+        setScale(1);
+      }
+    }, [
+      technicalSpecifications,
+      productName,
+      itemCode,
+      dimensionalDrawing,
+      illuminanceLevel,
+      hideEmptySpecs,
+    ]);
 
     if (!open || !company) return null;
 
@@ -150,10 +150,10 @@ useEffect(() => {
                 <div className="grid grid-cols-[220px_1fr] gap-6 items-center mb-4">
                   <div className="w-[220px] h-[150px] border-2 border-black flex items-center justify-center bg-white">
                     {mainImage?.url ? (
-<img
-  src={convertGoogleDriveUrl(mainImage.url)}
-  className="max-h-[130px] max-w-[200px] object-contain"
-/>
+                      <img
+                        src={convertGoogleDriveUrl(mainImage.url)}
+                        className="max-h-[130px] max-w-[200px] object-contain"
+                      />
                     ) : (
                       <span className="text-xs text-gray-400">
                         PRODUCT IMAGE
@@ -162,17 +162,17 @@ useEffect(() => {
                   </div>
 
                   <div className="w-full">
-<div className="text-xl font-semibold break-words overflow-hidden">
-  <div
-    className="w-full text-left font-semibold break-words"
-    style={{
-      fontSize: productName.length > 20 ? "20px" : "28px",
-      lineHeight: "1.4",
-    }}
-  >
-    {productName || "Product Name"}
-  </div>
-</div>
+                    <div className="text-xl font-semibold break-words overflow-hidden">
+                      <div
+                        className="w-full text-left font-semibold break-words"
+                        style={{
+                          fontSize: productName.length > 20 ? "20px" : "28px",
+                          lineHeight: "1.4",
+                        }}
+                      >
+                        {productName || "Product Name"}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -200,41 +200,42 @@ useEffect(() => {
 
                 {/* TECH SPECS */}
                 <table className="w-full border border-black border-collapse text-[16px]">
-<tbody>
-  {technicalSpecifications?.map((group, i) => {
-    const specsToRender = hideEmptySpecs
-      ? group.specs.filter(
-          (spec) => spec.value && spec.value.trim() !== ""
-        )
-      : group.specs;
+                  <tbody>
+                    {technicalSpecifications?.map((group, i) => {
+                      const specsToRender = hideEmptySpecs
+                        ? group.specs.filter(
+                            (spec) => spec.value && spec.value.trim() !== "",
+                          )
+                        : group.specs;
 
-    if (hideEmptySpecs && specsToRender.length === 0) return null;
+                      if (hideEmptySpecs && specsToRender.length === 0)
+                        return null;
 
-    return (
-      <React.Fragment key={i}>
-        <tr>
-          <td
-            colSpan={2}
-            className="border border-black px-2 py-1 font-semibold bg-gray-300"
-          >
-            {group.title}
-          </td>
-        </tr>
+                      return (
+                        <React.Fragment key={i}>
+                          <tr>
+                            <td
+                              colSpan={2}
+                              className="border border-black px-2 py-1 font-semibold bg-gray-300"
+                            >
+                              {group.title}
+                            </td>
+                          </tr>
 
-        {specsToRender.map((spec, s) => (
-          <tr key={s}>
-            <td className="border border-black px-2 py-1 w-[300px]">
-              {spec.specId} :
-            </td>
-            <td className="border border-black px-2 py-1">
-              {spec.value}
-            </td>
-          </tr>
-        ))}
-      </React.Fragment>
-    );
-  })}
-</tbody>
+                          {specsToRender.map((spec, s) => (
+                            <tr key={s}>
+                              <td className="border border-black px-2 py-1 w-[300px]">
+                                {spec.specId} :
+                              </td>
+                              <td className="border border-black px-2 py-1">
+                                {spec.value}
+                              </td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
                 </table>
 
                 {/* DRAWINGS */}
