@@ -57,7 +57,6 @@ export function NavUser({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  /* ---------------- Logout Activity ---------------- */
   const logLogoutActivity = async () => {
     try {
       const deviceId = localStorage.getItem("deviceId") || "unknown-device";
@@ -78,19 +77,17 @@ export function NavUser({
     }
   };
 
-  /* ---------------- Logout Action ---------------- */
   const doLogout = async () => {
     setIsLoggingOut(true);
 
     try {
-      logLogoutActivity().catch(console.error); // Log the logout activity
+      logLogoutActivity().catch(console.error);
       await fetch("/api/logout", { method: "POST" });
     } catch (err) {
       console.error("Logout failed:", err);
     } finally {
-      // 🔥 HARD CLEAN — IMPORTANT FIX
-      localStorage.removeItem("userid"); // ✅ CORRECT KEY
-      localStorage.removeItem("deviceId"); // optional
+      localStorage.removeItem("userid");
+      localStorage.removeItem("deviceId");
       setUserId(null);
 
       setIsLoggingOut(false);
@@ -105,70 +102,73 @@ export function NavUser({
       <SidebarMenu>
         <SidebarMenuItem>
           <DropdownMenu>
+
+            {/* AVATAR ONLY TRIGGER */}
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                className="cursor-pointer p-0 bg-transparent hover:bg-transparent"
               >
-                <Avatar className="h-8 w-8 rounded-lg">
+                <Avatar className="h-8 w-8 rounded-full">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">
+                  <AvatarFallback>
                     {user.name?.charAt(0) ?? "U"}
                   </AvatarFallback>
                 </Avatar>
-
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium capitalize">
-                    {user.name}
-                  </span>
-                  {user.position && (
-                    <span className="truncate text-xs text-muted-foreground">
-                      {user.position}
-                    </span>
-                  )}
-                </div>
               </SidebarMenuButton>
             </DropdownMenuTrigger>
 
+            {/* DROPDOWN */}
             <DropdownMenuContent
               className="min-w-[224px] rounded-lg z-[9999]"
               side={isMobile ? "bottom" : "right"}
               align="start"
               sideOffset={4}
             >
+
+              {/* NAME HERE ONLY */}
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5">
+
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="rounded-lg">
+                    <AvatarFallback>
                       {user.name?.charAt(0) ?? "U"}
                     </AvatarFallback>
                   </Avatar>
 
                   <div className="grid flex-1 text-left text-sm leading-tight">
+
                     <span className="truncate font-medium capitalize">
                       {user.name}
                     </span>
+
                     {user.position && (
                       <span className="truncate text-xs text-muted-foreground">
                         {user.position}
                       </span>
                     )}
+
                   </div>
+
                 </div>
               </DropdownMenuLabel>
 
               <DropdownMenuSeparator />
 
               <DropdownMenuGroup>
+
                 <DropdownMenuItem asChild>
+
                   <Link href={`/profile?id=${encodeURIComponent(userId)}`}>
                     <div className="flex items-center gap-2 cursor-pointer">
                       <BadgeCheck className="size-4" />
                       <span>Account</span>
                     </div>
                   </Link>
+
                 </DropdownMenuItem>
+
               </DropdownMenuGroup>
 
               <DropdownMenuSeparator />
@@ -178,24 +178,36 @@ export function NavUser({
                 className="cursor-pointer"
                 disabled={isLoggingOut}
               >
+
                 <LogOut className="size-4" />
                 <span>Log out</span>
+
               </DropdownMenuItem>
+
             </DropdownMenuContent>
+
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+
         <DialogContent>
+
           <DialogHeader>
-            <DialogTitle>Confirm Logout</DialogTitle>
+
+            <DialogTitle>
+              Confirm Logout
+            </DialogTitle>
+
             <DialogDescription>
               Are you sure you want to log out?
             </DialogDescription>
+
           </DialogHeader>
 
           <DialogFooter>
+
             <Button
               variant="outline"
               onClick={() => setIsDialogOpen(false)}
@@ -204,11 +216,18 @@ export function NavUser({
               Cancel
             </Button>
 
-            <Button onClick={doLogout} disabled={isLoggingOut} className="ml-2">
+            <Button
+              onClick={doLogout}
+              disabled={isLoggingOut}
+              className="ml-2"
+            >
               {isLoggingOut ? "Logging out..." : "Logout"}
             </Button>
+
           </DialogFooter>
+
         </DialogContent>
+
       </Dialog>
     </>
   );

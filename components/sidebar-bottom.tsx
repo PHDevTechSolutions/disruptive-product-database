@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { LayoutDashboard, Package, Truck, History, FileText } from "lucide-react";
+import { LayoutDashboard, Package, Truck, History } from "lucide-react";
 
 import { useSidebar } from "@/components/ui/sidebar";
 import { useUser } from "@/contexts/UserContext";
@@ -56,12 +56,12 @@ export function SidebarBottom() {
         border-t border-border/50
         bg-white/95 backdrop-blur-md
         md:hidden
-        h-[120px]
+        h-[70px]
       "
       style={{ bottom: "env(safe-area-inset-bottom)" }}
     >
-      {/* NAV ICONS */}
-      <div className="flex justify-around py-2">
+      <div className="flex justify-around items-center py-2">
+
         <Link
           href="/dashboard"
           className={`flex flex-col items-center gap-1 text-xs ${
@@ -101,23 +101,22 @@ export function SidebarBottom() {
           <History className="h-5 w-5" />
           <span>History</span>
         </Link>
-      </div>
 
-      {/* USER */}
-      {user && userId && (
-        <div className="px-2 pt-1 border-t">
-          <NavUser
-            user={{
-              name:
-                `${user.Firstname} ${user.Lastname}`.trim() || "Unknown User",
-              position: user.Role,
-              email: user.Email,
-              avatar: user.profilePicture || "/avatars/shadcn.jpg",
-            }}
-            userId={userId}
-          />
-        </div>
-      )}
+        {user && userId && (
+          <div className="flex flex-col items-center justify-center">
+<NavUser
+  user={{
+    name: `${user.Firstname} ${user.Lastname}`,
+    position: user.Role,
+    email: user.Email,
+    avatar: user.profilePicture || "/avatars/shadcn.jpg",
+  }}
+  userId={userId}
+/>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
