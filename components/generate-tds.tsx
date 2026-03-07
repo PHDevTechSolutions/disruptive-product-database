@@ -57,6 +57,7 @@ export default function GenerateTDS({
 
   const downloadPDF = async () => {
     const pdf = new jsPDF("p", "pt", "a4");
+    let scaleFactor = 1;
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
@@ -86,8 +87,8 @@ export default function GenerateTDS({
     }
     /* ================= PRODUCT IMAGE ================= */
 
-    const boxWidth = 150;
-    const boxHeight = 120;
+const boxWidth = 150 * scaleFactor;
+const boxHeight = 120 * scaleFactor;
     const imageX = pageWidth / 2 - boxWidth - 60;
     const imageY = y;
 
@@ -147,27 +148,7 @@ export default function GenerateTDS({
     pdf.setFontSize(14);
 
 
-    /* ================= TITLE ================= */
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(14);
 
-    const gap = 60;
-    const textColumnX = imageX + boxWidth + gap;
-    const textColumnWidth = boxWidth + 40; // adjust width of right side
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(18);
-
-    pdf.text(
-      productName || "Product Name",
-      textColumnX,
-      imageY + boxHeight / 2,
-      {
-        maxWidth: textColumnWidth,
-      },
-    );
-
-    y += 140;
 
     /* ================= BUILD TABLE ================= */
 
@@ -220,7 +201,7 @@ export default function GenerateTDS({
 
 /* ================= AUTO SCALE TO 1 PAGE ================= */
 
-const DRAWING_BLOCK_HEIGHT = 200; // drawings + labels
+const DRAWING_BLOCK_HEIGHT = 200;
 const FOOTER_REAL_HEIGHT = 80;
 const SAFE_MARGIN = 10;
 
@@ -228,6 +209,7 @@ const maxTableHeight =
   pageHeight - FOOTER_REAL_HEIGHT - DRAWING_BLOCK_HEIGHT - SAFE_MARGIN - y;
 
 let fontSize = 9;
+scaleFactor = 1;
 let tableHeight = 0;
 
 while (fontSize > 4) {
@@ -248,10 +230,32 @@ while (fontSize > 4) {
   if (tableHeight <= maxTableHeight) break;
 
   fontSize -= 0.4; // shrink table gradually
+  scaleFactor = fontSize / 9;
 }
 
     /* ================= CENTER TABLE ================= */
 
+        /* ================= TITLE ================= */
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+
+    const gap = 60 * scaleFactor;
+    const textColumnX = imageX + boxWidth + gap;
+    const textColumnWidth = boxWidth + 40; // adjust width of right side
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18 * scaleFactor);
+
+    pdf.text(
+      productName || "Product Name",
+      textColumnX,
+      imageY + boxHeight / 2,
+      {
+        maxWidth: textColumnWidth,
+      },
+    );
+
+    y += 135;
     const tableWidth = 450;
     const tableX = (pageWidth - tableWidth) / 2;
 
@@ -281,18 +285,18 @@ autoTable(pdf, {
     const tableEndY = (pdf as any).lastAutoTable.finalY;
 
     // Space after table (konting gap lang)
-    const drawingY = tableEndY + 35;
+    const drawingY = tableEndY + 35 * scaleFactor;
 
     // Total drawing container width
-const drawingWidth = 220;
-const drawingHeight = 120;
-const gapBetween = 60;
+const drawingWidth = 220 * scaleFactor;
+const drawingHeight = 120 * scaleFactor;
+const gapBetween = 60 * scaleFactor;
 const totalWidth = drawingWidth * 2 + gapBetween;
 
     // Center whole drawing group
     const startX = (pageWidth - totalWidth) / 2;
 
-    pdf.setFontSize(9);
+    pdf.setFontSize(9 * scaleFactor);
     pdf.setFont("helvetica", "bold");
 
     // Centered labels
