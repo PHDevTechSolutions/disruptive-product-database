@@ -113,7 +113,7 @@ export default function EditProductPage() {
     null,
   );
   const [selectedSupplierBrand, setSelectedSupplierBrand] =
-  useState<Supplier | null>(null);
+    useState<Supplier | null>(null);
   const [noSupplier, setNoSupplier] = useState(false);
 
   const [pricePoint, setPricePoint] = useState("");
@@ -348,18 +348,18 @@ export default function EditProductPage() {
 
       setProductClass(data.productClass || "");
 
-if (data.supplier) {
-  const supplierObj = {
-    supplierId: data.supplier.supplierId,
-    company: data.supplier.company,
-    supplierBrand: data.supplier.supplierBrand || "",
-  };
+      if (data.supplier) {
+        const supplierObj = {
+          supplierId: data.supplier.supplierId,
+          company: data.supplier.company,
+          supplierBrand: data.supplier.supplierBrand || "",
+        };
 
-  setSelectedSupplier(supplierObj);
-  setSelectedSupplierBrand(supplierObj);
+        setSelectedSupplier(supplierObj);
+        setSelectedSupplierBrand(supplierObj);
 
-  setNoSupplier(false);
-} else {
+        setNoSupplier(false);
+      } else {
         // ✅ THIS IS THE FIX
         setNoSupplier(true);
 
@@ -1009,9 +1009,9 @@ if (data.supplier) {
   }, [classificationTypes, classificationSearch]);
 
   const handleSelectSupplierBrand = (supplier: Supplier) => {
-  setSelectedSupplierBrand(supplier);
-  setSelectedSupplier(supplier);
-};
+    setSelectedSupplierBrand(supplier);
+    setSelectedSupplier(supplier);
+  };
 
   const filteredBrands = React.useMemo(() => {
     return brands.filter((item) =>
@@ -1235,13 +1235,13 @@ if (data.supplier) {
         brandOrigin: noSupplier ? "China" : brandOrigin,
         productClass,
 
-supplier: noSupplier
-  ? null
-  : {
-      supplierId: selectedSupplier!.supplierId,
-      company: selectedSupplier!.company,
-      supplierBrand: selectedSupplierBrand?.supplierBrand || "",
-    },
+        supplier: noSupplier
+          ? null
+          : {
+              supplierId: selectedSupplier!.supplierId,
+              company: selectedSupplier!.company,
+              supplierBrand: selectedSupplierBrand?.supplierBrand || "",
+            },
         productFamilies: selectedProductFamily
           ? [
               {
@@ -1423,13 +1423,12 @@ supplier: noSupplier
 
                         if (checked) {
                           setSelectedSupplier(null);
-                          setSelectedSupplierBrand(null); // ✅ CLEAR BRAND
+                          setSelectedSupplierBrand(null); // CLEAR BRAND
 
-                          // ✅ Force defaults
                           setPricePoint("Economy");
                           setBrandOrigin("China");
                         }
-                      }}}
+                      }}
                     />
                     Check if no supplier
                   </label>
@@ -1464,9 +1463,9 @@ supplier: noSupplier
                             key={supplier.supplierId}
                             value={supplier.company}
                             onSelect={() => {
-  setSelectedSupplier(supplier);
-  setSelectedSupplierBrand(supplier);
-}}
+                              setSelectedSupplier(supplier);
+                              setSelectedSupplierBrand(supplier);
+                            }}
                           >
                             <Check
                               className={cn(
@@ -1486,59 +1485,60 @@ supplier: noSupplier
                 </Popover>
               </div>
 
-{/* ================= SUPPLIER BRAND SELECT ================= */}
-<div className="space-y-2">
-  <Label>Supplier Brand</Label>
+              {/* ================= SUPPLIER BRAND SELECT ================= */}
+              <div className="space-y-2">
+                <Label>Supplier Brand</Label>
 
-  <Popover>
-    <PopoverTrigger asChild>
-      <Button
-        variant="outline"
-        role="combobox"
-        disabled={noSupplier}
-        className="w-full justify-between"
-      >
-        <span className="truncate text-left max-w-[85%]">
-          {selectedSupplierBrand
-            ? selectedSupplierBrand.supplierBrand || "No brand"
-            : "Select brand..."}
-        </span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      disabled={noSupplier}
+                      className="w-full justify-between"
+                    >
+                      <span className="truncate text-left max-w-[85%]">
+                        {selectedSupplierBrand
+                          ? selectedSupplierBrand.supplierBrand || "No brand"
+                          : "Select brand..."}
+                      </span>
 
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
-    </PopoverTrigger>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
 
-    <PopoverContent className="p-0 w-full">
-      <Command>
-        <CommandInput placeholder="Search brand..." />
-        <CommandEmpty>No brand found.</CommandEmpty>
+                  <PopoverContent className="p-0 w-full">
+                    <Command>
+                      <CommandInput placeholder="Search brand..." />
+                      <CommandEmpty>No brand found.</CommandEmpty>
 
-        <CommandGroup>
-          {suppliers.map((supplier) => (
-            <CommandItem
-              key={supplier.supplierId}
-              value={supplier.supplierBrand}
-              onSelect={() => handleSelectSupplierBrand(supplier)}
-            >
-              <Check
-                className={cn(
-                  "mr-2 h-4 w-4",
-                  selectedSupplierBrand?.supplierId === supplier.supplierId
-                    ? "opacity-100"
-                    : "opacity-0",
-                )}
-              />
+                      <CommandGroup>
+                        {suppliers.map((supplier) => (
+                          <CommandItem
+                            key={supplier.supplierId}
+                            value={supplier.supplierBrand}
+                            onSelect={() => handleSelectSupplierBrand(supplier)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedSupplierBrand?.supplierId ===
+                                  supplier.supplierId
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
 
-              <span className="truncate">
-                {supplier.supplierBrand || "No Brand"}
-              </span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </Command>
-    </PopoverContent>
-  </Popover>
-</div>
+                            <span className="truncate">
+                              {supplier.supplierBrand || "No Brand"}
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
               {/* ================= PRICE POINT SELECT ================= */}
               <div className="space-y-2">
                 <Label>Price Point</Label>
