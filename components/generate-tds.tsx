@@ -246,14 +246,33 @@ while (fontSize > 4) {
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(18 * scaleFactor);
 
-    pdf.text(
-      productName || "Product Name",
-      textColumnX,
-      imageY + boxHeight / 2,
-      {
-        maxWidth: textColumnWidth,
-      },
-    );
+/* ================= PRODUCT NAME WITH AUTO SCALE DOUBLE LINE ================= */
+
+const productTitleY = imageY + boxHeight / 2;
+
+const title = productName || "Product Name";
+
+pdf.text(title, textColumnX, productTitleY);
+
+/* ===== AUTO WIDTH BASED ON TEXT ===== */
+
+const textWidth = pdf.getTextWidth(title);
+
+const lineStartX = textColumnX;
+const lineEndX = textColumnX + textWidth;
+
+const firstLineY = productTitleY + 10;
+const secondLineY = firstLineY + 3;
+
+/* Thick line */
+pdf.setLineWidth(1.2);
+pdf.line(lineStartX, firstLineY, lineEndX, firstLineY);
+
+/* Thin line */
+pdf.setLineWidth(0.5);
+pdf.line(lineStartX, secondLineY, lineEndX, secondLineY);
+
+
 
     y += 135;
     const tableWidth = 450;
