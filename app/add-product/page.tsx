@@ -131,7 +131,7 @@ export default function AddProductPage() {
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [gdriveLink, setGdriveLink] = useState("");
+
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
 
@@ -786,51 +786,15 @@ export default function AddProductPage() {
     );
   };
 
-  const handleImageChange = async (file: File | string | null) => {
-    if (!file) return;
+const handleImageChange = (file: File | null) => {
+  if (!file) return;
 
-    /* ================= GOOGLE DRIVE LINK ================= */
+  setMainImage(file);
 
-    if (typeof file === "string") {
-      try {
-        let imageURL = file.trim();
+  if (preview) URL.revokeObjectURL(preview);
 
-        if (imageURL.includes("drive.google.com")) {
-          const match = imageURL.match(/\/d\/(.*?)\//);
-
-          if (match && match[1]) {
-            const fileId = match[1];
-            imageURL = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
-          }
-        }
-
-        // Clear uploaded file
-        setMainImage(null);
-
-        setPreview(imageURL);
-        setGdriveLink(file);
-
-        toast.success("Image detected from link");
-
-        return;
-      } catch (error) {
-        console.error(error);
-        toast.error("Invalid image link");
-        return;
-      }
-    }
-
-    /* ================= NORMAL IMAGE UPLOAD ================= */
-
-    // Clear Google Drive field
-    setGdriveLink("");
-
-    setMainImage(file);
-
-    if (preview) URL.revokeObjectURL(preview);
-
-    setPreview(URL.createObjectURL(file));
-  };
+  setPreview(URL.createObjectURL(file));
+};
 
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
@@ -1086,10 +1050,10 @@ export default function AddProductPage() {
         return;
       }
 
-      if (!mainImage && !preview) {
-        toast.error("Please upload main image");
-        return;
-      }
+if (!mainImage) {
+  toast.error("Please upload main image");
+  return;
+}
 
       // ================= CLOUDINARY UPLOAD =================
 
@@ -1160,12 +1124,7 @@ supplier: noSupplier
               })),
           })),
 
-        mainImage: preview
-          ? {
-              url: preview,
-              name: "External Image",
-            }
-          : null,
+mainImage: null,
 
         mediaStatus: mainImage ? "pending" : "done",
 
@@ -1263,29 +1222,9 @@ supplier: noSupplier
                   />
                 </label>
 
-                {/* OR DIVIDER */}
-                <div className="flex items-center gap-2">
-                  <Separator className="flex-1" />
-                  <span className="text-xs text-muted-foreground font-semibold">
-                    OR
-                  </span>
-                  <Separator className="flex-1" />
-                </div>
 
-                {/* GOOGLE DRIVE LINK */}
-                <Input
-                  value={gdriveLink}
-                  placeholder="Paste Google Drive image link..."
-                  onChange={(e) => {
-                    const value = e.target.value;
 
-                    setGdriveLink(value);
 
-                    if (value.startsWith("http")) {
-                      handleImageChange(value);
-                    }
-                  }}
-                />
               </CardContent>
             </Card>
 

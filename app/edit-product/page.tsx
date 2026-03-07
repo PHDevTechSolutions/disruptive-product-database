@@ -128,7 +128,7 @@ export default function EditProductPage() {
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [gdriveLink, setGdriveLink] = useState("");
+
 
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
@@ -368,25 +368,9 @@ export default function EditProductPage() {
         setBrandOrigin(data.brandOrigin || "China");
       }
 
-      /* ================= DETECT GOOGLE DRIVE IMAGE ================= */
-
-      if (data.mainImage?.url) {
-        const imageUrl = data.mainImage.url;
-
-        setPreview(imageUrl);
-
-        // Detect Google Drive thumbnail and rebuild original link
-        if (imageUrl.includes("drive.google.com")) {
-          const match = imageUrl.match(/id=(.*?)&/);
-
-          if (match && match[1]) {
-            const fileId = match[1];
-            const originalLink = `https://drive.google.com/file/d/${fileId}/view`;
-
-            setGdriveLink(originalLink);
-          }
-        }
-      }
+if (data.mainImage?.url) {
+  setPreview(data.mainImage.url);
+}
 
       if (Array.isArray(data.categoryTypes)) {
         setSelectedCategoryTypes(
@@ -803,49 +787,15 @@ export default function EditProductPage() {
     );
   };
 
-  const handleImageChange = async (file: File | string | null) => {
-    if (!file) return;
+const handleImageChange = (file: File | null) => {
+  if (!file) return;
 
-    /* ================= GOOGLE DRIVE LINK SUPPORT ================= */
+  setMainImage(file);
 
-    if (typeof file === "string") {
-      try {
-        let imageURL = file.trim();
+  if (preview) URL.revokeObjectURL(preview);
 
-        if (imageURL.includes("drive.google.com")) {
-          const match = imageURL.match(/\/d\/(.*?)\//);
-
-          if (match && match[1]) {
-            const fileId = match[1];
-            imageURL = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
-          }
-        }
-
-        setMainImage(null);
-        setPreview(imageURL);
-        setGdriveLink(file);
-
-        toast.success("Image detected from link");
-
-        return;
-      } catch (error) {
-        console.error(error);
-        toast.error("Invalid image link");
-        return;
-      }
-    }
-
-    /* ================= NORMAL IMAGE UPLOAD ================= */
-
-    setMainImage(file);
-
-    if (preview) URL.revokeObjectURL(preview);
-
-    setPreview(URL.createObjectURL(file));
-
-    /* CLEAR GOOGLE DRIVE FIELD */
-    setGdriveLink("");
-  };
+  setPreview(URL.createObjectURL(file));
+};
 
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
@@ -1286,17 +1236,9 @@ export default function EditProductPage() {
 
       await syncProductsUsingThisFamily();
 
-      if (mainImage) {
-        uploadProductMedia(productId!);
-      } else if (preview) {
-        await updateDoc(productRef, {
-          mainImage: {
-            url: preview,
-            name: "External Image",
-          },
-          mediaStatus: "done",
-        });
-      }
+if (mainImage) {
+  await uploadProductMedia(productId!);
+}
       toast.success("Product saved successfully");
 
       router.push("/products");
@@ -1378,29 +1320,7 @@ export default function EditProductPage() {
                   />
                 </label>
 
-                {/* OR DIVIDER */}
-                <div className="flex items-center gap-2">
-                  <Separator className="flex-1" />
-                  <span className="text-xs text-muted-foreground font-semibold">
-                    OR
-                  </span>
-                  <Separator className="flex-1" />
-                </div>
 
-                {/* GOOGLE DRIVE LINK */}
-                <Input
-                  value={gdriveLink}
-                  placeholder="Paste Google Drive image link..."
-                  onChange={(e) => {
-                    const value = e.target.value;
-
-                    setGdriveLink(value);
-
-                    if (value.startsWith("http")) {
-                      handleImageChange(value);
-                    }
-                  }}
-                />
               </CardContent>
             </Card>
 

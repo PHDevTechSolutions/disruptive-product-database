@@ -353,17 +353,6 @@ const findSupplier = async (brand: string): Promise<Supplier | null> => {
           let supplierBrand = row.getCell(6).value?.toString() || lastSupplier;
           let imageURL = row.getCell(7).value?.toString() || lastImage;
 
-          /* GOOGLE DRIVE LINK PARSER */
-
-          if (imageURL && imageURL.includes("drive.google.com")) {
-            const match = imageURL.match(/\/d\/(.*?)\//);
-
-            if (match && match[1]) {
-              const fileId = match[1];
-
-              imageURL = `https://drive.google.com/uc?export=download&id=${fileId}`;
-            }
-          }
 
           /* SAVE LAST VALUES */
 

@@ -23,6 +23,19 @@ type Props = {
   hideEmptySpecs?: boolean;
 };
 
+function convertGoogleDriveUrl(url: string) {
+  if (!url) return url;
+
+  if (url.includes("drive.google.com")) {
+    const match = url.match(/\/d\/(.*?)\//);
+    if (match && match[1]) {
+      return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+    }
+  }
+
+  return url;
+}
+
 const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
   (
     {
@@ -137,10 +150,10 @@ useEffect(() => {
                 <div className="grid grid-cols-[220px_1fr] gap-6 items-center mb-4">
                   <div className="w-[220px] h-[150px] border-2 border-black flex items-center justify-center bg-white">
                     {mainImage?.url ? (
-                      <img
-                        src={mainImage.url}
-                        className="max-h-[130px] max-w-[200px] object-contain"
-                      />
+<img
+  src={convertGoogleDriveUrl(mainImage.url)}
+  className="max-h-[130px] max-w-[200px] object-contain"
+/>
                     ) : (
                       <span className="text-xs text-gray-400">
                         PRODUCT IMAGE

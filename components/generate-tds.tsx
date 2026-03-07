@@ -20,6 +20,18 @@ type Props = {
   mainImage?: { url: string };
   technicalSpecifications?: TechnicalSpecification[];
 };
+function convertGoogleDriveUrl(url: string) {
+  if (!url) return url;
+
+  if (url.includes("drive.google.com")) {
+    const match = url.match(/\/d\/(.*?)\//);
+    if (match && match[1]) {
+      return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+    }
+  }
+
+  return url;
+}
 
 export default function GenerateTDS({
   open,
@@ -98,48 +110,49 @@ export default function GenerateTDS({
 
     /* ===== INSERT IMAGE INSIDE BOX ===== */
     if (mainImage?.url) {
-      const imgData = await fetch(mainImage.url)
-        .then((r) => r.blob())
-        .then(
-          (blob) =>
-            new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(blob);
-            }),
-        );
+const imgUrl = convertGoogleDriveUrl(mainImage.url);
 
-      const img = new Image();
-      img.src = imgData;
+const img = new Image();
+img.crossOrigin = "anonymous";
+img.src = imgUrl;
 
-      await new Promise((resolve) => {
-        img.onload = resolve;
-      });
+await new Promise((resolve) => {
+  img.onload = resolve;
+  img.onerror = () => {
+    console.warn("Image failed to load:", imgUrl);
+    resolve(null);
+  };
+});
 
-      const imgWidth = img.width;
-      const imgHeight = img.height;
+const imgWidth = img.width;
+const imgHeight = img.height;
 
-      const padding = 10; // space inside box
+const padding = 10;
 
-      const ratio = Math.min(
-        (boxWidth - padding * 2) / imgWidth,
-        (boxHeight - padding * 2) / imgHeight,
-      );
+const ratio = Math.min(
+  (boxWidth - padding * 2) / imgWidth,
+  (boxHeight - padding * 2) / imgHeight
+);
 
-      const finalWidth = imgWidth * ratio;
-      const finalHeight = imgHeight * ratio;
+const finalWidth = imgWidth * ratio;
+const finalHeight = imgHeight * ratio;
 
-      const centeredX = imageX + (boxWidth - finalWidth) / 2;
-      const centeredY = imageY + (boxHeight - finalHeight) / 2;
+const centeredX = imageX + (boxWidth - finalWidth) / 2;
+const centeredY = imageY + (boxHeight - finalHeight) / 2;
 
-      pdf.addImage(
-        imgData,
-        "PNG",
-        centeredX,
-        centeredY,
-        finalWidth,
-        finalHeight,
-      );
+if (img.complete && img.naturalWidth > 0) {
+  pdf.addImage(
+    img,
+    "PNG",
+    centeredX,
+    centeredY,
+    finalWidth,
+    finalHeight
+  );
+}
+
+
+
     }
 
     /* ================= TITLE ================= */
