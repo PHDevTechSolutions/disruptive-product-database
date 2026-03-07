@@ -60,10 +60,11 @@ const formatWebsite = (url?: string) => {
 type Supplier = {
   id: string;
   company: string;
-  internalCode?: string[]; // ✅ ARRAY
+  supplierBrand?: string; // ✅ NEW COLUMN
+  internalCode?: string[];
   addresses: string[];
   emails?: string[];
-  website?: string[]; // ✅ ARRAY
+  website?: string[];
   contacts?: {
     name: string;
     phone: string;
@@ -142,7 +143,7 @@ export default function Suppliers() {
 
   /* ---------------- Fetch Suppliers (Realtime) ---------------- */
   useEffect(() => {
-    const q = query(collection(db, "suppliers"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "suppliers"), orderBy("date_updated", "desc"));
 
     const unsub = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs
@@ -275,51 +276,65 @@ export default function Suppliers() {
   }, [itemsPerPage, totalPages]);
 
   /* ---------------- Download CSV ---------------- */
-  const handleDownloadCSV = () => {
-    if (filteredSuppliers.length === 0) return;
+const handleDownloadCSV = () => {
+  if (filteredSuppliers.length === 0) return;
 
-    const headers = [
-      "Company Name",
-      "Internal Code",
-      "Addresses",
-      "Emails",
-      "Website",
-      "Contact Name(s)",
-      "Phone Number(s)",
-      "Forte Product(s)",
-      "Product(s)",
-      "Certificate(s)",
+  const headers = [
+    "Company Name",
+    "Supplier Brand",
+    "Internal Code",
+    "Addresses",
+    "Emails",
+    "Website",
+    "Contact Name(s)",
+    "Phone Number(s)",
+    "Forte Product(s)",
+    "Product(s)",
+    "Certificate(s)",
+  ];
+
+  const rows = filteredSuppliers.map((s) => {
+    const contactNames = s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
+    const contactPhones = s.contacts?.map((c) => c.phone).filter(Boolean) ?? [];
+
+    return [
+      s.company ?? "",
+      s.supplierBrand ?? "",
+      s.internalCode?.join(" | ") ?? "",
+      s.addresses?.join(" | ") ?? "",
+      s.emails?.join(" | ") ?? "",
+      s.website?.join(" | ") ?? "",
+      contactNames.join(" | "),
+      contactPhones.join(" | "),
+      s.forteProducts?.join(" | ") ?? "",
+      s.products?.join(" | ") ?? "",
+      s.certificates?.join(" | ") ?? "",
     ];
+  });
 
-const rows = filteredSuppliers.map((s) => [
-  s.company,
-  s.internalCode?.join(" | ") ?? "",
-  s.addresses?.join(" | ") ?? "",
-  s.emails?.join(" | ") ?? "",
-  s.website?.join(" | ") ?? "",
-  s.contacts?.map((c) => c.name).join(" | ") ?? "",
-  s.contacts?.map((c) => c.phone).join(" | ") ?? "",
-  s.forteProducts?.join(" | ") ?? "",
-  s.products?.join(" | ") ?? "",
-  s.certificates?.join(" | ") ?? "",
-]);
+  const csvContent = [headers, ...rows]
+    .map((row) =>
+      row
+        .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+        .join(","),
+    )
+    .join("\n");
 
-    const csvContent = [headers, ...rows]
-      .map((row) =>
-        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
-      )
-      .join("\n");
+  const blob = new Blob([csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob);
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "suppliers.csv";
-    link.click();
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "suppliers.csv";
+  document.body.appendChild(link);
+  link.click();
 
-    URL.revokeObjectURL(url);
-  };
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
 
   return (
     <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-">
@@ -379,6 +394,7 @@ const rows = filteredSuppliers.map((s) => [
             <TableRow>
               <TableHead>Actions</TableHead>
               <TableHead>Company Name</TableHead>
+              <TableHead>Supplier Brand</TableHead>
               <TableHead>Internal Code</TableHead>
               <TableHead>Addresses</TableHead>
               <TableHead>Emails</TableHead>
@@ -394,7 +410,7 @@ const rows = filteredSuppliers.map((s) => [
           <TableBody>
             {filteredSuppliers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8">
+                <TableCell colSpan={12} className="text-center py-8">
                   No suppliers found.
                 </TableCell>
               </TableRow>
@@ -435,6 +451,14 @@ const rows = filteredSuppliers.map((s) => [
                     <span className="text-base font-semibold">
                       {highlightText(s.company, search)}
                     </span>
+                  </TableCell>
+                  {/* SUPPLIER BRAND */}
+                  <TableCell className="whitespace-normal break-words">
+                    {s.supplierBrand ? (
+                      <span>{highlightText(s.supplierBrand, search)}</span>
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
 
                   {/* INTERNAL CODE */}
@@ -566,6 +590,12 @@ const rows = filteredSuppliers.map((s) => [
                 <h3 className="text-lg font-bold underline leading-tight">
                   {highlightText(s.company, search)}
                 </h3>
+
+                {s.supplierBrand && (
+                  <div className="text-xs text-muted-foreground">
+                    Brand: {highlightText(s.supplierBrand, search)}
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   <Button

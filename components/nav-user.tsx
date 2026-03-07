@@ -86,8 +86,6 @@ export function NavUser({
     } catch (err) {
       console.error("Logout failed:", err);
     } finally {
-      localStorage.removeItem("userid");
-      localStorage.removeItem("deviceId");
       setUserId(null);
 
       setIsLoggingOut(false);
@@ -102,43 +100,48 @@ export function NavUser({
       <SidebarMenu>
         <SidebarMenuItem>
           <DropdownMenu>
-
-            {/* AVATAR ONLY TRIGGER */}
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                className="cursor-pointer p-0 bg-transparent hover:bg-transparent"
+                className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <Avatar className="h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback>
+                  <AvatarFallback className="rounded-lg">
                     {user.name?.charAt(0) ?? "U"}
                   </AvatarFallback>
                 </Avatar>
+
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-medium capitalize">
+                    {user.name}
+                  </span>
+                  {user.position && (
+                    <span className="truncate text-xs text-muted-foreground">
+                      {user.position}
+                    </span>
+                  )}
+                </div>
               </SidebarMenuButton>
             </DropdownMenuTrigger>
 
-            {/* DROPDOWN */}
             <DropdownMenuContent
               className="min-w-[224px] rounded-lg z-[9999]"
               side={isMobile ? "bottom" : "right"}
               align="start"
               sideOffset={4}
             >
-
-              {/* NAME HERE ONLY */}
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5">
-
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback>
+
+                    <AvatarFallback className="rounded-lg">
                       {user.name?.charAt(0) ?? "U"}
                     </AvatarFallback>
                   </Avatar>
 
                   <div className="grid flex-1 text-left text-sm leading-tight">
-
                     <span className="truncate font-medium capitalize">
                       {user.name}
                     </span>
@@ -148,27 +151,22 @@ export function NavUser({
                         {user.position}
                       </span>
                     )}
-
                   </div>
-
                 </div>
               </DropdownMenuLabel>
 
               <DropdownMenuSeparator />
 
               <DropdownMenuGroup>
-
                 <DropdownMenuItem asChild>
-
                   <Link href={`/profile?id=${encodeURIComponent(userId)}`}>
                     <div className="flex items-center gap-2 cursor-pointer">
                       <BadgeCheck className="size-4" />
+
                       <span>Account</span>
                     </div>
                   </Link>
-
                 </DropdownMenuItem>
-
               </DropdownMenuGroup>
 
               <DropdownMenuSeparator />
@@ -178,36 +176,26 @@ export function NavUser({
                 className="cursor-pointer"
                 disabled={isLoggingOut}
               >
-
                 <LogOut className="size-4" />
+
                 <span>Log out</span>
-
               </DropdownMenuItem>
-
             </DropdownMenuContent>
-
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-
         <DialogContent>
-
           <DialogHeader>
-
-            <DialogTitle>
-              Confirm Logout
-            </DialogTitle>
+            <DialogTitle>Confirm Logout</DialogTitle>
 
             <DialogDescription>
               Are you sure you want to log out?
             </DialogDescription>
-
           </DialogHeader>
 
           <DialogFooter>
-
             <Button
               variant="outline"
               onClick={() => setIsDialogOpen(false)}
@@ -216,18 +204,11 @@ export function NavUser({
               Cancel
             </Button>
 
-            <Button
-              onClick={doLogout}
-              disabled={isLoggingOut}
-              className="ml-2"
-            >
+            <Button onClick={doLogout} disabled={isLoggingOut} className="ml-2">
               {isLoggingOut ? "Logging out..." : "Logout"}
             </Button>
-
           </DialogFooter>
-
         </DialogContent>
-
       </Dialog>
     </>
   );

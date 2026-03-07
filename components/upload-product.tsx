@@ -44,6 +44,7 @@ type ProductFamily = {
 type Supplier = {
   supplierId: string;
   company: string;
+  supplierBrand?: string;
 };
 
 type TemplateSpec = {
@@ -126,25 +127,28 @@ export default function UploadProduct({}: Props) {
 
   /* ---------------- FIND SUPPLIER ---------------- */
 
-  const findSupplier = async (company: string): Promise<Supplier | null> => {
-    if (!company) return null;
+const findSupplier = async (brand: string): Promise<Supplier | null> => {
+  if (!brand) return null;
 
-    const q = query(
-      collection(db, "suppliers"),
-      where("company", "==", company),
-      where("isActive", "==", true),
-    );
+  const q = query(
+    collection(db, "suppliers"),
+    where("supplierBrand", "==", brand),
+    where("isActive", "==", true),
+  );
 
-    const snap = await getDocs(q);
+  const snap = await getDocs(q);
 
-    if (snap.empty) return null;
+  if (snap.empty) return null;
 
-    return {
-      supplierId: snap.docs[0].id,
-      company,
-    };
+  const doc = snap.docs[0];
+  const data = doc.data();
+
+  return {
+    supplierId: doc.id,
+    company: data.company,
+    supplierBrand: data.supplierBrand || "",
   };
-
+};
   /* ---------------- AUTO CREATE TEMPLATE ---------------- */
 
   const createMissingTemplateSpecs = async (
@@ -290,244 +294,200 @@ export default function UploadProduct({}: Props) {
 
   /* ---------------- UPLOAD ---------------- */
 
-/* ---------------- UPLOAD ---------------- */
+  /* ---------------- UPLOAD ---------------- */
 
-const handleUpload = async () => {
+  const handleUpload = async () => {
+    if (!file) return;
 
- if (!file) return;
+    try {
+      setUploading(true);
 
- try {
+      const workbook = new ExcelJS.Workbook();
 
-  setUploading(true);
+      const buffer = await file.arrayBuffer();
 
-  const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
 
-  const buffer = await file.arrayBuffer();
+      for (const ws of workbook.worksheets) {
+        const header1 = ws.getRow(1);
+        const header2 = ws.getRow(2);
 
-  await workbook.xlsx.load(buffer);
+        const excelColumns: {
+          title: string;
+          specId: string;
+          col: number;
+        }[] = [];
 
+        for (let col = 8; col <= ws.columnCount; col++) {
+          excelColumns.push({
+            title: header2.getCell(col).value?.toString() || "",
 
-  for (const ws of workbook.worksheets) {
+            specId: header1.getCell(col).value?.toString() || "",
 
-   const header1 = ws.getRow(1);
-   const header2 = ws.getRow(2);
+            col,
+          });
+        }
 
+        /* IMPORTANT: TRACK SYNCED FAMILIES */
 
-   const excelColumns:{
-    title:string;
-    specId:string;
-    col:number;
-   }[] = [];
+        const syncedFamilies = new Set<string>();
 
+        let lastUsage = "";
+        let lastFamily = "";
+        let lastClass = "";
+        let lastPricePoint = "";
+        let lastBrandOrigin = "";
+        let lastSupplier = "";
+        let lastImage = "";
 
-   for(let col=8; col<=ws.columnCount; col++){
+        for (let r = 3; r <= ws.rowCount; r++) {
+          const row = ws.getRow(r);
 
-    excelColumns.push({
+          let usage = row.getCell(1).value?.toString() || lastUsage;
+          let family = row.getCell(2).value?.toString() || lastFamily;
 
-     title:header2.getCell(col).value?.toString()||"",
+          let productClass = row.getCell(3).value?.toString() || lastClass;
+          let pricePoint = row.getCell(4).value?.toString() || lastPricePoint;
+          let brandOrigin = row.getCell(5).value?.toString() || lastBrandOrigin;
 
-     specId:header1.getCell(col).value?.toString()||"",
+          let supplierBrand = row.getCell(6).value?.toString() || lastSupplier;
+          let imageURL = row.getCell(7).value?.toString() || lastImage;
 
-     col
+          /* GOOGLE DRIVE LINK PARSER */
 
-    });
+          if (imageURL && imageURL.includes("drive.google.com")) {
+            const match = imageURL.match(/\/d\/(.*?)\//);
 
-   }
+            if (match && match[1]) {
+              const fileId = match[1];
 
+              imageURL = `https://drive.google.com/uc?export=download&id=${fileId}`;
+            }
+          }
 
-   /* IMPORTANT: TRACK SYNCED FAMILIES */
+          /* SAVE LAST VALUES */
 
-   const syncedFamilies = new Set<string>();
+          lastUsage = usage;
+          lastFamily = family;
+          lastClass = productClass;
+          lastPricePoint = pricePoint;
+          lastBrandOrigin = brandOrigin;
+          lastSupplier = supplierBrand;
+          lastImage = imageURL;
 
-   let lastUsage = "";
-let lastFamily = "";
-let lastClass = "";
-let lastPricePoint = "";
-let lastBrandOrigin = "";
-let lastSupplier = "";
-let lastImage = "";
+          if (!usage || !family) continue;
 
-   for(let r=3; r<=ws.rowCount; r++){
+          const category = await findCategoryType(usage);
+          if (!category) continue;
 
-    const row = ws.getRow(r);
+          const productFamily = await findProductFamily(category.id, family);
+          if (!productFamily) continue;
 
+          const supplier = await findSupplier(supplierBrand);
 
-let usage = row.getCell(1).value?.toString() || lastUsage;
-let family = row.getCell(2).value?.toString() || lastFamily;
+          /* UNIQUE SYNC KEY */
 
-let productClass = row.getCell(3).value?.toString() || lastClass;
-let pricePoint = row.getCell(4).value?.toString() || lastPricePoint;
-let brandOrigin = row.getCell(5).value?.toString() || lastBrandOrigin;
+          const syncKey = category.id + "_" + productFamily.id;
 
-let supplierName = row.getCell(6).value?.toString() || lastSupplier;
-let imageURL = row.getCell(7).value?.toString() || lastImage;
+          /* CREATE TEMPLATE + SYNC ONLY ONCE */
 
+          if (!syncedFamilies.has(syncKey)) {
+            await createMissingTemplateSpecs(
+              category.id,
+              productFamily.id,
+              excelColumns,
+            );
 
-/* SAVE LAST VALUES */
+            await syncExistingProductsToTemplate(category.id, productFamily.id);
 
-lastUsage = usage;
-lastFamily = family;
-lastClass = productClass;
-lastPricePoint = pricePoint;
-lastBrandOrigin = brandOrigin;
-lastSupplier = supplierName;
-lastImage = imageURL;
+            syncedFamilies.add(syncKey);
+          }
 
+          /* GET UPDATED TEMPLATE */
 
-    if(!usage || !family) continue;
+          const templateSpecs = await findTemplateSpecs(
+            category.id,
+            productFamily.id,
+          );
 
+          /* BUILD PRODUCT SPECS */
 
-    const category = await findCategoryType(usage);
-    if(!category) continue;
+          const productSpecs = templateSpecs.map((template) => ({
+            technicalSpecificationId: template.id,
 
+            title: template.title,
 
-    const productFamily = await findProductFamily(category.id,family);
-    if(!productFamily) continue;
+            specs: template.specs.map((templateSpec) => {
+              const excelMatch = excelColumns.find(
+                (col) =>
+                  col.title === template.title &&
+                  col.specId === templateSpec.specId,
+              );
 
+              return {
+                specId: templateSpec.specId,
 
-    const supplier = await findSupplier(supplierName);
+                value: excelMatch
+                  ? row.getCell(excelMatch.col).value?.toString() || ""
+                  : "",
+              };
+            }),
+          }));
 
+          const referenceID = await generateProductReferenceID();
 
-    /* UNIQUE SYNC KEY */
+          await addDoc(collection(db, "products"), {
+            productReferenceID: referenceID,
 
-    const syncKey = category.id + "_" + productFamily.id;
+            productClass,
+            pricePoint,
+            brandOrigin,
 
+            supplier,
 
-    /* CREATE TEMPLATE + SYNC ONLY ONCE */
+            mainImage: imageURL ? { url: imageURL } : null,
 
-    if(!syncedFamilies.has(syncKey)){
+            categoryTypes: [
+              {
+                productUsageId: category.id,
+                categoryTypeName: category.name,
+              },
+            ],
 
-     await createMissingTemplateSpecs(
-      category.id,
-      productFamily.id,
-      excelColumns
-     );
+            productFamilies: [
+              {
+                productFamilyId: productFamily.id,
+                productFamilyName: productFamily.name,
+                productUsageId: category.id,
+              },
+            ],
 
+            technicalSpecifications: productSpecs,
 
-     await syncExistingProductsToTemplate(
-      category.id,
-      productFamily.id
-     );
+            isActive: true,
 
+            createdAt: serverTimestamp(),
 
-     syncedFamilies.add(syncKey);
+            whatHappened: "Product Added",
 
+            date_updated: serverTimestamp(),
+          });
+        }
+      }
+
+      toast.success("Upload complete");
+
+      setOpen(false);
+
+      setFile(null);
+    } catch (error) {
+      console.error(error);
+
+      toast.error("Upload failed");
+    } finally {
+      setUploading(false);
     }
-
-
-    /* GET UPDATED TEMPLATE */
-
-    const templateSpecs = await findTemplateSpecs(
-     category.id,
-     productFamily.id
-    );
-
-
-    /* BUILD PRODUCT SPECS */
-
-    const productSpecs = templateSpecs.map(template=>({
-
-     technicalSpecificationId:template.id,
-
-     title:template.title,
-
-     specs:template.specs.map(templateSpec=>{
-
-      const excelMatch = excelColumns.find(col=>
-
-       col.title===template.title &&
-       col.specId===templateSpec.specId
-
-      );
-
-
-      return{
-
-       specId:templateSpec.specId,
-
-       value:excelMatch
-        ? row.getCell(excelMatch.col).value?.toString()||""
-        : ""
-
-      };
-
-     })
-
-    }));
-
-
-    const referenceID = await generateProductReferenceID();
-
-
-    await addDoc(collection(db,"products"),{
-
-     productReferenceID:referenceID,
-
-     productClass,
-     pricePoint,
-     brandOrigin,
-
-     supplier,
-
-     mainImage:imageURL?{url:imageURL}:null,
-
-
-     categoryTypes:[{
-
-      productUsageId:category.id,
-      categoryTypeName:category.name
-
-     }],
-
-
-     productFamilies:[{
-
-      productFamilyId:productFamily.id,
-      productFamilyName:productFamily.name,
-      productUsageId:category.id
-
-     }],
-
-
-     technicalSpecifications:productSpecs,
-
-
-     isActive:true,
-
-     createdAt:serverTimestamp(),
-
-     whatHappened:"Product Added",
-
-     date_updated:serverTimestamp()
-
-    });
-
-   }
-
-  }
-
-
-  toast.success("Upload complete");
-
-  setOpen(false);
-
-  setFile(null);
-
- }
- catch(error){
-
-  console.error(error);
-
-  toast.error("Upload failed");
-
- }
- finally{
-
-  setUploading(false);
-
- }
-
-};
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

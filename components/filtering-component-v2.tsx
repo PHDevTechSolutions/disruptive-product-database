@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Command,
   CommandGroup,
@@ -9,8 +9,6 @@ import {
   CommandEmpty,
 } from "@/components/ui/command";
 import { Check } from "lucide-react";
-
-
 
 type Props = {
   products: any[];
@@ -23,17 +21,49 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   /* ================= STEP VISIBILITY CONTROL ================= */
   /* CTRL+F: STEP VISIBILITY CONTROL */
 
-  const stepOrder = [
-    "Product Usage",
-    "Product Family",
-    "Product Class",
-    "Price Point",
-    "Brand Origin",
-    "Supplier",
-  ];
+const stepOrder = [
+  "Product Usage",
+  "Product Family",
+  "Product Class",
+  "Price Point",
+  "Brand Origin",
+  "Supplier Brand",
+];
 
   const [visibleSteps, setVisibleSteps] = useState<string[]>(["Product Usage"]);
-const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  const getPreviousStep = () => {
+    if (visibleSteps.length <= 1) return null;
+
+    const lastVisible = visibleSteps[visibleSteps.length - 1];
+    const lastIndex = stepOrder.indexOf(lastVisible);
+
+    if (lastIndex <= 0) return null;
+
+    return lastVisible;
+  };
+
+  /* ================= STEP ANCHOR REFS ================= */
+  /* CTRL+F: STEP ANCHOR REFS */
+
+  /* ================= STEP ANCHOR REFS CLEAN ================= */
+  /* CTRL+F: STEP ANCHOR REFS CLEAN */
+
+  const stepRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const setStepRef = (step: string) => (el: HTMLDivElement | null) => {
+    stepRefs.current[step] = el;
+  };
+
+  const scrollToStep = (step: string) => {
+    setTimeout(() => {
+      stepRefs.current[step]?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+  };
+
   const [searchFilters, setSearchFilters] = useState<Record<string, string>>(
     {},
   );
@@ -122,13 +152,12 @@ const [currentStepIndex, setCurrentStepIndex] = useState(0);
   /* ================================================= */
 
   const sourceProducts = products.filter((p) => {
-    const check = (key: string, value: any) => {
-      if (filters[key]?.length) {
-        return filters[key].includes(value);
-      }
+const check = (key: string, value: any) => {
+  if (!filters[key]?.length) return true;
 
-      return true;
-    };
+  // multi-select support
+  return filters[key].includes(value);
+};
 
     if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName))
       return false;
@@ -142,7 +171,7 @@ const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
     if (!check("Brand Origin", p.brandOrigin)) return false;
 
-    if (!check("Supplier", p.supplier?.company)) return false;
+    if (!check("Supplier Brand", p.supplier?.supplierBrand)) return false;
 
     return true;
   });
@@ -192,7 +221,7 @@ const [currentStepIndex, setCurrentStepIndex] = useState(0);
         return true;
       })
 
-      .map((p) => p.supplier?.company),
+      .map((p) => p.supplier?.supplierBrand),
   );
 
   const buildCounts = (
@@ -291,7 +320,7 @@ const [currentStepIndex, setCurrentStepIndex] = useState(0);
       if (!check("Product Class", p.productClass)) return false;
       if (!check("Supplier", p.supplier?.company)) return false;
 
-      for (const [k, vals] of Object.entries(filters)) {
+      for (const [k, vals] of Object.entries(filters) as [string, string[]][]) {
         if (!k.includes("||")) continue;
         const [gt, sn] = k.split("||");
         const pv: string[] = [];
@@ -317,56 +346,81 @@ const [currentStepIndex, setCurrentStepIndex] = useState(0);
   /* ================= UI ACTIONS ================= */
 
   /* ================= STEP TOGGLE FILTER ================= */
-  /* ================= STEP TOGGLE FILTER ================= */
   /* CTRL+F: STEP TOGGLE FILTER */
 
-const toggle = (title: string, value: string) => {
-  setFilters((prev) => {
-    const alreadySelected = prev[title]?.includes(value);
+  const toggle = (title: string, value: string) => {
+    const isSupplier = title === "Supplier";
 
-    let updated = {
-      ...prev,
-      [title]: alreadySelected
-        ? prev[title].filter((v) => v !== value)  // Unselect if already selected
-        : [...(prev[title] || []), value],  // Add if not selected
-    };
+    const supplierAnchor = stepRefs.current["Supplier"];
+    const anchorTop = supplierAnchor?.getBoundingClientRect().top;
 
-    const currentIndex = stepOrder.indexOf(title);
+    setFilters((prev) => {
+      const alreadySelected = prev[title]?.includes(value);
 
-    // If the filter was unselected
-    if (alreadySelected) {
-      const remaining = updated[title];
+      const updated = {
+        ...prev,
+        [title]: alreadySelected
+          ? prev[title].filter((v) => v !== value)
+          : [...(prev[title] || []), value],
+      };
 
-      // If no values remain for this step, treat it as unchecked
-      if (!remaining || remaining.length === 0) {
-        const newVisibleSteps = stepOrder.slice(0, currentIndex);
+      const currentIndex = stepOrder.indexOf(title);
 
-        setVisibleSteps(newVisibleSteps); // Hide subsequent steps if no values are selected
-        const cleared = { ...updated };
-        stepOrder.slice(currentIndex).forEach((step) => {
-          delete cleared[step];  // Clear out subsequent filters
+      if (!alreadySelected && title !== "Supplier") {
+        if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
+          const nextStep = stepOrder[currentIndex + 1];
+
+          setVisibleSteps((prevSteps) => {
+            if (!prevSteps.includes(nextStep)) {
+              return [...prevSteps, nextStep];
+            }
+            return prevSteps;
+          });
+
+          scrollToStep(nextStep);
+        }
+      }
+
+      return updated;
+    });
+
+    // 🔥 restore Supplier anchor position
+    if (isSupplier && supplierAnchor) {
+      requestAnimationFrame(() => {
+        const newTop = supplierAnchor.getBoundingClientRect().top;
+        const diff = newTop - (anchorTop ?? 0);
+
+        window.scrollBy({
+          top: diff,
+          behavior: "auto",
         });
-        updated = cleared;
-      }
-    } else {
-      // If the filter was selected, make the next step visible
-      if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
-        const nextStep = stepOrder[currentIndex + 1];
-        setVisibleSteps((prevSteps) =>
-          prevSteps.includes(nextStep) ? prevSteps : [...prevSteps, nextStep],
-        );
-      }
+      });
     }
+  };
+  const handleBack = (title: string) => {
+    const currentIndex = stepOrder.indexOf(title);
+    if (currentIndex <= 0) return;
 
-    // Ensure Product Usage is always visible even if no filters are selected
-    if (Object.keys(updated).length === 0) {
-      setVisibleSteps((prev) => ["Product Usage", ...prev]);
-    }
+    setVisibleSteps(stepOrder.slice(0, currentIndex));
 
-    return updated;
-  });
-};
+    setFilters((prev) => {
+      const updated = { ...prev };
 
+      // Remove current step + next steps
+      stepOrder.slice(currentIndex).forEach((step) => {
+        delete updated[step];
+      });
+
+      // 🔥 ALSO remove all technical spec filters
+      Object.keys(updated).forEach((key) => {
+        if (key.includes("||")) {
+          delete updated[key];
+        }
+      });
+
+      return updated;
+    });
+  };
   const setSearch = (title: string, value: string) =>
     setSearchFilters((prev) => ({
       ...prev,
@@ -376,136 +430,195 @@ const toggle = (title: string, value: string) => {
   /* ================= UI ================= */
 
   return (
-    <div className="border rounded-lg p-4 bg-card space-y-4">
-      <h2 className="font-semibold">Filters</h2>
+    <div className="border rounded-lg bg-card">
+      <div className="sticky top-0 z-10 bg-card p-4 border-b">
+        <div className="flex justify-between items-center">
+          <h2 className="font-semibold">Filters</h2>
 
-      <button
-        className="border px-3 py-1 rounded text-sm"
-        onClick={() => {
-          setFilters({});
-          setSearchFilters({});
-          setVisibleSteps([
-            "Product Usage",
-          ]); /* CTRL+F: RESET STEP VISIBILITY */
-        }}
-      >
-        Clear Filters
-      </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="border px-2 py-1 rounded text-xs bg-neutral-100 hover:bg-neutral-200 transition-colors"
+              onClick={() => {
+                setFilters({});
+                setSearchFilters({});
+                setVisibleSteps(["Product Usage"]);
+              }}
+            >
+              Clear Filters
+            </button>
+
+            {getPreviousStep() && (
+              <button
+                className="text-xs text-blue-600 underline whitespace-nowrap"
+                onClick={() => handleBack(getPreviousStep()!)}
+              >
+                ← Back
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
       {/* ================= HORIZONTAL STEP CONTAINER ================= */}
 
-      <div className="space-y-6">
+      <div className="p-4 space-y-6">
         {/* ================= HORIZONTAL STEP CONTAINER ================= */}
         {/* CTRL+F: HORIZONTAL STEP CONTAINER */}
 
         <div className="overflow-x-auto">
-<div className="space-y-4">
-  <div className="flex flex-col gap-4">
-            {/* STEP 1 */}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-4">
+              {/* STEP 1 */}
 
-            {visibleSteps.includes("Product Usage") && (
-              <div className="w-[260px] shrink-0">
-                <Section
-                  title="Product Usage"
-                  items={productUsages}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+              {visibleSteps.includes("Product Usage") && (
+                <div
+                  ref={setStepRef("Product Usage")}
+                  className="w-[260px] shrink-0 scroll-mt-24"
+                >
+                  <Section
+                    title="Product Usage"
+                    items={productUsages}
+                    filters={filters}
+                    toggle={toggle}
+                    setSearch={setSearch}
+                    sourceProducts={sourceProducts}
+                    products={products}
+                  />
+                </div>
+              )}
 
-            {/* STEP 2 */}
+              {/* STEP 2 */}
 
-            {visibleSteps.includes("Product Family") && (
-              <div className="w-[260px] shrink-0">
-                <Section
-                  title="Product Family"
-                  items={productFamilies}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+              {visibleSteps.includes("Product Family") && (
+                <div
+                  ref={setStepRef("Product Family")}
+                  className="w-[260px] shrink-0 space-y-2 scroll-mt-24"
+                >
+                  <button
+                    className="text-xs text-blue-600 underline"
+                    onClick={() => handleBack("Product Family")}
+                  >
+                    ← Back
+                  </button>
+                  <Section
+                    title="Product Family"
+                    items={productFamilies}
+                    filters={filters}
+                    toggle={toggle}
+                    setSearch={setSearch}
+                    sourceProducts={sourceProducts}
+                    products={products}
+                  />
+                </div>
+              )}
 
-            {/* STEP 3 */}
+              {/* STEP 3 */}
 
-            {visibleSteps.includes("Product Class") && (
-              <div className="w-[260px] shrink-0">
-                <Section
-                  title="Product Class"
-                  items={productClasses}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+              {visibleSteps.includes("Product Class") && (
+                <div
+                  ref={setStepRef("Product Class")}
+                  className="w-[260px] shrink-0 space-y-2 scroll-mt-24"
+                >
+                  <button
+                    className="text-xs text-blue-600 underline"
+                    onClick={() => handleBack("Product Class")}
+                  >
+                    ← Back
+                  </button>
+                  <Section
+                    title="Product Class"
+                    items={productClasses}
+                    filters={filters}
+                    toggle={toggle}
+                    setSearch={setSearch}
+                    sourceProducts={sourceProducts}
+                    products={products}
+                  />
+                </div>
+              )}
 
-            {/* STEP 4 */}
+              {/* STEP 4 */}
 
-            {visibleSteps.includes("Price Point") && (
-              <div className="w-[260px] shrink-0">
-                <Section
-                  title="Price Point"
-                  items={pricePoints}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+              {visibleSteps.includes("Price Point") && (
+                <div
+                  ref={setStepRef("Price Point")}
+                  className="w-[260px] shrink-0 space-y-2 scroll-mt-24"
+                >
+                  <button
+                    className="text-xs text-blue-600 underline"
+                    onClick={() => handleBack("Price Point")}
+                  >
+                    ← Back
+                  </button>
+                  <Section
+                    title="Price Point"
+                    items={pricePoints}
+                    filters={filters}
+                    toggle={toggle}
+                    setSearch={setSearch}
+                    sourceProducts={sourceProducts}
+                    products={products}
+                  />
+                </div>
+              )}
 
-            {/* STEP 5 */}
+              {/* STEP 5 */}
 
-            {visibleSteps.includes("Brand Origin") && (
-              <div className="w-[260px] shrink-0">
-                <Section
-                  title="Brand Origin"
-                  items={brandOrigins}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+              {visibleSteps.includes("Brand Origin") && (
+                <div
+                  ref={setStepRef("Brand Origin")}
+                  className="w-[260px] shrink-0 space-y-2 scroll-mt-24"
+                >
+                  <button
+                    className="text-xs text-blue-600 underline"
+                    onClick={() => handleBack("Brand Origin")}
+                  >
+                    ← Back
+                  </button>
+                  <Section
+                    title="Brand Origin"
+                    items={brandOrigins}
+                    filters={filters}
+                    toggle={toggle}
+                    setSearch={setSearch}
+                    sourceProducts={sourceProducts}
+                    products={products}
+                  />
+                </div>
+              )}
 
-            {/* STEP 6 */}
-          </div>
+              {/* STEP 6 */}
+            </div>
           </div>
         </div>
 
         {/* ================= TECH SPECS NEW ROW ================= */}
         {/* CTRL+F: TECH SPECS NEW ROW */}
 
-        {visibleSteps.includes("Supplier") && (
-          <div className="space-y-4">
+        {visibleSteps.includes("Supplier Brand") && (
+          <div
+           ref={setStepRef("Supplier Brand")}
+            className="space-y-4 scroll-mt-24 bg-pink-100 p-3 rounded"
+          >
+            <button
+              className="text-xs text-blue-600 underline"
+              onClick={() => handleBack("Supplier Brand")}
+            >
+              ← Back
+            </button>
             <h3 className="font-semibold text-base">
               Technical Specifications
             </h3>{" "}
-            {visibleSteps.includes("Supplier") && (
-              <div className="w-[260px] shrink-0">
-                <Section
-                  title="Supplier"
-                  items={suppliers}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+            <div className="w-[260px] shrink-0">
+              <Section
+                title="Supplier Brand"
+                items={suppliers}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
+            </div>
             <div className="flex flex-col gap-4">
               {Object.entries(technicalSpecs).map(([gt, s]) => (
                 <div key={gt} className="border rounded p-3 space-y-3 bg-card">
@@ -543,11 +656,20 @@ const stepLabels: Record<string, string> = {
   "Product Class": "STEP 3",
   "Price Point": "STEP 4",
   "Brand Origin": "STEP 5",
-  Supplier: "STEP 6",
+  "Supplier Brand": "STEP 6",
 };
 
 /* ================= SECTION ================= */
 /* CTRL+F: SECTION WITH QUANTITY BADGE COMPLETE FUNCTION */
+
+const stepColors: Record<string, string> = {
+  "Product Usage": "bg-blue-100",
+  "Product Family": "bg-green-100",
+  "Product Class": "bg-yellow-100",
+  "Price Point": "bg-purple-100",
+  "Brand Origin": "bg-orange-100",
+  "Supplier Brand": "bg-pink-100",
+};
 
 function Section({
   title,
@@ -562,13 +684,13 @@ function Section({
   const [input, setInput] = useState("");
 
   const splitValues = (value: string): string[] => {
-  if (!value) return [];
+    if (!value) return [];
 
-  return value
-    .split("|")
-    .map((v: string) => v.trim())
-    .filter(Boolean);
-};
+    return value
+      .split("|")
+      .map((v: string) => v.trim())
+      .filter(Boolean);
+  };
 
   useEffect(() => {
     setSearch(title, input);
@@ -600,11 +722,9 @@ function Section({
   const currentStepIndex = stepOrder.indexOf(title);
 
   const baseList = products.filter((p: any) => {
-    return stepOrder.every((step, index) => {
-      /* IGNORE FUTURE STEPS */
+    /* APPLY NORMAL STEP FILTERS */
+    const stepMatch = stepOrder.every((step, index) => {
       if (index > currentStepIndex) return true;
-
-      /* IGNORE CURRENT STEP */
       if (index === currentStepIndex) return true;
 
       if (!filters[step]?.length) return true;
@@ -618,66 +738,149 @@ function Section({
       else if (step === "Product Class") value = p.productClass;
       else if (step === "Price Point") value = p.pricePoint;
       else if (step === "Brand Origin") value = p.brandOrigin;
-      else if (step === "Supplier") value = p.supplier?.company;
+      else if (step === "Supplier Brand") value = p.supplier?.supplierBrand;
 
       return filters[step].includes(value);
     });
-  });
 
-  baseList?.forEach((p: any) => {
-    let value;
+    if (!stepMatch) return false;
 
-    if (title === "Product Usage")
-      value = p.categoryTypes?.[0]?.categoryTypeName;
-    else if (title === "Product Family")
-      value = p.productFamilies?.[0]?.productFamilyName;
-    else if (title === "Product Class") value = p.productClass;
-    else if (title === "Price Point") value = p.pricePoint;
-    else if (title === "Brand Origin") value = p.brandOrigin;
-    else if (title === "Supplier") value = p.supplier?.company;
-else if (title.includes("||")) {
-  const [gt, sn] = title.split("||");
+    /* APPLY TECHNICAL SPEC FILTERS */
+    for (const [k, vals] of Object.entries(filters) as [string, string[]][]) {
+      if (!k.includes("||")) continue;
 
-  p.technicalSpecifications?.forEach((g: any) => {
-    if (g.title !== gt) return;
+      const [gt, sn] = k.split("||");
 
-    g.specs?.forEach((s: any) => {
-      if (s.specId !== sn) return;
+      const productVals: string[] = [];
 
-      const val = s.value || "";
+      p.technicalSpecifications?.forEach((g: any) => {
+        if (g.title !== gt) return;
 
-      splitValues(val).forEach((single: string) => {
-        if (counts[single] !== undefined) counts[single]++;
+        g.specs?.forEach((s: any) => {
+          if (s.specId !== sn) return;
+
+          const val = s.value || "";
+
+          splitValues(val).forEach((v: string) => {
+            productVals.push(v);
+          });
+        });
       });
-    });
-  });
 
-  return;
+      if (vals.length && !vals.some((v) => productVals.includes(v)))
+        return false;
+    }
+
+    return true;
+  });
+baseList?.forEach((p: any) => {
+  let value;
+
+  if (title === "Product Usage") {
+    value = p.categoryTypes?.[0]?.categoryTypeName;
+  } 
+  else if (title === "Product Family") {
+    value = p.productFamilies?.[0]?.productFamilyName;
+  } 
+  else if (title === "Product Class") {
+    value = p.productClass;
+  } 
+  else if (title === "Price Point") {
+    value = p.pricePoint;
+  } 
+  else if (title === "Brand Origin") {
+    value = p.brandOrigin;
+  } 
+else if (title === "Supplier Brand") {
+  value = p.supplier?.supplierBrand;
 }
 
-    if (counts[value] !== undefined) counts[value]++;
-  });
+  /* ================= TECHNICAL SPEC COUNTS FIX ================= */
+  else if (title.includes("||")) {
 
-  const visible = items.filter((i: string) => {
-    if (!input) return true;
+    const [groupTitle, specName] = title.split("||");
 
-    const extractNumbers = (str: string) => {
-      const matches = str.match(/(\d+(\.\d+)?)/g);
-      return matches ? matches.map(Number) : [];
-    };
+    const values: string[] = [];
 
-    const itemNums = extractNumbers(i);
-    const inputNums = extractNumbers(input);
+    p.technicalSpecifications?.forEach((g: any) => {
+      if (g.title !== groupTitle) return;
 
-    if (inputNums.length >= 2 && itemNums.length >= 2)
-      return inputNums[0] >= itemNums[0] && inputNums[1] <= itemNums[1];
+      g.specs?.forEach((s: any) => {
+        if (s.specId !== specName) return;
 
-    if (inputNums.length === 1 && itemNums.length >= 2)
-      return inputNums[0] >= itemNums[0] && inputNums[0] <= itemNums[1];
+        const val = s.value || "";
 
+        splitValues(val).forEach((single: string) => {
+          values.push(single);
+        });
+      });
+    });
+
+    values.forEach((v) => {
+      if (counts[v] !== undefined) {
+        counts[v]++;
+      }
+    });
+
+    return;
+  }
+
+  if (counts[value] !== undefined) {
+    counts[value]++;
+  }
+});
+
+const visible = items.filter((i: string) => {
+  if (!input) return true;
+
+  const extractNumbers = (str: string) => {
+    const matches = str.match(/(\d+(\.\d+)?)/g);
+    return matches ? matches.map(Number) : [];
+  };
+
+  const itemNums = extractNumbers(i);
+  const inputNums = extractNumbers(input);
+
+  if (itemNums.length === 0) {
     return i.toLowerCase().includes(input.toLowerCase());
-  });
+  }
 
+  /* ================= RANGE INPUT ================= */
+  if (inputNums.length >= 2) {
+    const inputMin = inputNums[0];
+    const inputMax = inputNums[1];
+
+    if (itemNums.length === 1) {
+      const val = itemNums[0];
+      return val >= inputMin && val <= inputMax;
+    }
+
+    if (itemNums.length >= 2) {
+      const itemMin = itemNums[0];
+      const itemMax = itemNums[1];
+
+      return !(itemMax < inputMin || itemMin > inputMax);
+    }
+  }
+
+  /* ================= SINGLE NUMBER INPUT ================= */
+  if (inputNums.length === 1) {
+    const inputVal = inputNums[0];
+
+    if (itemNums.length === 1) {
+      return itemNums[0] >= inputVal;
+    }
+
+    if (itemNums.length >= 2) {
+      const itemMin = itemNums[0];
+      const itemMax = itemNums[1];
+
+      return itemMax >= inputVal;
+    }
+  }
+
+  return i.toLowerCase().includes(input.toLowerCase());
+});
   const levenshtein = (a: string, b: string) => {
     const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
 
@@ -700,6 +903,20 @@ else if (title.includes("||")) {
     return matrix[b.length][a.length];
   };
 
+  const suggestionPhrases = [
+    "Did you mean",
+    "Closest match",
+    "Maybe you meant",
+    "Try this instead",
+    "Nearest value",
+    "Best match",
+    "Closest available",
+    "You might be looking for",
+  ];
+
+  const pickPhrase = () =>
+    suggestionPhrases[Math.floor(Math.random() * suggestionPhrases.length)];
+
   const suggestion = (() => {
     if (!input || visible.length > 0) return null;
 
@@ -714,11 +931,21 @@ else if (title.includes("||")) {
       let bestItem = null;
       let bestDiff = Infinity;
 
+      /* CTRL+F: HIGHEST VALUE FALLBACK */
+      let highestItem = null;
+      let highestValue = -Infinity;
+
       items.forEach((item: string) => {
         const nums = extractNumbers(item);
         if (nums.length === 0) return;
 
         const compareNum = nums[0];
+
+        /* track highest value */
+        if (compareNum > highestValue) {
+          highestValue = compareNum;
+          highestItem = item;
+        }
 
         if (compareNum > inputNums[0]) {
           const diff = compareNum - inputNums[0];
@@ -730,7 +957,13 @@ else if (title.includes("||")) {
         }
       });
 
-      return bestItem;
+      /* if no higher found → return highest */
+      if (!bestItem && highestItem)
+        return { value: highestItem, phrase: "Highest available" };
+
+      if (bestItem) return { value: bestItem, phrase: pickPhrase() };
+
+      return null;
     }
 
     let bestMatch = null;
@@ -747,11 +980,15 @@ else if (title.includes("||")) {
       }
     });
 
-    return bestMatch;
+    if (bestMatch) return { value: bestMatch, phrase: pickPhrase() };
+
+    return null;
   })();
 
+  const stepColor = stepColors[title] ?? "bg-gray-50";
+
   return (
-    <div className="border rounded p-2 space-y-2">
+    <div className={`border rounded p-2 space-y-2 ${stepColor}`}>
       <p className="text-sm font-medium">{label ?? title}</p>
 
       <Command shouldFilter={false}>
@@ -767,9 +1004,9 @@ else if (title.includes("||")) {
             {suggestion && (
               <div
                 className="text-blue-500 cursor-pointer mt-1"
-                onClick={() => setInput(suggestion)}
+                onClick={() => setInput(suggestion.value)}
               >
-                Did you mean: <b>{suggestion}</b>
+                {suggestion.phrase}: <b>{suggestion.value}</b>
               </div>
             )}
           </CommandEmpty>
@@ -778,18 +1015,19 @@ else if (title.includes("||")) {
         {visible.length > 0 && (
           <CommandGroup>
             {visible.map((i: string) => {
-              const isDisabled = (counts[i] ?? 0) === 0;
+const isDisabled =
+  (counts[i] ?? 0) === 0 && !filters[title]?.includes(i);
 
               return (
                 <CommandItem
                   key={i}
                   /* CTRL+F: DISABLED CLICK FIX */
-                  onSelect={() => {
-                    if (isDisabled) return;
-                    toggle(title, i);
-                  }}
+onSelect={() => {
+  if (isDisabled) return; // block selecting zero-count options
+  toggle(title, i);
+}}
                   /* CTRL+F: DISABLED STYLE */
-                  className={isDisabled ? "opacity-40 pointer-events-none" : ""}
+                  className={isDisabled ? "opacity-40" : ""}
                 >
                   <Check
                     className={`mr-2 h-4 w-4 ${

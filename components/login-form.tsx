@@ -30,27 +30,20 @@ export function LoginForm({
 
   async function logLoginActivity(userId: string, email: string) {
     try {
-      const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
+      const deviceId =
+        localStorage.getItem("deviceId") || crypto.randomUUID();
 
       localStorage.setItem("deviceId", deviceId);
 
       await addDoc(collection(dbLogs, "activity_logs"), {
         userId,
-
         email,
-
         status: "login",
-
         timestamp: new Date().toISOString(),
-
         deviceId,
-
         location: null,
-
         browser: navigator.userAgent,
-
         os: navigator.platform,
-
         date_created: serverTimestamp(),
       });
     } catch (error) {

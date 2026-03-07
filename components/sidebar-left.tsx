@@ -1,8 +1,11 @@
+
 "use client";
+
 
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
 
 import {
   Sidebar,
@@ -16,10 +19,13 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+
 import { LayoutDashboard, Package, Truck, History } from "lucide-react";
+
 
 import { useUser } from "@/contexts/UserContext";
 import { NavUser } from "@/components/nav-user";
+
 
 type UserDetails = {
   Firstname: string;
@@ -29,15 +35,19 @@ type UserDetails = {
   profilePicture: string;
 };
 
+
 export function SidebarLeft() {
   const { state, isMobile } = useSidebar();
   const { userId } = useUser();
   const pathname = usePathname();
 
+
   const [user, setUser] = React.useState<UserDetails | null>(null);
+
 
   React.useEffect(() => {
     if (!userId) return;
+
 
     fetch(`/api/users?id=${encodeURIComponent(userId)}`)
       .then((res) => {
@@ -57,6 +67,7 @@ export function SidebarLeft() {
         console.error("Sidebar user fetch error:", err);
       });
   }, [userId]);
+
 
   return (
     <Sidebar
@@ -78,9 +89,11 @@ export function SidebarLeft() {
         )}
       </SidebarHeader>
 
+
       {/* CONTENT */}
       <SidebarContent className="px-2">
         <SidebarMenu>
+
 
           {/* DASHBOARD */}
           <SidebarMenuItem>
@@ -110,6 +123,7 @@ export function SidebarLeft() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
+
           {/* PRODUCTS */}
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -137,6 +151,7 @@ export function SidebarLeft() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+
 
           {/* SUPPLIERS */}
           <SidebarMenuItem>
@@ -166,6 +181,7 @@ export function SidebarLeft() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
+
           {/* HISTORY (NEW - ADDED TO MATCH TOP VERSION) */}
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -194,10 +210,13 @@ export function SidebarLeft() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
+
         </SidebarMenu>
       </SidebarContent>
 
+
       <SidebarSeparator />
+
 
       {/* FOOTER */}
       <SidebarFooter className="p-2">
