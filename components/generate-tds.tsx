@@ -246,32 +246,49 @@ while (fontSize > 4) {
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(18 * scaleFactor);
 
-/* ================= PRODUCT NAME WITH AUTO SCALE DOUBLE LINE ================= */
-
-const productTitleY = imageY + boxHeight / 2;
+/* ================= PRODUCT NAME AUTO SHRINK + RISE UP ================= */
 
 const title = productName || "Product Name";
 
-pdf.text(title, textColumnX, productTitleY);
+let titleFontSize = 20 * scaleFactor;
+let titleLines: string[] = [];
 
-/* ===== AUTO WIDTH BASED ON TEXT ===== */
+/* AUTO SHRINK UNTIL MAX 2 LINES */
+while (true) {
+  pdf.setFontSize(titleFontSize);
+  titleLines = pdf.splitTextToSize(title, textColumnWidth);
 
-const textWidth = pdf.getTextWidth(title);
+  if (titleLines.length <= 2) break;
+
+  titleFontSize -= 1;
+  if (titleFontSize <= 12) break;
+}
+
+pdf.setFontSize(titleFontSize);
+
+/* DOUBLE LINE POSITION (FIXED) */
+const lineY = imageY + boxHeight - 10;
+
+/* TEXT STARTS ABOVE THE LINE */
+const lineHeight = 18;
+const productTitleY = lineY - (titleLines.length * 14) - 2;
+
+/* DRAW TITLE */
+pdf.text(titleLines, textColumnX, productTitleY, {
+  maxWidth: textColumnWidth,
+});
+
+/* DRAW DOUBLE LINE */
+const underlineWidth = textColumnWidth + 50;
 
 const lineStartX = textColumnX;
-const lineEndX = textColumnX + textWidth;
+const lineEndX = textColumnX + underlineWidth;
 
-const firstLineY = productTitleY + 10;
-const secondLineY = firstLineY + 3;
+pdf.setLineWidth(0.6);
+pdf.line(lineStartX, lineY, lineEndX, lineY);
 
-/* Thick line */
-pdf.setLineWidth(1.2);
-pdf.line(lineStartX, firstLineY, lineEndX, firstLineY);
-
-/* Thin line */
-pdf.setLineWidth(0.5);
-pdf.line(lineStartX, secondLineY, lineEndX, secondLineY);
-
+pdf.setLineWidth(0.3);
+pdf.line(lineStartX, lineY + 3, lineEndX, lineY + 3);
 
 
     y += 135;

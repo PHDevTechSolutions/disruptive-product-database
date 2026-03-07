@@ -163,24 +163,31 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
 
                   <div className="w-full">
                     <div className="text-xl font-semibold break-words overflow-hidden">
-{/* PRODUCT NAME WITH AUTO SCALE DOUBLE LINE */}
-<div className="inline-block">
-  <div
-    className="text-left font-semibold break-words"
-    style={{
-      fontSize: productName.length > 20 ? "20px" : "28px",
-      lineHeight: "1.4",
-    }}
-  >
-    {productName || "Product Name"}
-  </div>
-
-  {/* DOUBLE LINE AUTO WIDTH */}
-  <div className="mt-2 w-full">
-    <div className="border-t-2 border-black"></div>
-    <div className="border-t border-black mt-[3px]"></div>
-  </div>
-</div>
+                      {/* PRODUCT NAME AUTO SHRINK + MAX 2 LINES */}
+                      <div
+                        className="w-full font-bold text-left leading-[1.3]"
+style={{
+  fontSize:
+    productName.length > 70
+      ? "18px"
+      : productName.length > 50
+        ? "20px"
+        : productName.length > 30
+          ? "22px"
+          : "26px",
+  lineHeight: "1.3",
+  whiteSpace: "normal",
+  wordBreak: "break-word",
+  textAlign: "left",
+}}
+                      >
+                        {productName || "Product Name"}
+                      </div>
+                      {/* DOUBLE LINE ALWAYS FULL WIDTH */}
+                      <div className="mt-2 w-full">
+                        <div className="border-t-2 border-black"></div>
+                        <div className="border-t border-black mt-[3px]"></div>
+                      </div>{" "}
                     </div>
                   </div>
                 </div>
