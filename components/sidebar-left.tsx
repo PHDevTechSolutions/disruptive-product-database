@@ -1,11 +1,8 @@
-
 "use client";
-
 
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
 
 import {
   Sidebar,
@@ -19,13 +16,16 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-
-import { LayoutDashboard, Package, Truck, History } from "lucide-react";
-
+import {
+  LayoutDashboard,
+  Package,
+  Truck,
+  History,
+  ClipboardList,
+} from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
 import { NavUser } from "@/components/nav-user";
-
 
 type UserDetails = {
   Firstname: string;
@@ -35,19 +35,15 @@ type UserDetails = {
   profilePicture: string;
 };
 
-
 export function SidebarLeft() {
   const { state, isMobile } = useSidebar();
   const { userId } = useUser();
   const pathname = usePathname();
 
-
   const [user, setUser] = React.useState<UserDetails | null>(null);
-
 
   React.useEffect(() => {
     if (!userId) return;
-
 
     fetch(`/api/users?id=${encodeURIComponent(userId)}`)
       .then((res) => {
@@ -67,7 +63,6 @@ export function SidebarLeft() {
         console.error("Sidebar user fetch error:", err);
       });
   }, [userId]);
-
 
   return (
     <Sidebar
@@ -89,11 +84,9 @@ export function SidebarLeft() {
         )}
       </SidebarHeader>
 
-
       {/* CONTENT */}
       <SidebarContent className="px-2">
         <SidebarMenu>
-
 
           {/* DASHBOARD */}
           <SidebarMenuItem>
@@ -123,7 +116,6 @@ export function SidebarLeft() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
-
           {/* PRODUCTS */}
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -151,7 +143,6 @@ export function SidebarLeft() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-
 
           {/* SUPPLIERS */}
           <SidebarMenuItem>
@@ -181,8 +172,35 @@ export function SidebarLeft() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
+          {/* REQUESTS */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              data-active={pathname === "/requests"}
+              className="
+                transition-all
+                hover:bg-red-50
+                hover:text-red-700
+                hover:scale-[1.01]
+                data-[active=true]:bg-gradient-to-r
+                data-[active=true]:from-red-600
+                data-[active=true]:to-red-700
+                data-[active=true]:text-white
+                data-[active=true]:shadow-md
+                data-[active=true]:hover:from-red-700
+                data-[active=true]:hover:to-red-800
+              "
+            >
+              <Link href="/requests">
+                <ClipboardList />
+                {(isMobile || state === "expanded") && (
+                  <span>Requests</span>
+                )}
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
 
-          {/* HISTORY (NEW - ADDED TO MATCH TOP VERSION) */}
+          {/* HISTORY */}
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
@@ -210,13 +228,10 @@ export function SidebarLeft() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
-
         </SidebarMenu>
       </SidebarContent>
 
-
       <SidebarSeparator />
-
 
       {/* FOOTER */}
       <SidebarFooter className="p-2">
