@@ -149,6 +149,20 @@ export default function GenerateTDS({
 
     /* ================= BUILD TABLE ================= */
 
+    const filterSpecValue = (value?: string) => {
+  if (!value) return "";
+
+  const activeFilters = (window as any).__ACTIVE_FILTERS__ || [];
+
+  if (!value.includes("|") || activeFilters.length === 0) return value;
+
+  const filtered = value
+    .split("|")
+    .map((v) => v.trim())
+    .filter((v) => activeFilters.includes(v));
+
+  return filtered.length ? filtered.join(" | ") : value;
+};
     const tableRows: any[] = [];
 
     tableRows.push([
@@ -190,12 +204,14 @@ export default function GenerateTDS({
         ]);
 
         // Add specs
-        specsToRender.forEach((spec) => {
-          tableRows.push([
-            spec.specId ? spec.specId + " :" : "",
-            spec.value || "",
-          ]);
-        });
+specsToRender.forEach((spec) => {
+  const filteredValue = filterSpecValue(spec.value);
+
+  tableRows.push([
+    spec.specId ? spec.specId + " :" : "",
+    filteredValue || "",
+  ]);
+});
       });
 
     /* ================= AUTO SCALE TO 1 PAGE ================= */

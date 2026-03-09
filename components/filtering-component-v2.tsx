@@ -282,8 +282,12 @@ const check = (key: string, value: any) => {
 
   /* ================= FILTER ENGINE ================= */
 
-  useEffect(() => {
-    const filtered = products.filter((p) => {
+useEffect(() => {
+
+  // expose active filters globally for TDS
+  (window as any).__ACTIVE_FILTERS__ = Object.values(filters).flat();
+
+  const filtered = products.filter((p) => {
       const check = (key: string, value: any) => {
         if (filters[key]?.length) {
           return filters[key].some((filterVal) => {
