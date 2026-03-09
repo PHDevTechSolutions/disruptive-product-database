@@ -55,6 +55,27 @@ type TemplateSpec = {
   }[];
 };
 
+/* CTRL + F: CONVERT GOOGLE DRIVE LINK */
+const convertDriveToThumbnail = (url?: string) => {
+  if (!url) return "";
+
+  if (!url.includes("drive.google.com")) return url;
+
+  let fileId = "";
+
+  const match1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+  if (match1 && match1[1]) fileId = match1[1];
+  if (match2 && match2[1]) fileId = match2[1];
+
+  if (fileId) {
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+  }
+
+  return url;
+};
+
 export default function UploadProduct({}: Props) {
   const [open, setOpen] = React.useState(false);
 
@@ -419,7 +440,10 @@ setUploadProgress(0);
           let brandOrigin = row.getCell(5).value?.toString() || lastBrandOrigin;
 
           let supplierBrand = row.getCell(6).value?.toString() || lastSupplier;
-          let imageURL = row.getCell(7).value?.toString() || lastImage;
+let imageURL = row.getCell(7).value?.toString() || lastImage;
+
+/* CTRL + F: FIX GOOGLE DRIVE IMAGE */
+imageURL = convertDriveToThumbnail(imageURL);
 
           const unitCost =
             row.getCell(ws.columnCount - 6).value?.toString() || "";

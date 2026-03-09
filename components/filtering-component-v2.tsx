@@ -849,39 +849,44 @@ const visible = items.filter((i: string) => {
     return i.toLowerCase().includes(input.toLowerCase());
   }
 
-  /* ================= RANGE INPUT ================= */
-  if (inputNums.length >= 2) {
-    const inputMin = inputNums[0];
-    const inputMax = inputNums[1];
+/* ================= RANGE CONTAINMENT MATCH ================= */
 
-    if (itemNums.length === 1) {
-      const val = itemNums[0];
-      return val >= inputMin && val <= inputMax;
-    }
+if (inputNums.length >= 2) {
+  const inputMin = inputNums[0];
+  const inputMax = inputNums[1];
 
-    if (itemNums.length >= 2) {
-      const itemMin = itemNums[0];
-      const itemMax = itemNums[1];
+  if (itemNums.length >= 2) {
+    const itemMin = itemNums[0];
+    const itemMax = itemNums[1];
 
-      return !(itemMax < inputMin || itemMin > inputMax);
-    }
+    // input must be fully inside item range
+    return inputMin >= itemMin && inputMax <= itemMax;
   }
 
-  /* ================= SINGLE NUMBER INPUT ================= */
-  if (inputNums.length === 1) {
-    const inputVal = inputNums[0];
+  return false;
+}
 
-    if (itemNums.length === 1) {
-      return itemNums[0] >= inputVal;
-    }
+/* ================= SINGLE VALUE ================= */
 
-    if (itemNums.length >= 2) {
-      const itemMin = itemNums[0];
-      const itemMax = itemNums[1];
+if (inputNums.length === 1) {
+  const inputVal = inputNums[0];
 
-      return itemMax >= inputVal;
-    }
+  // item is a range
+  if (itemNums.length >= 2) {
+    const itemMin = itemNums[0];
+    const itemMax = itemNums[1];
+
+    return inputVal >= itemMin && inputVal <= itemMax;
   }
+
+  // item is a single value
+  if (itemNums.length === 1) {
+    const itemVal = itemNums[0];
+
+    // show values >= input
+    return itemVal >= inputVal;
+  }
+}
 
   return i.toLowerCase().includes(input.toLowerCase());
 });

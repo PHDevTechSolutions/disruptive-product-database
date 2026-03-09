@@ -14,6 +14,23 @@ import UploadProductModal from "@/components/upload-product";
 import DownloadProduct from "@/components/download-product";
 import ViewProduct from "@/components/view-product";
 
+
+// ===== GOOGLE DRIVE IMAGE FIX =====
+const convertDriveToThumbnail = (url: string) => {
+  if (!url) return url;
+
+  if (!url.includes("drive.google.com")) return url;
+
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+  if (match && match[1]) {
+    const fileId = match[1];
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+  }
+
+  return url;
+};
+
 export default function ProductsPage() {
   const router = useRouter();
   const { userId } = useUser();
@@ -218,10 +235,10 @@ export default function ProductsPage() {
                   >
                     <div className="h-[180px] bg-muted flex items-center justify-center overflow-hidden p-2">
                       {p.mainImage?.url ? (
-                        <img
-                          src={p.mainImage.url}
-                          className="w-full h-full object-contain"
-                        />
+<img
+  src={convertDriveToThumbnail(p.mainImage.url)}
+  className="w-full h-full object-contain"
+/>
                       ) : (
                         <div className="flex items-center justify-center h-full text-xs">
                           No Image
