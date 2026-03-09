@@ -330,20 +330,20 @@ export default function UploadProduct({}: Props) {
           "Port of Discharge",
         ];
 
-        for (let col = 8; col <= ws.columnCount; col++) {
-          const title = header2.getCell(col).value?.toString() || "";
-          const specId = header1.getCell(col).value?.toString() || "";
+for (let col = 8; col <= ws.columnCount; col++) {
 
-          /* skip COMMERCIAL DETAILS */
-          if (specId === "COMMERCIAL DETAILS") continue;
+  const groupTitle = header2.getCell(col).value?.toString() || "";
+  const specId = header1.getCell(col).value?.toString() || "";
 
-          excelColumns.push({
-            title,
-            specId,
-            col,
-          });
-        }
+  /* NEVER include COMMERCIAL DETAILS in technical specs */
+  if (groupTitle === "COMMERCIAL DETAILS") continue;
 
+  excelColumns.push({
+    title: groupTitle,
+    specId,
+    col,
+  });
+}
         /* IMPORTANT: TRACK SYNCED FAMILIES */
 
         const syncedFamilies = new Set<string>();
