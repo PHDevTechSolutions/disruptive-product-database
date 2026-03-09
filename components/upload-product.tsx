@@ -335,7 +335,7 @@ export default function UploadProduct({}: Props) {
           const specId = header1.getCell(col).value?.toString() || "";
 
           /* skip COMMERCIAL DETAILS */
-          if (title === "COMMERCIAL DETAILS") continue;
+          if (specId === "COMMERCIAL DETAILS") continue;
 
           excelColumns.push({
             title,
