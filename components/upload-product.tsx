@@ -61,6 +61,8 @@ export default function UploadProduct({}: Props) {
   const [file, setFile] = React.useState<File | null>(null);
 
   const [uploading, setUploading] = React.useState(false);
+  const [uploadProgress, setUploadProgress] = React.useState(0);
+  const [totalRows, setTotalRows] = React.useState(0);
 
   /* ---------------- GENERATE REF ---------------- */
 
@@ -308,6 +310,40 @@ export default function UploadProduct({}: Props) {
 
       await workbook.xlsx.load(buffer);
 
+      let total = 0;
+
+/* ---------------- COUNT VALID ROWS FIRST ---------------- */
+
+let validRows = 0;
+
+for (const ws of workbook.worksheets) {
+  let lastUsage = "";
+  let lastFamily = "";
+
+  for (let r = 3; r <= ws.rowCount; r++) {
+    const row = ws.getRow(r);
+
+    const usage = row.getCell(1).value?.toString() || lastUsage;
+    const family = row.getCell(2).value?.toString() || lastFamily;
+
+    lastUsage = usage;
+    lastFamily = family;
+
+    if (!usage || !family) continue;
+
+    const category = await findCategoryType(usage);
+    if (!category) continue;
+
+    const productFamily = await findProductFamily(category.id, family);
+    if (!productFamily) continue;
+
+    validRows++;
+  }
+}
+
+setTotalRows(validRows);
+setUploadProgress(0);
+
       for (const ws of workbook.worksheets) {
         const header1 = ws.getRow(1);
         const header2 = ws.getRow(2);
@@ -330,20 +366,19 @@ export default function UploadProduct({}: Props) {
           "Port of Discharge",
         ];
 
-for (let col = 8; col <= ws.columnCount; col++) {
+        for (let col = 8; col <= ws.columnCount; col++) {
+          const groupTitle = header2.getCell(col).value?.toString() || "";
+          const specId = header1.getCell(col).value?.toString() || "";
 
-  const groupTitle = header2.getCell(col).value?.toString() || "";
-  const specId = header1.getCell(col).value?.toString() || "";
+          /* NEVER include COMMERCIAL DETAILS in technical specs */
+          if (groupTitle === "COMMERCIAL DETAILS") continue;
 
-  /* NEVER include COMMERCIAL DETAILS in technical specs */
-  if (groupTitle === "COMMERCIAL DETAILS") continue;
-
-  excelColumns.push({
-    title: groupTitle,
-    specId,
-    col,
-  });
-}
+          excelColumns.push({
+            title: groupTitle,
+            specId,
+            col,
+          });
+        }
         /* IMPORTANT: TRACK SYNCED FAMILIES */
 
         const syncedFamilies = new Set<string>();
@@ -454,58 +489,61 @@ for (let col = 8; col <= ws.columnCount; col++) {
 
           const referenceID = await generateProductReferenceID();
 
-          await addDoc(collection(db, "products"), {
-            productReferenceID: referenceID,
+await addDoc(collection(db, "products"), {
+  productReferenceID: referenceID,
 
-            productClass,
-            pricePoint,
-            brandOrigin,
+  productClass,
+  pricePoint,
+  brandOrigin,
 
-            supplier,
+  supplier,
 
-            mainImage: imageURL ? { url: imageURL } : null,
+  mainImage: imageURL ? { url: imageURL } : null,
 
-            categoryTypes: [
-              {
-                productUsageId: category.id,
-                categoryTypeName: category.name,
-              },
-            ],
+  categoryTypes: [
+    {
+      productUsageId: category.id,
+      categoryTypeName: category.name,
+    },
+  ],
 
-            productFamilies: [
-              {
-                productFamilyId: productFamily.id,
-                productFamilyName: productFamily.name,
-                productUsageId: category.id,
-              },
-            ],
+  productFamilies: [
+    {
+      productFamilyId: productFamily.id,
+      productFamilyName: productFamily.name,
+      productUsageId: category.id,
+    },
+  ],
 
-            technicalSpecifications: productSpecs,
+  technicalSpecifications: productSpecs,
 
-            commercialDetails: {
-              unitCost,
+  commercialDetails: {
+    unitCost,
 
-              packaging: {
-                length,
-                width,
-                height,
-              },
+    packaging: {
+      length,
+      width,
+      height,
+    },
 
-              pcsPerCarton,
+    pcsPerCarton,
 
-              factoryAddress,
+    factoryAddress,
 
-              portOfDischarge,
-            },
+    portOfDischarge,
+  },
 
-            isActive: true,
+  isActive: true,
 
-            createdAt: serverTimestamp(),
+  createdAt: serverTimestamp(),
 
-            whatHappened: "Product Added",
+  whatHappened: "Product Added",
 
-            date_updated: serverTimestamp(),
-          });
+  date_updated: serverTimestamp(),
+});
+
+/* COUNT ONLY SUCCESSFUL UPLOAD */
+setUploadProgress((prev) => prev + 1);
         }
       }
 
@@ -514,6 +552,8 @@ for (let col = 8; col <= ws.columnCount; col++) {
       setOpen(false);
 
       setFile(null);
+      setUploadProgress(0);
+      setTotalRows(0);
     } catch (error) {
       console.error(error);
 
@@ -537,11 +577,54 @@ for (let col = 8; col <= ws.columnCount; col++) {
           <DialogTitle>Upload Products</DialogTitle>
         </DialogHeader>
 
-        <input
-          type="file"
-          accept=".xlsx"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-        />
+        <div
+          className="border-2 border-dashed rounded-lg p-10 text-center cursor-pointer hover:bg-gray-50 transition"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const droppedFile = e.dataTransfer.files?.[0];
+            if (droppedFile) {
+              setFile(droppedFile);
+            }
+          }}
+          onClick={() =>
+            document.getElementById("product-upload-input")?.click()
+          }
+        >
+          <div className="flex flex-col items-center gap-3">
+            <Upload className="w-10 h-10 text-gray-500" />
+
+            <p className="text-sm text-gray-600">
+              Drag & Drop your Excel file here
+            </p>
+
+            <p className="text-xs text-gray-400">or click to browse</p>
+
+            {file && !uploading && (
+              <p className="text-sm font-medium text-green-600">{file.name}</p>
+            )}
+
+            {uploading && (
+              <div className="flex flex-col items-center gap-2 mt-2">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+
+                <p className="text-sm font-medium">Uploading products...</p>
+
+                <p className="text-xs text-gray-500">
+                  {uploadProgress} out of {totalRows}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <input
+            id="product-upload-input"
+            type="file"
+            accept=".xlsx"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+          />
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
