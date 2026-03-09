@@ -120,6 +120,14 @@ export default function EditProductPage() {
   const [brandOrigin, setBrandOrigin] = useState("");
   const [productClass, setProductClass] = useState("");
 
+  const [unitCost, setUnitCost] = useState("");
+  const [packLength, setPackLength] = useState("");
+  const [packWidth, setPackWidth] = useState("");
+  const [packHeight, setPackHeight] = useState("");
+  const [pcsPerCarton, setPcsPerCarton] = useState("");
+  const [factoryAddress, setFactoryAddress] = useState("");
+  const [portOfDischarge, setPortOfDischarge] = useState("");
+
   const isInitialLoad = useRef(true);
 
   const [user, setUser] = useState<UserData | null>(null);
@@ -128,7 +136,6 @@ export default function EditProductPage() {
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-
 
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
@@ -324,6 +331,7 @@ export default function EditProductPage() {
     return () => unsubscribe();
   }, []);
 
+ 
   /* ================= LOAD PRODUCT DATA ================= */
 
   useEffect(() => {
@@ -347,6 +355,24 @@ export default function EditProductPage() {
       setBrandOrigin(data.brandOrigin || "");
 
       setProductClass(data.productClass || "");
+      
+       /* ================= LOAD COMMERCIAL DETAILS ================= */
+
+  if (data.commercialDetails) {
+    setUnitCost(data.commercialDetails.unitCost?.toString() || "");
+
+    setPackLength(data.commercialDetails.packaging?.length?.toString() || "");
+
+    setPackWidth(data.commercialDetails.packaging?.width?.toString() || "");
+
+    setPackHeight(data.commercialDetails.packaging?.height?.toString() || "");
+
+    setPcsPerCarton(data.commercialDetails.pcsPerCarton?.toString() || "");
+
+    setFactoryAddress(data.commercialDetails.factoryAddress || "");
+
+    setPortOfDischarge(data.commercialDetails.portOfDischarge || "");
+  }
 
       if (data.supplier) {
         const supplierObj = {
@@ -368,9 +394,9 @@ export default function EditProductPage() {
         setBrandOrigin(data.brandOrigin || "China");
       }
 
-if (data.mainImage?.url) {
-  setPreview(data.mainImage.url);
-}
+      if (data.mainImage?.url) {
+        setPreview(data.mainImage.url);
+      }
 
       if (Array.isArray(data.categoryTypes)) {
         setSelectedCategoryTypes(
@@ -787,15 +813,15 @@ if (data.mainImage?.url) {
     );
   };
 
-const handleImageChange = (file: File | null) => {
-  if (!file) return;
+  const handleImageChange = (file: File | null) => {
+    if (!file) return;
 
-  setMainImage(file);
+    setMainImage(file);
 
-  if (preview) URL.revokeObjectURL(preview);
+    if (preview) URL.revokeObjectURL(preview);
 
-  setPreview(URL.createObjectURL(file));
-};
+    setPreview(URL.createObjectURL(file));
+  };
 
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
@@ -1207,6 +1233,22 @@ const handleImageChange = (file: File | null) => {
           categoryTypeName: c.name,
         })),
 
+        commercialDetails: {
+          unitCost: unitCost ? parseFloat(unitCost) : null,
+
+          packaging: {
+            length: packLength ? parseFloat(packLength) : null,
+            width: packWidth ? parseFloat(packWidth) : null,
+            height: packHeight ? parseFloat(packHeight) : null,
+          },
+
+          pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
+
+          factoryAddress: factoryAddress || "",
+
+          portOfDischarge: portOfDischarge || "",
+        },
+
         technicalSpecifications: technicalSpecs
           .filter((spec) => spec.title.trim() !== "")
           .map((spec) => ({
@@ -1236,9 +1278,9 @@ const handleImageChange = (file: File | null) => {
 
       await syncProductsUsingThisFamily();
 
-if (mainImage) {
-  await uploadProductMedia(productId!);
-}
+      if (mainImage) {
+        await uploadProductMedia(productId!);
+      }
       toast.success("Product saved successfully");
 
       router.push("/products");
@@ -1319,8 +1361,6 @@ if (mainImage) {
                     }
                   />
                 </label>
-
-
               </CardContent>
             </Card>
 
@@ -1507,6 +1547,95 @@ if (mainImage) {
                 </select>
               </div>
             </div>
+
+            {/* ================= COMMERCIAL DETAILS ================= */}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-center text-sm">
+                  COMMERCIAL DETAILS
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {/* UNIT COST */}
+                <div className="space-y-2">
+                  <Label>Unit Cost</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Enter unit cost..."
+                    value={unitCost}
+                    onChange={(e) => setUnitCost(e.target.value)}
+                  />
+                </div>
+
+                {/* PACKAGING DETAILS */}
+                <div className="space-y-2">
+                  <Label>Packaging Details (cm)</Label>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Length"
+                      value={packLength}
+                      onChange={(e) => setPackLength(e.target.value)}
+                    />
+
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Width"
+                      value={packWidth}
+                      onChange={(e) => setPackWidth(e.target.value)}
+                    />
+
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Height"
+                      value={packHeight}
+                      onChange={(e) => setPackHeight(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* PCS PER CARTON */}
+                <div className="space-y-2">
+                  <Label>pcs / carton</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    placeholder="Enter pcs per carton..."
+                    value={pcsPerCarton}
+                    onChange={(e) => setPcsPerCarton(e.target.value)}
+                  />
+                </div>
+
+                {/* FACTORY ADDRESS */}
+                <div className="space-y-2">
+                  <Label>Factory Address</Label>
+                  <textarea
+                    className="w-full border rounded-md p-2 text-sm"
+                    rows={3}
+                    placeholder="Enter factory address..."
+                    value={factoryAddress}
+                    onChange={(e) => setFactoryAddress(e.target.value)}
+                  />
+                </div>
+
+                {/* PORT OF DISCHARGE */}
+                <div className="space-y-2">
+                  <Label>Port of Discharge</Label>
+                  <Input
+                    placeholder="Enter port of discharge..."
+                    value={portOfDischarge}
+                    onChange={(e) => setPortOfDischarge(e.target.value)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             {/* ===== TECHNICAL SPECIFICATIONS (EDITABLE) ===== */}
 

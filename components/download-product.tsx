@@ -80,33 +80,86 @@ export default function DownloadProduct({ products }: Props) {
 
       /* STATIC COLUMNS */
 
-const staticColumns = [
-  "Product Usage",
-  "Product Family",
-  "Product Class",
-  "Price Point",
-  "Brand Origin",
-  "Supplier Brand",
-  "Image URL",
-];
+      const staticColumns = [
+        "Product Usage",
+        "Product Family",
+        "Product Class",
+        "Price Point",
+        "Brand Origin",
+        "Supplier Brand",
+        "Image URL",
+      ];
 
       const header1: any[] = [];
       const header2: any[] = [];
+      const header3: any[] = [];
 
       staticColumns.forEach((col) => {
         header1.push(col);
         header2.push("");
+        header3.push("");
       });
 
       groupMap.forEach((specIds, groupTitle) => {
         specIds.forEach((specId, index) => {
           header1.push(specId);
           header2.push(index === 0 ? groupTitle : "");
+          header3.push("");
         });
       });
 
+      /* ================= COMMERCIAL DETAILS ================= */
+
+      /*
+EXPECTED FORMAT
+
+                Packaging Details (cm)
+
+COMMERCIAL DETAILS                       DETAILS
+
+Unit Cost | Length | Width | Height | pcs/carton | Factory Address | Port of Discharge
+*/
+
+      const commercialSpecs = [
+        "Unit Cost",
+        "Length",
+        "Width",
+        "Height",
+        "pcs/carton",
+        "Factory Address",
+        "Port of Discharge",
+      ];
+
+      /* HEADER STRUCTURE */
+
+      header1.push(
+        "Unit Cost",
+        "Length",
+        "Width",
+        "Height",
+        "pcs/carton",
+        "Factory Address",
+        "Port of Discharge",
+      );
+
+      header2.push("COMMERCIAL DETAILS", "", "", "", "", "", "");
+
+      header3.push("", "Packaging Details (cm)", "", "", "", "", "");
+
       ws.addRow(header1);
       ws.addRow(header2);
+      ws.addRow(header3);
+
+      /* MERGE STRUCTURE */
+
+      const cdStart = header1.length - 6;
+      const cdEnd = header1.length;
+
+      /* COMMERCIAL DETAILS */
+      ws.mergeCells(2, cdStart, 2, cdEnd);
+
+      /* Packaging Details (cm) */
+      ws.mergeCells(3, cdStart + 1, 3, cdStart + 3);
 
       /* STYLE STATIC HEADER */
 
@@ -125,6 +178,58 @@ const staticColumns = [
         };
 
         cell.alignment = {
+          vertical: "middle",
+          horizontal: "center",
+        };
+      }
+
+      /* ================= STYLE COMMERCIAL DETAILS ================= */
+
+      for (let col = cdStart; col <= cdEnd; col++) {
+        const headerCell = ws.getRow(1).getCell(col);
+        const groupCell = ws.getRow(2).getCell(col);
+        const subGroupCell = ws.getRow(3).getCell(col);
+
+        const purple = "D9D2E9"; // Light Purple 3
+
+        headerCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: purple },
+        };
+
+        groupCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: purple },
+        };
+
+        subGroupCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: purple },
+        };
+
+        headerCell.font = { bold: true };
+
+        groupCell.font = { bold: true };
+
+        subGroupCell.font = {
+          bold: true,
+          italic: true,
+        };
+
+        headerCell.alignment = {
+          vertical: "middle",
+          horizontal: "center",
+        };
+
+        groupCell.alignment = {
+          vertical: "middle",
+          horizontal: "center",
+        };
+
+        subGroupCell.alignment = {
           vertical: "middle",
           horizontal: "center",
         };
@@ -210,6 +315,17 @@ const staticColumns = [
           });
         });
 
+        /* ================= COMMERCIAL DETAILS DATA ================= */
+
+        const cd = product.commercialDetails || {};
+
+        row.push(cd.unitCost || "");
+        row.push(cd.packaging?.length || "");
+        row.push(cd.packaging?.width || "");
+        row.push(cd.packaging?.height || "");
+        row.push(cd.pcsPerCarton || "");
+        row.push(cd.factoryAddress || "");
+        row.push(cd.portOfDischarge || "");
         ws.addRow(row);
       });
 
@@ -255,7 +371,7 @@ const staticColumns = [
         column.width = max + 4;
       });
 
-      ws.views = [{ state: "frozen", ySplit: 2 }];
+      ws.views = [{ state: "frozen", ySplit: 3 }];
     }
 
     const buffer = await wb.xlsx.writeBuffer();

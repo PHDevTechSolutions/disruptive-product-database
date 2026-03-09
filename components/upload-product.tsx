@@ -127,28 +127,28 @@ export default function UploadProduct({}: Props) {
 
   /* ---------------- FIND SUPPLIER ---------------- */
 
-const findSupplier = async (brand: string): Promise<Supplier | null> => {
-  if (!brand) return null;
+  const findSupplier = async (brand: string): Promise<Supplier | null> => {
+    if (!brand) return null;
 
-  const q = query(
-    collection(db, "suppliers"),
-    where("supplierBrand", "==", brand),
-    where("isActive", "==", true),
-  );
+    const q = query(
+      collection(db, "suppliers"),
+      where("supplierBrand", "==", brand),
+      where("isActive", "==", true),
+    );
 
-  const snap = await getDocs(q);
+    const snap = await getDocs(q);
 
-  if (snap.empty) return null;
+    if (snap.empty) return null;
 
-  const doc = snap.docs[0];
-  const data = doc.data();
+    const doc = snap.docs[0];
+    const data = doc.data();
 
-  return {
-    supplierId: doc.id,
-    company: data.company,
-    supplierBrand: data.supplierBrand || "",
+    return {
+      supplierId: doc.id,
+      company: data.company,
+      supplierBrand: data.supplierBrand || "",
+    };
   };
-};
   /* ---------------- AUTO CREATE TEMPLATE ---------------- */
 
   const createMissingTemplateSpecs = async (
@@ -318,12 +318,28 @@ const findSupplier = async (brand: string): Promise<Supplier | null> => {
           col: number;
         }[] = [];
 
+        /* ---------------- COMMERCIAL DETAILS COLUMNS ---------------- */
+
+        const commercialColumns = [
+          "Unit Cost",
+          "Length",
+          "Width",
+          "Height",
+          "pcs/carton",
+          "Factory Address",
+          "Port of Discharge",
+        ];
+
         for (let col = 8; col <= ws.columnCount; col++) {
+          const title = header2.getCell(col).value?.toString() || "";
+          const specId = header1.getCell(col).value?.toString() || "";
+
+          /* skip COMMERCIAL DETAILS */
+          if (title === "COMMERCIAL DETAILS") continue;
+
           excelColumns.push({
-            title: header2.getCell(col).value?.toString() || "",
-
-            specId: header1.getCell(col).value?.toString() || "",
-
+            title,
+            specId,
             col,
           });
         }
@@ -353,6 +369,19 @@ const findSupplier = async (brand: string): Promise<Supplier | null> => {
           let supplierBrand = row.getCell(6).value?.toString() || lastSupplier;
           let imageURL = row.getCell(7).value?.toString() || lastImage;
 
+          const unitCost =
+            row.getCell(ws.columnCount - 6).value?.toString() || "";
+          const length =
+            row.getCell(ws.columnCount - 5).value?.toString() || "";
+          const width = row.getCell(ws.columnCount - 4).value?.toString() || "";
+          const height =
+            row.getCell(ws.columnCount - 3).value?.toString() || "";
+          const pcsPerCarton =
+            row.getCell(ws.columnCount - 2).value?.toString() || "";
+          const factoryAddress =
+            row.getCell(ws.columnCount - 1).value?.toString() || "";
+          const portOfDischarge =
+            row.getCell(ws.columnCount).value?.toString() || "";
 
           /* SAVE LAST VALUES */
 
@@ -452,6 +481,22 @@ const findSupplier = async (brand: string): Promise<Supplier | null> => {
             ],
 
             technicalSpecifications: productSpecs,
+
+            commercialDetails: {
+              unitCost,
+
+              packaging: {
+                length,
+                width,
+                height,
+              },
+
+              pcsPerCarton,
+
+              factoryAddress,
+
+              portOfDischarge,
+            },
 
             isActive: true,
 

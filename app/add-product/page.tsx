@@ -116,12 +116,20 @@ export default function AddProductPage() {
     null,
   );
   const [selectedSupplierBrand, setSelectedSupplierBrand] =
-  useState<Supplier | null>(null);
+    useState<Supplier | null>(null);
   const [noSupplier, setNoSupplier] = useState(false);
 
   const [pricePoint, setPricePoint] = useState("");
   const [brandOrigin, setBrandOrigin] = useState("");
   const [productClass, setProductClass] = useState("");
+
+  const [unitCost, setUnitCost] = useState("");
+  const [packLength, setPackLength] = useState("");
+  const [packWidth, setPackWidth] = useState("");
+  const [packHeight, setPackHeight] = useState("");
+  const [pcsPerCarton, setPcsPerCarton] = useState("");
+  const [factoryAddress, setFactoryAddress] = useState("");
+  const [portOfDischarge, setPortOfDischarge] = useState("");
 
   const isInitialLoad = useRef(true);
 
@@ -786,15 +794,15 @@ export default function AddProductPage() {
     );
   };
 
-const handleImageChange = (file: File | null) => {
-  if (!file) return;
+  const handleImageChange = (file: File | null) => {
+    if (!file) return;
 
-  setMainImage(file);
+    setMainImage(file);
 
-  if (preview) URL.revokeObjectURL(preview);
+    if (preview) URL.revokeObjectURL(preview);
 
-  setPreview(URL.createObjectURL(file));
-};
+    setPreview(URL.createObjectURL(file));
+  };
 
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
@@ -962,9 +970,9 @@ const handleImageChange = (file: File | null) => {
   }, [classificationTypes, classificationSearch]);
 
   const handleSelectSupplierBrand = (supplier: Supplier) => {
-  setSelectedSupplierBrand(supplier);
-  setSelectedSupplier(supplier);
-};
+    setSelectedSupplierBrand(supplier);
+    setSelectedSupplier(supplier);
+  };
   const filteredBrands = React.useMemo(() => {
     return brands.filter((item) =>
       item.name.toLowerCase().includes(brandSearch.toLowerCase()),
@@ -1050,10 +1058,10 @@ const handleImageChange = (file: File | null) => {
         return;
       }
 
-if (!mainImage) {
-  toast.error("Please upload main image");
-  return;
-}
+      if (!mainImage) {
+        toast.error("Please upload main image");
+        return;
+      }
 
       // ================= CLOUDINARY UPLOAD =================
 
@@ -1086,13 +1094,13 @@ if (!mainImage) {
         brandOrigin: noSupplier ? "China" : brandOrigin,
         productClass,
 
-supplier: noSupplier
-  ? null
-  : {
-      supplierId: selectedSupplier!.supplierId,
-      company: selectedSupplier!.company,
-      supplierBrand: selectedSupplierBrand?.supplierBrand || "",
-    },
+        supplier: noSupplier
+          ? null
+          : {
+              supplierId: selectedSupplier!.supplierId,
+              company: selectedSupplier!.company,
+              supplierBrand: selectedSupplierBrand?.supplierBrand || "",
+            },
 
         productFamilies: selectedProductFamily
           ? [
@@ -1109,6 +1117,21 @@ supplier: noSupplier
           categoryTypeName: c.name,
         })),
 
+        commercialDetails: {
+          unitCost: unitCost ? parseFloat(unitCost) : null,
+
+          packaging: {
+            length: packLength ? parseFloat(packLength) : null,
+            width: packWidth ? parseFloat(packWidth) : null,
+            height: packHeight ? parseFloat(packHeight) : null,
+          },
+
+          pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
+
+          factoryAddress: factoryAddress || "",
+
+          portOfDischarge: portOfDischarge || "",
+        },
         technicalSpecifications: technicalSpecs
           .filter((spec) => spec.title.trim() !== "")
           .map((spec) => ({
@@ -1124,7 +1147,7 @@ supplier: noSupplier
               })),
           })),
 
-mainImage: null,
+        mainImage: null,
 
         mediaStatus: mainImage ? "pending" : "done",
 
@@ -1221,10 +1244,6 @@ mainImage: null,
                     }
                   />
                 </label>
-
-
-
-
               </CardContent>
             </Card>
 
@@ -1288,9 +1307,9 @@ mainImage: null,
                             key={supplier.supplierId}
                             value={supplier.company}
                             onSelect={() => {
-  setSelectedSupplier(supplier);
-  setSelectedSupplierBrand(supplier);
-}}
+                              setSelectedSupplier(supplier);
+                              setSelectedSupplierBrand(supplier);
+                            }}
                           >
                             <Check
                               className={cn(
@@ -1309,59 +1328,60 @@ mainImage: null,
                   </PopoverContent>
                 </Popover>
               </div>
-{/* ================= SUPPLIER BRAND SELECT ================= */}
-<div className="space-y-2">
-  <Label>Supplier Brand</Label>
+              {/* ================= SUPPLIER BRAND SELECT ================= */}
+              <div className="space-y-2">
+                <Label>Supplier Brand</Label>
 
-  <Popover>
-    <PopoverTrigger asChild>
-      <Button
-        variant="outline"
-        role="combobox"
-        disabled={noSupplier}
-        className="w-full justify-between"
-      >
-        <span className="truncate text-left max-w-[85%]">
-          {selectedSupplierBrand
-            ? selectedSupplierBrand.supplierBrand || "No brand"
-            : "Select brand..."}
-        </span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      disabled={noSupplier}
+                      className="w-full justify-between"
+                    >
+                      <span className="truncate text-left max-w-[85%]">
+                        {selectedSupplierBrand
+                          ? selectedSupplierBrand.supplierBrand || "No brand"
+                          : "Select brand..."}
+                      </span>
 
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
-    </PopoverTrigger>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
 
-    <PopoverContent className="p-0 w-full">
-      <Command>
-        <CommandInput placeholder="Search brand..." />
-        <CommandEmpty>No brand found.</CommandEmpty>
+                  <PopoverContent className="p-0 w-full">
+                    <Command>
+                      <CommandInput placeholder="Search brand..." />
+                      <CommandEmpty>No brand found.</CommandEmpty>
 
-        <CommandGroup>
-          {suppliers.map((supplier) => (
-            <CommandItem
-              key={supplier.supplierId}
-              value={supplier.supplierBrand}
-              onSelect={() => handleSelectSupplierBrand(supplier)}
-            >
-              <Check
-                className={cn(
-                  "mr-2 h-4 w-4",
-                  selectedSupplierBrand?.supplierId === supplier.supplierId
-                    ? "opacity-100"
-                    : "opacity-0",
-                )}
-              />
+                      <CommandGroup>
+                        {suppliers.map((supplier) => (
+                          <CommandItem
+                            key={supplier.supplierId}
+                            value={supplier.supplierBrand}
+                            onSelect={() => handleSelectSupplierBrand(supplier)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedSupplierBrand?.supplierId ===
+                                  supplier.supplierId
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
 
-              <span className="truncate">
-                {supplier.supplierBrand || "No Brand"}
-              </span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </Command>
-    </PopoverContent>
-  </Popover>
-</div>
+                            <span className="truncate">
+                              {supplier.supplierBrand || "No Brand"}
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
               {/* ================= PRICE POINT SELECT ================= */}
               <div className="space-y-2">
                 <Label>Price Point</Label>
@@ -1410,7 +1430,94 @@ mainImage: null,
                 </select>
               </div>
             </div>
+            {/* ================= COMMERCIAL DETAILS ================= */}
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-center text-sm">
+                  COMMERCIAL DETAILS
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {/* UNIT COST */}
+                <div className="space-y-2">
+                  <Label>Unit Cost</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Enter unit cost..."
+                    value={unitCost}
+                    onChange={(e) => setUnitCost(e.target.value)}
+                  />
+                </div>
+
+                {/* PACKAGING DETAILS */}
+                <div className="space-y-2">
+                  <Label>Packaging Details (cm)</Label>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Length"
+                      value={packLength}
+                      onChange={(e) => setPackLength(e.target.value)}
+                    />
+
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Width"
+                      value={packWidth}
+                      onChange={(e) => setPackWidth(e.target.value)}
+                    />
+
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Height"
+                      value={packHeight}
+                      onChange={(e) => setPackHeight(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* PCS PER CARTON */}
+                <div className="space-y-2">
+                  <Label>pcs / carton</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    placeholder="Enter pcs per carton..."
+                    value={pcsPerCarton}
+                    onChange={(e) => setPcsPerCarton(e.target.value)}
+                  />
+                </div>
+
+                {/* FACTORY ADDRESS */}
+                <div className="space-y-2">
+                  <Label>Factory Address</Label>
+                  <textarea
+                    className="w-full border rounded-md p-2 text-sm"
+                    rows={3}
+                    placeholder="Enter factory address..."
+                    value={factoryAddress}
+                    onChange={(e) => setFactoryAddress(e.target.value)}
+                  />
+                </div>
+
+                {/* PORT OF DISCHARGE */}
+                <div className="space-y-2">
+                  <Label>Port of Discharge</Label>
+                  <Input
+                    placeholder="Enter port of discharge..."
+                    value={portOfDischarge}
+                    onChange={(e) => setPortOfDischarge(e.target.value)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
             {/* ===== TECHNICAL SPECIFICATIONS (EDITABLE) ===== */}
 
             <div className="space-y-3">
