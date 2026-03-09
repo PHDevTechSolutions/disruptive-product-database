@@ -62,20 +62,49 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
       PAPER_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - SAFE_BOTTOM_MARGIN;
 
     useEffect(() => {
-      if (!contentRef.current) return;
+      const calculateScale = () => {
+        if (!contentRef.current) return;
 
-      const contentHeight = contentRef.current.scrollHeight;
+        const contentHeight = contentRef.current.scrollHeight;
 
-      if (!contentHeight) return;
+        if (!contentHeight) return;
 
-      const availableHeight = CONTENT_AREA;
+        const availableHeight = CONTENT_AREA;
 
-      if (contentHeight > availableHeight) {
-        const newScale = availableHeight / contentHeight;
-        setScale(newScale);
-      } else {
-        setScale(1);
+        if (contentHeight > availableHeight) {
+          const newScale = availableHeight / contentHeight;
+          setScale(newScale);
+        } else {
+          setScale(1);
+        }
+      };
+
+      calculateScale();
+
+      // 🔹 wait for images to load before measuring
+      const images = contentRef.current?.querySelectorAll("img");
+
+      if (images && images.length > 0) {
+        let loaded = 0;
+
+        images.forEach((img) => {
+          if (img.complete) {
+            loaded++;
+          } else {
+            img.onload = () => {
+              loaded++;
+              if (loaded === images.length) calculateScale();
+            };
+          }
+        });
+
+        if (loaded === images.length) calculateScale();
       }
+
+      // small delay fallback
+      const timeout = setTimeout(calculateScale, 150);
+
+      return () => clearTimeout(timeout);
     }, [
       technicalSpecifications,
       productName,
@@ -217,40 +246,42 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                 {/* TECH SPECS */}
                 <table className="w-full border border-black border-collapse text-[16px]">
                   <tbody>
-                    {technicalSpecifications?.map((group, i) => {
-                      const specsToRender = hideEmptySpecs
-                        ? group.specs.filter(
-                            (spec) => spec.value && spec.value.trim() !== "",
-                          )
-                        : group.specs;
+                    {technicalSpecifications
+                      ?.filter((group) => group.title !== "COMMERCIAL DETAILS")
+                      .map((group, i) => {
+                        const specsToRender = hideEmptySpecs
+                          ? group.specs.filter(
+                              (spec) => spec.value && spec.value.trim() !== "",
+                            )
+                          : group.specs;
 
-                      if (hideEmptySpecs && specsToRender.length === 0)
-                        return null;
+                        if (hideEmptySpecs && specsToRender.length === 0)
+                          return null;
 
-                      return (
-                        <React.Fragment key={i}>
-                          <tr>
-                            <td
-                              colSpan={2}
-                              className="border border-black px-2 py-1 font-semibold bg-gray-300"
-                            >
-                              {group.title}
-                            </td>
-                          </tr>
-
-                          {specsToRender.map((spec, s) => (
-                            <tr key={s}>
-                              <td className="border border-black px-2 py-1 w-[300px]">
-                                {spec.specId} :
-                              </td>
-                              <td className="border border-black px-2 py-1">
-                                {spec.value}
+                        return (
+                          <React.Fragment key={i}>
+                            <tr>
+                              <td
+                                colSpan={2}
+                                className="border border-black px-2 py-1 font-semibold bg-gray-300"
+                              >
+                                {group.title}
                               </td>
                             </tr>
-                          ))}
-                        </React.Fragment>
-                      );
-                    })}
+
+                            {specsToRender.map((spec, s) => (
+                              <tr key={s}>
+                                <td className="border border-black px-2 py-1 w-[300px]">
+                                  {spec.specId} :
+                                </td>
+                                <td className="border border-black px-2 py-1">
+                                  {spec.value}
+                                </td>
+                              </tr>
+                            ))}
+                          </React.Fragment>
+                        );
+                      })}
                   </tbody>
                 </table>
 

@@ -87,8 +87,8 @@ export default function GenerateTDS({
     }
     /* ================= PRODUCT IMAGE ================= */
 
-const boxWidth = 150 * scaleFactor;
-const boxHeight = 120 * scaleFactor;
+    const boxWidth = 150 * scaleFactor;
+    const boxHeight = 120 * scaleFactor;
     const imageX = pageWidth / 2 - boxWidth - 60;
     const imageY = y;
 
@@ -147,9 +147,6 @@ const boxHeight = 120 * scaleFactor;
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(14);
 
-
-
-
     /* ================= BUILD TABLE ================= */
 
     const tableRows: any[] = [];
@@ -163,79 +160,81 @@ const boxHeight = 120 * scaleFactor;
     ]);
     tableRows.push(["Item Code :", itemCode]);
 
-    technicalSpecifications?.forEach((group) => {
-      // Decide which specs to render based on toggle
-      const specsToRender = hideEmptySpecs
-        ? group.specs.filter((spec) => {
-            const hasValue =
-              spec.value &&
-              typeof spec.value === "string" &&
-              spec.value.trim() !== "";
-            return hasValue;
-          })
-        : group.specs;
+    technicalSpecifications
+      ?.filter((group) => group.title !== "COMMERCIAL DETAILS")
+      .forEach((group) => {
+        // Decide which specs to render based on toggle
+        const specsToRender = hideEmptySpecs
+          ? group.specs.filter((spec) => {
+              const hasValue =
+                spec.value &&
+                typeof spec.value === "string" &&
+                spec.value.trim() !== "";
+              return hasValue;
+            })
+          : group.specs;
 
-      // If ON and no valid specs → remove entire group
-      if (hideEmptySpecs && specsToRender.length === 0) return;
+        // If ON and no valid specs → remove entire group
+        if (hideEmptySpecs && specsToRender.length === 0) return;
 
-      // Add group title
-      tableRows.push([
-        {
-          content: group.title,
-          colSpan: 2,
-          styles: {
-            fillColor: [210, 215, 220],
-            fontStyle: "bold",
-          },
-        },
-      ]);
-
-      // Add specs
-      specsToRender.forEach((spec) => {
+        // Add group title
         tableRows.push([
-          spec.specId ? spec.specId + " :" : "",
-          spec.value || "",
+          {
+            content: group.title,
+            colSpan: 2,
+            styles: {
+              fillColor: [210, 215, 220],
+              fontStyle: "bold",
+            },
+          },
         ]);
+
+        // Add specs
+        specsToRender.forEach((spec) => {
+          tableRows.push([
+            spec.specId ? spec.specId + " :" : "",
+            spec.value || "",
+          ]);
+        });
       });
-    });
 
-/* ================= AUTO SCALE TO 1 PAGE ================= */
+    /* ================= AUTO SCALE TO 1 PAGE ================= */
 
-const DRAWING_BLOCK_HEIGHT = 200;
-const FOOTER_REAL_HEIGHT = 80;
-const SAFE_MARGIN = 10;
+    const DRAWING_BLOCK_HEIGHT = 230;
+    const FOOTER_REAL_HEIGHT = 90;
+    const SAFE_MARGIN = 20;
 
-const maxTableHeight =
-  pageHeight - FOOTER_REAL_HEIGHT - DRAWING_BLOCK_HEIGHT - SAFE_MARGIN - y;
+    const maxTableHeight =
+      pageHeight - FOOTER_REAL_HEIGHT - DRAWING_BLOCK_HEIGHT - SAFE_MARGIN - y;
 
-let fontSize = 9;
-scaleFactor = 1;
-let tableHeight = 0;
+    let fontSize = 9;
+    scaleFactor = 1;
+    let tableHeight = 0;
 
-while (fontSize > 4) {
-  const testPdf = new jsPDF("p", "pt", "a4");
+    while (fontSize > 4) {
+      const testPdf = new jsPDF("p", "pt", "a4");
 
-  autoTable(testPdf, {
-    startY: y,
-    theme: "grid",
-    styles: { fontSize, cellPadding: 2 },
-    body: tableRows,
-    tableWidth: 450,
-    pageBreak: "avoid",
-  });
+      autoTable(testPdf, {
+        startY: y,
+        theme: "grid",
+        styles: { fontSize, cellPadding: 2 },
+        body: tableRows,
+        tableWidth: 450,
+        pageBreak: "avoid",
+      });
 
-  const finalY = (testPdf as any).lastAutoTable.finalY;
-  tableHeight = finalY - y;
+      const finalY = (testPdf as any).lastAutoTable.finalY;
+      tableHeight = finalY - y;
 
-  if (tableHeight <= maxTableHeight) break;
+      if (tableHeight <= maxTableHeight) break;
 
-  fontSize -= 0.4; // shrink table gradually
-  scaleFactor = fontSize / 9;
-}
+      fontSize -= 0.4; // shrink table gradually
+      scaleFactor = fontSize / 9;
+    }
 
     /* ================= CENTER TABLE ================= */
 
-        /* ================= TITLE ================= */
+    /* ================= TITLE ================= */
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(14);
 
@@ -246,72 +245,71 @@ while (fontSize > 4) {
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(18 * scaleFactor);
 
-/* ================= PRODUCT NAME AUTO SHRINK + RISE UP ================= */
+    /* ================= PRODUCT NAME AUTO SHRINK + RISE UP ================= */
 
-const title = productName || "Product Name";
+    const title = productName || "Product Name";
 
-let titleFontSize = 20 * scaleFactor;
-let titleLines: string[] = [];
+    let titleFontSize = 20 * scaleFactor;
+    let titleLines: string[] = [];
 
-/* AUTO SHRINK UNTIL MAX 2 LINES */
-while (true) {
-  pdf.setFontSize(titleFontSize);
-  titleLines = pdf.splitTextToSize(title, textColumnWidth);
+    /* AUTO SHRINK UNTIL MAX 2 LINES */
+    while (true) {
+      pdf.setFontSize(titleFontSize);
+      titleLines = pdf.splitTextToSize(title, textColumnWidth);
 
-  if (titleLines.length <= 2) break;
+      if (titleLines.length <= 2) break;
 
-  titleFontSize -= 1;
-  if (titleFontSize <= 12) break;
-}
+      titleFontSize -= 1;
+      if (titleFontSize <= 12) break;
+    }
 
-pdf.setFontSize(titleFontSize);
+    pdf.setFontSize(titleFontSize);
 
-/* DOUBLE LINE POSITION (FIXED) */
-const lineY = imageY + boxHeight - 10;
+    /* DOUBLE LINE POSITION (FIXED) */
+    const lineY = imageY + boxHeight - 10;
 
-/* TEXT STARTS ABOVE THE LINE */
-const lineHeight = 18;
-const productTitleY = lineY - (titleLines.length * 14) - 2;
+    /* TEXT STARTS ABOVE THE LINE */
+    const lineHeight = 18;
+    const productTitleY = lineY - titleLines.length * 14 - 2;
 
-/* DRAW TITLE */
-pdf.text(titleLines, textColumnX, productTitleY, {
-  maxWidth: textColumnWidth,
-});
+    /* DRAW TITLE */
+    pdf.text(titleLines, textColumnX, productTitleY, {
+      maxWidth: textColumnWidth,
+    });
 
-/* DRAW DOUBLE LINE */
-const underlineWidth = textColumnWidth + 50;
+    /* DRAW DOUBLE LINE */
+    const underlineWidth = textColumnWidth + 50;
 
-const lineStartX = textColumnX;
-const lineEndX = textColumnX + underlineWidth;
+    const lineStartX = textColumnX;
+    const lineEndX = textColumnX + underlineWidth;
 
-pdf.setLineWidth(0.6);
-pdf.line(lineStartX, lineY, lineEndX, lineY);
+    pdf.setLineWidth(0.6);
+    pdf.line(lineStartX, lineY, lineEndX, lineY);
 
-pdf.setLineWidth(0.3);
-pdf.line(lineStartX, lineY + 3, lineEndX, lineY + 3);
-
+    pdf.setLineWidth(0.3);
+    pdf.line(lineStartX, lineY + 3, lineEndX, lineY + 3);
 
     y += 135;
     const tableWidth = 450;
     const tableX = (pageWidth - tableWidth) / 2;
 
-autoTable(pdf, {
-  startY: y,
-  theme: "grid",
-  pageBreak: "avoid",
-  tableWidth: tableWidth,
-  margin: { left: tableX },
-  styles: {
-    fontSize,
-    cellPadding: 2,
-    overflow: "linebreak",
-  },
-  body: tableRows,
-  columnStyles: {
-    0: { cellWidth: 230 },
-    1: { cellWidth: 220 },
-  },
-});
+    autoTable(pdf, {
+      startY: y,
+      theme: "grid",
+      pageBreak: "avoid",
+      tableWidth: tableWidth,
+      margin: { left: tableX },
+      styles: {
+        fontSize,
+        cellPadding: 2,
+        overflow: "linebreak",
+      },
+      body: tableRows,
+      columnStyles: {
+        0: { cellWidth: 230 },
+        1: { cellWidth: 220 },
+      },
+    });
 
     /* ================= DRAWINGS (INANGAT) ================= */
 
@@ -324,10 +322,10 @@ autoTable(pdf, {
     const drawingY = tableEndY + 35 * scaleFactor;
 
     // Total drawing container width
-const drawingWidth = 220 * scaleFactor;
-const drawingHeight = 120 * scaleFactor;
-const gapBetween = 60 * scaleFactor;
-const totalWidth = drawingWidth * 2 + gapBetween;
+    const drawingWidth = 220 * scaleFactor;
+    const drawingHeight = 120 * scaleFactor;
+    const gapBetween = 60 * scaleFactor;
+    const totalWidth = drawingWidth * 2 + gapBetween;
 
     // Center whole drawing group
     const startX = (pageWidth - totalWidth) / 2;
@@ -365,89 +363,89 @@ const totalWidth = drawingWidth * 2 + gapBetween;
         reader.readAsDataURL(illuminanceLevel);
       });
 
-pdf.addImage(
-  img2,
-  "PNG",
-  startX + drawingWidth + gapBetween,
-  drawingY,
-  drawingWidth,
-  drawingHeight,
-);
+      pdf.addImage(
+        img2,
+        "PNG",
+        startX + drawingWidth + gapBetween,
+        drawingY,
+        drawingWidth,
+        drawingHeight,
+      );
     }
 
     /* ================= FOOTER ================= */
 
-if (selectedBrand === "Lit") {
-  const footerImg = new Image();
-  footerImg.src = "/lit-footer.png";
+    if (selectedBrand === "Lit") {
+      const footerImg = new Image();
+      footerImg.src = "/lit-footer.png";
 
-  await new Promise((resolve) => {
-    footerImg.onload = resolve;
-  });
+      await new Promise((resolve) => {
+        footerImg.onload = resolve;
+      });
 
-  const imgWidth = footerImg.width;
-  const imgHeight = footerImg.height;
+      const imgWidth = footerImg.width;
+      const imgHeight = footerImg.height;
 
-  const ratio = pageWidth / imgWidth;
-  const finalHeight = imgHeight * ratio;
+      const ratio = pageWidth / imgWidth;
+      const finalHeight = imgHeight * ratio;
 
-  pdf.addImage(
-    "/lit-footer.png",
-    "PNG",
-    0,
-    pageHeight - finalHeight,
-    pageWidth,
-    finalHeight
-  );
-}
+      pdf.addImage(
+        "/lit-footer.png",
+        "PNG",
+        0,
+        pageHeight - finalHeight,
+        pageWidth,
+        finalHeight,
+      );
+    }
 
-if (selectedBrand === "Lumera") {
-  const footerImg = new Image();
-  footerImg.src = "/lumera-footer.png";
+    if (selectedBrand === "Lumera") {
+      const footerImg = new Image();
+      footerImg.src = "/lumera-footer.png";
 
-  await new Promise((resolve) => {
-    footerImg.onload = resolve;
-  });
+      await new Promise((resolve) => {
+        footerImg.onload = resolve;
+      });
 
-  const imgWidth = footerImg.width;
-  const imgHeight = footerImg.height;
+      const imgWidth = footerImg.width;
+      const imgHeight = footerImg.height;
 
-  const ratio = pageWidth / imgWidth;
-  const finalHeight = imgHeight * ratio;
+      const ratio = pageWidth / imgWidth;
+      const finalHeight = imgHeight * ratio;
 
-  pdf.addImage(
-    "/lumera-footer.png",
-    "PNG",
-    0,
-    pageHeight - finalHeight,
-    pageWidth,
-    finalHeight
-  );
-}
+      pdf.addImage(
+        "/lumera-footer.png",
+        "PNG",
+        0,
+        pageHeight - finalHeight,
+        pageWidth,
+        finalHeight,
+      );
+    }
 
-if (selectedBrand === "Ecoshift") {
-  const footerImg = new Image();
-  footerImg.src = "/ecoshift-footer.png";
+    if (selectedBrand === "Ecoshift") {
+      const footerImg = new Image();
+      footerImg.src = "/ecoshift-footer.png";
 
-  await new Promise((resolve) => {
-    footerImg.onload = resolve;
-  });
+      await new Promise((resolve) => {
+        footerImg.onload = resolve;
+      });
 
-  const imgWidth = footerImg.width;
-  const imgHeight = footerImg.height;
+      const imgWidth = footerImg.width;
+      const imgHeight = footerImg.height;
 
-  const ratio = pageWidth / imgWidth;
-  const finalHeight = imgHeight * ratio;
+      const ratio = pageWidth / imgWidth;
+      const finalHeight = imgHeight * ratio;
 
-  pdf.addImage(
-    "/ecoshift-footer.png",
-    "PNG",
-    0,
-    pageHeight - finalHeight,
-    pageWidth,
-    finalHeight
-  );
-}
+      pdf.addImage(
+        "/ecoshift-footer.png",
+        "PNG",
+        0,
+        pageHeight - finalHeight,
+        pageWidth,
+        finalHeight,
+      );
+    }
 
     pdf.save(`${productName || "Product"}-${itemCode || "Item"}-TDS.pdf`);
   };
