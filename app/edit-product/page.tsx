@@ -136,6 +136,7 @@ export default function EditProductPage() {
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [imageLink, setImageLink] = useState("");
 
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
@@ -394,9 +395,12 @@ export default function EditProductPage() {
         setBrandOrigin(data.brandOrigin || "China");
       }
 
-      if (data.mainImage?.url) {
-        setPreview(data.mainImage.url);
-      }
+if (data.mainImage?.url) {
+  const converted = convertDriveToThumbnail(data.mainImage.url);
+
+  setImageLink(data.mainImage.url); // original link sa input
+  setPreview(converted); // thumbnail para sa preview
+}
 
       if (Array.isArray(data.categoryTypes)) {
         setSelectedCategoryTypes(
@@ -1207,6 +1211,14 @@ export default function EditProductPage() {
       await syncTemplateChangesToFamily();
 
       await updateDoc(productRef, {
+
+mainImage: imageLink
+  ? {
+      name: "external-image",
+      url: imageLink,
+      publicId: null,
+    }
+  : undefined,
         pricePoint: noSupplier ? "Economy" : pricePoint,
         brandOrigin: noSupplier ? "China" : brandOrigin,
         productClass,
@@ -1293,6 +1305,19 @@ export default function EditProductPage() {
     }
   };
 
+const convertDriveToThumbnail = (url: string) => {
+  if (!url.includes("drive.google.com")) return url;
+
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+  if (match && match[1]) {
+    const fileId = match[1];
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+  }
+
+  return url;
+};
+
   if (loading) return null;
 
   return (
@@ -1362,6 +1387,25 @@ export default function EditProductPage() {
                   />
                 </label>
               </CardContent>
+
+  {/* OR SEND IMAGE LINK */}
+<div className="space-y-2">
+  <Label>Or Send Image Link</Label>
+
+  <Input
+    placeholder="Paste image URL..."
+    value={imageLink}
+    onChange={(e) => {
+      const originalLink = e.target.value;
+
+      const convertedLink = convertDriveToThumbnail(originalLink);
+
+      setImageLink(originalLink);
+      setMainImage(null);
+      setPreview(convertedLink);
+    }}
+  />
+</div>
             </Card>
 
             {/* ================= SUPPLIER / PRICE / BRAND / CLASS ================= */}

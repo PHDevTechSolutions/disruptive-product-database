@@ -64,6 +64,10 @@ export default function UploadProduct({}: Props) {
   const [uploadProgress, setUploadProgress] = React.useState(0);
   const [totalRows, setTotalRows] = React.useState(0);
 
+/* ---------------- ELEVATOR MUSIC ---------------- */
+
+const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
   /* ---------------- GENERATE REF ---------------- */
 
   const generateProductReferenceID = async () => {
@@ -298,12 +302,25 @@ export default function UploadProduct({}: Props) {
 
   /* ---------------- UPLOAD ---------------- */
 
-  const handleUpload = async () => {
-    if (!file) return;
+const handleUpload = async () => {
+  if (!file) return;
 
+  try {
+
+    // START MUSIC IMMEDIATELY
     try {
-      setUploading(true);
+if (!audioRef.current) {
+  audioRef.current = new Audio("/musics/elevator-music.mp3");
+  audioRef.current.loop = true;
+  audioRef.current.volume = 0.4;
+}
 
+audioRef.current.play();
+    } catch (err) {
+      console.warn("Audio blocked by browser");
+    }
+
+    setUploading(true);
       const workbook = new ExcelJS.Workbook();
 
       const buffer = await file.arrayBuffer();
@@ -547,6 +564,8 @@ setUploadProgress((prev) => prev + 1);
         }
       }
 
+      audioRef.current?.pause();
+audioRef.current!.currentTime = 0;
       toast.success("Upload complete");
 
       setOpen(false);
@@ -557,6 +576,8 @@ setUploadProgress((prev) => prev + 1);
     } catch (error) {
       console.error(error);
 
+      audioRef.current?.pause();
+audioRef.current!.currentTime = 0;
       toast.error("Upload failed");
     } finally {
       setUploading(false);
