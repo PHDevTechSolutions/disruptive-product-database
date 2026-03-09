@@ -28,6 +28,27 @@ type Props = {
 export default function DownloadProduct({ products }: Props) {
   const [open, setOpen] = React.useState(false);
 
+
+  const convertDriveToThumbnail = (url?: string) => {
+  if (!url) return "";
+
+  if (!url.includes("drive.google.com")) return url;
+
+  let fileId = "";
+
+  const match1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+  if (match1 && match1[1]) fileId = match1[1];
+  if (match2 && match2[1]) fileId = match2[1];
+
+  if (fileId) {
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+  }
+
+  return url;
+};
+
   const GROUP_COLORS = ["BDD7EE", "FFE699"];
 
   const handleDownload = async () => {
@@ -52,32 +73,35 @@ export default function DownloadProduct({ products }: Props) {
 
       /* GET TEMPLATE FROM FIRESTORE */
 
-      const categoryTypeId =
-        sheetProducts[0]?.categoryTypes?.[0]?.productUsageId;
+const categoryTypeId =
+  sheetProducts[0]?.categoryTypes?.[0]?.productUsageId || null;
 
-      const productFamilyId =
-        sheetProducts[0]?.productFamilies?.[0]?.productFamilyId;
+const productFamilyId =
+  sheetProducts[0]?.productFamilies?.[0]?.productFamilyId || null;
 
-      const templateSnap = await getDocs(
-        query(
-          collection(db, "technicalSpecifications"),
-          where("categoryTypeId", "==", categoryTypeId),
-          where("productFamilyId", "==", productFamilyId),
-          where("isActive", "==", true),
-        ),
-      );
+let templateSnap: any = { forEach: () => {} };
+
+if (categoryTypeId && productFamilyId) {
+  templateSnap = await getDocs(
+    query(
+      collection(db, "technicalSpecifications"),
+      where("categoryTypeId", "==", categoryTypeId),
+      where("productFamilyId", "==", productFamilyId),
+      where("isActive", "==", true),
+    ),
+  );
+}
 
       const groupMap = new Map<string, string[]>();
 
-      templateSnap.forEach((doc) => {
-        const data = doc.data();
+templateSnap.forEach((doc: any) => {
+  const data = doc.data();
 
-        groupMap.set(
-          data.title,
-          data.specs.map((s: any) => s.specId),
-        );
-      });
-
+  groupMap.set(
+    data.title,
+    data.specs.map((s: any) => s.specId),
+  );
+});
       /* STATIC COLUMNS */
 
       const staticColumns = [
@@ -297,7 +321,10 @@ Unit Cost | Length | Width | Height | pcs/carton | Factory Address | Port of Dis
         row.push(product.brandOrigin || "");
         row.push(product.supplier?.supplierBrand || "");
 
-        let imageURL = product.mainImage?.url || "";
+let imageURL = product.mainImage?.url || "";
+
+/* CTRL + F: FIX GOOGLE DRIVE IMAGE */
+imageURL = convertDriveToThumbnail(imageURL);
 
         row.push(imageURL);
 

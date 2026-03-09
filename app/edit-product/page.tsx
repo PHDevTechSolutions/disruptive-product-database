@@ -136,6 +136,20 @@ export default function EditProductPage() {
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [imageLink, setImageLink] = useState("");
+
+  const convertDriveToThumbnail = (url: string) => {
+    if (!url.includes("drive.google.com")) return url;
+
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+    if (match && match[1]) {
+      const fileId = match[1];
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    }
+
+    return url;
+  };
 
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
@@ -331,7 +345,6 @@ export default function EditProductPage() {
     return () => unsubscribe();
   }, []);
 
- 
   /* ================= LOAD PRODUCT DATA ================= */
 
   useEffect(() => {
@@ -355,24 +368,28 @@ export default function EditProductPage() {
       setBrandOrigin(data.brandOrigin || "");
 
       setProductClass(data.productClass || "");
-      
-       /* ================= LOAD COMMERCIAL DETAILS ================= */
 
-  if (data.commercialDetails) {
-    setUnitCost(data.commercialDetails.unitCost?.toString() || "");
+      /* ================= LOAD COMMERCIAL DETAILS ================= */
 
-    setPackLength(data.commercialDetails.packaging?.length?.toString() || "");
+      if (data.commercialDetails) {
+        setUnitCost(data.commercialDetails.unitCost?.toString() || "");
 
-    setPackWidth(data.commercialDetails.packaging?.width?.toString() || "");
+        setPackLength(
+          data.commercialDetails.packaging?.length?.toString() || "",
+        );
 
-    setPackHeight(data.commercialDetails.packaging?.height?.toString() || "");
+        setPackWidth(data.commercialDetails.packaging?.width?.toString() || "");
 
-    setPcsPerCarton(data.commercialDetails.pcsPerCarton?.toString() || "");
+        setPackHeight(
+          data.commercialDetails.packaging?.height?.toString() || "",
+        );
 
-    setFactoryAddress(data.commercialDetails.factoryAddress || "");
+        setPcsPerCarton(data.commercialDetails.pcsPerCarton?.toString() || "");
 
-    setPortOfDischarge(data.commercialDetails.portOfDischarge || "");
-  }
+        setFactoryAddress(data.commercialDetails.factoryAddress || "");
+
+        setPortOfDischarge(data.commercialDetails.portOfDischarge || "");
+      }
 
       if (data.supplier) {
         const supplierObj = {
@@ -395,9 +412,12 @@ export default function EditProductPage() {
       }
 
       if (data.mainImage?.url) {
-        setPreview(data.mainImage.url);
-      }
+        setImageLink(data.mainImage.url);
 
+        const converted = convertDriveToThumbnail(data.mainImage.url);
+
+        setPreview(converted);
+      }
       if (Array.isArray(data.categoryTypes)) {
         setSelectedCategoryTypes(
           data.categoryTypes.map((c: any) => ({
@@ -817,6 +837,9 @@ export default function EditProductPage() {
     if (!file) return;
 
     setMainImage(file);
+
+    // clear link if uploading
+    setImageLink("");
 
     if (preview) URL.revokeObjectURL(preview);
 
@@ -1248,7 +1271,13 @@ export default function EditProductPage() {
 
           portOfDischarge: portOfDischarge || "",
         },
-
+        ...(imageLink && {
+          mainImage: {
+            name: "external-image",
+            url: imageLink,
+            publicId: null,
+          },
+        }),
         technicalSpecifications: technicalSpecs
           .filter((spec) => spec.title.trim() !== "")
           .map((spec) => ({
@@ -1361,6 +1390,26 @@ export default function EditProductPage() {
                     }
                   />
                 </label>
+
+                {/* OR SEND IMAGE LINK */}
+                <div className="space-y-2">
+                  <Label>Or Send Image Link</Label>
+
+                  <Input
+                    placeholder="Paste image URL..."
+                    value={imageLink}
+                    onChange={(e) => {
+                      const originalLink = e.target.value;
+
+                      const convertedLink =
+                        convertDriveToThumbnail(originalLink);
+
+                      setImageLink(originalLink);
+                      setMainImage(null);
+                      setPreview(convertedLink);
+                    }}
+                  />
+                </div>
               </CardContent>
             </Card>
 

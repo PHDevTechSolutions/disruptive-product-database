@@ -37,6 +37,22 @@ type UserData = {
   Role: string;
 };
 
+
+const convertDriveToThumbnail = (url?: string) => {
+  if (!url) return "";
+
+  if (!url.includes("drive.google.com")) return url;
+
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+  if (match && match[1]) {
+    const fileId = match[1];
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+  }
+
+  return url;
+};
+
 export default function ViewProduct({ productId, referenceID }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -134,10 +150,10 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                   <div className="space-y-4">
                     <div className="w-full h-[320px] border rounded bg-white flex items-center justify-center">
                       {product?.mainImage?.url ? (
-                        <img
-                          src={product.mainImage.url}
-                          className="max-w-full max-h-full object-contain"
-                        />
+<img
+  src={convertDriveToThumbnail(product.mainImage.url)}
+  className="max-w-full max-h-full object-contain"
+/>
                       ) : (
                         <span>-</span>
                       )}

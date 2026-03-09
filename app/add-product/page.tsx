@@ -139,6 +139,7 @@ export default function AddProductPage() {
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [imageLink, setImageLink] = useState("");
 
   const [classificationType, setClassificationType] =
     useState<SelectedClassification>(null);
@@ -799,6 +800,9 @@ export default function AddProductPage() {
 
     setMainImage(file);
 
+    // If uploading a file, clear link
+    setImageLink("");
+
     if (preview) URL.revokeObjectURL(preview);
 
     setPreview(URL.createObjectURL(file));
@@ -1058,8 +1062,8 @@ export default function AddProductPage() {
         return;
       }
 
-      if (!mainImage) {
-        toast.error("Please upload main image");
+      if (!mainImage && !imageLink) {
+        toast.error("Please upload an image or provide an image link");
         return;
       }
 
@@ -1147,9 +1151,15 @@ export default function AddProductPage() {
               })),
           })),
 
-        mainImage: null,
+        mainImage: imageLink
+          ? {
+              name: "external-image",
+              url: imageLink,
+              publicId: null,
+            }
+          : null,
 
-        mediaStatus: mainImage ? "pending" : "done",
+        mediaStatus: mainImage ? "pending" : imageLink ? "done" : "done",
 
         createdBy: userId,
         referenceID: user?.ReferenceID || null,
@@ -1162,7 +1172,9 @@ export default function AddProductPage() {
         date_updated: serverTimestamp(),
       });
 
-      await uploadProductMedia(productRef.id);
+      if (mainImage) {
+        await uploadProductMedia(productRef.id);
+      }
 
       toast.success("Product saved successfully");
 
@@ -1177,6 +1189,19 @@ export default function AddProductPage() {
   };
 
   if (loading) return null;
+
+  const convertDriveToThumbnail = (url: string) => {
+    if (!url.includes("drive.google.com")) return url;
+
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+    if (match && match[1]) {
+      const fileId = match[1];
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    }
+
+    return url;
+  };
 
   return (
     <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-6">
@@ -1244,6 +1269,25 @@ export default function AddProductPage() {
                     }
                   />
                 </label>
+                {/* OR SEND IMAGE LINK */}
+                <div className="space-y-2">
+                  <Label>Or Send Image Link</Label>
+
+                  <Input
+                    placeholder="Paste image URL..."
+                    value={imageLink}
+                    onChange={(e) => {
+                      const originalLink = e.target.value;
+
+                      const convertedLink =
+                        convertDriveToThumbnail(originalLink);
+
+                      setImageLink(originalLink); // original link pa rin sa input
+                      setMainImage(null);
+                      setPreview(convertedLink); // thumbnail ang preview
+                    }}
+                  />
+                </div>
               </CardContent>
             </Card>
 

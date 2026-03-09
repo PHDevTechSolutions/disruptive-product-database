@@ -11,6 +11,27 @@ type TechnicalSpecification = {
   }[];
 };
 
+// ===== SAME GOOGLE DRIVE CONVERSION AS PREVIEW =====
+function convertGoogleDriveUrl(url?: string) {
+  if (!url) return "";
+
+  if (!url.includes("drive.google.com")) return url;
+
+  let fileId = "";
+
+  const match1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+  if (match1 && match1[1]) fileId = match1[1];
+  if (match2 && match2[1]) fileId = match2[1];
+
+  if (fileId) {
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+  }
+
+  return url;
+}
+
 type Props = {
   open: boolean;
   company: "Lit" | "Lumera" | "Ecoshift" | "";
@@ -23,18 +44,7 @@ type Props = {
   hideEmptySpecs?: boolean;
 };
 
-function convertGoogleDriveUrl(url: string) {
-  if (!url) return url;
 
-  if (url.includes("drive.google.com")) {
-    const match = url.match(/\/d\/(.*?)\//);
-    if (match && match[1]) {
-      return `https://drive.google.com/uc?export=view&id=${match[1]}`;
-    }
-  }
-
-  return url;
-}
 
 const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
   (

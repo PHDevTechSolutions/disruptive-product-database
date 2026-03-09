@@ -14,6 +14,23 @@ type TechnicalSpecification = {
   }[];
 };
 
+const convertDriveToThumbnail = (url: string) => {
+  if (!url.includes("drive.google.com")) return url;
+
+  let fileId = "";
+
+  const match1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+  if (match1 && match1[1]) fileId = match1[1];
+  if (match2 && match2[1]) fileId = match2[1];
+
+  if (fileId) {
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+  }
+
+  return url;
+};
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -99,16 +116,20 @@ export default function GenerateTDS({
 
     /* ===== INSERT IMAGE INSIDE BOX ===== */
     if (mainImage?.url) {
-      const imgData = await fetch(mainImage.url)
-        .then((r) => r.blob())
-        .then(
-          (blob) =>
-            new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(blob);
-            }),
-        );
+const convertedImage = convertDriveToThumbnail(mainImage.url);
+
+const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(convertedImage)}`;
+
+const imgData = await fetch(proxyUrl)
+  .then((r) => r.blob())
+  .then(
+    (blob) =>
+      new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      }),
+  );
 
       const img = new Image();
       img.src = imgData;
