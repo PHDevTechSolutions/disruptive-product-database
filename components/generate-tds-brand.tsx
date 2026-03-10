@@ -44,8 +44,6 @@ type Props = {
   hideEmptySpecs?: boolean;
 };
 
-
-
 const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
   (
     {
@@ -186,7 +184,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
             >
               <div ref={contentRef} className="px-4 pt-6 pb-2 bg-white">
                 {/* IMAGE + PRODUCT NAME */}
-                <div className="grid grid-cols-[220px_1fr] gap-6 items-center mb-4">
+                <div className="grid grid-cols-[220px_1fr] gap-6 items-center mb-2">
                   <div className="w-[220px] h-[150px] border-2 border-black flex items-center justify-center bg-white">
                     {mainImage?.url ? (
                       <img
@@ -204,7 +202,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                     <div className="text-xl font-semibold break-words overflow-hidden">
                       {/* PRODUCT NAME AUTO SHRINK + MAX 2 LINES */}
                       <div
-                        className="w-full font-bold text-left leading-[1.3]"
+                        className="w-full font-bold text-center leading-[1.3]"
                         style={{
                           fontSize:
                             productName.length > 70
@@ -217,15 +215,13 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                           lineHeight: "1.3",
                           whiteSpace: "normal",
                           wordBreak: "break-word",
-                          textAlign: "left",
                         }}
                       >
                         {productName || "Product Name"}
                       </div>
-                      {/* DOUBLE LINE ALWAYS FULL WIDTH */}
-                      <div className="mt-2 w-full">
-                        <div className="border-t-2 border-black"></div>
-                        <div className="border-t border-black mt-[3px]"></div>
+                      {/* SINGLE CENTERED LINE */}
+                      <div className="mt-2 flex justify-center">
+                        <div className="w-[75%] border-t-2 border-black"></div>
                       </div>{" "}
                     </div>
                   </div>
@@ -285,19 +281,26 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                                   {spec.specId} :
                                 </td>
                                 <td className="border border-black px-2 py-1">
-{Array.from(
-  new Set(
-    spec.value
-      ?.split("|")
-      .map((v) => v.trim())
-      .filter(Boolean)
-  )
-)
-  .filter((v) => {
-    if (!Array.isArray((window as any).__ACTIVE_FILTERS__)) return true;
-    return (window as any).__ACTIVE_FILTERS__.includes(v);
-  })
-  .join(" | ") || spec.value}
+                                  {Array.from(
+                                    new Set(
+                                      spec.value
+                                        ?.split("|")
+                                        .map((v) => v.trim())
+                                        .filter(Boolean),
+                                    ),
+                                  )
+                                    .filter((v) => {
+                                      if (
+                                        !Array.isArray(
+                                          (window as any).__ACTIVE_FILTERS__,
+                                        )
+                                      )
+                                        return true;
+                                      return (
+                                        window as any
+                                      ).__ACTIVE_FILTERS__.includes(v);
+                                    })
+                                    .join(" | ") || spec.value}
                                 </td>
                               </tr>
                             ))}

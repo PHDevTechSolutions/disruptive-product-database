@@ -332,7 +332,6 @@ export default function EditProductPage() {
     return () => unsubscribe();
   }, []);
 
- 
   /* ================= LOAD PRODUCT DATA ================= */
 
   useEffect(() => {
@@ -356,24 +355,28 @@ export default function EditProductPage() {
       setBrandOrigin(data.brandOrigin || "");
 
       setProductClass(data.productClass || "");
-      
-       /* ================= LOAD COMMERCIAL DETAILS ================= */
 
-  if (data.commercialDetails) {
-    setUnitCost(data.commercialDetails.unitCost?.toString() || "");
+      /* ================= LOAD COMMERCIAL DETAILS ================= */
 
-    setPackLength(data.commercialDetails.packaging?.length?.toString() || "");
+      if (data.commercialDetails) {
+        setUnitCost(data.commercialDetails.unitCost?.toString() || "");
 
-    setPackWidth(data.commercialDetails.packaging?.width?.toString() || "");
+        setPackLength(
+          data.commercialDetails.packaging?.length?.toString() || "",
+        );
 
-    setPackHeight(data.commercialDetails.packaging?.height?.toString() || "");
+        setPackWidth(data.commercialDetails.packaging?.width?.toString() || "");
 
-    setPcsPerCarton(data.commercialDetails.pcsPerCarton?.toString() || "");
+        setPackHeight(
+          data.commercialDetails.packaging?.height?.toString() || "",
+        );
 
-    setFactoryAddress(data.commercialDetails.factoryAddress || "");
+        setPcsPerCarton(data.commercialDetails.pcsPerCarton?.toString() || "");
 
-    setPortOfDischarge(data.commercialDetails.portOfDischarge || "");
-  }
+        setFactoryAddress(data.commercialDetails.factoryAddress || "");
+
+        setPortOfDischarge(data.commercialDetails.portOfDischarge || "");
+      }
 
       if (data.supplier) {
         const supplierObj = {
@@ -395,12 +398,12 @@ export default function EditProductPage() {
         setBrandOrigin(data.brandOrigin || "China");
       }
 
-if (data.mainImage?.url) {
-  const converted = convertDriveToThumbnail(data.mainImage.url);
+      if (data.mainImage?.url) {
+        const converted = convertDriveToThumbnail(data.mainImage.url);
 
-  setImageLink(data.mainImage.url); // original link sa input
-  setPreview(converted); // thumbnail para sa preview
-}
+        setImageLink(data.mainImage.url); // original link sa input
+        setPreview(converted); // thumbnail para sa preview
+      }
 
       if (Array.isArray(data.categoryTypes)) {
         setSelectedCategoryTypes(
@@ -1211,16 +1214,15 @@ if (data.mainImage?.url) {
       await syncTemplateChangesToFamily();
 
       await updateDoc(productRef, {
-
-mainImage: imageLink
-  ? {
-      name: "external-image",
-      url: imageLink,
-      publicId: null,
-    }
-  : undefined,
-        pricePoint: noSupplier ? "Economy" : pricePoint,
-        brandOrigin: noSupplier ? "China" : brandOrigin,
+        mainImage: imageLink
+          ? {
+              name: "external-image",
+              url: imageLink,
+              publicId: null,
+            }
+          : undefined,
+        pricePoint: noSupplier ? "ECONOMY" : pricePoint,
+        brandOrigin: noSupplier ? "CHINA" : brandOrigin,
         productClass,
 
         supplier: noSupplier
@@ -1305,18 +1307,18 @@ mainImage: imageLink
     }
   };
 
-const convertDriveToThumbnail = (url: string) => {
-  if (!url.includes("drive.google.com")) return url;
+  const convertDriveToThumbnail = (url: string) => {
+    if (!url.includes("drive.google.com")) return url;
 
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
 
-  if (match && match[1]) {
-    const fileId = match[1];
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
-  }
+    if (match && match[1]) {
+      const fileId = match[1];
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    }
 
-  return url;
-};
+    return url;
+  };
 
   if (loading) return null;
 
@@ -1388,24 +1390,24 @@ const convertDriveToThumbnail = (url: string) => {
                 </label>
               </CardContent>
 
-  {/* OR SEND IMAGE LINK */}
-<div className="space-y-2">
-  <Label>Or Send Image Link</Label>
+              {/* OR SEND IMAGE LINK */}
+              <div className="space-y-2">
+                <Label>Or Send Image Link</Label>
 
-  <Input
-    placeholder="Paste image URL..."
-    value={imageLink}
-    onChange={(e) => {
-      const originalLink = e.target.value;
+                <Input
+                  placeholder="Paste image URL..."
+                  value={imageLink}
+                  onChange={(e) => {
+                    const originalLink = e.target.value;
 
-      const convertedLink = convertDriveToThumbnail(originalLink);
+                    const convertedLink = convertDriveToThumbnail(originalLink);
 
-      setImageLink(originalLink);
-      setMainImage(null);
-      setPreview(convertedLink);
-    }}
-  />
-</div>
+                    setImageLink(originalLink);
+                    setMainImage(null);
+                    setPreview(convertedLink);
+                  }}
+                />
+              </div>
             </Card>
 
             {/* ================= SUPPLIER / PRICE / BRAND / CLASS ================= */}
@@ -1429,8 +1431,8 @@ const convertDriveToThumbnail = (url: string) => {
                           setSelectedSupplier(null);
                           setSelectedSupplierBrand(null); // CLEAR BRAND
 
-                          setPricePoint("Economy");
-                          setBrandOrigin("China");
+                          setPricePoint("ECONOMY");
+                          setBrandOrigin("CHINA");
                         }
                       }}
                     />
@@ -1543,52 +1545,145 @@ const convertDriveToThumbnail = (url: string) => {
                   </PopoverContent>
                 </Popover>
               </div>
-              {/* ================= PRICE POINT SELECT ================= */}
+              {/* ================= PRICE POINT COMBOBOX ================= */}
               <div className="space-y-2">
                 <Label>Price Point</Label>
 
-                <select
-                  value={noSupplier ? "Economy" : pricePoint}
-                  disabled={noSupplier}
-                  onChange={(e) => setPricePoint(e.target.value)}
-                  className="w-full border rounded-md h-10 px-3 text-sm bg-background"
-                >
-                  <option value="">Select price point...</option>
-                  <option value="Economy">Economy</option>
-                  <option value="Mid-End">Mid-End</option>
-                  <option value="High-End">High-End</option>
-                </select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      disabled={noSupplier}
+                      className="w-full justify-between uppercase"
+                    >
+                      {noSupplier
+                        ? "ECONOMY"
+                        : pricePoint || "SELECT PRICE POINT"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="p-0 w-full">
+                    <Command>
+                      <CommandInput placeholder="Search price point..." />
+                      <CommandEmpty>No result.</CommandEmpty>
+
+                      <CommandGroup>
+                        {["ECONOMY", "MID-END", "HIGH-END"].map((item) => (
+                          <CommandItem
+                            key={item}
+                            value={item}
+                            onSelect={() => setPricePoint(item.toUpperCase())}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                pricePoint === item
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {item}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              {/* ================= BRAND ORIGIN SELECT ================= */}
+              {/* ================= BRAND ORIGIN COMBOBOX ================= */}
               <div className="space-y-2">
                 <Label>Brand Origin</Label>
 
-                <select
-                  value={noSupplier ? "China" : brandOrigin}
-                  disabled={noSupplier}
-                  onChange={(e) => setBrandOrigin(e.target.value)}
-                  className="w-full border rounded-md h-10 px-3 text-sm bg-background"
-                >
-                  <option value="">Select brand origin...</option>
-                  <option value="China">China</option>
-                  <option value="Non-China">Non-China</option>
-                </select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      disabled={noSupplier}
+                      className="w-full justify-between uppercase"
+                    >
+                      {noSupplier
+                        ? "CHINA"
+                        : brandOrigin || "SELECT BRAND ORIGIN"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="p-0 w-full">
+                    <Command>
+                      <CommandInput placeholder="Search brand origin..." />
+                      <CommandEmpty>No result.</CommandEmpty>
+
+                      <CommandGroup>
+                        {["CHINA", "NON-CHINA"].map((item) => (
+                          <CommandItem
+                            key={item}
+                            value={item}
+                            onSelect={() => setBrandOrigin(item)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                brandOrigin === item
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {item}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              {/* ================= PRODUCT CLASS SELECT ================= */}
+              {/* ================= PRODUCT CLASS COMBOBOX ================= */}
               <div className="space-y-2">
                 <Label>Product Class</Label>
 
-                <select
-                  value={productClass}
-                  onChange={(e) => setProductClass(e.target.value)}
-                  className="w-full border rounded-md h-10 px-3 text-sm bg-background"
-                >
-                  <option value="">Select product class...</option>
-                  <option value="Standard">Standard</option>
-                  <option value="SPF">SPF</option>
-                </select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between uppercase"
+                    >
+                      {productClass || "SELECT PRODUCT CLASS"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="p-0 w-full">
+                    <Command>
+                      <CommandInput placeholder="Search class..." />
+                      <CommandEmpty>No result.</CommandEmpty>
+
+                      <CommandGroup>
+                        {["STANDARD", "SPF"].map((item) => (
+                          <CommandItem
+                            key={item}
+                            value={item}
+                            onSelect={() => setProductClass(item)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                productClass === item
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {item}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 

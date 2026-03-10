@@ -1094,8 +1094,8 @@ export default function AddProductPage() {
       const productRef = await addDoc(collection(db, "products"), {
         productReferenceID: newProductReferenceID,
 
-        pricePoint: noSupplier ? "Economy" : pricePoint,
-        brandOrigin: noSupplier ? "China" : brandOrigin,
+        pricePoint: noSupplier ? "ECONOMY" : pricePoint,
+        brandOrigin: noSupplier ? "CHINA" : brandOrigin,
         productClass,
 
         supplier: noSupplier
@@ -1313,8 +1313,8 @@ export default function AddProductPage() {
                           setSelectedSupplierBrand(null); // ✅ CLEAR BRAND
 
                           // ✅ Force defaults
-                          setPricePoint("Economy");
-                          setBrandOrigin("China");
+                          setPricePoint("ECONOMY");
+                          setBrandOrigin("CHINA");
                         }
                       }}
                     />
@@ -1426,52 +1426,145 @@ export default function AddProductPage() {
                   </PopoverContent>
                 </Popover>
               </div>
-              {/* ================= PRICE POINT SELECT ================= */}
+              {/* ================= PRICE POINT COMBOBOX ================= */}
               <div className="space-y-2">
                 <Label>Price Point</Label>
 
-                <select
-                  value={noSupplier ? "Economy" : pricePoint}
-                  disabled={noSupplier}
-                  onChange={(e) => setPricePoint(e.target.value)}
-                  className="w-full border rounded-md h-10 px-3 text-sm bg-background"
-                >
-                  <option value="">Select price point...</option>
-                  <option value="Economy">Economy</option>
-                  <option value="Mid-End">Mid-End</option>
-                  <option value="High-End">High-End</option>
-                </select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      disabled={noSupplier}
+                      className="w-full justify-between uppercase"
+                    >
+                      {noSupplier
+                        ? "ECONOMY"
+                        : pricePoint || "SELECT PRICE POINT"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="p-0 w-full">
+                    <Command>
+                      <CommandInput placeholder="Search price point..." />
+                      <CommandEmpty>No result.</CommandEmpty>
+
+                      <CommandGroup>
+                        {["ECONOMY", "MID-END", "HIGH-END"].map((item) => (
+                          <CommandItem
+                            key={item}
+                            value={item}
+                            onSelect={() => setPricePoint(item.toUpperCase())}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                pricePoint === item
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {item}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              {/* ================= BRAND ORIGIN SELECT ================= */}
+              {/* ================= BRAND ORIGIN COMBOBOX ================= */}
               <div className="space-y-2">
                 <Label>Brand Origin</Label>
 
-                <select
-                  value={noSupplier ? "China" : brandOrigin}
-                  disabled={noSupplier}
-                  onChange={(e) => setBrandOrigin(e.target.value)}
-                  className="w-full border rounded-md h-10 px-3 text-sm bg-background"
-                >
-                  <option value="">Select brand origin...</option>
-                  <option value="China">China</option>
-                  <option value="Non-China">Non-China</option>
-                </select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      disabled={noSupplier}
+                      className="w-full justify-between uppercase"
+                    >
+                      {noSupplier
+                        ? "CHINA"
+                        : brandOrigin || "SELECT BRAND ORIGIN"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="p-0 w-full">
+                    <Command>
+                      <CommandInput placeholder="Search brand origin..." />
+                      <CommandEmpty>No result.</CommandEmpty>
+
+                      <CommandGroup>
+                        {["CHINA", "NON-CHINA"].map((item) => (
+                          <CommandItem
+                            key={item}
+                            value={item}
+                            onSelect={() => setBrandOrigin(item)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                brandOrigin === item
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {item}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              {/* ================= PRODUCT CLASS SELECT ================= */}
+              {/* ================= PRODUCT CLASS COMBOBOX ================= */}
               <div className="space-y-2">
                 <Label>Product Class</Label>
 
-                <select
-                  value={productClass}
-                  onChange={(e) => setProductClass(e.target.value)}
-                  className="w-full border rounded-md h-10 px-3 text-sm bg-background"
-                >
-                  <option value="">Select product class...</option>
-                  <option value="Standard">Standard</option>
-                  <option value="SPF">SPF</option>
-                </select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between uppercase"
+                    >
+                      {productClass || "SELECT PRODUCT CLASS"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="p-0 w-full">
+                    <Command>
+                      <CommandInput placeholder="Search class..." />
+                      <CommandEmpty>No result.</CommandEmpty>
+
+                      <CommandGroup>
+                        {["STANDARD", "SPF"].map((item) => (
+                          <CommandItem
+                            key={item}
+                            value={item}
+                            onSelect={() => setProductClass(item)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                productClass === item
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {item}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             {/* ================= COMMERCIAL DETAILS ================= */}

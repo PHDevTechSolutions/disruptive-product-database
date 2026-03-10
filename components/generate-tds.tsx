@@ -312,28 +312,30 @@ specsToRender.forEach((spec) => {
     pdf.setFontSize(titleFontSize);
 
     /* DOUBLE LINE POSITION (FIXED) */
-    const lineY = imageY + boxHeight - 10;
+    const lineY = imageY + boxHeight - 20;
 
     /* TEXT STARTS ABOVE THE LINE */
     const lineHeight = 18;
-    const productTitleY = lineY - titleLines.length * 14 - 2;
+    const productTitleY = lineY - titleLines.length * 14 - 4;
 
-    /* DRAW TITLE */
-    pdf.text(titleLines, textColumnX, productTitleY, {
-      maxWidth: textColumnWidth,
-    });
+/* DRAW TITLE + CENTERED UNDERLINE */
 
-    /* DRAW DOUBLE LINE */
-    const underlineWidth = textColumnWidth + 50;
+const centerX = textColumnX + textColumnWidth / 2;
 
-    const lineStartX = textColumnX;
-    const lineEndX = textColumnX + underlineWidth;
+/* DRAW TITLE */
+pdf.text(titleLines, centerX, productTitleY, {
+  maxWidth: textColumnWidth,
+  align: "center",
+});
 
-    pdf.setLineWidth(0.6);
-    pdf.line(lineStartX, lineY, lineEndX, lineY);
+/* DRAW SINGLE CENTERED LINE */
+const underlineWidth = textColumnWidth * 1.25;
 
-    pdf.setLineWidth(0.3);
-    pdf.line(lineStartX, lineY + 3, lineEndX, lineY + 3);
+const lineStartX = centerX - underlineWidth / 2;
+const lineEndX = centerX + underlineWidth / 2;
+
+pdf.setLineWidth(0.8);
+pdf.line(lineStartX, lineY, lineEndX, lineY);
 
     y += 135;
     const tableWidth = 450;
