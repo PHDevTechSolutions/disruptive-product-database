@@ -54,9 +54,6 @@ type ExcelRow = {
   "Certificate(s)"?: string;
 };
 
-
-
-
 const safeSplit = (value: any) => {
   if (Array.isArray(value))
     return value
@@ -317,31 +314,29 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           const names = splitPipe(row["Contact Name(s)"]);
           const phones = splitPipe(row["Phone Number(s)"]);
 
-const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
+          const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
 
-await updateDoc(doc(db, "suppliers", existing.id), {
-  whatHappened: "Supplier Added",
-  date_updated: serverTimestamp(),
-  supplierId: existing.id,
+          await updateDoc(doc(db, "suppliers", existing.id), {
+            whatHappened: "Supplier Added",
+            date_updated: serverTimestamp(),
+            supplierId: existing.id,
 
-  supplierBrand,
-supplierbrandId: existing.id,
+            supplierBrand,
+            supplierbrandId: existing.id,
 
-
-
-  addresses: splitPipe(row.Addresses),
-  emails: splitPipe(row.Emails),
-  website: row.Website || "",
-  contacts: names.map((n, i) => ({
-    name: n,
-    phone: phones[i] || "",
-  })),
-  forteProducts: splitPipe(row["Forte Product(s)"]),
-  products: splitPipe(row["Product(s)"]),
-  certificates: splitPipe(row["Certificate(s)"]),
-  isActive: true,
-  updatedAt: serverTimestamp(),
-});
+            addresses: splitPipe(row.Addresses),
+            emails: splitPipe(row.Emails),
+            website: row.Website || "",
+            contacts: names.map((n, i) => ({
+              name: n,
+              phone: phones[i] || "",
+            })),
+            forteProducts: splitPipe(row["Forte Product(s)"]),
+            products: splitPipe(row["Product(s)"]),
+            certificates: splitPipe(row["Certificate(s)"]),
+            isActive: true,
+            updatedAt: serverTimestamp(),
+          });
 
           supplierMap.set(key, { ...existing, isActive: true });
           reactivated++;
@@ -357,36 +352,33 @@ supplierbrandId: existing.id,
           phone: contactPhones[i] || "",
         }));
 
-const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
+        const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
 
-const docRef = await addDoc(collection(db, "suppliers"), {
-  company,
-  supplierBrand,
+        const docRef = await addDoc(collection(db, "suppliers"), {
+          company,
+          supplierBrand,
 
-
-
-
-  addresses: safeSplit(row.Addresses),
-  emails: safeSplit(row.Emails),
-  website: row.Website || "",
-  contacts,
-  forteProducts: safeSplit(row["Forte Product(s)"]),
-  products: safeSplit(row["Product(s)"]),
-  certificates: safeSplit(row["Certificate(s)"]),
-  createdBy: userId,
-  referenceID: user.ReferenceID,
-  isActive: true,
-  createdAt: serverTimestamp(),
-});
+          addresses: safeSplit(row.Addresses),
+          emails: safeSplit(row.Emails),
+          website: row.Website || "",
+          contacts,
+          forteProducts: safeSplit(row["Forte Product(s)"]),
+          products: safeSplit(row["Product(s)"]),
+          certificates: safeSplit(row["Certificate(s)"]),
+          createdBy: userId,
+          referenceID: user.ReferenceID,
+          isActive: true,
+          createdAt: serverTimestamp(),
+        });
 
         // 2️⃣ Save Firestore ID as companyId
         // 2️⃣ Save Firestore ID as supplierId
-await updateDoc(doc(db, "suppliers", docRef.id), {
-  supplierId: docRef.id,
-  supplierbrandId: docRef.id,
-  whatHappened: "Supplier Added",
-  date_updated: serverTimestamp(),
-});
+        await updateDoc(doc(db, "suppliers", docRef.id), {
+          supplierId: docRef.id,
+          supplierbrandId: docRef.id,
+          whatHappened: "Supplier Added",
+          date_updated: serverTimestamp(),
+        });
 
         supplierMap.set(key, {
           id: "new",
@@ -460,8 +452,8 @@ await updateDoc(doc(db, "suppliers", docRef.id), {
           {rows.length > 0 && (
             <div className="mt-4 border rounded-md overflow-x-auto max-h-[300px]">
               <table className="min-w-[1200px]text-sm">
-                <thead className="sticky top-0 bg-background border-b">
-                  <tr>
+                <thead className="sticky top-0 bg-red-100 border-b">
+                  <tr className="font-bold">
                     <th className="p-2">Company Name</th>
                     <th className="p-2">Supplier Brand</th>
                     <th className="p-2">Addresses</th>
@@ -528,21 +520,21 @@ await updateDoc(doc(db, "suppliers", docRef.id), {
             setLoading(true);
 
             for (const c of conflicts) {
-await updateDoc(doc(db, "suppliers", c.supplierId), {
-  supplierBrand: c.incoming.supplierBrand,
-supplierbrandId: c.supplierId,
+              await updateDoc(doc(db, "suppliers", c.supplierId), {
+                supplierBrand: c.incoming.supplierBrand,
+                supplierbrandId: c.supplierId,
 
-  addresses: c.incoming.addresses,
-  emails: c.incoming.emails,
-  website: c.incoming.website,
-  contacts: c.incoming.contacts,
-  forteProducts: c.incoming.forteProducts,
-  products: c.incoming.products,
-  certificates: c.incoming.certificates,
-  updatedAt: serverTimestamp(),
-  updatedBy: userId,
-  updatedByReferenceID: user?.ReferenceID,
-});
+                addresses: c.incoming.addresses,
+                emails: c.incoming.emails,
+                website: c.incoming.website,
+                contacts: c.incoming.contacts,
+                forteProducts: c.incoming.forteProducts,
+                products: c.incoming.products,
+                certificates: c.incoming.certificates,
+                updatedAt: serverTimestamp(),
+                updatedBy: userId,
+                updatedByReferenceID: user?.ReferenceID,
+              });
             }
 
             toast.success("Suppliers updated", {

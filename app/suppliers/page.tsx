@@ -1,5 +1,6 @@
 "use client";
 
+import * as XLSX from "xlsx";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
@@ -56,6 +57,8 @@ const formatWebsite = (url?: string) => {
     ? url
     : `https://${url}`;
 };
+
+
 
 type Supplier = {
   id: string;
@@ -265,62 +268,76 @@ export default function Suppliers() {
   }, [itemsPerPage, totalPages]);
 
   /* ---------------- Download CSV ---------------- */
-  const handleDownloadCSV = () => {
-    if (filteredSuppliers.length === 0) return;
+const handleDownloadCSV = () => {
+  if (filteredSuppliers.length === 0) return;
 
-    const headers = [
-      "Company Name",
-      "Supplier Brand",
-      "Addresses",
-      "Emails",
-      "Website",
-      "Contact Name(s)",
-      "Phone Number(s)",
-      "Forte Product(s)",
-      "Product(s)",
-      "Certificate(s)",
+  const headers = [
+    "Company Name",
+    "Supplier Brand",
+    "Addresses",
+    "Emails",
+    "Website",
+    "Contact Name(s)",
+    "Phone Number(s)",
+    "Forte Product(s)",
+    "Product(s)",
+    "Certificate(s)",
+  ];
+
+  const rows = filteredSuppliers.map((s) => {
+    const contactNames = s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
+    const contactPhones =
+      s.contacts?.map((c) => c.phone).filter(Boolean) ?? [];
+
+    return [
+      s.company ?? "",
+      s.supplierBrand ?? "",
+      s.addresses?.join(" | ") ?? "",
+      s.emails?.join(" | ") ?? "",
+      s.website?.join(" | ") ?? "",
+      contactNames.join(" | "),
+      contactPhones.join(" | "),
+      s.forteProducts?.join(" | ") ?? "",
+      s.products?.join(" | ") ?? "",
+      s.certificates?.join(" | ") ?? "",
     ];
+  });
 
-    const rows = filteredSuppliers.map((s) => {
-      const contactNames = s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
-      const contactPhones =
-        s.contacts?.map((c) => c.phone).filter(Boolean) ?? [];
+  let table = `<table border="1">`;
 
-      return [
-        s.company ?? "",
-        s.supplierBrand ?? "",
-        s.addresses?.join(" | ") ?? "",
-        s.emails?.join(" | ") ?? "",
-        s.website?.join(" | ") ?? "",
-        contactNames.join(" | "),
-        contactPhones.join(" | "),
-        s.forteProducts?.join(" | ") ?? "",
-        s.products?.join(" | ") ?? "",
-        s.certificates?.join(" | ") ?? "",
-      ];
+  // HEADER
+  table += `<tr style="background:#f4cccc;font-weight:bold;">`;
+  headers.forEach((h) => {
+    table += `<th>${h}</th>`;
+  });
+  table += `</tr>`;
+
+  // ROWS
+  rows.forEach((row) => {
+    table += `<tr>`;
+    row.forEach((cell) => {
+      table += `<td>${cell}</td>`;
     });
+    table += `</tr>`;
+  });
 
-    const csvContent = [headers, ...rows]
-      .map((row) =>
-        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
-      )
-      .join("\n");
+  table += `</table>`;
 
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
+  const blob = new Blob([table], {
+    type: "application/vnd.ms-excel",
+  });
 
-    const url = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob);
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "suppliers.csv";
-    document.body.appendChild(link);
-    link.click();
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "suppliers.xls";
+  document.body.appendChild(link);
+  link.click();
 
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
 
   return (
     <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-">
@@ -404,21 +421,21 @@ export default function Suppliers() {
       {/* DESKTOP TABLE VIEW */}
       <div className="hidden md:block rounded-md border overflow-x-auto">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Actions</TableHead>
-              <TableHead>Company Name</TableHead>
-              <TableHead>Supplier Brand</TableHead>
-              <TableHead className="text-center">Addresses</TableHead>
-              <TableHead className="text-center">Emails</TableHead>
-              <TableHead className="text-center">Website</TableHead>
-              <TableHead className="text-center">Contact</TableHead>
-              <TableHead className="text-center">Phone Number(s)</TableHead>
-              <TableHead className="text-center">Forte Product(s)</TableHead>
-              <TableHead className="text-center">Product(s)</TableHead>
-              <TableHead className="text-center">Certificate(s)</TableHead>
-            </TableRow>
-          </TableHeader>
+<TableHeader className="bg-red-100">
+  <TableRow>
+    <TableHead className="font-bold">Actions</TableHead>
+    <TableHead className="font-bold">Company Name</TableHead>
+    <TableHead className="font-bold">Supplier Brand</TableHead>
+    <TableHead className="text-center font-bold">Addresses</TableHead>
+    <TableHead className="text-center font-bold">Emails</TableHead>
+    <TableHead className="text-center font-bold">Website</TableHead>
+    <TableHead className="text-center font-bold">Contact</TableHead>
+    <TableHead className="text-center font-bold">Phone Number(s)</TableHead>
+    <TableHead className="text-center font-bold">Forte Product(s)</TableHead>
+    <TableHead className="text-center font-bold">Product(s)</TableHead>
+    <TableHead className="text-center font-bold">Certificate(s)</TableHead>
+  </TableRow>
+</TableHeader>
 
           <TableBody>
             {filteredSuppliers.length === 0 ? (
@@ -478,17 +495,23 @@ export default function Suppliers() {
                   </TableCell>
 
                   {/* ADDRESSES */}
-<TableCell className="align-top text-left max-w-[420px] break-words whitespace-normal">
-  {s.addresses?.length ? (
-    <div className="flex flex-col space-y-4">
-      {s.addresses.map((item, i) => (
-        <div key={i}>{highlightText(item, search)}</div>
-      ))}
-    </div>
-  ) : (
-    "-"
-  )}
-</TableCell>
+                  <TableCell className="align-middle max-w-[420px] break-words whitespace-normal">
+                    {s.addresses?.length ? (
+                      s.addresses.length === 1 ? (
+                        <div className="text-center">
+                          {highlightText(s.addresses[0], search)}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col space-y-4 text-left">
+                          {s.addresses.map((item, i) => (
+                            <div key={i}>{highlightText(item, search)}</div>
+                          ))}
+                        </div>
+                      )
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
 
                   {/* EMAILS */}
                   <TableCell className="text-center">
@@ -524,20 +547,21 @@ export default function Suppliers() {
                     )}
                   </TableCell>
 
-{/* CONTACTS */}
-<TableCell className="text-center">
-  {s.contacts?.length ? (
-    <div className="flex flex-col items-center space-y-4">
-      {s.contacts.map((c, i) => (
-        <div key={i}>
-          {highlightText(c.name, search)} - {highlightText(c.phone, search)}
-        </div>
-      ))}
-    </div>
-  ) : (
-    "-"
-  )}
-</TableCell>
+                  {/* CONTACTS */}
+                  <TableCell className="text-center">
+                    {s.contacts?.length ? (
+                      <div className="flex flex-col items-center space-y-4">
+                        {s.contacts.map((c, i) => (
+                          <div key={i}>
+                            {highlightText(c.name, search)} -{" "}
+                            {highlightText(c.phone, search)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
 
                   {/* FORTE PRODUCTS */}
                   <TableCell className="text-center">
