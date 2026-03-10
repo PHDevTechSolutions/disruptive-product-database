@@ -85,9 +85,9 @@ export default function UploadProduct({}: Props) {
   const [uploadProgress, setUploadProgress] = React.useState(0);
   const [totalRows, setTotalRows] = React.useState(0);
 
-/* ---------------- ELEVATOR MUSIC ---------------- */
+  /* ---------------- ELEVATOR MUSIC ---------------- */
 
-const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
   /* ---------------- GENERATE REF ---------------- */
 
@@ -323,25 +323,24 @@ const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
   /* ---------------- UPLOAD ---------------- */
 
-const handleUpload = async () => {
-  if (!file) return;
+  const handleUpload = async () => {
+    if (!file) return;
 
-  try {
-
-    // START MUSIC IMMEDIATELY
     try {
-if (!audioRef.current) {
-  audioRef.current = new Audio("/musics/elevator-music.mp3");
-  audioRef.current.loop = true;
-  audioRef.current.volume = 0.4;
-}
+      // START MUSIC IMMEDIATELY
+      try {
+        if (!audioRef.current) {
+          audioRef.current = new Audio("/musics/elevator-music.mp3");
+          audioRef.current.loop = true;
+          audioRef.current.volume = 0.4;
+        }
 
-audioRef.current.play();
-    } catch (err) {
-      console.warn("Audio blocked by browser");
-    }
+        audioRef.current.play();
+      } catch (err) {
+        console.warn("Audio blocked by browser");
+      }
 
-    setUploading(true);
+      setUploading(true);
       const workbook = new ExcelJS.Workbook();
 
       const buffer = await file.arrayBuffer();
@@ -350,37 +349,37 @@ audioRef.current.play();
 
       let total = 0;
 
-/* ---------------- COUNT VALID ROWS FIRST ---------------- */
+      /* ---------------- COUNT VALID ROWS FIRST ---------------- */
 
-let validRows = 0;
+      let validRows = 0;
 
-for (const ws of workbook.worksheets) {
-  let lastUsage = "";
-  let lastFamily = "";
+      for (const ws of workbook.worksheets) {
+        let lastUsage = "";
+        let lastFamily = "";
 
-  for (let r = 3; r <= ws.rowCount; r++) {
-    const row = ws.getRow(r);
+        for (let r = 3; r <= ws.rowCount; r++) {
+          const row = ws.getRow(r);
 
-    const usage = row.getCell(1).value?.toString() || lastUsage;
-    const family = row.getCell(2).value?.toString() || lastFamily;
+          const usage = row.getCell(1).value?.toString() || lastUsage;
+          const family = row.getCell(2).value?.toString() || lastFamily;
 
-    lastUsage = usage;
-    lastFamily = family;
+          lastUsage = usage;
+          lastFamily = family;
 
-    if (!usage || !family) continue;
+          if (!usage || !family) continue;
 
-    const category = await findCategoryType(usage);
-    if (!category) continue;
+          const category = await findCategoryType(usage);
+          if (!category) continue;
 
-    const productFamily = await findProductFamily(category.id, family);
-    if (!productFamily) continue;
+          const productFamily = await findProductFamily(category.id, family);
+          if (!productFamily) continue;
 
-    validRows++;
-  }
-}
+          validRows++;
+        }
+      }
 
-setTotalRows(validRows);
-setUploadProgress(0);
+      setTotalRows(validRows);
+      setUploadProgress(0);
 
       for (const ws of workbook.worksheets) {
         const header1 = ws.getRow(1);
@@ -440,11 +439,29 @@ setUploadProgress(0);
           let brandOrigin = row.getCell(5).value?.toString() || lastBrandOrigin;
 
           let supplierBrand = row.getCell(6).value?.toString() || lastSupplier;
-let imageURL = row.getCell(7).value?.toString() || lastImage;
+          /* CTRL + F: FIX IMAGE OBJECT FROM EXCEL */
 
-/* CTRL + F: FIX GOOGLE DRIVE IMAGE */
-imageURL = convertDriveToThumbnail(imageURL);
+          let imageCell: any = row.getCell(7).value;
 
+          let imageURL = "";
+
+          /* Excel sometimes stores links as objects */
+          if (typeof imageCell === "object" && imageCell !== null) {
+            if (imageCell.text) {
+              imageURL = imageCell.text;
+            } else if (imageCell.hyperlink) {
+              imageURL = imageCell.hyperlink;
+            } else {
+              imageURL = String(imageCell);
+            }
+          } else {
+            imageURL = imageCell?.toString() || "";
+          }
+
+          imageURL = imageURL || lastImage;
+
+          /* CTRL + F: FIX GOOGLE DRIVE IMAGE */
+          imageURL = convertDriveToThumbnail(imageURL);
           const unitCost =
             row.getCell(ws.columnCount - 6).value?.toString() || "";
           const length =
@@ -530,66 +547,66 @@ imageURL = convertDriveToThumbnail(imageURL);
 
           const referenceID = await generateProductReferenceID();
 
-await addDoc(collection(db, "products"), {
-  productReferenceID: referenceID,
+          await addDoc(collection(db, "products"), {
+            productReferenceID: referenceID,
 
-  productClass,
-  pricePoint,
-  brandOrigin,
+            productClass,
+            pricePoint,
+            brandOrigin,
 
-  supplier,
+            supplier,
 
-  mainImage: imageURL ? { url: imageURL } : null,
+            mainImage: imageURL ? { url: imageURL } : null,
 
-  categoryTypes: [
-    {
-      productUsageId: category.id,
-      categoryTypeName: category.name,
-    },
-  ],
+            categoryTypes: [
+              {
+                productUsageId: category.id,
+                categoryTypeName: category.name,
+              },
+            ],
 
-  productFamilies: [
-    {
-      productFamilyId: productFamily.id,
-      productFamilyName: productFamily.name,
-      productUsageId: category.id,
-    },
-  ],
+            productFamilies: [
+              {
+                productFamilyId: productFamily.id,
+                productFamilyName: productFamily.name,
+                productUsageId: category.id,
+              },
+            ],
 
-  technicalSpecifications: productSpecs,
+            technicalSpecifications: productSpecs,
 
-  commercialDetails: {
-    unitCost,
+            commercialDetails: {
+              unitCost,
 
-    packaging: {
-      length,
-      width,
-      height,
-    },
+              packaging: {
+                length,
+                width,
+                height,
+              },
 
-    pcsPerCarton,
+              pcsPerCarton,
 
-    factoryAddress,
+              factoryAddress,
 
-    portOfDischarge,
-  },
+              portOfDischarge,
+            },
 
-  isActive: true,
+            isActive: true,
 
-  createdAt: serverTimestamp(),
+            createdAt: serverTimestamp(),
 
-  whatHappened: "Product Added",
+            whatHappened: "Product Added",
 
-  date_updated: serverTimestamp(),
-});
+            date_updated: serverTimestamp(),
+          });
 
-/* COUNT ONLY SUCCESSFUL UPLOAD */
-setUploadProgress((prev) => prev + 1);
+          /* COUNT ONLY SUCCESSFUL UPLOAD */
+          setUploadProgress((prev) => prev + 1);
         }
       }
 
       audioRef.current?.pause();
-audioRef.current!.currentTime = 0;
+      audioRef.current!.currentTime = 0;
       toast.success("Upload complete");
 
       setOpen(false);
@@ -601,7 +618,7 @@ audioRef.current!.currentTime = 0;
       console.error(error);
 
       audioRef.current?.pause();
-audioRef.current!.currentTime = 0;
+      audioRef.current!.currentTime = 0;
       toast.error("Upload failed");
     } finally {
       setUploading(false);
