@@ -1604,7 +1604,7 @@ const convertDriveToThumbnail = (url: string) => {
               <CardContent className="space-y-4">
                 {/* UNIT COST */}
                 <div className="space-y-2">
-                  <Label>Unit Cost</Label>
+                  <Label>Unit Cost (USD)</Label>
                   <Input
                     type="number"
                     step="0.01"
