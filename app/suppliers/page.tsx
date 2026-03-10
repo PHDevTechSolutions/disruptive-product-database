@@ -412,7 +412,7 @@ export default function Suppliers() {
               <TableHead className="text-center">Addresses</TableHead>
               <TableHead className="text-center">Emails</TableHead>
               <TableHead className="text-center">Website</TableHead>
-              <TableHead className="text-center">Contact Name(s)</TableHead>
+              <TableHead className="text-center">Contact</TableHead>
               <TableHead className="text-center">Phone Number(s)</TableHead>
               <TableHead className="text-center">Forte Product(s)</TableHead>
               <TableHead className="text-center">Product(s)</TableHead>
@@ -423,7 +423,7 @@ export default function Suppliers() {
           <TableBody>
             {filteredSuppliers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center py-8">
+                <TableCell colSpan={11} className="text-center py-8">
                   No suppliers found.
                 </TableCell>
               </TableRow>
@@ -478,17 +478,17 @@ export default function Suppliers() {
                   </TableCell>
 
                   {/* ADDRESSES */}
-                  <TableCell className="text-center">
-                    {s.addresses?.length ? (
-                      <div className="flex flex-col items-center space-y-4">
-                        {s.addresses.map((item, i) => (
-                          <div key={i}>{highlightText(item, search)}</div>
-                        ))}
-                      </div>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
+<TableCell className="align-top text-left max-w-[420px] break-words whitespace-normal">
+  {s.addresses?.length ? (
+    <div className="flex flex-col space-y-4">
+      {s.addresses.map((item, i) => (
+        <div key={i}>{highlightText(item, search)}</div>
+      ))}
+    </div>
+  ) : (
+    "-"
+  )}
+</TableCell>
 
                   {/* EMAILS */}
                   <TableCell className="text-center">
@@ -524,31 +524,20 @@ export default function Suppliers() {
                     )}
                   </TableCell>
 
-                  {/* CONTACT NAMES */}
-                  <TableCell className="text-center">
-                    {s.contacts?.length ? (
-                      <div className="flex flex-col items-center space-y-4">
-                        {s.contacts.map((c, i) => (
-                          <div key={i}>{highlightText(c.name, search)}</div>
-                        ))}
-                      </div>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-
-                  {/* CONTACT PHONES */}
-                  <TableCell className="text-center">
-                    {s.contacts?.length ? (
-                      <div className="flex flex-col items-center space-y-4">
-                        {s.contacts.map((c, i) => (
-                          <div key={i}>{highlightText(c.phone, search)}</div>
-                        ))}
-                      </div>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
+{/* CONTACTS */}
+<TableCell className="text-center">
+  {s.contacts?.length ? (
+    <div className="flex flex-col items-center space-y-4">
+      {s.contacts.map((c, i) => (
+        <div key={i}>
+          {highlightText(c.name, search)} - {highlightText(c.phone, search)}
+        </div>
+      ))}
+    </div>
+  ) : (
+    "-"
+  )}
+</TableCell>
 
                   {/* FORTE PRODUCTS */}
                   <TableCell className="text-center">
