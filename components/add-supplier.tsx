@@ -213,11 +213,12 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
         emails: emails.filter(Boolean),
         website: website.filter(Boolean),
 
-        contacts: contactNames.map((name, index) => ({
-          name,
-          phone: contactNumbers[index] || "",
-        })),
-
+contacts: contactNames.map((name, index) => ({
+  name,
+  phone: contactNumbers[index]
+    ? contactNumbers[index].replace(/[^\d+]/g, "")
+    : "",
+})),
         forteProducts: forteProducts.filter(Boolean),
         products: products.filter(Boolean),
         certificates: certificates.filter(Boolean),

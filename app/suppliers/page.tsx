@@ -58,8 +58,6 @@ const formatWebsite = (url?: string) => {
     : `https://${url}`;
 };
 
-
-
 type Supplier = {
   id: string;
   company: string;
@@ -268,76 +266,76 @@ export default function Suppliers() {
   }, [itemsPerPage, totalPages]);
 
   /* ---------------- Download CSV ---------------- */
-const handleDownloadCSV = () => {
-  if (filteredSuppliers.length === 0) return;
+  const handleDownloadCSV = () => {
+    if (filteredSuppliers.length === 0) return;
 
-  const headers = [
-    "Company Name",
-    "Supplier Brand",
-    "Addresses",
-    "Emails",
-    "Website",
-    "Contact Name(s)",
-    "Phone Number(s)",
-    "Forte Product(s)",
-    "Product(s)",
-    "Certificate(s)",
-  ];
-
-  const rows = filteredSuppliers.map((s) => {
-    const contactNames = s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
-    const contactPhones =
-      s.contacts?.map((c) => c.phone).filter(Boolean) ?? [];
-
-    return [
-      s.company ?? "",
-      s.supplierBrand ?? "",
-      s.addresses?.join(" | ") ?? "",
-      s.emails?.join(" | ") ?? "",
-      s.website?.join(" | ") ?? "",
-      contactNames.join(" | "),
-      contactPhones.join(" | "),
-      s.forteProducts?.join(" | ") ?? "",
-      s.products?.join(" | ") ?? "",
-      s.certificates?.join(" | ") ?? "",
+    const headers = [
+      "Company Name",
+      "Supplier Brand",
+      "Addresses",
+      "Emails",
+      "Website",
+      "Contact Name(s)",
+      "Phone Number(s)",
+      "Forte Product(s)",
+      "Product(s)",
+      "Certificate(s)",
     ];
-  });
 
-  let table = `<table border="1">`;
+    const rows = filteredSuppliers.map((s) => {
+      const contactNames = s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
+      const contactPhones =
+        s.contacts?.map((c) => c.phone).filter(Boolean) ?? [];
 
-  // HEADER
-  table += `<tr style="background:#f4cccc;font-weight:bold;">`;
-  headers.forEach((h) => {
-    table += `<th>${h}</th>`;
-  });
-  table += `</tr>`;
+      return [
+        s.company ?? "",
+        s.supplierBrand ?? "",
+        s.addresses?.join(" | ") ?? "",
+        s.emails?.join(" | ") ?? "",
+        s.website?.join(" | ") ?? "",
+        contactNames.join(" | "),
+        contactPhones.join(" | "),
+        s.forteProducts?.join(" | ") ?? "",
+        s.products?.join(" | ") ?? "",
+        s.certificates?.join(" | ") ?? "",
+      ];
+    });
 
-  // ROWS
-  rows.forEach((row) => {
-    table += `<tr>`;
-    row.forEach((cell) => {
-      table += `<td>${cell}</td>`;
+    let table = `<table border="1">`;
+
+    // HEADER
+    table += `<tr style="background:#f4cccc;font-weight:bold;">`;
+    headers.forEach((h) => {
+      table += `<th>${h}</th>`;
     });
     table += `</tr>`;
-  });
 
-  table += `</table>`;
+    // ROWS
+    rows.forEach((row) => {
+      table += `<tr>`;
+      row.forEach((cell) => {
+        table += `<td>${cell}</td>`;
+      });
+      table += `</tr>`;
+    });
 
-  const blob = new Blob([table], {
-    type: "application/vnd.ms-excel",
-  });
+    table += `</table>`;
 
-  const url = URL.createObjectURL(blob);
+    const blob = new Blob([table], {
+      type: "application/vnd.ms-excel",
+    });
 
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "suppliers.xls";
-  document.body.appendChild(link);
-  link.click();
+    const url = URL.createObjectURL(blob);
 
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "suppliers.xls";
+    document.body.appendChild(link);
+    link.click();
+
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-">
@@ -421,21 +419,29 @@ const handleDownloadCSV = () => {
       {/* DESKTOP TABLE VIEW */}
       <div className="hidden md:block rounded-md border overflow-x-auto">
         <Table>
-<TableHeader className="bg-red-100">
-  <TableRow>
-    <TableHead className="font-bold">Actions</TableHead>
-    <TableHead className="font-bold">Company Name</TableHead>
-    <TableHead className="font-bold">Supplier Brand</TableHead>
-    <TableHead className="text-center font-bold">Addresses</TableHead>
-    <TableHead className="text-center font-bold">Emails</TableHead>
-    <TableHead className="text-center font-bold">Website</TableHead>
-    <TableHead className="text-center font-bold">Contact</TableHead>
-    <TableHead className="text-center font-bold">Phone Number(s)</TableHead>
-    <TableHead className="text-center font-bold">Forte Product(s)</TableHead>
-    <TableHead className="text-center font-bold">Product(s)</TableHead>
-    <TableHead className="text-center font-bold">Certificate(s)</TableHead>
-  </TableRow>
-</TableHeader>
+          <TableHeader className="bg-red-100">
+            <TableRow>
+              <TableHead className="font-bold">Actions</TableHead>
+              <TableHead className="font-bold">Company Name</TableHead>
+              <TableHead className="font-bold">Supplier Brand</TableHead>
+              <TableHead className="text-center font-bold">Addresses</TableHead>
+              <TableHead className="text-center font-bold">Emails</TableHead>
+              <TableHead className="text-center font-bold">Website</TableHead>
+              <TableHead className="text-center font-bold">Contact</TableHead>
+              <TableHead className="text-center font-bold">
+                Phone Number(s)
+              </TableHead>
+              <TableHead className="text-center font-bold">
+                Forte Product(s)
+              </TableHead>
+              <TableHead className="text-center font-bold">
+                Product(s)
+              </TableHead>
+              <TableHead className="text-center font-bold">
+                Certificate(s)
+              </TableHead>
+            </TableRow>
+          </TableHeader>
 
           <TableBody>
             {filteredSuppliers.length === 0 ? (
@@ -553,8 +559,8 @@ const handleDownloadCSV = () => {
                       <div className="flex flex-col items-center space-y-4">
                         {s.contacts.map((c, i) => (
                           <div key={i}>
-                            {highlightText(c.name, search)} -{" "}
-                            {highlightText(c.phone, search)}
+                            {highlightText(c.name, search)} (
+                            {highlightText(c.phone, search)})
                           </div>
                         ))}
                       </div>

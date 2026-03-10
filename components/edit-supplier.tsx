@@ -166,7 +166,7 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
 
       setContactNumbers(
         supplier.contacts.map((c: any) =>
-          c.phone ? c.phone.replace(/\s+/g, "") : "",
+          c.phone ? c.phone.replace(/[^\d+]/g, "") : "",
         ),
       );
 

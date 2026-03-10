@@ -138,7 +138,7 @@ export default function ProductsPage() {
 
       return (
         p.productName?.toLowerCase().includes(lower) ||
-        p.supplier?.company?.toLowerCase().includes(lower) ||
+        p.supplier?.supplierBrand?.toLowerCase().includes(lower) ||
         cat?.categoryTypeName?.toLowerCase().includes(lower) ||
         prod?.productTypeName?.toLowerCase().includes(lower)
       );
@@ -252,7 +252,7 @@ export default function ProductsPage() {
                       </h2>
 
                       <p className="text-xs text-muted-foreground line-clamp-1">
-                        {p.supplier?.company || "-"}
+                        {p.supplier?.supplierBrand || "-"}
                       </p>
                     </div>
 
