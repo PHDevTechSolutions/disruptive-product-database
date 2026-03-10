@@ -373,6 +373,34 @@ export default function Suppliers() {
         </div>
       </div>
 
+      {/* PAGINATION (OUTSIDE SCROLL) */}
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-md">
+        <span className="text-xs sm:text-sm text-center sm:text-left">
+          Page {currentPage} of {totalPages || 1}
+        </span>
+
+        <div className="flex gap-2 justify-center sm:justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => p - 1)}
+            className="cursor-pointer"
+          >
+            Previous
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={currentPage === totalPages || totalPages === 0}
+            onClick={() => setCurrentPage((p) => p + 1)}
+            className="cursor-pointer"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
       {/* DESKTOP TABLE VIEW */}
       <div className="hidden md:block rounded-md border overflow-x-auto">
         <Table>
@@ -381,14 +409,14 @@ export default function Suppliers() {
               <TableHead>Actions</TableHead>
               <TableHead>Company Name</TableHead>
               <TableHead>Supplier Brand</TableHead>
-              <TableHead>Addresses</TableHead>
-              <TableHead>Emails</TableHead>
-              <TableHead>Website</TableHead>
-              <TableHead>Contact Name(s)</TableHead>
-              <TableHead>Phone Number(s)</TableHead>
-              <TableHead>Forte Product(s)</TableHead>
-              <TableHead>Product(s)</TableHead>
-              <TableHead>Certificate(s)</TableHead>
+              <TableHead className="text-center">Addresses</TableHead>
+              <TableHead className="text-center">Emails</TableHead>
+              <TableHead className="text-center">Website</TableHead>
+              <TableHead className="text-center">Contact Name(s)</TableHead>
+              <TableHead className="text-center">Phone Number(s)</TableHead>
+              <TableHead className="text-center">Forte Product(s)</TableHead>
+              <TableHead className="text-center">Product(s)</TableHead>
+              <TableHead className="text-center">Certificate(s)</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -437,108 +465,128 @@ export default function Suppliers() {
                       {highlightText(s.company, search)}
                     </span>
                   </TableCell>
+
                   {/* SUPPLIER BRAND */}
                   <TableCell className="whitespace-normal break-words">
                     {s.supplierBrand ? (
-                      <span>{highlightText(s.supplierBrand, search)}</span>
+                      <span className="font-semibold">
+                        {highlightText(s.supplierBrand, search)}
+                      </span>
                     ) : (
                       "-"
                     )}
                   </TableCell>
 
                   {/* ADDRESSES */}
-                  <TableCell className="whitespace-normal break-words">
-                    {s.addresses?.length
-                      ? s.addresses.map((item, i) => (
-                          <div key={i}>
-                            {i + 1}. {highlightText(item, search)}
-                          </div>
-                        ))
-                      : "-"}
+                  <TableCell className="text-center">
+                    {s.addresses?.length ? (
+                      <div className="flex flex-col items-center space-y-4">
+                        {s.addresses.map((item, i) => (
+                          <div key={i}>{highlightText(item, search)}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
 
                   {/* EMAILS */}
-                  <TableCell className="whitespace-normal break-words">
-                    {s.emails?.length
-                      ? s.emails.map((item, i) => (
-                          <div key={i}>
-                            {i + 1}. {highlightText(item, search)}
-                          </div>
-                        ))
-                      : "-"}
+                  <TableCell className="text-center">
+                    {s.emails?.length ? (
+                      <div className="flex flex-col items-center space-y-4">
+                        {s.emails.map((item, i) => (
+                          <div key={i}>{highlightText(item, search)}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
 
                   {/* WEBSITE */}
-                  <TableCell className="whitespace-normal break-words">
-                    {s.website?.length
-                      ? s.website.map((site, i) => (
-                          <div key={i}>
-                            <a
-                              href={formatWebsite(site)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 underline hover:text-blue-800 break-all"
-                            >
-                              {highlightText(site, search)}
-                            </a>
-                          </div>
-                        ))
-                      : "-"}
+                  <TableCell className="text-center">
+                    {s.website?.length ? (
+                      <div className="flex flex-col items-center space-y-4">
+                        {s.website.map((site, i) => (
+                          <a
+                            key={i}
+                            href={formatWebsite(site)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline hover:text-blue-800 break-all"
+                          >
+                            {highlightText(site, search)}
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
 
                   {/* CONTACT NAMES */}
-                  <TableCell className="whitespace-normal break-words">
-                    {s.contacts?.length
-                      ? s.contacts.map((c, i) => (
-                          <div key={i}>
-                            {i + 1}. {highlightText(c.name, search)}
-                          </div>
-                        ))
-                      : "-"}
+                  <TableCell className="text-center">
+                    {s.contacts?.length ? (
+                      <div className="flex flex-col items-center space-y-4">
+                        {s.contacts.map((c, i) => (
+                          <div key={i}>{highlightText(c.name, search)}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
 
                   {/* CONTACT PHONES */}
-                  <TableCell className="whitespace-normal break-words">
-                    {s.contacts?.length
-                      ? s.contacts.map((c, i) => (
-                          <div key={i}>
-                            {i + 1}. {highlightText(c.phone, search)}
-                          </div>
-                        ))
-                      : "-"}
+                  <TableCell className="text-center">
+                    {s.contacts?.length ? (
+                      <div className="flex flex-col items-center space-y-4">
+                        {s.contacts.map((c, i) => (
+                          <div key={i}>{highlightText(c.phone, search)}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
 
                   {/* FORTE PRODUCTS */}
-                  <TableCell className="whitespace-normal break-words">
-                    {s.forteProducts?.length
-                      ? s.forteProducts.map((item, i) => (
-                          <div key={i}>
-                            {i + 1}. {highlightText(item, search)}
-                          </div>
-                        ))
-                      : "-"}
+                  <TableCell className="text-center">
+                    {s.forteProducts?.length ? (
+                      <div className="flex flex-col items-center space-y-4">
+                        {s.forteProducts.map((item, i) => (
+                          <div key={i}>{highlightText(item, search)}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
 
                   {/* PRODUCTS */}
-                  <TableCell className="whitespace-normal break-words">
-                    {s.products?.length
-                      ? s.products.map((item, i) => (
-                          <div key={i}>
-                            {i + 1}. {highlightText(item, search)}
-                          </div>
-                        ))
-                      : "-"}
+                  <TableCell className="text-center">
+                    {s.products?.length ? (
+                      <div className="flex flex-col items-center space-y-4">
+                        {s.products.map((item, i) => (
+                          <div key={i}>{highlightText(item, search)}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
 
                   {/* CERTIFICATES */}
-                  <TableCell className="whitespace-normal break-words">
-                    {s.certificates?.length
-                      ? s.certificates.map((item, i) => (
-                          <div key={i}>
-                            {i + 1}. {highlightText(item, search)}
-                          </div>
-                        ))
-                      : "-"}
+                  <TableCell className="text-center">
+                    {s.certificates?.length ? (
+                      <div className="flex flex-col items-center space-y-4">
+                        {s.certificates.map((item, i) => (
+                          <div key={i}>{highlightText(item, search)}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -557,7 +605,7 @@ export default function Suppliers() {
           paginatedSuppliers.map((s) => (
             <div
               key={s.id}
-              className="border rounded-lg p-4 space-y-3 shadow-sm"
+              className="border rounded-lg p-4 space-y-4 shadow-sm"
             >
               {/* HEADER */}
               <div className="flex items-start justify-between">
@@ -566,190 +614,105 @@ export default function Suppliers() {
                 </h3>
 
                 {s.supplierBrand && (
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs font-semibold">
                     Brand: {highlightText(s.supplierBrand, search)}
                   </div>
                 )}
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      setSelectedSupplier(s);
-                      setEditSupplierOpen(true);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => {
-                      setSelectedSupplier(s);
-                      setDeleteSupplierOpen(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
               </div>
 
               {/* BODY */}
-              <div className="text-sm space-y-2">
-
-                {/* ADDRESSES */}
+              <div className="text-sm space-y-4 text-center">
                 <div>
-                  <strong>Addresses:</strong>
-                  <div className="ml-2 text-muted-foreground">
-                    {s.addresses?.length ? (
-                      s.addresses.map((item, i) => (
-                        <div key={i}>
-                          {i + 1}. {highlightText(item, search)}
-                        </div>
-                      ))
-                    ) : (
-                      <div>-</div>
-                    )}
+                  <strong>Addresses</strong>
+                  <div className="flex flex-col space-y-4 text-muted-foreground">
+                    {s.addresses?.length
+                      ? s.addresses.map((item, i) => (
+                          <div key={i}>{highlightText(item, search)}</div>
+                        ))
+                      : "-"}
                   </div>
                 </div>
 
-                {/* EMAILS */}
                 <div>
-                  <strong>Emails:</strong>
-                  <div className="ml-2 text-muted-foreground">
-                    {s.emails?.length ? (
-                      s.emails.map((item, i) => (
-                        <div key={i}>
-                          {i + 1}. {highlightText(item, search)}
-                        </div>
-                      ))
-                    ) : (
-                      <div>-</div>
-                    )}
+                  <strong>Emails</strong>
+                  <div className="flex flex-col space-y-4 text-muted-foreground">
+                    {s.emails?.length
+                      ? s.emails.map((item, i) => (
+                          <div key={i}>{highlightText(item, search)}</div>
+                        ))
+                      : "-"}
                   </div>
                 </div>
 
-                {/* WEBSITE */}
                 <div>
-                  <strong>Website:</strong>
-                  <div className="ml-2">
-                    {s.website?.length ? (
-                      s.website.map((site, i) => (
-                        <a
-                          key={i}
-                          href={formatWebsite(site)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline block break-all"
-                        >
-                          {highlightText(site, search)}
-                        </a>
-                      ))
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
+                  <strong>Website</strong>
+                  <div className="flex flex-col space-y-4">
+                    {s.website?.length
+                      ? s.website.map((site, i) => (
+                          <a
+                            key={i}
+                            href={formatWebsite(site)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline break-all"
+                          >
+                            {highlightText(site, search)}
+                          </a>
+                        ))
+                      : "-"}
                   </div>
                 </div>
 
-                {/* CONTACTS */}
                 <div>
-                  <strong>Contacts:</strong>
-                  <div className="ml-2 text-muted-foreground">
-                    {s.contacts?.length ? (
-                      s.contacts.map((c, i) => (
-                        <div key={i}>
-                          {i + 1}. {highlightText(c.name, search)} (
-                          {highlightText(c.phone, search)})
-                        </div>
-                      ))
-                    ) : (
-                      <div>-</div>
-                    )}
+                  <strong>Contacts</strong>
+                  <div className="flex flex-col space-y-4 text-muted-foreground">
+                    {s.contacts?.length
+                      ? s.contacts.map((c, i) => (
+                          <div key={i}>
+                            {highlightText(c.name, search)} (
+                            {highlightText(c.phone, search)})
+                          </div>
+                        ))
+                      : "-"}
                   </div>
                 </div>
 
-                {/* FORTE PRODUCTS */}
                 <div>
-                  <strong>Forte Products:</strong>
-                  <div className="ml-2 text-muted-foreground">
-                    {s.forteProducts?.length ? (
-                      s.forteProducts.map((item, i) => (
-                        <div key={i}>
-                          {i + 1}. {highlightText(item, search)}
-                        </div>
-                      ))
-                    ) : (
-                      <div>-</div>
-                    )}
+                  <strong>Forte Products</strong>
+                  <div className="flex flex-col space-y-4 text-muted-foreground">
+                    {s.forteProducts?.length
+                      ? s.forteProducts.map((item, i) => (
+                          <div key={i}>{highlightText(item, search)}</div>
+                        ))
+                      : "-"}
                   </div>
                 </div>
 
-                {/* PRODUCTS */}
                 <div>
-                  <strong>Products:</strong>
-                  <div className="ml-2 text-muted-foreground">
-                    {s.products?.length ? (
-                      s.products.map((item, i) => (
-                        <div key={i}>
-                          {i + 1}. {highlightText(item, search)}
-                        </div>
-                      ))
-                    ) : (
-                      <div>-</div>
-                    )}
+                  <strong>Products</strong>
+                  <div className="flex flex-col space-y-4 text-muted-foreground">
+                    {s.products?.length
+                      ? s.products.map((item, i) => (
+                          <div key={i}>{highlightText(item, search)}</div>
+                        ))
+                      : "-"}
                   </div>
                 </div>
 
-                {/* CERTIFICATES */}
                 <div>
-                  <strong>Certificates:</strong>
-                  <div className="ml-2 text-muted-foreground">
-                    {s.certificates?.length ? (
-                      s.certificates.map((item, i) => (
-                        <div key={i}>
-                          {i + 1}. {highlightText(item, search)}
-                        </div>
-                      ))
-                    ) : (
-                      <div>-</div>
-                    )}
+                  <strong>Certificates</strong>
+                  <div className="flex flex-col space-y-4 text-muted-foreground">
+                    {s.certificates?.length
+                      ? s.certificates.map((item, i) => (
+                          <div key={i}>{highlightText(item, search)}</div>
+                        ))
+                      : "-"}
                   </div>
                 </div>
               </div>
             </div>
           ))
         )}
-      </div>
-
-      {/* PAGINATION (OUTSIDE SCROLL) */}
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-md">
-        <span className="text-xs sm:text-sm text-center sm:text-left">
-          Page {currentPage} of {totalPages || 1}
-        </span>
-
-        <div className="flex gap-2 justify-center sm:justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage((p) => p - 1)}
-            className="cursor-pointer"
-          >
-            Previous
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={currentPage === totalPages || totalPages === 0}
-            onClick={() => setCurrentPage((p) => p + 1)}
-            className="cursor-pointer"
-          >
-            Next
-          </Button>
-        </div>
       </div>
 
       <AddSupplier open={addSupplierOpen} onOpenChange={setAddSupplierOpen} />
