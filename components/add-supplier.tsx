@@ -62,8 +62,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
   const [company, setCompany] = useState("");
   const [supplierBrand, setSupplierBrand] = useState("");
 
-  const [companyCode, setCompanyCode] = useState("");
-  const [internalCode, setInternalCode] = useState<string[]>([""]);
   const [addresses, setAddresses] = useState<string[]>([""]);
   const [emails, setEmails] = useState<string[]>([""]);
   const [website, setWebsite] = useState<string[]>([""]);
@@ -131,15 +129,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
     checkDuplicateCompany();
   }, [company]);
 
-  /* ---------------- AUTO GENERATE SUPPLIER CODE ---------------- */
-  useEffect(() => {
-    if (!company.trim()) {
-      setCompanyCode("");
-      return;
-    }
-    setCompanyCode(generateSupplierCode(company));
-  }, [company]);
-
   /* ---------------- EMAIL ARRAY VALIDATION ---------------- */
   useEffect(() => {
     const invalid = emails.some((e) => e && !e.includes("@"));
@@ -151,22 +140,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
     }
   }, [emails]);
 
-  /* ---------------- Company Code Helpers ---------------- */
-  const normalizeCompanyPrefix = (name: string) => {
-    return name
-      .replace(/[^a-zA-Z ]/g, "")
-      .split(" ")
-      .filter(
-        (w) =>
-          w &&
-          !["INC", "INCORPORATED", "CORP", "CORPORATION", "LTD", "CO"].includes(
-            w.toUpperCase(),
-          ),
-      )
-      .map((w) => w[0].toUpperCase())
-      .join("")
-      .slice(0, 4);
-  };
 
   const generateAlphaNumeric = (length = 6) => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -177,10 +150,7 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
     return result;
   };
 
-  const generateSupplierCode = (companyName: string) => {
-    const prefix = normalizeCompanyPrefix(companyName) || "COMP";
-    return `${prefix}-SUPP-${generateAlphaNumeric(6)}`;
-  };
+
   /* ---------------- Helpers ---------------- */
 
   const updateContactType = (index: number, value: "phone" | "other") => {
@@ -239,8 +209,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
       const supplierData = {
         company,
         supplierBrand,
-        companyCode,
-        internalCode: internalCode.filter(Boolean),
         addresses: addresses.filter(Boolean),
         emails: emails.filter(Boolean),
         website: website.filter(Boolean),
@@ -277,7 +245,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
       setCompany("");
       setSupplierBrand("");
 
-      setInternalCode([""]);
       setAddresses([""]);
       setEmails([""]);
       setWebsite([""]);
@@ -346,56 +313,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
             </div>
           </div>
 
-          {/* Supplier Code */}
-          <div className="space-y-1">
-            <Label>Supplier Code</Label>
-            <Input
-              value={companyCode}
-              disabled
-              className="opacity-100 cursor-not-allowed bg-background text-foreground"
-            />
-          </div>
-
-          {/* Internal Code */}
-          <div className="space-y-3">
-            <Label>Internal Code (optional)</Label>
-
-            {internalCode.map((code, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-[1fr_auto] gap-2 items-center"
-              >
-                <Input
-                  value={code}
-                  placeholder="Internal code"
-                  onChange={(e) =>
-                    updateList(setInternalCode, index, e.target.value)
-                  }
-                />
-
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    onClick={() => addRowAfter(setInternalCode, index)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    disabled={internalCode.length === 1}
-                    onClick={() => removeRow(setInternalCode, index)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
 
           {/* Addresses */}
           <div className="space-y-3">

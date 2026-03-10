@@ -60,8 +60,7 @@ const formatWebsite = (url?: string) => {
 type Supplier = {
   id: string;
   company: string;
-  supplierBrand?: string; // ✅ NEW COLUMN
-  internalCode?: string[];
+  supplierBrand?: string;
   addresses: string[];
   emails?: string[];
   website?: string[];
@@ -143,7 +142,10 @@ export default function Suppliers() {
 
   /* ---------------- Fetch Suppliers (Realtime) ---------------- */
   useEffect(() => {
-    const q = query(collection(db, "suppliers"), orderBy("date_updated", "desc"));
+    const q = query(
+      collection(db, "suppliers"),
+      orderBy("date_updated", "desc"),
+    );
 
     const unsub = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs
@@ -153,13 +155,6 @@ export default function Suppliers() {
           return {
             id: doc.id,
             ...data,
-
-            // ✅ NORMALIZE internalCode
-            internalCode: Array.isArray(data.internalCode)
-              ? data.internalCode
-              : data.internalCode
-                ? [data.internalCode]
-                : [],
 
             // ✅ NORMALIZE website
             website: Array.isArray(data.website)
@@ -203,8 +198,6 @@ export default function Suppliers() {
 
       const searchMatch =
         s.company?.toLowerCase().includes(keyword) ||
-        // Internal Codes
-        s.internalCode?.some((v) => v.toLowerCase().includes(keyword)) ||
         // Addresses
         s.addresses?.some((v) => v.toLowerCase().includes(keyword)) ||
         // Emails
@@ -227,10 +220,6 @@ export default function Suppliers() {
       const filterMatch =
         (!filters.company ||
           s.company.toLowerCase().includes(filters.company.toLowerCase())) &&
-        (!filters.internalCode ||
-          s.internalCode?.some((code) =>
-            code.toLowerCase().includes(filters.internalCode.toLowerCase()),
-          )) &&
         (!filters.email ||
           s.emails?.some((e) =>
             e.toLowerCase().includes(filters.email.toLowerCase()),
@@ -276,65 +265,62 @@ export default function Suppliers() {
   }, [itemsPerPage, totalPages]);
 
   /* ---------------- Download CSV ---------------- */
-const handleDownloadCSV = () => {
-  if (filteredSuppliers.length === 0) return;
+  const handleDownloadCSV = () => {
+    if (filteredSuppliers.length === 0) return;
 
-  const headers = [
-    "Company Name",
-    "Supplier Brand",
-    "Internal Code",
-    "Addresses",
-    "Emails",
-    "Website",
-    "Contact Name(s)",
-    "Phone Number(s)",
-    "Forte Product(s)",
-    "Product(s)",
-    "Certificate(s)",
-  ];
-
-  const rows = filteredSuppliers.map((s) => {
-    const contactNames = s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
-    const contactPhones = s.contacts?.map((c) => c.phone).filter(Boolean) ?? [];
-
-    return [
-      s.company ?? "",
-      s.supplierBrand ?? "",
-      s.internalCode?.join(" | ") ?? "",
-      s.addresses?.join(" | ") ?? "",
-      s.emails?.join(" | ") ?? "",
-      s.website?.join(" | ") ?? "",
-      contactNames.join(" | "),
-      contactPhones.join(" | "),
-      s.forteProducts?.join(" | ") ?? "",
-      s.products?.join(" | ") ?? "",
-      s.certificates?.join(" | ") ?? "",
+    const headers = [
+      "Company Name",
+      "Supplier Brand",
+      "Addresses",
+      "Emails",
+      "Website",
+      "Contact Name(s)",
+      "Phone Number(s)",
+      "Forte Product(s)",
+      "Product(s)",
+      "Certificate(s)",
     ];
-  });
 
-  const csvContent = [headers, ...rows]
-    .map((row) =>
-      row
-        .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
-        .join(","),
-    )
-    .join("\n");
+    const rows = filteredSuppliers.map((s) => {
+      const contactNames = s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
+      const contactPhones =
+        s.contacts?.map((c) => c.phone).filter(Boolean) ?? [];
 
-  const blob = new Blob([csvContent], {
-    type: "text/csv;charset=utf-8;",
-  });
+      return [
+        s.company ?? "",
+        s.supplierBrand ?? "",
+        s.addresses?.join(" | ") ?? "",
+        s.emails?.join(" | ") ?? "",
+        s.website?.join(" | ") ?? "",
+        contactNames.join(" | "),
+        contactPhones.join(" | "),
+        s.forteProducts?.join(" | ") ?? "",
+        s.products?.join(" | ") ?? "",
+        s.certificates?.join(" | ") ?? "",
+      ];
+    });
 
-  const url = URL.createObjectURL(blob);
+    const csvContent = [headers, ...rows]
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
+      )
+      .join("\n");
 
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "suppliers.csv";
-  document.body.appendChild(link);
-  link.click();
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
 
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "suppliers.csv";
+    document.body.appendChild(link);
+    link.click();
+
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-">
@@ -395,7 +381,6 @@ const handleDownloadCSV = () => {
               <TableHead>Actions</TableHead>
               <TableHead>Company Name</TableHead>
               <TableHead>Supplier Brand</TableHead>
-              <TableHead>Internal Code</TableHead>
               <TableHead>Addresses</TableHead>
               <TableHead>Emails</TableHead>
               <TableHead>Website</TableHead>
@@ -459,17 +444,6 @@ const handleDownloadCSV = () => {
                     ) : (
                       "-"
                     )}
-                  </TableCell>
-
-                  {/* INTERNAL CODE */}
-                  <TableCell className="whitespace-normal break-words">
-                    {s.internalCode?.length
-                      ? s.internalCode.map((item, i) => (
-                          <div key={i}>
-                            {i + 1}. {highlightText(item, search)}
-                          </div>
-                        ))
-                      : "-"}
                   </TableCell>
 
                   {/* ADDRESSES */}
@@ -624,19 +598,6 @@ const handleDownloadCSV = () => {
 
               {/* BODY */}
               <div className="text-sm space-y-2">
-                {/* INTERNAL CODE */}
-                <div>
-                  <strong>Internal Code:</strong>
-                  <div className="ml-2 text-muted-foreground">
-                    {s.internalCode?.length
-                      ? s.internalCode.map((c, i) => (
-                          <div key={i}>
-                            {i + 1}. {highlightText(c, search)}
-                          </div>
-                        ))
-                      : "-"}
-                  </div>
-                </div>
 
                 {/* ADDRESSES */}
                 <div>

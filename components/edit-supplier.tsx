@@ -63,7 +63,6 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
   /* ---------------- Base Fields ---------------- */
   const [company, setCompany] = useState("");
   const [supplierBrand, setSupplierBrand] = useState("");
-  const [internalCode, setInternalCode] = useState<string[]>([""]);
   const [addresses, setAddresses] = useState<string[]>([""]);
   const [emails, setEmails] = useState<string[]>([""]);
   const [website, setWebsite] = useState<string[]>([""]);
@@ -148,11 +147,6 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
 
     setCompany(supplier.company || "");
     setSupplierBrand(supplier.supplierBrand || "");
-    setInternalCode(
-      supplier.internalCode && supplier.internalCode.length > 0
-        ? supplier.internalCode
-        : [""],
-    );
     setAddresses(
       supplier.addresses && supplier.addresses.length > 0
         ? supplier.addresses
@@ -286,8 +280,6 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
         company: company.trim(),
         supplierBrand: supplierBrand.trim(),
 
-        internalCode: internalCode.filter(Boolean),
-
         addresses: addresses.filter(Boolean),
 
         emails: emails.filter(Boolean),
@@ -404,47 +396,6 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
                 placeholder="Brand name"
               />
             </div>
-          </div>
-
-          {/* Internal Code */}
-          <div className="space-y-3">
-            <Label>Internal Code (optional)</Label>
-
-            {internalCode.map((code, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-[1fr_auto] gap-2 items-center"
-              >
-                <Input
-                  value={code}
-                  placeholder="Internal code"
-                  onChange={(e) =>
-                    updateList(setInternalCode, index, e.target.value)
-                  }
-                />
-
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    onClick={() => addRowAfter(setInternalCode, index)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    disabled={internalCode.length === 1}
-                    onClick={() => removeRow(setInternalCode, index)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
           </div>
 
           {/* Addresses */}

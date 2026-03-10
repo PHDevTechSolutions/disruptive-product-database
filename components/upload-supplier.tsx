@@ -43,8 +43,7 @@ type UploadSupplierProps = {
 
 type ExcelRow = {
   "Company Name"?: string;
-  "Supplier Brand"?: string; // ✅ ADD
-  "Internal Code"?: string;
+  "Supplier Brand"?: string;
   Addresses?: string;
   Emails?: string;
   Website?: string;
@@ -56,38 +55,6 @@ type ExcelRow = {
 };
 
 
-
-
-/* ---------------- Supplier Code Helpers ---------------- */
-const normalizeCompanyPrefix = (name: string) => {
-  return name
-    .replace(/[^a-zA-Z ]/g, "")
-    .split(" ")
-    .filter(
-      (w) =>
-        w &&
-        !["INC", "INCORPORATED", "CORP", "CORPORATION", "LTD", "CO"].includes(
-          w.toUpperCase(),
-        ),
-    )
-    .map((w) => w[0].toUpperCase())
-    .join("")
-    .slice(0, 4);
-};
-
-const generateAlphaNumeric = (length = 6) => {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
-};
-
-const generateSupplierCode = (companyName: string) => {
-  const prefix = normalizeCompanyPrefix(companyName) || "COMP";
-  return `${prefix}-SUPP-${generateAlphaNumeric(6)}`;
-};
 
 
 const safeSplit = (value: any) => {
@@ -293,7 +260,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
           const incomingData = {
             supplierBrand: String(row["Supplier Brand"] ?? "").trim(), // ✅ ADD
-            internalCode: row["Internal Code"] || "",
+
             addresses: safeSplit(row.Addresses),
             emails: safeSplit(row.Emails),
             website: row.Website || "",
@@ -308,7 +275,6 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
           const isDifferent =
             (existingData.supplierBrand || "") !== incomingData.supplierBrand ||
-            (existingData.internalCode || "") !== incomingData.internalCode ||
             normalizeJoin(existingData.addresses) !==
               normalizeJoin(incomingData.addresses) ||
             normalizeJoin(existingData.emails) !==
@@ -361,10 +327,8 @@ await updateDoc(doc(db, "suppliers", existing.id), {
   supplierBrand,
 supplierbrandId: existing.id,
 
-  companyCode:
-    (existing as any)?.companyCode || generateSupplierCode(company),
 
-  internalCode: row["Internal Code"] || "",
+
   addresses: splitPipe(row.Addresses),
   emails: splitPipe(row.Emails),
   website: row.Website || "",
@@ -399,9 +363,9 @@ const docRef = await addDoc(collection(db, "suppliers"), {
   company,
   supplierBrand,
 
-  companyCode: generateSupplierCode(company),
 
-  internalCode: row["Internal Code"] || "",
+
+
   addresses: safeSplit(row.Addresses),
   emails: safeSplit(row.Emails),
   website: row.Website || "",
@@ -495,12 +459,11 @@ await updateDoc(doc(db, "suppliers", docRef.id), {
 
           {rows.length > 0 && (
             <div className="mt-4 border rounded-md overflow-x-auto max-h-[300px]">
-              <table className="min-w-[1400px] text-sm">
+              <table className="min-w-[1200px]text-sm">
                 <thead className="sticky top-0 bg-background border-b">
                   <tr>
                     <th className="p-2">Company Name</th>
                     <th className="p-2">Supplier Brand</th>
-                    <th className="p-2">Internal Code</th>
                     <th className="p-2">Addresses</th>
                     <th className="p-2">Emails</th>
                     <th className="p-2">Website</th>
@@ -516,7 +479,6 @@ await updateDoc(doc(db, "suppliers", docRef.id), {
                     <tr key={i}>
                       <td className="p-2">{row["Company Name"] || "-"}</td>
                       <td className="p-2">{row["Supplier Brand"] || "-"}</td>
-                      <td className="p-2">{row["Internal Code"] || "-"}</td>
                       <td className="p-2">{row.Addresses || "-"}</td>
                       <td className="p-2">{row.Emails || "-"}</td>
                       <td className="p-2">{row.Website || "-"}</td>
@@ -570,7 +532,6 @@ await updateDoc(doc(db, "suppliers", c.supplierId), {
   supplierBrand: c.incoming.supplierBrand,
 supplierbrandId: c.supplierId,
 
-  internalCode: c.incoming.internalCode,
   addresses: c.incoming.addresses,
   emails: c.incoming.emails,
   website: c.incoming.website,
