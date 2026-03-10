@@ -311,6 +311,7 @@ Unit Cost | Length | Width | Height | pcs/carton | Factory Address | Port of Dis
 
       /* ADD PRODUCT ROWS */
 
+      
       sheetProducts.forEach((product) => {
         const row: any[] = [];
 
@@ -356,10 +357,25 @@ imageURL = convertDriveToThumbnail(imageURL);
         ws.addRow(row);
       });
 
-      const mergeColumns = staticColumns.length;
+const specStartCol = staticColumns.length + 1;
+const specEndCol = ws.columnCount - 7; // before commercial details
 
-      for (let col = 1; col <= mergeColumns; col++) {
-        let startRow = 3;
+for (let row = 4; row <= ws.rowCount; row++) {
+  for (let col = specStartCol; col <= specEndCol; col++) {
+    const cell = ws.getRow(row).getCell(col);
+
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+    };
+  }
+}
+
+const mergeColumns = ws.columnCount;
+
+for (let col = 1; col <= mergeColumns; col++) {
+        let startRow = 4;
         let lastValue = ws.getRow(3).getCell(col).value;
 
         for (let row = 4; row <= ws.rowCount + 1; row++) {
