@@ -285,21 +285,19 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                                   {spec.specId} :
                                 </td>
                                 <td className="border border-black px-2 py-1">
-                                  {spec.value
-                                    ?.split("|")
-                                    .map((v) => v.trim())
-                                    .filter((v) => {
-                                      if (
-                                        !Array.isArray(
-                                          (window as any).__ACTIVE_FILTERS__,
-                                        )
-                                      )
-                                        return true;
-                                      return (
-                                        window as any
-                                      ).__ACTIVE_FILTERS__.includes(v);
-                                    })
-                                    .join(" | ") || spec.value}
+{Array.from(
+  new Set(
+    spec.value
+      ?.split("|")
+      .map((v) => v.trim())
+      .filter(Boolean)
+  )
+)
+  .filter((v) => {
+    if (!Array.isArray((window as any).__ACTIVE_FILTERS__)) return true;
+    return (window as any).__ACTIVE_FILTERS__.includes(v);
+  })
+  .join(" | ") || spec.value}
                                 </td>
                               </tr>
                             ))}

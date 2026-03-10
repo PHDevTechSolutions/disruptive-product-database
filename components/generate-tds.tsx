@@ -170,19 +170,28 @@ const imgData = await fetch(proxyUrl)
 
     /* ================= BUILD TABLE ================= */
 
-    const filterSpecValue = (value?: string) => {
+const filterSpecValue = (value?: string) => {
   if (!value) return "";
 
   const activeFilters = (window as any).__ACTIVE_FILTERS__ || [];
 
-  if (!value.includes("|") || activeFilters.length === 0) return value;
-
-  const filtered = value
+  const values = value
     .split("|")
     .map((v) => v.trim())
-    .filter((v) => activeFilters.includes(v));
+    .filter(Boolean);
 
-  return filtered.length ? filtered.join(" | ") : value;
+  // 🔥 remove duplicates
+  const uniqueValues = Array.from(new Set(values));
+
+  if (uniqueValues.length === 0) return "";
+
+  if (activeFilters.length === 0) {
+    return uniqueValues.join(" | ");
+  }
+
+  const filtered = uniqueValues.filter((v) => activeFilters.includes(v));
+
+  return filtered.length ? filtered.join(" | ") : uniqueValues.join(" | ");
 };
     const tableRows: any[] = [];
 
