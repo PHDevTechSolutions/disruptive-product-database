@@ -38,6 +38,7 @@ type SPFRequest = {
     start_date?: string;
     end_date?: string;
     special_instructions?: string;
+    item_description?: string;
     status?: string;
     date_created?: string;
     process_by?: string;
@@ -77,8 +78,7 @@ export default function SPF({ processBy }: SPFProps) {
         tin_no: "",
     });
 
-    const [openCompanyDetails, setOpenCompanyDetails] = useState(true);
-    const [openSPFDetails, setOpenSPFDetails] = useState(true);
+    const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
 
     // Products for the selected SPF request
     const [products, setProducts] = useState<any[]>([]);
@@ -225,29 +225,30 @@ export default function SPF({ processBy }: SPFProps) {
 
                 {/* ---------------- Dialog ---------------- */}
                 <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-                    <DialogContent className="sm:max-w-8xl rounded-none p-6">
-                        <DialogHeader className="flex items-center w-full">
+                    <DialogContent className="sm:max-w-8xl rounded-none p-6 max-h-[90vh] overflow-y-auto">
+                        <DialogHeader className="flex items-center w-full mb-4">
                             <DialogTitle>Create SPF Request</DialogTitle>
-
-                            <div className="ml-auto mr-2 flex gap-2">
+                            <div className="ml-auto flex gap-2">
                                 <Button
                                     size="icon"
                                     variant="outline"
+                                    className="rounded-none p-6"
                                     onClick={() => setOpenFilter((prev) => !prev)}
                                 >
                                     <Funnel size={16} />
                                 </Button>
 
-                                <Button size="sm" onClick={() => setOpenAddProduct(true)}>
+                                <Button className="rounded-none p-6" onClick={() => setOpenAddProduct(true)}>
                                     + Add Product
                                 </Button>
                             </div>
                         </DialogHeader>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <Card className="p-4">
+                        {/* OUTER FLEX CONTAINER */}
+                        <div className="flex gap-4">
+                            {/* LEFT CARD: Company Details + Table */}
+                            <Card className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto max-h-[70vh]">
                                 <div className="grid grid-cols-1 gap-4">
-                                    {/* ---------------- LEFT CARD ---------------- */}
                                     <CardDetails
                                         title="Company Details"
                                         fields={[
@@ -262,7 +263,6 @@ export default function SPF({ processBy }: SPFProps) {
                                         ]}
                                     />
 
-                                    {/* ---------------- RIGHT CARD ---------------- */}
                                     <CardDetails
                                         title="SPF Details"
                                         fields={[
@@ -270,97 +270,109 @@ export default function SPF({ processBy }: SPFProps) {
                                             { label: "Warranty", value: formData.warranty },
                                             { label: "Delivery Date", value: formData.delivery_date },
                                             { label: "Prepared By", value: formData.prepared_by },
-                                            { label: "Process By", value: formData.process_by },
                                             { label: "Approved By", value: formData.approved_by },
-                                            { label: "Special Instructions", value: formData.special_instructions, pre: true },
+                                            { label: "Process By", value: formData.process_by },
                                         ]}
                                     />
                                 </div>
+
+                                {/* SELECTED PRODUCTS TABLE */}
+                                <div className="mt-4 overflow-y-auto">
+                                    {selectedProducts.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">No products added yet.</p>
+                                    ) : (
+                                        <table className="w-full table-auto border">
+                                            <thead>
+                                                <tr className="bg-gray-100">
+                                                    <th className="border px-2 py-1">Image</th>
+                                                    <th className="border px-2 py-1">Product Name</th>
+                                                    <th className="border px-2 py-1">Supplier Brand</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {selectedProducts.map((p) => (
+                                                    <tr key={p.id}>
+                                                        <td className="border px-2 py-1">
+                                                            {p.mainImage?.url ? (
+                                                                <img src={p.mainImage.url} className="w-16 h-16 object-contain" />
+                                                            ) : (
+                                                                <span className="text-xs text-gray-400">No Image</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="border px-2 py-1">{p.productName}</td>
+                                                        <td className="border px-2 py-1">{p.supplier?.supplierBrand || "-"}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
                             </Card>
 
-                            <div className="flex gap-4 w-full h-[700px] overflow-hidden">
+                            {/* RIGHT CARD: Products Section */}
+                            <div className="flex-1 max-h-[70vh] overflow-y-auto">
+                                <div className="grid grid-cols-2 gap-3 auto-rows-auto">
+                                    {filteredProducts.map((p) => (
+                                        <Card key={p.id} className="flex flex-col p-2 border shadow hover:shadow-md">
+                                            <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
+                                                {p.mainImage?.url ? (
+                                                    <img
+                                                        src={p.mainImage.url}
+                                                        className="w-full h-full object-contain"
+                                                        alt={p.productName}
+                                                    />
+                                                ) : (
+                                                    <div className="text-xs text-gray-400">No Image</div>
+                                                )}
+                                            </div>
 
-                                {/* PRODUCTS SECTION (CENTER) */}
-                                <Card className="p-2 border rounded flex-1 overflow-y-auto">
-                                    {loadingProducts ? (
-                                        <p className="text-sm text-muted-foreground">
-                                            Loading products...
-                                        </p>
-                                    ) : products.length === 0 ? (
-                                        <p className="text-sm text-muted-foreground">
-                                            No products found.
-                                        </p>
-                                    ) : (
-                                        <div className="grid grid-cols-2 gap-3 auto-rows-auto grid-flow-row-dense">
-                                            {filteredProducts.map((p) => (
-                                                <Card
-                                                    key={p.id}
-                                                    className="flex flex-col p-2 border shadow hover:shadow-md"
-                                                >
-                                                    <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
-                                                        {p.mainImage?.url ? (
-                                                            <img
-                                                                src={p.mainImage.url}
-                                                                className="w-full h-full object-contain"
-                                                            />
-                                                        ) : (
-                                                            <div className="text-xs text-gray-400">
-                                                                No Image
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                            <div className="mt-2 flex-1">
+                                                <p className="text-sm font-semibold line-clamp-2">{p.productName}</p>
+                                                <p className="text-xs text-muted-foreground line-clamp-1">
+                                                    {p.supplier?.supplierBrand || "-"}
+                                                </p>
+                                            </div>
 
-                                                    <div className="mt-2 flex-1">
-                                                        <p className="text-sm font-semibold line-clamp-2">
-                                                            {p.productName}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground line-clamp-1">
-                                                            {p.supplier?.supplierBrand || "-"}
-                                                        </p>
-                                                    </div>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    )}
-                                </Card>
-
-                                {/* FILTER SECTION (RIGHT SIDE) */}
-                                {openFilter && (
-                                    <div className="w-[320px] shrink-0 h-full overflow-y-auto">
-                                        <FilteringComponent
-                                            products={products}
-                                            onFilter={(filtered) => setFilteredProducts(filtered)}
-                                        />
-                                    </div>
-                                )}
-
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="mt-2 w-full"
+                                                onClick={() => {
+                                                    if (!selectedProducts.find((sp) => sp.id === p.id)) {
+                                                        setSelectedProducts((prev) => [...prev, p]);
+                                                    }
+                                                }}
+                                            >
+                                                + Add
+                                            </Button>
+                                        </Card>
+                                    ))}
+                                </div>
                             </div>
+
+                            {/* FILTER SECTION */}
+                            {openFilter && (
+                                <div className="w-[320px] shrink-0 h-full overflow-y-auto">
+                                    <FilteringComponent
+                                        products={products}
+                                        onFilter={(filtered) => setFilteredProducts(filtered)}
+                                    />
+                                </div>
+                            )}
                         </div>
+
                         <DialogFooter className="mt-4 flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => setOpenDialog(false)}>
+                            <Button
+                                variant="outline"
+                                className="rounded-none p-6"
+                                onClick={() => setOpenDialog(false)}
+                            >
                                 Cancel
                             </Button>
-                            <Button onClick={handleSubmit}>Submit</Button>
+                            <Button className="rounded-none p-6" onClick={handleSubmit}>
+                                Submit
+                            </Button>
                         </DialogFooter>
-                        {/* ---------------- Add Product Dialog ---------------- */}
-                        <Dialog open={openAddProduct} onOpenChange={setOpenAddProduct}>
-                            <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
-                                <DialogHeader>
-                                    <DialogTitle>Add Product</DialogTitle>
-                                </DialogHeader>
-
-                                <AddProductComponent onClose={() => setOpenAddProduct(false)} />
-
-                                <DialogFooter>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setOpenAddProduct(false)}
-                                    >
-                                        Close
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
                     </DialogContent>
                 </Dialog>
             </CardContent>
