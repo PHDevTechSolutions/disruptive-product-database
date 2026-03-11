@@ -3,15 +3,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, } from "@/components/ui/dialog";
 import { supabase } from "@/utils/supabase";
-import { ChevronDown, Funnel } from "lucide-react";
+import { ChevronDown, Funnel, Trash2 } from "lucide-react";
 import FilteringComponent from "@/components/filtering-component-v2";
 import AddProductComponent from "@/components/add-product-component";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
@@ -38,7 +32,7 @@ type SPFRequest = {
     start_date?: string;
     end_date?: string;
     special_instructions?: string;
-    item_description?: string;
+    item_description?: string[];
     status?: string;
     date_created?: string;
     process_by?: string;
@@ -278,52 +272,65 @@ export default function SPF({ processBy }: SPFProps) {
 
                                 {/* SELECTED PRODUCTS TABLE */}
                                 <div className="mt-4 overflow-y-auto">
-                                    {selectedProducts.length === 0 ? (
-                                        <p className="text-sm text-muted-foreground">No products added yet.</p>
-                                    ) : (
-                                        <table className="w-full table-auto border">
-                                            <thead>
-                                                <tr className="bg-gray-100">
-                                                    <th className="border px-2 py-1">Image</th>
-                                                    <th className="border px-2 py-1">Product Name</th>
-                                                    <th className="border px-2 py-1">Supplier Brand</th>
-                                                    <th className="border px-2 py-1">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {selectedProducts.map((p) => (
-                                                    <tr key={p.id}>
-                                                        <td className="border px-2 py-1">
-                                                            {p.mainImage?.url ? (
-                                                                <img
-                                                                    src={p.mainImage.url}
-                                                                    className="w-16 h-16 object-contain"
-                                                                    alt={p.productName}
-                                                                />
-                                                            ) : (
-                                                                <span className="text-xs text-gray-400">No Image</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="border px-2 py-1">{p.productName}</td>
-                                                        <td className="border px-2 py-1">{p.supplier?.supplierBrand || "-"}</td>
-                                                        <td className="border px-2 py-1">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="destructive"
-                                                                onClick={() =>
-                                                                    setSelectedProducts((prev) =>
-                                                                        prev.filter((sp) => sp.id !== p.id)
-                                                                    )
-                                                                }
-                                                            >
-                                                                Remove
-                                                            </Button>
-                                                        </td>
+                                    <div className="mt-4 overflow-y-auto">
+                                        {formData.item_description ? (
+                                            <table className="w-full table-auto border">
+                                                <thead>
+                                                    <tr className="bg-gray-100">
+                                                        <th className="border px-2 py-1">Image</th>
+                                                        <th className="border px-2 py-1">Item Description</th>
+                                                        <th className="border px-2 py-1">Supplier Brand</th>
+                                                        <th className="border px-2 py-1">Action</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    )}
+                                                </thead>
+
+                                                <tbody>
+                                                    {(Array.isArray(formData.item_description)
+                                                        ? formData.item_description
+                                                        : formData.item_description
+                                                            ? [formData.item_description]
+                                                            : []
+                                                    ).flatMap((item: string, index: number) => {
+
+                                                        const parts = item.split(",");
+
+                                                        return parts.map((value, subIndex) => (
+                                                            <tr key={`${index}-${subIndex}`}>
+
+                                                                {/* IMAGE COLUMN */}
+                                                                <td className="border px-2 py-1"></td>
+
+                                                                {/* ITEM DESCRIPTION COLUMN */}
+                                                                <td className="border px-2 py-1">
+                                                                    {value.startsWith("http") ? (
+                                                                        <img
+                                                                            src={value}
+                                                                            className="w-16 h-16 object-contain"
+                                                                        />
+                                                                    ) : (
+                                                                        value
+                                                                    )}
+                                                                </td>
+
+                                                                {/* SUPPLIER */}
+                                                                <td className="border px-2 py-1">-</td>
+
+                                                                {/* ACTION */}
+                                                                <td className="border px-2 py-1">
+                                                                    <Button variant="destructive" className="bg-red-700">
+                                                                        <Trash2 />
+                                                                    </Button>
+                                                                </td>
+
+                                                            </tr>
+                                                        ));
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">No items added yet.</p>
+                                        )}
+                                    </div>
                                 </div>
                             </Card>
 
