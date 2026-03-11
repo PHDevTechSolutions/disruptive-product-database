@@ -96,7 +96,11 @@ type Supplier = {
   supplierBrand?: string;
 };
 
-export default function AddProductComponent() {
+interface AddProductComponentProps {
+  onClose?: () => void;
+}
+
+export default function AddProductComponent({ onClose }: AddProductComponentProps) {
   useEffect(() => {
     // Check if there are saved technical specifications in sessionStorage
     const savedSpecs = sessionStorage.getItem("technicalSpecs");
@@ -1173,7 +1177,9 @@ export default function AddProductComponent() {
 
       toast.success("Product saved successfully");
 
-      router.push("/products");
+    if (onClose) {
+      onClose();
+    }
     } catch (error) {
       console.error(error);
 
