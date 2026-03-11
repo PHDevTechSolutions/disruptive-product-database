@@ -215,9 +215,15 @@ export default function SPF({ processBy }: SPFProps) {
         {/* ---------------- Dialog ---------------- */}
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogContent className="sm:max-w-7xl rounded-none p-6">
-            <DialogHeader>
-              <DialogTitle>Create SPF Request</DialogTitle>
-            </DialogHeader>
+<DialogHeader className="flex items-center w-full">
+  <DialogTitle>Create SPF Request</DialogTitle>
+
+  <div className="ml-auto mr-2">
+    <Button size="sm" onClick={() => setOpenAddProduct(true)}>
+      + Add Product
+    </Button>
+  </div>
+</DialogHeader>
 
             <div className="grid grid-cols-2 gap-4">
               <Card className="p-4">
@@ -342,14 +348,6 @@ export default function SPF({ processBy }: SPFProps) {
               </Card>
 
               <Card className="p-2 border rounded max-h-[700px] overflow-y-auto">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">Products</h3>
-
-                  <Button size="sm" onClick={() => setOpenAddProduct(true)}>
-                    + Add Product
-                  </Button>
-                </div>
-
                 {loadingProducts ? (
                   <p className="text-sm text-muted-foreground">
                     Loading products...
