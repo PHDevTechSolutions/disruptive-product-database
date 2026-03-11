@@ -287,6 +287,7 @@ export default function SPF({ processBy }: SPFProps) {
                                                     <th className="border px-2 py-1">Image</th>
                                                     <th className="border px-2 py-1">Product Name</th>
                                                     <th className="border px-2 py-1">Supplier Brand</th>
+                                                    <th className="border px-2 py-1">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -294,13 +295,30 @@ export default function SPF({ processBy }: SPFProps) {
                                                     <tr key={p.id}>
                                                         <td className="border px-2 py-1">
                                                             {p.mainImage?.url ? (
-                                                                <img src={p.mainImage.url} className="w-16 h-16 object-contain" />
+                                                                <img
+                                                                    src={p.mainImage.url}
+                                                                    className="w-16 h-16 object-contain"
+                                                                    alt={p.productName}
+                                                                />
                                                             ) : (
                                                                 <span className="text-xs text-gray-400">No Image</span>
                                                             )}
                                                         </td>
                                                         <td className="border px-2 py-1">{p.productName}</td>
                                                         <td className="border px-2 py-1">{p.supplier?.supplierBrand || "-"}</td>
+                                                        <td className="border px-2 py-1">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                onClick={() =>
+                                                                    setSelectedProducts((prev) =>
+                                                                        prev.filter((sp) => sp.id !== p.id)
+                                                                    )
+                                                                }
+                                                            >
+                                                                Remove
+                                                            </Button>
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -371,6 +389,27 @@ export default function SPF({ processBy }: SPFProps) {
                             </Button>
                             <Button className="rounded-none p-6" onClick={handleSubmit}>
                                 Submit
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* ---------------- Add Product Dialog ---------------- */}
+                <Dialog open={openAddProduct} onOpenChange={setOpenAddProduct}>
+                    <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Add Product</DialogTitle>
+                        </DialogHeader>
+
+                        <AddProductComponent onClose={() => setOpenAddProduct(false)} />
+
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                className="rounded-none"
+                                onClick={() => setOpenAddProduct(false)}
+                            >
+                                Close
                             </Button>
                         </DialogFooter>
                     </DialogContent>
