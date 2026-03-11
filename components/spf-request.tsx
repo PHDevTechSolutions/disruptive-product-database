@@ -80,9 +80,10 @@ export default function SPF({ processBy }: SPFProps) {
 
   // Products for the selected SPF request
   const [products, setProducts] = useState<any[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [openAddProduct, setOpenAddProduct] = useState(false);
-  
+  const [openFilter, setOpenFilter] = useState(false);
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -147,14 +148,15 @@ export default function SPF({ processBy }: SPFProps) {
     setLoadingProducts(true);
     const q = query(collection(db, "products"), where("isActive", "==", true));
     const unsubscribe = onSnapshot(q, (snap) => {
-const list = snap.docs
-  .map((d) => ({ id: d.id, ...d.data() }))
-  .sort(
-    (a: any, b: any) =>
-      (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
-  );
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort(
+          (a: any, b: any) =>
+            (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0),
+        );
 
       setProducts(list);
+      setFilteredProducts(list);
       setLoadingProducts(false);
     });
     return unsubscribe;
@@ -222,15 +224,23 @@ const list = snap.docs
         {/* ---------------- Dialog ---------------- */}
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogContent className="sm:max-w-7xl rounded-none p-6">
-<DialogHeader className="flex items-center w-full">
-  <DialogTitle>Create SPF Request</DialogTitle>
+            <DialogHeader className="flex items-center w-full">
+              <DialogTitle>Create SPF Request</DialogTitle>
 
-  <div className="ml-auto mr-2">
-    <Button size="sm" onClick={() => setOpenAddProduct(true)}>
-      + Add Product
-    </Button>
-  </div>
-</DialogHeader>
+              <div className="ml-auto mr-2 flex gap-2">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setOpenFilter((prev) => !prev)}
+                >
+                  <Funnel size={16} />
+                </Button>
+
+                <Button size="sm" onClick={() => setOpenAddProduct(true)}>
+                  + Add Product
+                </Button>
+              </div>
+            </DialogHeader>
 
             <div className="grid grid-cols-2 gap-4">
               <Card className="p-4">
@@ -341,14 +351,14 @@ const list = snap.docs
                             <span className="font-semibold text-sm">
                               {field.label}:
                             </span>
-                                <span
-                                className={`text-gray-700 text-sm break-all ${
-                                    field.pre ? "whitespace-pre-line" : ""
-                                }`}
-                                >
-                                {field.value || "-"}
-                                </span> 
-                            </div>
+                            <span
+                              className={`text-gray-700 text-sm break-all ${
+                                field.pre ? "whitespace-pre-line" : ""
+                              }`}
+                            >
+                              {field.value || "-"}
+                            </span>
+                          </div>
                         ))}
                       </div>
                     )}
@@ -356,50 +366,64 @@ const list = snap.docs
                 </div>
               </Card>
 
-              <Card className="p-2 border rounded max-h-[700px] overflow-y-auto">
-                {loadingProducts ? (
-                  <p className="text-sm text-muted-foreground">
-                    Loading products...
-                  </p>
-                ) : products.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No products found.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3 auto-rows-auto grid-flow-row-dense">
-                    {products.map((p) => (
-                      <Card
-                        key={p.id}
-                        className="flex flex-col p-2 border shadow hover:shadow-md"
-                      >
-                        <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
-                          {p.mainImage?.url ? (
-                            <img
-                              src={p.mainImage.url}
-                              className="w-full h-full object-contain"
-                            />
-                          ) : (
-                            <div className="text-xs text-gray-400">
-                              No Image
-                            </div>
-                          )}
-                        </div>
+<div className="flex gap-4 w-full h-[700px] overflow-hidden">
 
-                        <div className="mt-2 flex-1">
-                          <p className="text-sm font-semibold line-clamp-2">
-                            {p.productName}
-                          </p>
-                          <p className="text-xs text-muted-foreground line-clamp-1">
-                            {p.supplier?.supplierBrand || "-"}
-                          </p>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </Card>
+  {/* PRODUCTS SECTION (CENTER) */}
+  <Card className="p-2 border rounded flex-1 overflow-y-auto">
+    {loadingProducts ? (
+      <p className="text-sm text-muted-foreground">
+        Loading products...
+      </p>
+    ) : products.length === 0 ? (
+      <p className="text-sm text-muted-foreground">
+        No products found.
+      </p>
+    ) : (
+      <div className="grid grid-cols-2 gap-3 auto-rows-auto grid-flow-row-dense">
+        {filteredProducts.map((p) => (
+          <Card
+            key={p.id}
+            className="flex flex-col p-2 border shadow hover:shadow-md"
+          >
+            <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
+              {p.mainImage?.url ? (
+                <img
+                  src={p.mainImage.url}
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="text-xs text-gray-400">
+                  No Image
+                </div>
+              )}
             </div>
 
+            <div className="mt-2 flex-1">
+              <p className="text-sm font-semibold line-clamp-2">
+                {p.productName}
+              </p>
+              <p className="text-xs text-muted-foreground line-clamp-1">
+                {p.supplier?.supplierBrand || "-"}
+              </p>
+            </div>
+          </Card>
+        ))}
+      </div>
+    )}
+  </Card>
+
+  {/* FILTER SECTION (RIGHT SIDE) */}
+  {openFilter && (
+    <div className="w-[320px] shrink-0 h-full overflow-y-auto">
+      <FilteringComponent
+        products={products}
+        onFilter={(filtered) => setFilteredProducts(filtered)}
+      />
+    </div>
+  )}
+
+</div>
+            </div>
             <DialogFooter className="mt-4 flex justify-end gap-2">
               <Button variant="outline" onClick={() => setOpenDialog(false)}>
                 Cancel
