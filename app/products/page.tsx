@@ -235,10 +235,10 @@ export default function ProductsPage() {
                   >
                     <div className="h-[180px] bg-muted flex items-center justify-center overflow-hidden p-2">
                       {p.mainImage?.url ? (
-<img
-  src={convertDriveToThumbnail(p.mainImage.url)}
-  className="w-full h-full object-contain"
-/>
+                        <img
+                          src={convertDriveToThumbnail(p.mainImage.url)}
+                          className="w-full h-full object-contain"
+                        />
                       ) : (
                         <div className="flex items-center justify-center h-full text-xs">
                           No Image

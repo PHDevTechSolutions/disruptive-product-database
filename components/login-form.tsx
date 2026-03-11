@@ -94,15 +94,7 @@ export function LoginForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={cn(
-        "w-full max-w-md rounded-2xl bg-white/90 backdrop-blur-md p-8 shadow-2xl",
-
-        className,
-      )}
-      {...props}
-    >
+    <form onSubmit={handleSubmit} {...props}>
       <FieldGroup>
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">

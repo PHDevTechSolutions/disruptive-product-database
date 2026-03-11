@@ -17,61 +17,47 @@ export default function LoginPage() {
   }, [userId, router]);
 
   return (
-    <div className="relative min-h-svh">
-      {/* 🔴 BACKGROUND WALLPAPER (SMALL SCREENS) */}
-      <div className="absolute inset-0 lg:hidden">
-        <Image
-          src="/login-wallpaper-3.png"
-          alt="Background"
-          fill
-          className="object-cover"
-          priority
-        />
-        <div className="absolute inset-0 bg-black/40" />
-      </div>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
 
-      <div className="relative grid min-h-svh lg:grid-cols-2">
-        {/* LEFT / LOGIN */}
-        <div className="flex flex-col gap-4 p-6 md:p-8">
-          <div className="flex justify-center gap-2 md:justify-start">
-            <a
-              href="#"
-              className="flex items-center gap-2 font-medium
-                         text-white lg:text-red-600"
-            >
-              <div className="relative size-10">
+      {/* CENTER MAIN CARD */}
+      <div className="w-full max-w-5xl bg-white shadow-2xl rounded-xl border overflow-hidden">
+
+        {/* INNER GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-2">
+
+          {/* LEFT CARD (LOGIN FORM) */}
+          <div className="bg-white p-8 flex flex-col justify-center gap-6 border-b lg:border-b-0 lg:border-r border-gray-200">
+
+            <div className="flex items-center gap-3 mb-8">
+              <div className="relative w-24 h-24">
                 <Image
-                  src="/disruptive-logo.png"
-                  alt="Disruptive Solutions Inc."
+                  src="/images/disruptive-logo.png"
+                  alt="Disruptive Solutions"
                   fill
-                  className="
-                    object-contain
-                    brightness-0 invert
-                    lg:brightness-100 lg:invert-0
-                  "
+                  className="object-contain"
                   priority
                 />
               </div>
-              Disruptive Solutions Inc.
-            </a>
-          </div>
-
-          <div className="flex flex-1 items-center justify-center">
-            <div className="w-full max-w-xs">
-              <LoginForm />
+              <span className="font-semibold text-red-600 text-lg">
+                Disruptive Solutions Inc.
+              </span>
             </div>
-          </div>
-        </div>
 
-        {/* 🟢 RIGHT WALLPAPER (DESKTOP ONLY) */}
-        <div className="relative hidden lg:block">
-          <Image
-            src="/login-wallpaper-3.png"
-            alt="Image"
-            fill
-            className="object-cover dark:brightness-[0.2] dark:grayscale"
-            priority
-          />
+            <LoginForm />
+
+          </div>
+
+          {/* RIGHT CARD (IMAGE) - hidden on mobile */}
+          <div className="relative hidden lg:block min-h-[500px] w-full">
+            <Image
+              src="/images/login-wallpaper-3.png"
+              alt="Login Wallpaper"
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
+
         </div>
       </div>
     </div>
