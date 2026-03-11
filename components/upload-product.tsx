@@ -55,6 +55,17 @@ type TemplateSpec = {
   }[];
 };
 
+const cleanExcelValue = (val: any) => {
+  if (val === null || val === undefined) return "";
+
+  const str = val.toString().trim();
+
+  // treat dash as empty
+  if (str === "-") return "";
+
+  return str;
+};
+
 /* CTRL + F: CONVERT GOOGLE DRIVE LINK */
 const convertDriveToThumbnail = (url?: string) => {
   if (!url) return "";
@@ -360,8 +371,8 @@ export default function UploadProduct({}: Props) {
         for (let r = 3; r <= ws.rowCount; r++) {
           const row = ws.getRow(r);
 
-          const usage = row.getCell(1).value?.toString() || lastUsage;
-          const family = row.getCell(2).value?.toString() || lastFamily;
+          const usage = cleanExcelValue(row.getCell(1).value) || lastUsage;
+          const family = cleanExcelValue(row.getCell(2).value) || lastFamily;
 
           lastUsage = usage;
           lastFamily = family;
@@ -404,8 +415,8 @@ export default function UploadProduct({}: Props) {
         ];
 
         for (let col = 8; col <= ws.columnCount; col++) {
-          const groupTitle = header2.getCell(col).value?.toString() || "";
-          const specId = header1.getCell(col).value?.toString() || "";
+          const groupTitle = cleanExcelValue(header2.getCell(col).value);
+          const specId = cleanExcelValue(header1.getCell(col).value);
 
           /* NEVER include COMMERCIAL DETAILS in technical specs */
           if (groupTitle === "COMMERCIAL DETAILS") continue;
@@ -431,14 +442,17 @@ export default function UploadProduct({}: Props) {
         for (let r = 3; r <= ws.rowCount; r++) {
           const row = ws.getRow(r);
 
-          let usage = row.getCell(1).value?.toString() || lastUsage;
-          let family = row.getCell(2).value?.toString() || lastFamily;
+          let usage = cleanExcelValue(row.getCell(1).value) || lastUsage;
+          let family = cleanExcelValue(row.getCell(2).value) || lastFamily;
 
-          let productClass = row.getCell(3).value?.toString() || lastClass;
-          let pricePoint = row.getCell(4).value?.toString() || lastPricePoint;
-          let brandOrigin = row.getCell(5).value?.toString() || lastBrandOrigin;
+          let productClass = cleanExcelValue(row.getCell(3).value) || lastClass;
+          let pricePoint =
+            cleanExcelValue(row.getCell(4).value) || lastPricePoint;
+          let brandOrigin =
+            cleanExcelValue(row.getCell(5).value) || lastBrandOrigin;
 
-          let supplierBrand = row.getCell(6).value?.toString() || lastSupplier;
+          let supplierBrand =
+            cleanExcelValue(row.getCell(6).value) || lastSupplier;
           /* CTRL + F: FIX IMAGE OBJECT FROM EXCEL */
 
           let imageCell: any = row.getCell(7).value;
@@ -455,26 +469,28 @@ export default function UploadProduct({}: Props) {
               imageURL = String(imageCell);
             }
           } else {
-            imageURL = imageCell?.toString() || "";
+            imageURL = cleanExcelValue(imageCell);
           }
 
           imageURL = imageURL || lastImage;
 
           /* CTRL + F: FIX GOOGLE DRIVE IMAGE */
           imageURL = convertDriveToThumbnail(imageURL);
-          const unitCost =
-            row.getCell(ws.columnCount - 6).value?.toString() || "";
-          const length =
-            row.getCell(ws.columnCount - 5).value?.toString() || "";
-          const width = row.getCell(ws.columnCount - 4).value?.toString() || "";
-          const height =
-            row.getCell(ws.columnCount - 3).value?.toString() || "";
-          const pcsPerCarton =
-            row.getCell(ws.columnCount - 2).value?.toString() || "";
-          const factoryAddress =
-            row.getCell(ws.columnCount - 1).value?.toString() || "";
-          const portOfDischarge =
-            row.getCell(ws.columnCount).value?.toString() || "";
+          const unitCost = cleanExcelValue(
+            row.getCell(ws.columnCount - 6).value,
+          );
+          const length = cleanExcelValue(row.getCell(ws.columnCount - 5).value);
+          const width = cleanExcelValue(row.getCell(ws.columnCount - 4).value);
+          const height = cleanExcelValue(row.getCell(ws.columnCount - 3).value);
+          const pcsPerCarton = cleanExcelValue(
+            row.getCell(ws.columnCount - 2).value,
+          );
+          const factoryAddress = cleanExcelValue(
+            row.getCell(ws.columnCount - 1).value,
+          );
+          const portOfDischarge = cleanExcelValue(
+            row.getCell(ws.columnCount).value,
+          );
 
           /* SAVE LAST VALUES */
 
@@ -539,7 +555,7 @@ export default function UploadProduct({}: Props) {
                 specId: templateSpec.specId,
 
                 value: excelMatch
-                  ? row.getCell(excelMatch.col).value?.toString() || ""
+                  ? cleanExcelValue(row.getCell(excelMatch.col).value)
                   : "",
               };
             }),

@@ -14,7 +14,6 @@ import UploadProductModal from "@/components/upload-product";
 import DownloadProduct from "@/components/download-product";
 import ViewProduct from "@/components/view-product";
 
-
 // ===== GOOGLE DRIVE IMAGE FIX =====
 const convertDriveToThumbnail = (url: string) => {
   if (!url) return url;
