@@ -339,12 +339,14 @@ const list = snap.docs
                             <span className="font-semibold text-sm">
                               {field.label}:
                             </span>
-                            <span
-                              className={`text-gray-700 text-sm ${field.pre ? "whitespace-pre-line" : ""}`}
-                            >
-                              {field.value || "-"}
-                            </span>
-                          </div>
+                                <span
+                                className={`text-gray-700 text-sm break-all ${
+                                    field.pre ? "whitespace-pre-line" : ""
+                                }`}
+                                >
+                                {field.value || "-"}
+                                </span> 
+                            </div>
                         ))}
                       </div>
                     )}
