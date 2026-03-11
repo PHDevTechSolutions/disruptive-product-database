@@ -11,7 +11,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { supabase } from "@/utils/supabase";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Funnel } from "lucide-react";
+import FilteringComponent from "@/components/filtering-component-v2";
 import AddProductComponent from "@/components/add-product-component";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -81,6 +82,7 @@ export default function SPF({ processBy }: SPFProps) {
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [openAddProduct, setOpenAddProduct] = useState(false);
+  
 
   const fetchRequests = useCallback(async () => {
     try {
