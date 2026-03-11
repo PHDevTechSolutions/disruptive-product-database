@@ -11,7 +11,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { supabase } from "@/utils/supabase";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Funnel } from "lucide-react";
+import FilteringComponent from "@/components/filtering-component-v2";
 import AddProductComponent from "@/components/add-product-component";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -81,8 +82,10 @@ export default function SPF({ processBy }: SPFProps) {
 
     // Products for the selected SPF request
     const [products, setProducts] = useState<any[]>([]);
+    const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(false);
     const [openAddProduct, setOpenAddProduct] = useState(false);
+    const [openFilter, setOpenFilter] = useState(false);
 
     const fetchRequests = useCallback(async () => {
         try {
@@ -151,10 +154,11 @@ export default function SPF({ processBy }: SPFProps) {
                 .map((d) => ({ id: d.id, ...d.data() }))
                 .sort(
                     (a: any, b: any) =>
-                        (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+                        (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0),
                 );
 
             setProducts(list);
+            setFilteredProducts(list);
             setLoadingProducts(false);
         });
         return unsubscribe;
@@ -225,7 +229,15 @@ export default function SPF({ processBy }: SPFProps) {
                         <DialogHeader className="flex items-center w-full">
                             <DialogTitle>Create SPF Request</DialogTitle>
 
-                            <div className="ml-auto mr-2">
+                            <div className="ml-auto mr-2 flex gap-2">
+                                <Button
+                                    size="icon"
+                                    variant="outline"
+                                    onClick={() => setOpenFilter((prev) => !prev)}
+                                >
+                                    <Funnel size={16} />
+                                </Button>
+
                                 <Button size="sm" onClick={() => setOpenAddProduct(true)}>
                                     + Add Product
                                 </Button>
@@ -233,7 +245,6 @@ export default function SPF({ processBy }: SPFProps) {
                         </DialogHeader>
 
                         <div className="grid grid-cols-2 gap-4">
-                            {/* ---------------- LEFT CARD ---------------- */}
                             <Card className="p-4">
                                 <div className="grid grid-cols-1 gap-4">
                                     {/* ---------------- LEFT CARD ---------------- */}
@@ -267,50 +278,64 @@ export default function SPF({ processBy }: SPFProps) {
                                 </div>
                             </Card>
 
-                            <Card className="p-2 border rounded max-h-[700px] overflow-y-auto">
-                                {loadingProducts ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        Loading products...
-                                    </p>
-                                ) : products.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        No products found.
-                                    </p>
-                                ) : (
-                                    <div className="grid grid-cols-2 gap-3 auto-rows-auto grid-flow-row-dense">
-                                        {products.map((p) => (
-                                            <Card
-                                                key={p.id}
-                                                className="flex flex-col p-2 border shadow hover:shadow-md"
-                                            >
-                                                <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
-                                                    {p.mainImage?.url ? (
-                                                        <img
-                                                            src={p.mainImage.url}
-                                                            className="w-full h-full object-contain"
-                                                        />
-                                                    ) : (
-                                                        <div className="text-xs text-gray-400">
-                                                            No Image
-                                                        </div>
-                                                    )}
-                                                </div>
+                            <div className="flex gap-4 w-full h-[700px] overflow-hidden">
 
-                                                <div className="mt-2 flex-1">
-                                                    <p className="text-sm font-semibold line-clamp-2">
-                                                        {p.productName}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground line-clamp-1">
-                                                        {p.supplier?.supplierBrand || "-"}
-                                                    </p>
-                                                </div>
-                                            </Card>
-                                        ))}
+                                {/* PRODUCTS SECTION (CENTER) */}
+                                <Card className="p-2 border rounded flex-1 overflow-y-auto">
+                                    {loadingProducts ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            Loading products...
+                                        </p>
+                                    ) : products.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            No products found.
+                                        </p>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-3 auto-rows-auto grid-flow-row-dense">
+                                            {filteredProducts.map((p) => (
+                                                <Card
+                                                    key={p.id}
+                                                    className="flex flex-col p-2 border shadow hover:shadow-md"
+                                                >
+                                                    <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
+                                                        {p.mainImage?.url ? (
+                                                            <img
+                                                                src={p.mainImage.url}
+                                                                className="w-full h-full object-contain"
+                                                            />
+                                                        ) : (
+                                                            <div className="text-xs text-gray-400">
+                                                                No Image
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="mt-2 flex-1">
+                                                        <p className="text-sm font-semibold line-clamp-2">
+                                                            {p.productName}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground line-clamp-1">
+                                                            {p.supplier?.supplierBrand || "-"}
+                                                        </p>
+                                                    </div>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    )}
+                                </Card>
+
+                                {/* FILTER SECTION (RIGHT SIDE) */}
+                                {openFilter && (
+                                    <div className="w-[320px] shrink-0 h-full overflow-y-auto">
+                                        <FilteringComponent
+                                            products={products}
+                                            onFilter={(filtered) => setFilteredProducts(filtered)}
+                                        />
                                     </div>
                                 )}
-                            </Card>
-                        </div>
 
+                            </div>
+                        </div>
                         <DialogFooter className="mt-4 flex justify-end gap-2">
                             <Button variant="outline" onClick={() => setOpenDialog(false)}>
                                 Cancel
