@@ -145,7 +145,12 @@ export default function SPF({ processBy }: SPFProps) {
     setLoadingProducts(true);
     const q = query(collection(db, "products"), where("isActive", "==", true));
     const unsubscribe = onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+const list = snap.docs
+  .map((d) => ({ id: d.id, ...d.data() }))
+  .sort(
+    (a: any, b: any) =>
+      (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+  );
 
       setProducts(list);
       setLoadingProducts(false);
