@@ -1964,12 +1964,11 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <Button variant="secondary">Cancel</Button>
-        <Button onClick={handleSaveProduct} disabled={saving}>
-          {saving ? "Saving..." : "Save Product"}
-        </Button>
-      </div>
+<div className="flex gap-2">
+  <Button onClick={handleSaveProduct} disabled={saving}>
+    {saving ? "Saving..." : "Save Product"}
+  </Button>
+</div>
     </div>
   );
 }
