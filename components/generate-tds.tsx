@@ -253,11 +253,11 @@ specsToRender.forEach((spec) => {
     const maxTableHeight =
       pageHeight - FOOTER_REAL_HEIGHT - DRAWING_BLOCK_HEIGHT - SAFE_MARGIN - y;
 
-    let fontSize = 9;
+    let fontSize = 11;
     scaleFactor = 1;
     let tableHeight = 0;
 
-    while (fontSize > 4) {
+    while (fontSize > 6) {
       const testPdf = new jsPDF("p", "pt", "a4");
 
       autoTable(testPdf, {
@@ -295,7 +295,7 @@ specsToRender.forEach((spec) => {
 
     const title = productName || "Product Name";
 
-    let titleFontSize = 20 * scaleFactor;
+    let titleFontSize = 24 * scaleFactor;
     let titleLines: string[] = [];
 
     /* AUTO SHRINK UNTIL MAX 2 LINES */
@@ -370,15 +370,15 @@ pdf.line(lineStartX, lineY, lineEndX, lineY);
     const drawingY = tableEndY + 35 * scaleFactor;
 
     // Total drawing container width
-    const drawingWidth = 220 * scaleFactor;
-    const drawingHeight = 120 * scaleFactor;
+    const drawingWidth = 190 * scaleFactor;
+    const drawingHeight = 95 * scaleFactor;
     const gapBetween = 60 * scaleFactor;
     const totalWidth = drawingWidth * 2 + gapBetween;
 
     // Center whole drawing group
     const startX = (pageWidth - totalWidth) / 2;
 
-    pdf.setFontSize(9 * scaleFactor);
+    pdf.setFontSize(11 * scaleFactor);
     pdf.setFont("helvetica", "bold");
 
     // Centered labels
