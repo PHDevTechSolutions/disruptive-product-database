@@ -140,7 +140,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
     }
   }, [emails]);
 
-
   const generateAlphaNumeric = (length = 6) => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let result = "";
@@ -149,7 +148,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
     }
     return result;
   };
-
 
   /* ---------------- Helpers ---------------- */
 
@@ -313,7 +311,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
               />
             </div>
           </div>
-
 
           {/* Addresses */}
           <div className="space-y-3">
@@ -508,14 +505,14 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
                   {contactTypes[index] === "phone" ? (
                     <PhoneInput
                       international
-                      defaultCountry="PH"
+                      defaultCountry="CN"
                       countryCallingCodeEditable={false}
                       value={contactNumbers[index]}
                       onChange={(value) =>
                         updateList(setContactNumbers, index, value || "")
                       }
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="+63 9XX XXX XXXX"
+                      placeholder="+86 XXX XXXX XXXX"
                     />
                   ) : (
                     <Input
