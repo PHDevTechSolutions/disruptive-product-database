@@ -184,299 +184,312 @@ export default function SPF({ processBy }: SPFProps) {
 
   if (error) return <p className="text-red-500">{error}</p>;
 
-return (
-  <div className="w-full h-screen flex flex-col">
-    <Card className="flex-1 w-full rounded-none">
-      <CardHeader>
-        <CardTitle>Requests List (Real-time)</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-5 border-b pb-2 font-semibold text-sm">
-          <div>SPF Number</div>
-          <div>Customer Name</div>
-          <div>Special Instructions</div>
-          <div>Date Created</div>
-          <div>Action</div>
-        </div>
+  return (
+    <div className="w-full h-screen flex flex-col">
+      <Card className="flex-1 w-full rounded-none">
+        <CardHeader>
+          <CardTitle>Requests List (Real-time)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-5 border-b pb-2 font-semibold text-sm">
+            <div>SPF Number</div>
+            <div>Customer Name</div>
+            <div>Special Instructions</div>
+            <div>Date Created</div>
+            <div>Action</div>
+          </div>
 
-        {requests.length === 0 ? (
-          <p className="text-sm text-muted-foreground mt-4">
-            No SPF requests yet.
-          </p>
-        ) : (
-          requests.map((req) => {
-            const formattedDate = req.date_created
-              ? new Intl.DateTimeFormat("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }).format(new Date(req.date_created))
-              : "-";
+          {requests.length === 0 ? (
+            <p className="text-sm text-muted-foreground mt-4">
+              No SPF requests yet.
+            </p>
+          ) : (
+            requests.map((req) => {
+              const formattedDate = req.date_created
+                ? new Intl.DateTimeFormat("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }).format(new Date(req.date_created))
+                : "-";
 
-            return (
-              <div
-                key={req.id}
-                className="grid grid-cols-5 py-2 border-b text-sm items-center"
-              >
-                <div>{req.spf_number}</div>
-                <div>{req.customer_name}</div>
-                <div>
-                  <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase">
-                    {req.special_instructions || "-"}
-                  </span>
+              return (
+                <div
+                  key={req.id}
+                  className="grid grid-cols-5 py-2 border-b text-sm items-center"
+                >
+                  <div>{req.spf_number}</div>
+                  <div>{req.customer_name}</div>
+                  <div>
+                    <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase">
+                      {req.special_instructions || "-"}
+                    </span>
+                  </div>
+                  <div>{formattedDate}</div>
+                  <div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCreateFromRow(req)}
+                    >
+                      Create
+                    </Button>
+                  </div>
                 </div>
-                <div>{formattedDate}</div>
-                <div>
+              );
+            })
+          )}
+
+          {/* ---------------- Dialog ---------------- */}
+          <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+            <DialogContent className="sm:max-w-8xl rounded-none p-6 max-h-[90vh] overflow-y-auto">
+              <DialogHeader className="flex items-center w-full mb-4">
+                <DialogTitle>Create SPF Request</DialogTitle>
+                <div className="ml-auto flex gap-2 items-center">
+                  <input
+                    type="text"
+                    placeholder="Search product..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="border px-3 py-2 text-sm w-[220px]"
+                  />
+
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="outline"
-                    onClick={() => handleCreateFromRow(req)}
+                    className="rounded-none p-6"
+                    onClick={() => setOpenFilter((prev) => !prev)}
                   >
-                    Create
+                    <Funnel size={16} />
+                  </Button>
+
+                  <Button
+                    className="rounded-none p-6"
+                    onClick={() => setOpenAddProduct(true)}
+                  >
+                    + Add Product
                   </Button>
                 </div>
+              </DialogHeader>
+
+              {/* OUTER FLEX CONTAINER */}
+              <div className="flex gap-4 h-[70vh] overflow-hidden">
+                {/* LEFT CARD: Company Details + Table */}
+                <Card className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto max-h-[70vh]">
+                  <div className="grid grid-cols-1 gap-4">
+                    <CardDetails
+                      title="Company Details"
+                      fields={[
+                        {
+                          label: "Customer Name",
+                          value: formData.customer_name,
+                        },
+                        {
+                          label: "Contact Person",
+                          value: formData.contact_person,
+                        },
+                        {
+                          label: "Contact Number",
+                          value: formData.contact_number,
+                        },
+                        {
+                          label: "Registered Address",
+                          value: formData.registered_address,
+                          pre: true,
+                        },
+                        {
+                          label: "Delivery Address",
+                          value: formData.delivery_address,
+                        },
+                        {
+                          label: "Billing Address",
+                          value: formData.billing_address,
+                        },
+                        {
+                          label: "Collection Address",
+                          value: formData.collection_address,
+                        },
+                        { label: "TIN", value: formData.tin_no },
+                      ]}
+                    />
+
+                    <CardDetails
+                      title="SPF Details"
+                      fields={[
+                        {
+                          label: "Payment Terms",
+                          value: formData.payment_terms,
+                        },
+                        { label: "Warranty", value: formData.warranty },
+                        {
+                          label: "Delivery Date",
+                          value: formData.delivery_date,
+                        },
+                        { label: "Prepared By", value: formData.prepared_by },
+                        { label: "Approved By", value: formData.approved_by },
+                        { label: "Process By", value: formData.process_by },
+                      ]}
+                    />
+                  </div>
+
+                  {/* SELECTED PRODUCTS TABLE */}
+                  <div className="mt-4 overflow-y-auto">
+                    {selectedProducts.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No products added yet.
+                      </p>
+                    ) : (
+                      <table className="w-full table-auto border">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border px-2 py-1">Image</th>
+                            <th className="border px-2 py-1">Product Name</th>
+                            <th className="border px-2 py-1">Supplier Brand</th>
+                            <th className="border px-2 py-1">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedProducts.map((p) => (
+                            <tr key={p.id}>
+                              <td className="border px-2 py-1">
+                                {p.mainImage?.url ? (
+                                  <img
+                                    src={p.mainImage.url}
+                                    className="w-16 h-16 object-contain"
+                                    alt={p.productName}
+                                  />
+                                ) : (
+                                  <span className="text-xs text-gray-400">
+                                    No Image
+                                  </span>
+                                )}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {p.productName}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {p.supplier?.supplierBrand || "-"}
+                              </td>
+                              <td className="border px-2 py-1">
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() =>
+                                    setSelectedProducts((prev) =>
+                                      prev.filter((sp) => sp.id !== p.id),
+                                    )
+                                  }
+                                >
+                                  Remove
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </Card>
+
+                {/* RIGHT CARD: Products Section */}
+                <div className="flex-1 max-h-[70vh] overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-3 auto-rows-auto">
+                    {filteredProducts.map((p) => (
+                      <Card
+                        key={p.id}
+                        className="flex flex-col p-2 border shadow hover:shadow-md"
+                      >
+                        <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
+                          {p.mainImage?.url ? (
+                            <img
+                              src={p.mainImage.url}
+                              className="w-full h-full object-contain"
+                              alt={p.productName}
+                            />
+                          ) : (
+                            <div className="text-xs text-gray-400">
+                              No Image
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-2 flex-1">
+                          <p className="text-sm font-semibold line-clamp-2">
+                            {p.productName}
+                          </p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">
+                            {p.supplier?.supplierBrand || "-"}
+                          </p>
+                        </div>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 w-full"
+                          onClick={() => {
+                            if (
+                              !selectedProducts.find((sp) => sp.id === p.id)
+                            ) {
+                              setSelectedProducts((prev) => [...prev, p]);
+                            }
+                          }}
+                        >
+                          + Add
+                        </Button>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+
+                {openFilter && (
+                  <div className="w-[320px] shrink-0 self-start sticky top-0 max-h-[calc(90vh-200px)] overflow-y-auto border-l pl-2">
+                    <FilteringComponent
+                      products={products}
+                      onFilter={(filtered) => setFilteredProducts(filtered)}
+                    />
+                  </div>
+                )}
               </div>
-            );
-          })
-        )}
 
-        {/* ---------------- Dialog ---------------- */}
-        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-          <DialogContent className="sm:max-w-8xl rounded-none p-6 max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="flex items-center w-full mb-4">
-              <DialogTitle>Create SPF Request</DialogTitle>
-              <div className="ml-auto flex gap-2 items-center">
-                <input
-                  type="text"
-                  placeholder="Search product..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="border px-3 py-2 text-sm w-[220px]"
-                />
-
+              <DialogFooter className="mt-4 flex justify-end gap-2">
                 <Button
-                  size="icon"
                   variant="outline"
                   className="rounded-none p-6"
-                  onClick={() => setOpenFilter((prev) => !prev)}
+                  onClick={() => setOpenDialog(false)}
                 >
-                  <Funnel size={16} />
+                  Cancel
                 </Button>
+                <Button className="rounded-none p-6" onClick={handleSubmit}>
+                  Submit
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
+          {/* ---------------- Add Product Dialog ---------------- */}
+          <Dialog open={openAddProduct} onOpenChange={setOpenAddProduct}>
+            <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Product</DialogTitle>
+              </DialogHeader>
+
+              <AddProductComponent onClose={() => setOpenAddProduct(false)} />
+
+              <DialogFooter>
                 <Button
-                  className="rounded-none p-6"
-                  onClick={() => setOpenAddProduct(true)}
+                  variant="outline"
+                  className="rounded-none"
+                  onClick={() => setOpenAddProduct(false)}
                 >
-                  + Add Product
+                  Close
                 </Button>
-              </div>
-            </DialogHeader>
-
-            {/* OUTER FLEX CONTAINER */}
-            <div className="flex gap-4 h-[70vh] overflow-hidden">
-              {/* LEFT CARD: Company Details + Table */}
-              <Card className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto max-h-[70vh]">
-                <div className="grid grid-cols-1 gap-4">
-                  <CardDetails
-                    title="Company Details"
-                    fields={[
-                      { label: "Customer Name", value: formData.customer_name },
-                      {
-                        label: "Contact Person",
-                        value: formData.contact_person,
-                      },
-                      {
-                        label: "Contact Number",
-                        value: formData.contact_number,
-                      },
-                      {
-                        label: "Registered Address",
-                        value: formData.registered_address,
-                        pre: true,
-                      },
-                      {
-                        label: "Delivery Address",
-                        value: formData.delivery_address,
-                      },
-                      {
-                        label: "Billing Address",
-                        value: formData.billing_address,
-                      },
-                      {
-                        label: "Collection Address",
-                        value: formData.collection_address,
-                      },
-                      { label: "TIN", value: formData.tin_no },
-                    ]}
-                  />
-
-                  <CardDetails
-                    title="SPF Details"
-                    fields={[
-                      { label: "Payment Terms", value: formData.payment_terms },
-                      { label: "Warranty", value: formData.warranty },
-                      { label: "Delivery Date", value: formData.delivery_date },
-                      { label: "Prepared By", value: formData.prepared_by },
-                      { label: "Approved By", value: formData.approved_by },
-                      { label: "Process By", value: formData.process_by },
-                    ]}
-                  />
-                </div>
-
-                {/* SELECTED PRODUCTS TABLE */}
-                <div className="mt-4 overflow-y-auto">
-                  {selectedProducts.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No products added yet.
-                    </p>
-                  ) : (
-                    <table className="w-full table-auto border">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="border px-2 py-1">Image</th>
-                          <th className="border px-2 py-1">Product Name</th>
-                          <th className="border px-2 py-1">Supplier Brand</th>
-                          <th className="border px-2 py-1">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedProducts.map((p) => (
-                          <tr key={p.id}>
-                            <td className="border px-2 py-1">
-                              {p.mainImage?.url ? (
-                                <img
-                                  src={p.mainImage.url}
-                                  className="w-16 h-16 object-contain"
-                                  alt={p.productName}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-400">
-                                  No Image
-                                </span>
-                              )}
-                            </td>
-                            <td className="border px-2 py-1">
-                              {p.productName}
-                            </td>
-                            <td className="border px-2 py-1">
-                              {p.supplier?.supplierBrand || "-"}
-                            </td>
-                            <td className="border px-2 py-1">
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() =>
-                                  setSelectedProducts((prev) =>
-                                    prev.filter((sp) => sp.id !== p.id),
-                                  )
-                                }
-                              >
-                                Remove
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </Card>
-
-              {/* RIGHT CARD: Products Section */}
-              <div className="flex-1 max-h-[70vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-3 auto-rows-auto">
-                  {filteredProducts.map((p) => (
-                    <Card
-                      key={p.id}
-                      className="flex flex-col p-2 border shadow hover:shadow-md"
-                    >
-                      <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
-                        {p.mainImage?.url ? (
-                          <img
-                            src={p.mainImage.url}
-                            className="w-full h-full object-contain"
-                            alt={p.productName}
-                          />
-                        ) : (
-                          <div className="text-xs text-gray-400">No Image</div>
-                        )}
-                      </div>
-
-                      <div className="mt-2 flex-1">
-                        <p className="text-sm font-semibold line-clamp-2">
-                          {p.productName}
-                        </p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {p.supplier?.supplierBrand || "-"}
-                        </p>
-                      </div>
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="mt-2 w-full"
-                        onClick={() => {
-                          if (!selectedProducts.find((sp) => sp.id === p.id)) {
-                            setSelectedProducts((prev) => [...prev, p]);
-                          }
-                        }}
-                      >
-                        + Add
-                      </Button>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-{openFilter && (
-  <div className="w-[320px] shrink-0 self-start sticky top-0 max-h-[calc(90vh-200px)] overflow-y-auto border-l pl-2">
-    <FilteringComponent
-      products={products}
-      onFilter={(filtered) => setFilteredProducts(filtered)}
-    />
-  </div>
-)}
-            </div>
-
-            <DialogFooter className="mt-4 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                className="rounded-none p-6"
-                onClick={() => setOpenDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button className="rounded-none p-6" onClick={handleSubmit}>
-                Submit
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* ---------------- Add Product Dialog ---------------- */}
-        <Dialog open={openAddProduct} onOpenChange={setOpenAddProduct}>
-          <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add Product</DialogTitle>
-            </DialogHeader>
-
-            <AddProductComponent onClose={() => setOpenAddProduct(false)} />
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                className="rounded-none"
-                onClick={() => setOpenAddProduct(false)}
-              >
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
-  </div>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

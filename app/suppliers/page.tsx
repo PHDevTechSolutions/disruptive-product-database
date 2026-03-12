@@ -429,9 +429,6 @@ export default function Suppliers() {
               <TableHead className="text-center font-bold">Website</TableHead>
               <TableHead className="text-center font-bold">Contact</TableHead>
               <TableHead className="text-center font-bold">
-                Phone Number(s)
-              </TableHead>
-              <TableHead className="text-center font-bold">
                 Forte Product(s)
               </TableHead>
               <TableHead className="text-center font-bold">
@@ -446,7 +443,7 @@ export default function Suppliers() {
           <TableBody>
             {filteredSuppliers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8">
+                <TableCell colSpan={10} className="text-center py-8">
                   No suppliers found.
                 </TableCell>
               </TableRow>
@@ -559,8 +556,12 @@ export default function Suppliers() {
                       <div className="flex flex-col items-center space-y-4">
                         {s.contacts.map((c, i) => (
                           <div key={i}>
-                            {highlightText(c.name, search)} (
-                            {highlightText(c.phone, search)})
+                            <div className="font-medium">
+                              {highlightText(c.name, search)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {highlightText(c.phone, search)}
+                            </div>
                           </div>
                         ))}
                       </div>
