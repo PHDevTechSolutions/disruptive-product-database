@@ -291,11 +291,19 @@ export default function SPF({ processBy }: SPFProps) {
                                 </div>
 
                                 {/* SELECTED PRODUCTS TABLE */}
+                                {/* RIGHT CARD: Products Section */}
+                                <div className="mb-3 border-b pb-2">
+                                    <h3 className="text-sm font-bold">
+                                        {formData.spf_number || "-"}
+                                    </h3>
+                                </div>
+
                                 <div className="mt-4 overflow-y-auto">
                                     {formData.item_description?.length ? (
                                         <table className="w-full table-auto border">
                                             <thead>
                                                 <tr className="bg-gray-100">
+                                                    <th className="border px-2 py-1 text-left">#</th>
                                                     <th className="border px-2 py-1 text-left">Image</th>
                                                     <th className="border px-2 py-1 text-left">Item Code</th>
                                                     <th className="border px-2 py-1 text-left">Item Description</th>
@@ -307,6 +315,11 @@ export default function SPF({ processBy }: SPFProps) {
                                                     const lines = parseDescription(desc); // split description into multiple lines
                                                     return (
                                                         <tr key={index} className="text-sm">
+                                                            <td className="border px-2 py-1 font-medium">
+                                                                {formData.spf_number
+                                                                    ? `${formData.spf_number}-${String(index + 1).padStart(3, "0")}`
+                                                                    : "-"}
+                                                            </td>
                                                             <td className="border px-2 py-1">
                                                                 {formData.item_photo?.[index] ? (
                                                                     <img
