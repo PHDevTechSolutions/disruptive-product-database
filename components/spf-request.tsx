@@ -366,7 +366,7 @@ export default function SPF({ processBy }: SPFProps) {
                 <div className="mt-4 overflow-y-auto relative">
                   {/* CTRL + F: PRODUCT OFFER TRASH ZONE */}
                   {showTrash && (
-                    <div className="absolute right-3 top-12 z-50">
+                    <div className="flex justify-end mb-2 pr-3">
                       <div
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={() => {
@@ -389,7 +389,19 @@ export default function SPF({ processBy }: SPFProps) {
                           setDraggedProduct(null);
                           setShowTrash(false);
                         }}
-                        className="flex items-center justify-center w-14 h-14 rounded-full bg-red-500 text-white shadow-xl animate-pulse cursor-pointer"
+                        className="
+        flex items-center justify-center
+        w-10 h-10
+        rounded-full
+        bg-red-500
+        text-white
+        shadow-lg
+        cursor-pointer
+        animate-pulse
+        hover:scale-110
+        transition
+      "
+                        title="Drop here to remove"
                       >
                         🗑
                       </div>
@@ -447,9 +459,64 @@ export default function SPF({ processBy }: SPFProps) {
                                       copy[draggedProduct.__fromRow] = original;
                                     }
 
+                                    const freezeSpecs = (product: any) => {
+                                      const activeFilters =
+                                        (window as any).__ACTIVE_FILTERS__ ||
+                                        [];
+
+                                      if (!product.technicalSpecifications)
+                                        return product;
+
+                                      const frozenSpecs =
+                                        product.technicalSpecifications.map(
+                                          (group: any) => ({
+                                            ...group,
+                                            specs: group.specs?.map(
+                                              (spec: any) => {
+                                                const raw = spec.value || "";
+
+                                                const values = raw
+                                                  .split("|")
+                                                  .map((v: string) => v.trim())
+                                                  .filter(Boolean);
+
+                                                const uniqueValues = Array.from(
+                                                  new Set(values),
+                                                );
+
+                                                if (!activeFilters.length) {
+                                                  return {
+                                                    ...spec,
+                                                    value:
+                                                      uniqueValues.join(" | "),
+                                                  };
+                                                }
+
+                                                const filtered =
+                                                  uniqueValues.filter((v) =>
+                                                    activeFilters.includes(v),
+                                                  );
+
+                                                return {
+                                                  ...spec,
+                                                  value: filtered.length
+                                                    ? filtered.join(" | ")
+                                                    : uniqueValues.join(" | "),
+                                                };
+                                              },
+                                            ),
+                                          }),
+                                        );
+
+                                      return {
+                                        ...product,
+                                        technicalSpecifications: frozenSpecs,
+                                      };
+                                    };
+
                                     copy[index] = [
                                       ...(copy[index] || []),
-                                      draggedProduct,
+                                      freezeSpecs(draggedProduct),
                                     ];
 
                                     return copy;
@@ -605,6 +672,8 @@ export default function SPF({ processBy }: SPFProps) {
                                                         spec: any,
                                                         s: number,
                                                       ) => (
+                                                        /* CTRL + F: SPF TECH SPEC FILTER BASED ON CHECKED VALUES */
+
                                                         <li key={s}>
                                                           {spec.specId}:{" "}
                                                           {spec.value || "-"}
@@ -648,6 +717,10 @@ export default function SPF({ processBy }: SPFProps) {
                           __fromRow: undefined,
                         });
                         setShowTrash(true);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedProduct(null);
+                        setShowTrash(false);
                       }}
                       className="flex flex-col p-2 border shadow hover:shadow-md break-inside-avoid mb-3 cursor-grab"
                     >
@@ -812,8 +885,6 @@ export default function SPF({ processBy }: SPFProps) {
               <Button className="rounded-none p-6" onClick={handleSubmit}>
                 Submit
               </Button>
-
-
             </DialogFooter>
           </DialogContent>
         </Dialog>
