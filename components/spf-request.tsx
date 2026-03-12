@@ -80,6 +80,7 @@ export default function SPF({ processBy }: SPFProps) {
     const [loadingProducts, setLoadingProducts] = useState(false);
     const [openAddProduct, setOpenAddProduct] = useState(false);
     const [openFilter, setOpenFilter] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
 
     const fetchRequests = useCallback(async () => {
         try {
@@ -158,6 +159,22 @@ export default function SPF({ processBy }: SPFProps) {
         return unsubscribe;
     }, []);
 
+    useEffect(() => {
+        if (!searchTerm) {
+            setFilteredProducts(products);
+            return;
+        }
+
+        const term = searchTerm.toLowerCase();
+
+        const filtered = products.filter((p: any) =>
+            p.productName?.toLowerCase().includes(term) ||
+            p.supplier?.supplierBrand?.toLowerCase().includes(term)
+        );
+
+        setFilteredProducts(filtered);
+    }, [searchTerm, products]);
+
     if (error) return <p className="text-red-500">{error}</p>;
 
     return (
@@ -205,7 +222,7 @@ export default function SPF({ processBy }: SPFProps) {
                                 <div>{formattedDate}</div>
                                 <div>
                                     <Button
-                                        size="sm"
+                                        className="rounded-none p-6"
                                         variant="outline"
                                         onClick={() => handleCreateFromRow(req)}
                                     >
@@ -222,7 +239,16 @@ export default function SPF({ processBy }: SPFProps) {
                     <DialogContent className="sm:max-w-8xl rounded-none p-6 max-h-[90vh] overflow-y-auto">
                         <DialogHeader className="flex items-center w-full mb-4">
                             <DialogTitle>Create SPF Request</DialogTitle>
-                            <div className="ml-auto flex gap-2">
+                            <div className="ml-auto flex gap-2 items-center">
+
+                                <input
+                                    type="text"
+                                    placeholder="Search product..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="border px-3 py-2 text-sm w-[220px]"
+                                />
+
                                 <Button
                                     size="icon"
                                     variant="outline"
@@ -232,9 +258,13 @@ export default function SPF({ processBy }: SPFProps) {
                                     <Funnel size={16} />
                                 </Button>
 
-                                <Button className="rounded-none p-6" onClick={() => setOpenAddProduct(true)}>
+                                <Button
+                                    className="rounded-none p-6"
+                                    onClick={() => setOpenAddProduct(true)}
+                                >
                                     + Add Product
                                 </Button>
+
                             </div>
                         </DialogHeader>
 
@@ -279,8 +309,6 @@ export default function SPF({ processBy }: SPFProps) {
                                                     <tr className="bg-gray-100">
                                                         <th className="border px-2 py-1">Image</th>
                                                         <th className="border px-2 py-1">Item Description</th>
-                                                        <th className="border px-2 py-1">Supplier Brand</th>
-                                                        <th className="border px-2 py-1">Action</th>
                                                     </tr>
                                                 </thead>
 
@@ -311,17 +339,6 @@ export default function SPF({ processBy }: SPFProps) {
                                                                         value
                                                                     )}
                                                                 </td>
-
-                                                                {/* SUPPLIER */}
-                                                                <td className="border px-2 py-1">-</td>
-
-                                                                {/* ACTION */}
-                                                                <td className="border px-2 py-1">
-                                                                    <Button variant="destructive" className="bg-red-700">
-                                                                        <Trash2 />
-                                                                    </Button>
-                                                                </td>
-
                                                             </tr>
                                                         ));
                                                     })}
