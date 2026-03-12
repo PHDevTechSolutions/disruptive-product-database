@@ -17,6 +17,13 @@ import AddProductComponent from "@/components/add-product-component";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import CardDetails from "@/components/spf/dialog/card-details";
+/* CTRL + F: SHADCN ACCORDION IMPORT */
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 
 type SPFRequest = {
   id: string;
@@ -82,6 +89,9 @@ export default function SPF({ processBy }: SPFProps) {
   });
 
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
+  const [productOffers, setProductOffers] = useState<Record<number, any[]>>({});
+  const [draggedProduct, setDraggedProduct] = useState<any | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -191,7 +201,7 @@ export default function SPF({ processBy }: SPFProps) {
     const filtered = products.filter((p: any) => {
       const name = p.productName?.toLowerCase() || "";
       const commercial = JSON.stringify(
-        p.details?.commercialDetails || "",
+        p.commercialDetails || "",
       ).toLowerCase();
 
       return name.includes(term) || commercial.includes(term);
@@ -346,11 +356,51 @@ export default function SPF({ processBy }: SPFProps) {
                 </div>
 
                 {/* SELECTED PRODUCTS TABLE */}
-                <div className="mt-4 overflow-y-auto">
+                {/* RIGHT CARD: Products Section */}
+                <div className="mb-3 border-b pb-2">
+                  <h3 className="text-sm font-bold">
+                    {formData.spf_number || "-"}
+                  </h3>
+                </div>
+
+                <div className="mt-4 overflow-y-auto relative">
+                  {/* CTRL + F: PRODUCT OFFER TRASH ZONE */}
+                  {showTrash && (
+                    <div className="absolute right-3 top-12 z-50">
+                      <div
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => {
+                          if (!draggedProduct) return;
+
+                          if (draggedProduct.__fromRow !== undefined) {
+                            setProductOffers((prev) => {
+                              const copy = { ...prev };
+                              const arr = [
+                                ...(copy[draggedProduct.__fromRow] || []),
+                              ];
+
+                              arr.splice(draggedProduct.__fromIndex, 1);
+                              copy[draggedProduct.__fromRow] = arr;
+
+                              return copy;
+                            });
+                          }
+
+                          setDraggedProduct(null);
+                          setShowTrash(false);
+                        }}
+                        className="flex items-center justify-center w-14 h-14 rounded-full bg-red-500 text-white shadow-xl animate-pulse cursor-pointer"
+                      >
+                        🗑
+                      </div>
+                    </div>
+                  )}
+
                   {formData.item_description?.length ? (
                     <table className="w-full table-auto border">
                       <thead>
                         <tr className="bg-gray-100">
+                          <th className="border px-2 py-1 text-left">#</th>
                           <th className="border px-2 py-1 text-left">Image</th>
                           <th className="border px-2 py-1 text-left">
                             Item Code
@@ -363,12 +413,61 @@ export default function SPF({ processBy }: SPFProps) {
                           </th>
                         </tr>
                       </thead>
+
                       <tbody>
                         {(formData.item_description || []).map(
                           (desc, index) => {
-                            const lines = parseDescription(desc); // split description into multiple lines
+                            const lines = parseDescription(desc);
+
                             return (
-                              <tr key={index} className="text-sm">
+                              <tr
+                                key={index}
+                                className="text-sm"
+                                onDragOver={(e) => e.preventDefault()}
+                                /* CTRL + F: HANDLE PRODUCT DROP INTO ROW */
+                                onDrop={() => {
+                                  if (!draggedProduct) return;
+
+                                  setProductOffers((prev) => {
+                                    const copy = { ...prev };
+
+                                    if (
+                                      draggedProduct.__fromRow !== undefined
+                                    ) {
+                                      const original = [
+                                        ...(copy[draggedProduct.__fromRow] ||
+                                          []),
+                                      ];
+
+                                      original.splice(
+                                        draggedProduct.__fromIndex,
+                                        1,
+                                      );
+
+                                      copy[draggedProduct.__fromRow] = original;
+                                    }
+
+                                    copy[index] = [
+                                      ...(copy[index] || []),
+                                      draggedProduct,
+                                    ];
+
+                                    return copy;
+                                  });
+
+                                  setDraggedProduct(null);
+                                }}
+                              >
+                                {/* ITEM NUMBER */}
+                                <td className="border px-2 py-1 font-medium">
+                                  {formData.spf_number
+                                    ? `${formData.spf_number}-${String(
+                                        index + 1,
+                                      ).padStart(3, "0")}`
+                                    : "-"}
+                                </td>
+
+                                {/* IMAGE */}
                                 <td className="border px-2 py-1">
                                   {formData.item_photo?.[index] ? (
                                     <img
@@ -380,23 +479,30 @@ export default function SPF({ processBy }: SPFProps) {
                                     "-"
                                   )}
                                 </td>
+
+                                {/* ITEM CODE */}
                                 <td className="border px-2 py-1">
                                   {formData.item_code?.[index] || "-"}
                                 </td>
+
+                                {/* DESCRIPTION */}
                                 <td
-                                  className="border px-2 py-1 whitespace-pre-wrap" // allow line breaks to show
+                                  className="border px-2 py-1 whitespace-pre-wrap"
                                   contentEditable
                                   suppressContentEditableWarning
                                   onBlur={(e) => {
                                     const updatedDescriptions = [
                                       ...(formData.item_description || []),
                                     ];
+
                                     const newLines = e.currentTarget.innerText
                                       .split("\n")
                                       .map((l) => l.trim())
                                       .filter(Boolean);
+
                                     updatedDescriptions[index] =
                                       newLines.join(" | ");
+
                                     setFormData({
                                       ...formData,
                                       item_description: updatedDescriptions,
@@ -404,6 +510,116 @@ export default function SPF({ processBy }: SPFProps) {
                                   }}
                                 >
                                   {desc.replace(/\|/g, "\n")}
+                                </td>
+
+                                {/* PRODUCT OFFER */}
+                                <td className="border px-2 py-1">
+                                  {(productOffers[index] || []).map(
+                                    (prod: any, i: number) => (
+                                      <div
+                                        key={i}
+                                        draggable
+                                        /* CTRL + F: PRODUCT OFFER DRAG START */
+                                        onDragStart={() => {
+                                          setDraggedProduct({
+                                            ...prod,
+                                            __fromRow: index,
+                                            __fromIndex: i,
+                                          });
+
+                                          setShowTrash(true);
+                                        }}
+                                        /* CTRL + F: PRODUCT OFFER DRAG END */
+                                        onDragEnd={() => {
+                                          setDraggedProduct(null);
+                                          setShowTrash(false);
+                                        }}
+                                        className="border rounded p-2 mb-2 text-xs cursor-grab"
+                                      >
+                                        {/* Supplier Brand */}
+                                        {prod.supplier?.supplierBrand && (
+                                          <p>
+                                            <b>Supplier Brand:</b>{" "}
+                                            {prod.supplier.supplierBrand}
+                                          </p>
+                                        )}
+
+                                        {/* Commercial Details */}
+                                        {prod.commercialDetails && (
+                                          <div className="mt-1">
+                                            <b>Commercial Details</b>
+
+                                            <ul className="ml-3 list-disc">
+                                              {prod.commercialDetails
+                                                .unitCost && (
+                                                <li>
+                                                  Unit Cost:{" "}
+                                                  {
+                                                    prod.commercialDetails
+                                                      .unitCost
+                                                  }
+                                                </li>
+                                              )}
+
+                                              {prod.commercialDetails
+                                                .factoryAddress && (
+                                                <li>
+                                                  Factory:{" "}
+                                                  {
+                                                    prod.commercialDetails
+                                                      .factoryAddress
+                                                  }
+                                                </li>
+                                              )}
+
+                                              {prod.commercialDetails
+                                                .portOfDischarge && (
+                                                <li>
+                                                  Port:{" "}
+                                                  {
+                                                    prod.commercialDetails
+                                                      .portOfDischarge
+                                                  }
+                                                </li>
+                                              )}
+                                            </ul>
+                                          </div>
+                                        )}
+
+                                        {/* Technical Specifications */}
+                                        {prod.technicalSpecifications?.length >
+                                          0 && (
+                                          <div className="mt-1">
+                                            <b>Technical Specifications</b>
+
+                                            {prod.technicalSpecifications.map(
+                                              (group: any, g: number) => (
+                                                <div key={g}>
+                                                  <p className="font-semibold">
+                                                    {group.title}
+                                                  </p>
+
+                                                  <ul className="ml-3 list-disc">
+                                                    {group.specs?.map(
+                                                      (
+                                                        spec: any,
+                                                        s: number,
+                                                      ) => (
+                                                        <li key={s}>
+                                                          {spec.specId}:{" "}
+                                                          {spec.value || "-"}
+                                                        </li>
+                                                      ),
+                                                    )}
+                                                  </ul>
+                                                </div>
+                                              ),
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ),
+                                  )}
                                 </td>
                               </tr>
                             );
@@ -421,11 +637,19 @@ export default function SPF({ processBy }: SPFProps) {
 
               {/* RIGHT CARD: Products Section */}
               <div className="flex-1 max-h-[70vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-3 auto-rows-auto">
+                <div className="columns-2 gap-3">
                   {filteredProducts.map((p) => (
                     <Card
                       key={p.id}
-                      className="flex flex-col p-2 border shadow hover:shadow-md"
+                      draggable
+                      onDragStart={() => {
+                        setDraggedProduct({
+                          ...p,
+                          __fromRow: undefined,
+                        });
+                        setShowTrash(true);
+                      }}
+                      className="flex flex-col p-2 border shadow hover:shadow-md break-inside-avoid mb-3 cursor-grab"
                     >
                       <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
                         {p.mainImage?.url ? (
@@ -442,76 +666,126 @@ export default function SPF({ processBy }: SPFProps) {
                         <p className="text-sm font-semibold line-clamp-2">
                           {p.productName}
                         </p>
-                        <div className="text-xs text-muted-foreground space-y-1">
-                          {(() => {
-                            const details = p.details?.commercialDetails;
-                            if (!details) return "-";
+                      </div>
+                      {/* CTRL + F: PRODUCT ACCORDION DETAILS */}
+                      <Accordion
+                        type="single"
+                        collapsible
+                        className="mt-2 border rounded"
+                      >
+                        {/* COMMERCIAL DETAILS */}
+                        <AccordionItem value="commercial">
+                          <AccordionTrigger className="px-3 text-xs">
+                            Commercial Details
+                          </AccordionTrigger>
 
-                            const packaging = details.packaging || {};
+                          <AccordionContent className="px-3 pb-3 text-xs space-y-2">
+                            {(() => {
+                              const details = p.commercialDetails;
 
-                            return (
-                              <>
-                                {details.factoryAddress && (
-                                  <p>
-                                    <span className="font-medium">
-                                      Factory:
-                                    </span>{" "}
-                                    {details.factoryAddress}
-                                  </p>
-                                )}
+                              if (!details) return <p>-</p>;
 
-                                {details.portOfDischarge && (
-                                  <p>
-                                    <span className="font-medium">Port:</span>{" "}
-                                    {details.portOfDischarge}
-                                  </p>
-                                )}
+                              const packaging = details.packaging || {};
 
-                                {details.unitCost && (
-                                  <p>
-                                    <span className="font-medium">
-                                      Unit Cost:
-                                    </span>{" "}
-                                    {details.unitCost}
-                                  </p>
-                                )}
+                              return (
+                                <>
+                                  {details.factoryAddress && (
+                                    <p>
+                                      <span className="font-medium">
+                                        Factory:
+                                      </span>{" "}
+                                      {details.factoryAddress}
+                                    </p>
+                                  )}
 
-                                {(packaging.height ||
-                                  packaging.length ||
-                                  packaging.width ||
-                                  packaging.pcsPerCarton) && (
-                                  <div>
-                                    <p className="font-medium">Packaging</p>
+                                  {details.portOfDischarge && (
+                                    <p>
+                                      <span className="font-medium">Port:</span>{" "}
+                                      {details.portOfDischarge}
+                                    </p>
+                                  )}
+
+                                  {details.unitCost && (
+                                    <p>
+                                      <span className="font-medium">
+                                        Unit Cost:
+                                      </span>{" "}
+                                      {details.unitCost}
+                                    </p>
+                                  )}
+
+                                  {(packaging.height ||
+                                    packaging.length ||
+                                    packaging.width ||
+                                    details.pcsPerCarton) && (
+                                    <div>
+                                      <p className="font-medium">Packaging</p>
+
+                                      <ul className="ml-3 list-disc">
+                                        {packaging.height && (
+                                          <li>Height: {packaging.height}</li>
+                                        )}
+
+                                        {packaging.length && (
+                                          <li>Length: {packaging.length}</li>
+                                        )}
+
+                                        {packaging.width && (
+                                          <li>Width: {packaging.width}</li>
+                                        )}
+
+                                        {details.pcsPerCarton && (
+                                          <li>
+                                            PCS/Carton: {details.pcsPerCarton}
+                                          </li>
+                                        )}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </AccordionContent>
+                        </AccordionItem>
+
+                        {/* TECHNICAL SPECIFICATIONS */}
+                        <AccordionItem value="technical">
+                          <AccordionTrigger className="px-3 text-xs">
+                            Technical Specifications
+                          </AccordionTrigger>
+
+                          <AccordionContent className="px-3 pb-3 text-xs space-y-2">
+                            {p.technicalSpecifications?.length ? (
+                              p.technicalSpecifications
+                                .filter(
+                                  (g: any) => g.title !== "COMMERCIAL DETAILS",
+                                )
+                                .map((group: any, i: number) => (
+                                  <div key={i} className="mb-3">
+                                    <p className="font-semibold">
+                                      {group.title}
+                                    </p>
+
                                     <ul className="ml-3 list-disc">
-                                      {packaging.height && (
-                                        <li>Height: {packaging.height}</li>
-                                      )}
-                                      {packaging.length && (
-                                        <li>Length: {packaging.length}</li>
-                                      )}
-                                      {packaging.width && (
-                                        <li>Width: {packaging.width}</li>
-                                      )}
-                                      {packaging.pcsPerCarton && (
-                                        <li>
-                                          PCS/Carton: {packaging.pcsPerCarton}
-                                        </li>
+                                      {group.specs?.map(
+                                        (spec: any, s: number) => (
+                                          <li key={s}>
+                                            <span className="font-medium">
+                                              {spec.specId}
+                                            </span>{" "}
+                                            : {spec.value || "-"}
+                                          </li>
+                                        ),
                                       )}
                                     </ul>
                                   </div>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="mt-2 w-full"
-                      >
-                        + Add
-                      </Button>
+                                ))
+                            ) : (
+                              <p>-</p>
+                            )}
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
                     </Card>
                   ))}
                 </div>
@@ -538,6 +812,8 @@ export default function SPF({ processBy }: SPFProps) {
               <Button className="rounded-none p-6" onClick={handleSubmit}>
                 Submit
               </Button>
+
+
             </DialogFooter>
           </DialogContent>
         </Dialog>
