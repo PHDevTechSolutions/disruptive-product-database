@@ -418,10 +418,12 @@ export default function SPF({ processBy }: SPFProps) {
                                 </div>
                             </div>
 
-                            {/* FILTER SECTION */}
                             {openFilter && (
-                                <div className="w-[320px] shrink-0 h-full overflow-y-auto">
-                                    <FilteringComponent products={products} onFilter={(filtered) => setFilteredProducts(filtered)} />
+                                <div className="w-[320px] shrink-0 self-start sticky top-0 max-h-[calc(80vh-200px)] overflow-y-auto border-l pl-2">
+                                    <FilteringComponent
+                                        products={products}
+                                        onFilter={(filtered) => setFilteredProducts(filtered)}
+                                    />
                                 </div>
                             )}
                         </div>
