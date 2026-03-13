@@ -96,6 +96,7 @@ export default function SPF({ processBy }: SPFProps) {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [openAddProduct, setOpenAddProduct] = useState(false);
   const [openFilter, setOpenFilter] = useState(false);
+  const [viewMode, setViewMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Fetch SPF requests
@@ -316,6 +317,7 @@ export default function SPF({ processBy }: SPFProps) {
                   <div
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => {
+                      if (viewMode) return;
                       if (!draggedProduct) return;
 
                       if (draggedProduct.__fromRow !== undefined) {
@@ -358,7 +360,11 @@ export default function SPF({ processBy }: SPFProps) {
 
             <div className="flex gap-4">
               {/* LEFT CARD: Company Details + Table */}
-              <Card className="w-[70%] p-4 flex flex-col gap-4 overflow-y-auto max-h-[70vh] overscroll-contain">
+              <Card
+                className={`${
+                  viewMode ? "w-[100%]" : "w-[70%]"
+                } transition-all duration-500 ease-in-out p-4 flex flex-col gap-4 overflow-y-auto max-h-[70vh] overscroll-contain`}
+              >
                 <div className="grid grid-cols-1 gap-4">
                   <CardDetails
                     title="Company Details"
@@ -443,6 +449,7 @@ export default function SPF({ processBy }: SPFProps) {
                                 onDragOver={(e) => e.preventDefault()}
                                 /* CTRL + F: HANDLE PRODUCT DROP INTO ROW */
                                 onDrop={() => {
+                                  if (viewMode) return;
                                   if (!draggedProduct) return;
 
                                   setProductOffers((prev) => {
@@ -648,9 +655,10 @@ export default function SPF({ processBy }: SPFProps) {
                                               return (
                                                 <tr
                                                   key={i}
-                                                  draggable
-                                                  className="cursor-grab active:cursor-grabbing"
+                                                  draggable={!viewMode}
+                                                  className={`${viewMode ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
                                                   onDragStart={(e) => {
+                                                    if (viewMode) return;
                                                     e.dataTransfer.setData(
                                                       "text/plain",
                                                       "dragging",
@@ -665,6 +673,7 @@ export default function SPF({ processBy }: SPFProps) {
                                                     setShowTrash(true);
                                                   }}
                                                   onDragEnd={() => {
+                                                    if (viewMode) return;
                                                     setDraggedProduct(null);
                                                     setShowTrash(false);
                                                   }}
@@ -825,13 +834,20 @@ export default function SPF({ processBy }: SPFProps) {
               </Card>
 
               {/* RIGHT CARD: Products Section */}
-              <div className="w-[30%] max-h-[70vh] overflow-y-auto overscroll-contain">
+              <div
+                className={`transition-all duration-500 ease-in-out ${
+                  viewMode
+                    ? "opacity-0 w-0 overflow-hidden pointer-events-none"
+                    : "opacity-100 w-[30%]"
+                } max-h-[70vh] overflow-y-auto overscroll-contain`}
+              >
                 <div className="columns-2 gap-3">
                   {filteredProducts.map((p) => (
                     <Card
                       key={p.id}
-                      draggable
+                      draggable={!viewMode}
                       onDragStart={() => {
+                        if (viewMode) return;
                         setDraggedProduct({
                           ...p,
                           __fromRow: undefined,
@@ -839,10 +855,11 @@ export default function SPF({ processBy }: SPFProps) {
                         setShowTrash(true);
                       }}
                       onDragEnd={() => {
+                        if (viewMode) return;
                         setDraggedProduct(null);
                         setShowTrash(false);
                       }}
-                      className="flex flex-col p-2 border shadow hover:shadow-md break-inside-avoid mb-3 cursor-grab"
+                      className={`flex flex-col p-2 border shadow hover:shadow-md break-inside-avoid mb-3 ${viewMode ? "cursor-default" : "cursor-grab"}`}
                     >
                       <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
                         {p.mainImage?.url ? (
@@ -983,15 +1000,19 @@ export default function SPF({ processBy }: SPFProps) {
                   ))}
                 </div>
               </div>
-
-              {openFilter && (
-                <div className="w-[320px] shrink-0 self-start sticky top-0 max-h-[calc(80vh-200px)] overflow-y-auto border-l pl-2">
-                  <FilteringComponent
-                    products={products}
-                    onFilter={(filtered) => setFilteredProducts(filtered)}
-                  />
-                </div>
-              )}
+              {/* CTRL + F: FILTER PANEL */}
+              <div
+                className={`transition-all duration-500 ease-in-out ${
+                  viewMode || !openFilter
+                    ? "opacity-0 w-0 overflow-hidden pointer-events-none"
+                    : "opacity-100 w-[320px]"
+                } shrink-0 self-start sticky top-0 max-h-[calc(80vh-200px)] overflow-y-auto border-l pl-2`}
+              >
+                <FilteringComponent
+                  products={products}
+                  onFilter={(filtered) => setFilteredProducts(filtered)}
+                />
+              </div>
             </div>
 
             <DialogFooter className="mt-4 flex justify-end gap-2">
@@ -1002,6 +1023,16 @@ export default function SPF({ processBy }: SPFProps) {
               >
                 Cancel
               </Button>
+
+              {/* CTRL + F: VIEW MODE BUTTON */}
+              <Button
+                variant="outline"
+                className="rounded-none p-6"
+                onClick={() => setViewMode((prev) => !prev)}
+              >
+                {viewMode ? "Back" : "View"}
+              </Button>
+
               <Button className="rounded-none p-6" onClick={handleSubmit}>
                 Submit
               </Button>
