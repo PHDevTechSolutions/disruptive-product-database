@@ -1,5 +1,6 @@
 "use client";
 
+
 import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -12,11 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/utils/supabase";
 import { Funnel } from "lucide-react";
+import { toast } from "sonner";
 import FilteringComponent from "@/components/filtering-component-v2";
 import AddProductComponent from "@/components/add-product-component";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import CardDetails from "@/components/spf/dialog/card-details";
+import SPFRequestView from "@/components/spf-request-view";
 /* CTRL + F: SHADCN ACCORDION IMPORT */
 import {
   Accordion,
@@ -98,6 +101,7 @@ export default function SPF({ processBy }: SPFProps) {
   const [openFilter, setOpenFilter] = useState(false);
   const [viewMode, setViewMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [createdSPF, setCreatedSPF] = useState<Record<string, boolean>>({});
 
   // Fetch SPF requests
   const fetchRequests = useCallback(async () => {
@@ -106,14 +110,32 @@ export default function SPF({ processBy }: SPFProps) {
       const res = await fetch("/api/request/fetch");
       if (!res.ok) throw new Error("Failed to fetch SPF requests");
       const data = await res.json();
-      setRequests(
-        data.requests.map((r: any) => ({
-          ...r,
-          date_created: r.date_created
-            ? new Date(r.date_created).toISOString()
-            : null,
-        })),
-      );
+const mapped = data.requests.map((r: any) => ({
+  ...r,
+  date_created: r.date_created
+    ? new Date(r.date_created).toISOString()
+    : null,
+}));
+
+setRequests(mapped);
+
+/* CHECK WHICH SPF ALREADY CREATED */
+const spfNumbers = mapped.map((r: any) => r.spf_number);
+
+if (spfNumbers.length) {
+  const { data: created } = await supabase
+    .from("spf_creation")
+    .select("spf_number")
+    .in("spf_number", spfNumbers);
+
+  const map: Record<string, boolean> = {};
+
+  created?.forEach((c: any) => {
+    map[c.spf_number] = true;
+  });
+
+  setCreatedSPF(map);
+}
     } catch (err: any) {
       console.error("Fetch error:", err);
       setError(err.message || "Failed to fetch SPF requests");
@@ -158,21 +180,41 @@ export default function SPF({ processBy }: SPFProps) {
     fetchProducts(rowData.customer_name || "");
   };
 
-  const handleSubmit = async () => {
-    try {
-      const res = await fetch("/api/request/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) throw new Error("Failed to create SPF request");
-      setOpenDialog(false);
-      fetchRequests();
-    } catch (err: any) {
-      console.error("Submit error:", err);
-    }
-  };
+const handleSubmit = async () => {
+  try {
+    const allProducts = Object.values(productOffers).flat();
 
+    const res = await fetch("/api/request/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+
+      body: JSON.stringify({
+        ...formData,
+        selectedProducts: allProducts,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("API ERROR:", errText);
+      toast.error("Failed to create SPF request");
+      throw new Error("Failed to create SPF request");
+    }
+
+    const data = await res.json();
+
+    if (data?.success) {
+      toast.success("SPF created successfully");
+    }
+
+    setOpenDialog(false);
+    fetchRequests();
+
+  } catch (err: any) {
+    console.error("Submit error:", err);
+    toast.error("Something went wrong while creating SPF");
+  }
+};
   // Fetch products from Firebase
   const fetchProducts = useCallback((customerName: string) => {
     setLoadingProducts(true);
@@ -262,13 +304,22 @@ export default function SPF({ processBy }: SPFProps) {
                 </div>
                 <div>{formattedDate}</div>
                 <div>
-                  <Button
-                    className="rounded-none p-6"
-                    variant="outline"
-                    onClick={() => handleCreateFromRow(req)}
-                  >
-                    Create
-                  </Button>
+<div className="flex gap-2">
+
+  <Button
+    className="rounded-none p-6"
+    variant="outline"
+    onClick={() => handleCreateFromRow(req)}
+  >
+    Create
+  </Button>
+
+  {/* SHOW ONLY IF SPF ALREADY CREATED */}
+  {createdSPF[req.spf_number] && (
+    <SPFRequestView spfNumber={req.spf_number} />
+  )}
+
+</div>
                 </div>
               </div>
             );
@@ -616,10 +667,10 @@ export default function SPF({ processBy }: SPFProps) {
                                               </div>
                                             </th>
                                             <th className="border px-2 py-1 text-center">
-                                              Factory
+                                              Factory Address
                                             </th>
                                             <th className="border px-2 py-1 text-center">
-                                              Port
+                                              Port of Discharge
                                             </th>
                                             <th className="border px-2 py-1 w-[100px]">
                                               Sub Total
@@ -1033,9 +1084,12 @@ export default function SPF({ processBy }: SPFProps) {
                 {viewMode ? "Back" : "View"}
               </Button>
 
-              <Button className="rounded-none p-6" onClick={handleSubmit}>
-                Submit
-              </Button>
+              {/* SHOW SUBMIT ONLY IN VIEW MODE */}
+              {viewMode && (
+                <Button className="rounded-none p-6" onClick={handleSubmit}>
+                  Submit
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
