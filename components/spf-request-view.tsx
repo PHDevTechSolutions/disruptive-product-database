@@ -17,6 +17,7 @@ type SPFViewProps = {
 
 type SPFData = {
   spf_number: string;
+  status?: string;
 
   product_offer_image: string;
   product_offer_qty: string;
@@ -79,6 +80,29 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
     }
   }, [open]);
 
+  useEffect(() => {
+
+  const fetchStatus = async () => {
+
+    const { data } = await supabase
+      .from("spf_creation")
+      .select("status")
+      .eq("spf_number", spfNumber)
+      .maybeSingle();
+
+    if (data) {
+      setData((prev:any) => ({
+        ...prev,
+        status: data.status
+      }));
+    }
+
+  };
+
+  fetchStatus();
+
+}, [spfNumber]);
+
   const split = (value?: string) => {
     if (!value) return [];
     return value.split(",");
@@ -103,19 +127,41 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
 
   return (
     <>
-      <Button
-        variant="outline"
-        className="rounded-none p-6"
-        onClick={() => setOpen(true)}
-      >
-        View
-      </Button>
+<div className="flex items-center gap-2">
+
+  <Button
+    variant="outline"
+    className="rounded-none p-6"
+    onClick={() => setOpen(true)}
+  >
+    View
+  </Button>
+
+  {data?.status && (
+    <span className="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700 uppercase">
+      {data.status}
+    </span>
+  )}
+
+</div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-7xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>SPF Request View</DialogTitle>
-          </DialogHeader>
+<DialogHeader className="space-y-2">
+
+  <DialogTitle>SPF Request View</DialogTitle>
+
+  {data?.status && (
+    <div className="flex items-center gap-2 text-sm">
+      <span className="font-medium">Status:</span>
+
+      <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-700 uppercase">
+        {data.status}
+      </span>
+    </div>
+  )}
+
+</DialogHeader>
 
           {loading && <p className="text-sm">Loading...</p>}
 
