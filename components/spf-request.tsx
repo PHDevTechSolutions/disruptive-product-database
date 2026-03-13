@@ -690,19 +690,26 @@ export default function SPF({ processBy }: SPFProps) {
 
                                                 {/* SPECS */}
                                                 <td className="border px-2 py-1">
-                                                  {prod.technicalSpecifications?.map(
-                                                    (g: any, gi: number) => (
-                                                      <div key={gi}>
-                                                        <b>{g.title}</b>
-                                                        <ul className="ml-3 list-disc">
-                                                          {g.specs
-                                                            ?.filter(
-                                                              (s: any) =>
-                                                                s.value &&
-                                                                s.value.trim() !==
-                                                                  "",
-                                                            )
-                                                            .map(
+                                                  {prod.technicalSpecifications
+                                                    ?.map((g: any) => ({
+                                                      ...g,
+                                                      specs: g.specs?.filter(
+                                                        (s: any) =>
+                                                          s.value &&
+                                                          s.value.trim() !== "",
+                                                      ),
+                                                    }))
+                                                    .filter(
+                                                      (g: any) =>
+                                                        g.specs &&
+                                                        g.specs.length > 0,
+                                                    )
+                                                    .map(
+                                                      (g: any, gi: number) => (
+                                                        <div key={gi}>
+                                                          <b>{g.title}</b>
+                                                          <ul className="ml-3 list-disc">
+                                                            {g.specs.map(
                                                               (
                                                                 s: any,
                                                                 si: number,
@@ -713,10 +720,10 @@ export default function SPF({ processBy }: SPFProps) {
                                                                 </li>
                                                               ),
                                                             )}
-                                                        </ul>
-                                                      </div>
-                                                    ),
-                                                  )}
+                                                          </ul>
+                                                        </div>
+                                                      ),
+                                                    )}
                                                 </td>
 
                                                 {/* UNIT COST */}
@@ -741,11 +748,16 @@ export default function SPF({ processBy }: SPFProps) {
 
                                                 {/* SUBTOTAL MANUAL INPUT */}
                                                 <td className="border px-2 py-1">
-                                                  <input
-                                                    type="number"
-                                                    className="w-full border px-1 text-xs"
-                                                    placeholder="Subtotal"
-                                                  />
+                                                  <div className="flex items-center gap-1">
+                                                    <span className="text-xs font-semibold">
+                                                      ₱
+                                                    </span>
+                                                    <input
+                                                      type="number"
+                                                      className="w-full border px-1 text-xs"
+                                                      placeholder="Subtotal"
+                                                    />
+                                                  </div>
                                                 </td>
                                               </tr>
                                             </tbody>
