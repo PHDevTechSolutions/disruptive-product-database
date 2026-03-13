@@ -687,6 +687,32 @@ export default function SPF({ processBy }: SPFProps) {
                                                       type="number"
                                                       className="w-full border px-1 text-xs"
                                                       placeholder="Qty"
+                                                      value={prod.qty || ""}
+                                                      onChange={(e) => {
+                                                        const qty = Number(
+                                                          e.target.value,
+                                                        );
+
+                                                        setProductOffers(
+                                                          (prev) => {
+                                                            const copy = {
+                                                              ...prev,
+                                                            };
+                                                            const row = [
+                                                              ...(copy[index] ||
+                                                                []),
+                                                            ];
+
+                                                            row[i] = {
+                                                              ...row[i],
+                                                              qty,
+                                                            };
+
+                                                            copy[index] = row;
+                                                            return copy;
+                                                          },
+                                                        );
+                                                      }}
                                                     />
                                                   </td>
 
@@ -758,16 +784,22 @@ export default function SPF({ processBy }: SPFProps) {
 
                                                   {/* SUBTOTAL */}
                                                   <td className="border px-2 py-1 text-center align-middle">
-                                                    <div className="flex items-center gap-1">
-                                                      <span className="text-xs font-semibold">
-                                                        ₱
-                                                      </span>
-                                                      <input
-                                                        type="number"
-                                                        className="w-full border px-1 text-xs"
-                                                        placeholder="Subtotal"
-                                                      />
-                                                    </div>
+                                                    {(() => {
+                                                      const qty = prod.qty || 0;
+                                                      const unitCost = Number(
+                                                        prod?.commercialDetails
+                                                          ?.unitCost || 0,
+                                                      );
+                                                      const subtotal =
+                                                        qty * unitCost;
+
+                                                      return (
+                                                        <span className="text-xs font-semibold">
+                                                          ₱{" "}
+                                                          {subtotal.toLocaleString()}
+                                                        </span>
+                                                      );
+                                                    })()}
                                                   </td>
                                                 </tr>
                                               );
