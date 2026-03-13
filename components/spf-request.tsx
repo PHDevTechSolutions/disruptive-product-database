@@ -695,17 +695,24 @@ export default function SPF({ processBy }: SPFProps) {
                                                       <div key={gi}>
                                                         <b>{g.title}</b>
                                                         <ul className="ml-3 list-disc">
-                                                          {g.specs?.map(
-                                                            (
-                                                              s: any,
-                                                              si: number,
-                                                            ) => (
-                                                              <li key={si}>
-                                                                {s.specId}:{" "}
-                                                                {s.value || "-"}
-                                                              </li>
-                                                            ),
-                                                          )}
+                                                          {g.specs
+                                                            ?.filter(
+                                                              (s: any) =>
+                                                                s.value &&
+                                                                s.value.trim() !==
+                                                                  "",
+                                                            )
+                                                            .map(
+                                                              (
+                                                                s: any,
+                                                                si: number,
+                                                              ) => (
+                                                                <li key={si}>
+                                                                  {s.specId}:{" "}
+                                                                  {s.value}
+                                                                </li>
+                                                              ),
+                                                            )}
                                                         </ul>
                                                       </div>
                                                     ),
