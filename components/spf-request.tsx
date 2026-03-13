@@ -418,21 +418,23 @@ export default function SPF({ processBy }: SPFProps) {
                 <div className="mt-4 overflow-y-auto relative">
                   {formData.item_description?.length ? (
                     <table className="w-full table-auto border">
-<thead>
-  <tr className="bg-gray-100">
-    <th className="border px-2 py-1 text-center">#</th>
-    <th className="border px-2 py-1 text-center">Image</th>
-    <th className="border px-2 py-1 text-center">
-      Item Code
-    </th>
-    <th className="border px-2 py-1 text-center">
-      Item Description
-    </th>
-    <th className="border px-2 py-1 text-center">
-      Product Offer
-    </th>
-  </tr>
-</thead>
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border px-2 py-1 text-center">#</th>
+                          <th className="border px-2 py-1 text-center">
+                            Image
+                          </th>
+                          <th className="border px-2 py-1 text-center">
+                            Item Code
+                          </th>
+                          <th className="border px-2 py-1 text-center">
+                            Item Description
+                          </th>
+                          <th className="border px-2 py-1 text-center">
+                            Product Offer
+                          </th>
+                        </tr>
+                      </thead>
 
                       <tbody>
                         {(formData.item_description || []).map(
@@ -563,8 +565,8 @@ export default function SPF({ processBy }: SPFProps) {
                                 </td>
 
                                 {/* DESCRIPTION */}
-<td
-  className="border px-2 py-1 whitespace-pre-wrap text-center align-middle"
+                                <td
+                                  className="border px-2 py-1 whitespace-pre-wrap text-center align-middle"
                                   contentEditable
                                   suppressContentEditableWarning
                                   onBlur={(e) => {
@@ -706,21 +708,24 @@ export default function SPF({ processBy }: SPFProps) {
                                                     )
                                                     .map(
                                                       (g: any, gi: number) => (
-                                                        <div key={gi}>
+                                                        <div
+                                                          key={gi}
+                                                          className="mb-2"
+                                                        >
                                                           <b>{g.title}</b>
-                                                          <ul className="ml-3 list-disc">
+                                                          <div className="text-xs">
                                                             {g.specs.map(
                                                               (
                                                                 s: any,
                                                                 si: number,
                                                               ) => (
-                                                                <li key={si}>
+                                                                <div key={si}>
                                                                   {s.specId}:{" "}
                                                                   {s.value}
-                                                                </li>
+                                                                </div>
                                                               ),
                                                             )}
-                                                          </ul>
+                                                          </div>
                                                         </div>
                                                       ),
                                                     )}
