@@ -153,20 +153,21 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
             height: "1056px",
           }}
         >
-          {/* HEADER */}
-          <Image
-            src={selected.header}
-            alt="Header"
-            width={816}
-            height={HEADER_HEIGHT}
-            priority
-            className="w-full"
-          />
+{/* HEADER */}
+<Image
+  src={selected.header}
+  alt="Header"
+  width={816}
+  height={HEADER_HEIGHT}
+  priority
+  className="absolute top-0 left-0 w-full"
+/>
 
           {/* CENTER AREA */}
-          <div
-            style={{
-              height: CONTENT_AREA,
+<div
+  style={{
+    height: CONTENT_AREA,
+    marginTop: HEADER_HEIGHT,
               display: "flex",
               justifyContent: "center",
               alignItems: "flex-start",
