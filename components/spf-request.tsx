@@ -418,21 +418,21 @@ export default function SPF({ processBy }: SPFProps) {
                 <div className="mt-4 overflow-y-auto relative">
                   {formData.item_description?.length ? (
                     <table className="w-full table-auto border">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="border px-2 py-1 text-left">#</th>
-                          <th className="border px-2 py-1 text-left">Image</th>
-                          <th className="border px-2 py-1 text-left">
-                            Item Code
-                          </th>
-                          <th className="border px-2 py-1 text-left">
-                            Item Description
-                          </th>
-                          <th className="border px-2 py-1 text-left">
-                            Product Offer
-                          </th>
-                        </tr>
-                      </thead>
+<thead>
+  <tr className="bg-gray-100">
+    <th className="border px-2 py-1 text-center">#</th>
+    <th className="border px-2 py-1 text-center">Image</th>
+    <th className="border px-2 py-1 text-center">
+      Item Code
+    </th>
+    <th className="border px-2 py-1 text-center">
+      Item Description
+    </th>
+    <th className="border px-2 py-1 text-center">
+      Product Offer
+    </th>
+  </tr>
+</thead>
 
                       <tbody>
                         {(formData.item_description || []).map(
@@ -536,7 +536,7 @@ export default function SPF({ processBy }: SPFProps) {
                                 }}
                               >
                                 {/* ITEM NUMBER */}
-                                <td className="border px-2 py-1 font-medium">
+                                <td className="border px-2 py-1 font-medium text-center align-middle">
                                   {formData.spf_number
                                     ? `${formData.spf_number}-${String(
                                         index + 1,
@@ -545,7 +545,7 @@ export default function SPF({ processBy }: SPFProps) {
                                 </td>
 
                                 {/* IMAGE */}
-                                <td className="border px-2 py-1">
+                                <td className="border px-2 py-1 text-center align-middle">
                                   {formData.item_photo?.[index] ? (
                                     <img
                                       src={formData.item_photo[index]}
@@ -558,13 +558,13 @@ export default function SPF({ processBy }: SPFProps) {
                                 </td>
 
                                 {/* ITEM CODE */}
-                                <td className="border px-2 py-1">
+                                <td className="border px-2 py-1 text-center align-middle">
                                   {formData.item_code?.[index] || "-"}
                                 </td>
 
                                 {/* DESCRIPTION */}
-                                <td
-                                  className="border px-2 py-1 whitespace-pre-wrap"
+<td
+  className="border px-2 py-1 whitespace-pre-wrap text-center align-middle"
                                   contentEditable
                                   suppressContentEditableWarning
                                   onBlur={(e) => {
@@ -590,7 +590,7 @@ export default function SPF({ processBy }: SPFProps) {
                                 </td>
 
                                 {/* PRODUCT OFFER TABLE */}
-                                <td className="border px-2 py-1">
+                                <td className="border px-2 py-1 text-center align-middle">
                                   {(productOffers[index] || []).map(
                                     (prod: any, i: number) => {
                                       const unitCost =
@@ -635,28 +635,28 @@ export default function SPF({ processBy }: SPFProps) {
                                           <table className="w-full text-xs">
                                             <thead className="bg-muted">
                                               <tr>
-                                                <th className="border px-2 py-1">
+                                                <th className="border px-2 py-1 text-center">
                                                   Image
                                                 </th>
                                                 <th className="border px-2 py-1 w-[70px]">
                                                   Qty
                                                 </th>
-                                                <th className="border px-2 py-1">
-                                                  Specs
+                                                <th className="border px-2 py-1 text-center">
+                                                  Technical Specifications
                                                 </th>
-                                                <th className="border px-2 py-1">
+                                                <th className="border px-2 py-1 text-center">
                                                   Unit Cost
                                                 </th>
-                                                <th className="border px-2 py-1">
-                                                  Packaging
+                                                <th className="border px-2 py-1 text-center">
+                                                  Packaging Details
                                                   <div className="text-[10px] text-muted-foreground">
-                                                    L | W | H
+                                                    L x W x H
                                                   </div>
                                                 </th>
-                                                <th className="border px-2 py-1">
+                                                <th className="border px-2 py-1 text-center">
                                                   Factory
                                                 </th>
-                                                <th className="border px-2 py-1">
+                                                <th className="border px-2 py-1 text-center">
                                                   Port
                                                 </th>
                                                 <th className="border px-2 py-1 w-[100px]">
@@ -668,7 +668,7 @@ export default function SPF({ processBy }: SPFProps) {
                                             <tbody>
                                               <tr>
                                                 {/* IMAGE */}
-                                                <td className="border px-2 py-1">
+                                                <td className="border px-2 py-1 text-center align-middle">
                                                   {prod.mainImage?.url ? (
                                                     <img
                                                       src={prod.mainImage.url}
@@ -680,7 +680,7 @@ export default function SPF({ processBy }: SPFProps) {
                                                 </td>
 
                                                 {/* QTY MANUAL INPUT */}
-                                                <td className="border px-2 py-1">
+                                                <td className="border px-2 py-1 text-center align-middle">
                                                   <input
                                                     type="number"
                                                     className="w-full border px-1 text-xs"
@@ -689,7 +689,7 @@ export default function SPF({ processBy }: SPFProps) {
                                                 </td>
 
                                                 {/* SPECS */}
-                                                <td className="border px-2 py-1">
+                                                <td className="border px-2 py-1 text-center align-middle">
                                                   {prod.technicalSpecifications
                                                     ?.map((g: any) => ({
                                                       ...g,
@@ -727,27 +727,27 @@ export default function SPF({ processBy }: SPFProps) {
                                                 </td>
 
                                                 {/* UNIT COST */}
-                                                <td className="border px-2 py-1">
+                                                <td className="border px-2 py-1 text-center align-middle">
                                                   {unitCost}
                                                 </td>
 
                                                 {/* PACKAGING */}
-                                                <td className="border px-2 py-1">
-                                                  {length} | {width} | {height}
+                                                <td className="border px-2 py-1 text-center align-middle">
+                                                  {length} x {width} x {height}
                                                 </td>
 
                                                 {/* FACTORY */}
-                                                <td className="border px-2 py-1">
+                                                <td className="border px-2 py-1 text-center align-middle">
                                                   {factory}
                                                 </td>
 
                                                 {/* PORT */}
-                                                <td className="border px-2 py-1">
+                                                <td className="border px-2 py-1 text-center align-middle">
                                                   {port}
                                                 </td>
 
                                                 {/* SUBTOTAL MANUAL INPUT */}
-                                                <td className="border px-2 py-1">
+                                                <td className="border px-2 py-1 text-center align-middle">
                                                   <div className="flex items-center gap-1">
                                                     <span className="text-xs font-semibold">
                                                       ₱
