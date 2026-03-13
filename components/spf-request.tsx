@@ -46,7 +46,7 @@ type SPFRequest = {
   special_instructions?: string;
   item_description?: string[];
   item_photo?: string[];
-  item_code?: string[];
+
   status?: string;
   date_created?: string;
   process_by?: string;
@@ -85,7 +85,6 @@ export default function SPF({ processBy }: SPFProps) {
     tin_no: "",
     item_description: [],
     item_photo: [],
-    item_code: [],
   });
 
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
@@ -152,7 +151,6 @@ export default function SPF({ processBy }: SPFProps) {
       process_by: processBy,
       item_description: normalizeArray(rowData.item_description),
       item_photo: normalizeArray(rowData.item_photo),
-      item_code: normalizeArray(rowData.item_code),
     });
 
     setOpenDialog(true);
@@ -278,7 +276,7 @@ export default function SPF({ processBy }: SPFProps) {
 
         {/* ---------------- Dialog ---------------- */}
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-          <DialogContent className="sm:max-w-8xl rounded-none p-6 max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-8xl rounded-none p-6 max-h-[90vh] overflow-hidden">
             <DialogHeader className="w-full mb-4 relative">
               {/* CENTER TITLE */}
               <DialogTitle className="text-center w-full">
@@ -360,7 +358,7 @@ export default function SPF({ processBy }: SPFProps) {
 
             <div className="flex gap-4">
               {/* LEFT CARD: Company Details + Table */}
-              <Card className="w-[70%] p-4 flex flex-col gap-4 overflow-y-auto max-h-[70vh]">
+              <Card className="w-[70%] p-4 flex flex-col gap-4 overflow-y-auto max-h-[70vh] overscroll-contain">
                 <div className="grid grid-cols-1 gap-4">
                   <CardDetails
                     title="Company Details"
@@ -423,9 +421,6 @@ export default function SPF({ processBy }: SPFProps) {
                           <th className="border px-2 py-1 text-center">#</th>
                           <th className="border px-2 py-1 text-center">
                             Image
-                          </th>
-                          <th className="border px-2 py-1 text-center">
-                            Item Code
                           </th>
                           <th className="border px-2 py-1 text-center">
                             Item Description
@@ -547,21 +542,18 @@ export default function SPF({ processBy }: SPFProps) {
                                 </td>
 
                                 {/* IMAGE */}
-                                <td className="border px-2 py-1 text-center align-middle">
-                                  {formData.item_photo?.[index] ? (
-                                    <img
-                                      src={formData.item_photo[index]}
-                                      alt={desc}
-                                      className="w-50 h-50 object-contain"
-                                    />
-                                  ) : (
-                                    "-"
-                                  )}
-                                </td>
-
-                                {/* ITEM CODE */}
-                                <td className="border px-2 py-1 text-center align-middle">
-                                  {formData.item_code?.[index] || "-"}
+                                <td className="border px-2 py-1 align-middle">
+                                  <div className="flex justify-center items-center">
+                                    {formData.item_photo?.[index] ? (
+                                      <img
+                                        src={formData.item_photo[index]}
+                                        alt={desc}
+                                        className="w-24 h-24 object-contain"
+                                      />
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </div>
                                 </td>
 
                                 {/* DESCRIPTION */}
@@ -593,183 +585,197 @@ export default function SPF({ processBy }: SPFProps) {
 
                                 {/* PRODUCT OFFER TABLE */}
                                 <td className="border px-2 py-1 text-center align-middle">
-                                  {(productOffers[index] || []).map(
-                                    (prod: any, i: number) => {
-                                      const unitCost =
-                                        prod?.commercialDetails?.unitCost ||
-                                        "-";
+                                  {(productOffers[index] || []).length > 0 && (
+                                    <div className="border rounded mb-2 overflow-hidden">
+                                      <table className="w-full text-xs">
+                                        <thead className="bg-muted">
+                                          <tr>
+                                            <th className="border px-2 py-1 text-center">
+                                              Image
+                                            </th>
+                                            <th className="border px-2 py-1 w-[70px]">
+                                              Qty
+                                            </th>
+                                            <th className="border px-2 py-1 text-center">
+                                              Technical Specifications
+                                            </th>
+                                            <th className="border px-2 py-1 text-center">
+                                              Unit Cost
+                                            </th>
+                                            <th className="border px-2 py-1 text-center">
+                                              Packaging Details
+                                              <div className="text-[10px] text-muted-foreground">
+                                                L x W x H
+                                              </div>
+                                            </th>
+                                            <th className="border px-2 py-1 text-center">
+                                              Factory
+                                            </th>
+                                            <th className="border px-2 py-1 text-center">
+                                              Port
+                                            </th>
+                                            <th className="border px-2 py-1 w-[100px]">
+                                              Sub Total
+                                            </th>
+                                          </tr>
+                                        </thead>
 
-                                      const length =
-                                        prod?.commercialDetails?.packaging
-                                          ?.length || "-";
-                                      const width =
-                                        prod?.commercialDetails?.packaging
-                                          ?.width || "-";
-                                      const height =
-                                        prod?.commercialDetails?.packaging
-                                          ?.height || "-";
+                                        <tbody>
+                                          {(productOffers[index] || []).map(
+                                            (prod: any, i: number) => {
+                                              const unitCost =
+                                                prod?.commercialDetails
+                                                  ?.unitCost || "-";
 
-                                      const factory =
-                                        prod?.commercialDetails
-                                          ?.factoryAddress || "-";
-                                      const port =
-                                        prod?.commercialDetails
-                                          ?.portOfDischarge || "-";
+                                              const length =
+                                                prod?.commercialDetails
+                                                  ?.packaging?.length || "-";
+                                              const width =
+                                                prod?.commercialDetails
+                                                  ?.packaging?.width || "-";
+                                              const height =
+                                                prod?.commercialDetails
+                                                  ?.packaging?.height || "-";
 
-                                      return (
-                                        <div
-                                          key={i}
-                                          draggable
-                                          onDragStart={() => {
-                                            setDraggedProduct({
-                                              ...prod,
-                                              __fromRow: index,
-                                              __fromIndex: i,
-                                            });
-                                            setShowTrash(true);
-                                          }}
-                                          onDragEnd={() => {
-                                            setDraggedProduct(null);
-                                            setShowTrash(false);
-                                          }}
-                                          className="border rounded mb-2 overflow-hidden"
-                                        >
-                                          <table className="w-full text-xs">
-                                            <thead className="bg-muted">
-                                              <tr>
-                                                <th className="border px-2 py-1 text-center">
-                                                  Image
-                                                </th>
-                                                <th className="border px-2 py-1 w-[70px]">
-                                                  Qty
-                                                </th>
-                                                <th className="border px-2 py-1 text-center">
-                                                  Technical Specifications
-                                                </th>
-                                                <th className="border px-2 py-1 text-center">
-                                                  Unit Cost
-                                                </th>
-                                                <th className="border px-2 py-1 text-center">
-                                                  Packaging Details
-                                                  <div className="text-[10px] text-muted-foreground">
-                                                    L x W x H
-                                                  </div>
-                                                </th>
-                                                <th className="border px-2 py-1 text-center">
-                                                  Factory
-                                                </th>
-                                                <th className="border px-2 py-1 text-center">
-                                                  Port
-                                                </th>
-                                                <th className="border px-2 py-1 w-[100px]">
-                                                  Sub Total
-                                                </th>
-                                              </tr>
-                                            </thead>
+                                              const factory =
+                                                prod?.commercialDetails
+                                                  ?.factoryAddress || "-";
 
-                                            <tbody>
-                                              <tr>
-                                                {/* IMAGE */}
-                                                <td className="border px-2 py-1 text-center align-middle">
-                                                  {prod.mainImage?.url ? (
-                                                    <img
-                                                      src={prod.mainImage.url}
-                                                      className="w-16 h-16 object-contain"
-                                                    />
-                                                  ) : (
-                                                    "-"
-                                                  )}
-                                                </td>
+                                              const port =
+                                                prod?.commercialDetails
+                                                  ?.portOfDischarge || "-";
 
-                                                {/* QTY MANUAL INPUT */}
-                                                <td className="border px-2 py-1 text-center align-middle">
-                                                  <input
-                                                    type="number"
-                                                    className="w-full border px-1 text-xs"
-                                                    placeholder="Qty"
-                                                  />
-                                                </td>
+                                              return (
+                                                <tr
+                                                  key={i}
+                                                  draggable
+                                                  className="cursor-grab active:cursor-grabbing"
+                                                  onDragStart={(e) => {
+                                                    e.dataTransfer.setData(
+                                                      "text/plain",
+                                                      "dragging",
+                                                    );
 
-                                                {/* SPECS */}
-                                                <td className="border px-2 py-1 text-center align-middle">
-                                                  {prod.technicalSpecifications
-                                                    ?.map((g: any) => ({
-                                                      ...g,
-                                                      specs: g.specs?.filter(
-                                                        (s: any) =>
-                                                          s.value &&
-                                                          s.value.trim() !== "",
-                                                      ),
-                                                    }))
-                                                    .filter(
-                                                      (g: any) =>
-                                                        g.specs &&
-                                                        g.specs.length > 0,
-                                                    )
-                                                    .map(
-                                                      (g: any, gi: number) => (
-                                                        <div
-                                                          key={gi}
-                                                          className="mb-2"
-                                                        >
-                                                          <b>{g.title}</b>
-                                                          <div className="text-xs">
-                                                            {g.specs.map(
-                                                              (
-                                                                s: any,
-                                                                si: number,
-                                                              ) => (
-                                                                <div key={si}>
-                                                                  {s.specId}:{" "}
-                                                                  {s.value}
-                                                                </div>
-                                                              ),
-                                                            )}
-                                                          </div>
-                                                        </div>
-                                                      ),
+                                                    setDraggedProduct({
+                                                      ...prod,
+                                                      __fromRow: index,
+                                                      __fromIndex: i,
+                                                    });
+
+                                                    setShowTrash(true);
+                                                  }}
+                                                  onDragEnd={() => {
+                                                    setDraggedProduct(null);
+                                                    setShowTrash(false);
+                                                  }}
+                                                >
+                                                  {/* IMAGE */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {prod.mainImage?.url ? (
+                                                      <img
+                                                        src={prod.mainImage.url}
+                                                        className="w-16 h-16 object-contain mx-auto"
+                                                      />
+                                                    ) : (
+                                                      "-"
                                                     )}
-                                                </td>
+                                                  </td>
 
-                                                {/* UNIT COST */}
-                                                <td className="border px-2 py-1 text-center align-middle">
-                                                  {unitCost}
-                                                </td>
-
-                                                {/* PACKAGING */}
-                                                <td className="border px-2 py-1 text-center align-middle">
-                                                  {length} x {width} x {height}
-                                                </td>
-
-                                                {/* FACTORY */}
-                                                <td className="border px-2 py-1 text-center align-middle">
-                                                  {factory}
-                                                </td>
-
-                                                {/* PORT */}
-                                                <td className="border px-2 py-1 text-center align-middle">
-                                                  {port}
-                                                </td>
-
-                                                {/* SUBTOTAL MANUAL INPUT */}
-                                                <td className="border px-2 py-1 text-center align-middle">
-                                                  <div className="flex items-center gap-1">
-                                                    <span className="text-xs font-semibold">
-                                                      ₱
-                                                    </span>
+                                                  {/* QTY */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
                                                     <input
                                                       type="number"
                                                       className="w-full border px-1 text-xs"
-                                                      placeholder="Subtotal"
+                                                      placeholder="Qty"
                                                     />
-                                                  </div>
-                                                </td>
-                                              </tr>
-                                            </tbody>
-                                          </table>
-                                        </div>
-                                      );
-                                    },
+                                                  </td>
+
+                                                  {/* TECHNICAL SPECS */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {prod.technicalSpecifications
+                                                      ?.map((g: any) => ({
+                                                        ...g,
+                                                        specs: g.specs?.filter(
+                                                          (s: any) =>
+                                                            s.value &&
+                                                            s.value.trim() !==
+                                                              "",
+                                                        ),
+                                                      }))
+                                                      .filter(
+                                                        (g: any) =>
+                                                          g.specs &&
+                                                          g.specs.length > 0,
+                                                      )
+                                                      .map(
+                                                        (
+                                                          g: any,
+                                                          gi: number,
+                                                        ) => (
+                                                          <div
+                                                            key={gi}
+                                                            className="mb-2"
+                                                          >
+                                                            <b>{g.title}</b>
+                                                            <div className="text-xs">
+                                                              {g.specs.map(
+                                                                (
+                                                                  s: any,
+                                                                  si: number,
+                                                                ) => (
+                                                                  <div key={si}>
+                                                                    {s.specId}:{" "}
+                                                                    {s.value}
+                                                                  </div>
+                                                                ),
+                                                              )}
+                                                            </div>
+                                                          </div>
+                                                        ),
+                                                      )}
+                                                  </td>
+
+                                                  {/* UNIT COST */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {unitCost}
+                                                  </td>
+
+                                                  {/* PACKAGING */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {length} x {width} x{" "}
+                                                    {height}
+                                                  </td>
+
+                                                  {/* FACTORY */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {factory}
+                                                  </td>
+
+                                                  {/* PORT */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {port}
+                                                  </td>
+
+                                                  {/* SUBTOTAL */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    <div className="flex items-center gap-1">
+                                                      <span className="text-xs font-semibold">
+                                                        ₱
+                                                      </span>
+                                                      <input
+                                                        type="number"
+                                                        className="w-full border px-1 text-xs"
+                                                        placeholder="Subtotal"
+                                                      />
+                                                    </div>
+                                                  </td>
+                                                </tr>
+                                              );
+                                            },
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
                                   )}
                                 </td>
                               </tr>
@@ -787,7 +793,7 @@ export default function SPF({ processBy }: SPFProps) {
               </Card>
 
               {/* RIGHT CARD: Products Section */}
-              <div className="w-[30%] max-h-[70vh] overflow-y-auto">
+              <div className="w-[30%] max-h-[70vh] overflow-y-auto overscroll-contain">
                 <div className="columns-2 gap-3">
                   {filteredProducts.map((p) => (
                     <Card
