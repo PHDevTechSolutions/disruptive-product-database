@@ -138,6 +138,25 @@ export default function AddProductPage() {
   const [saving, setSaving] = useState(false);
 
   const [mainImage, setMainImage] = useState<File | null>(null);
+
+  /* ===== DIMENSIONAL DRAWING ===== */
+  const [dimensionalDrawing, setDimensionalDrawing] = useState<File | null>(
+    null,
+  );
+  const [dimensionalPreview, setDimensionalPreview] = useState<string | null>(
+    null,
+  );
+  const [dimensionalLink, setDimensionalLink] = useState("");
+
+  /* ===== ILLUMINANCE DRAWING ===== */
+  const [illuminanceDrawing, setIlluminanceDrawing] = useState<File | null>(
+    null,
+  );
+  const [illuminancePreview, setIlluminancePreview] = useState<string | null>(
+    null,
+  );
+  const [illuminanceLink, setIlluminanceLink] = useState("");
+
   const [preview, setPreview] = useState<string | null>(null);
   const [imageLink, setImageLink] = useState("");
 
@@ -808,6 +827,28 @@ export default function AddProductPage() {
     setPreview(URL.createObjectURL(file));
   };
 
+  /* ===== DIMENSIONAL DRAWING ===== */
+  const handleDimensionalChange = (file: File | null) => {
+    if (!file) return;
+
+    setDimensionalDrawing(file);
+
+    if (dimensionalPreview) URL.revokeObjectURL(dimensionalPreview);
+
+    setDimensionalPreview(URL.createObjectURL(file));
+  };
+
+  /* ===== ILLUMINANCE DRAWING ===== */
+  const handleIlluminanceChange = (file: File | null) => {
+    if (!file) return;
+
+    setIlluminanceDrawing(file);
+
+    if (illuminancePreview) URL.revokeObjectURL(illuminancePreview);
+
+    setIlluminancePreview(URL.createObjectURL(file));
+  };
+
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
 
@@ -944,21 +985,46 @@ export default function AddProductPage() {
 
   const uploadProductMedia = async (productId: string) => {
     try {
-      if (!mainImage) return;
+      /* ===== MAIN IMAGE ===== */
+      if (mainImage) {
+        const result = await uploadToCloudinary(mainImage);
 
-      const result = await uploadToCloudinary(mainImage);
+        await updateDoc(doc(db, "products", productId), {
+          mainImage: {
+            name: mainImage.name,
+            url: result.secure_url,
+            publicId: result.public_id,
+          },
+        });
+      }
 
-      if (!result.secure_url) {
-        throw new Error("Upload failed");
+      /* ===== DIMENSIONAL DRAWING ===== */
+      if (dimensionalDrawing) {
+        const result = await uploadToCloudinary(dimensionalDrawing);
+
+        await updateDoc(doc(db, "products", productId), {
+          dimensionalDrawing: {
+            name: dimensionalDrawing.name,
+            url: result.secure_url,
+            publicId: result.public_id,
+          },
+        });
+      }
+
+      /* ===== ILLUMINANCE DRAWING ===== */
+      if (illuminanceDrawing) {
+        const result = await uploadToCloudinary(illuminanceDrawing);
+
+        await updateDoc(doc(db, "products", productId), {
+          illuminanceDrawing: {
+            name: illuminanceDrawing.name,
+            url: result.secure_url,
+            publicId: result.public_id,
+          },
+        });
       }
 
       await updateDoc(doc(db, "products", productId), {
-        mainImage: {
-          name: mainImage.name,
-          url: result.secure_url,
-          publicId: result.public_id,
-        },
-
         mediaStatus: "done",
       });
     } catch {
@@ -967,6 +1033,7 @@ export default function AddProductPage() {
       });
     }
   };
+
   const filteredClassifications = React.useMemo(() => {
     return classificationTypes.filter((item) =>
       item.name.toLowerCase().includes(classificationSearch.toLowerCase()),
@@ -1159,6 +1226,22 @@ export default function AddProductPage() {
             }
           : null,
 
+        dimensionalDrawing: dimensionalLink
+          ? {
+              name: "external-image",
+              url: dimensionalLink,
+              publicId: null,
+            }
+          : null,
+
+        illuminanceDrawing: illuminanceLink
+          ? {
+              name: "external-image",
+              url: illuminanceLink,
+              publicId: null,
+            }
+          : null,
+
         mediaStatus: mainImage ? "pending" : imageLink ? "done" : "done",
 
         createdBy: userId,
@@ -1290,6 +1373,144 @@ export default function AddProductPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* ===== DIMENSIONAL DRAWING ===== */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-center text-sm">
+                    DIMENSIONAL DRAWING
+                  </CardTitle>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  <label
+                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg h-40 cursor-pointer hover:border-blue-400 transition"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+
+                      const file = e.dataTransfer.files?.[0];
+
+                      if (file && file.type.startsWith("image/")) {
+                        handleDimensionalChange(file);
+                      } else {
+                        toast.error("Only image files are allowed");
+                      }
+                    }}
+                  >
+                    {dimensionalPreview ? (
+                      <img
+                        src={dimensionalPreview}
+                        className="h-full object-contain"
+                      />
+                    ) : (
+                      <>
+                        <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground mt-2">
+                          CLICK OR DRAG IMAGE
+                        </span>
+                      </>
+                    )}
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        handleDimensionalChange(e.target.files?.[0] || null)
+                      }
+                    />
+                  </label>
+
+                  <div className="space-y-2">
+                    <Label>Or Send Image Link</Label>
+
+                    <Input
+                      placeholder="Paste image URL..."
+                      value={dimensionalLink}
+                      onChange={(e) => {
+                        const originalLink = e.target.value;
+                        const convertedLink =
+                          convertDriveToThumbnail(originalLink);
+
+                        setDimensionalLink(originalLink);
+                        setDimensionalDrawing(null);
+                        setDimensionalPreview(convertedLink);
+                      }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ===== ILLUMINANCE DRAWING ===== */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-center text-sm">
+                    ILLUMINANCE DRAWING
+                  </CardTitle>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  <label
+                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg h-40 cursor-pointer hover:border-blue-400 transition"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+
+                      const file = e.dataTransfer.files?.[0];
+
+                      if (file && file.type.startsWith("image/")) {
+                        handleIlluminanceChange(file);
+                      } else {
+                        toast.error("Only image files are allowed");
+                      }
+                    }}
+                  >
+                    {illuminancePreview ? (
+                      <img
+                        src={illuminancePreview}
+                        className="h-full object-contain"
+                      />
+                    ) : (
+                      <>
+                        <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground mt-2">
+                          CLICK OR DRAG IMAGE
+                        </span>
+                      </>
+                    )}
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        handleIlluminanceChange(e.target.files?.[0] || null)
+                      }
+                    />
+                  </label>
+
+                  <div className="space-y-2">
+                    <Label>Or Send Image Link</Label>
+
+                    <Input
+                      placeholder="Paste image URL..."
+                      value={illuminanceLink}
+                      onChange={(e) => {
+                        const originalLink = e.target.value;
+                        const convertedLink =
+                          convertDriveToThumbnail(originalLink);
+
+                        setIlluminanceLink(originalLink);
+                        setIlluminanceDrawing(null);
+                        setIlluminancePreview(convertedLink);
+                      }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* ================= SUPPLIER / PRICE / BRAND / CLASS ================= */}
 

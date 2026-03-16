@@ -103,16 +103,17 @@ export default function DownloadProduct({ products }: Props) {
       });
       /* STATIC COLUMNS */
 
-      const staticColumns = [
-        "Product Usage",
-        "Product Family",
-        "Product Class",
-        "Price Point",
-        "Brand Origin",
-        "Supplier Brand",
-        "Image URL",
-      ];
-
+const staticColumns = [
+  "Product Usage",
+  "Product Family",
+  "Product Class",
+  "Price Point",
+  "Brand Origin",
+  "Supplier Brand",
+  "Image URL",
+  "Dimensional Drawing",
+  "Illuminance Drawing",
+];
       const header1: any[] = [];
       const header2: any[] = [];
       const header3: any[] = [];
@@ -326,6 +327,16 @@ Unit Cost | Length | Width | Height | pcs/carton | Factory Address | Port of Dis
         imageURL = convertDriveToThumbnail(imageURL);
 
         row.push(imageURL);
+
+/* ===== DIMENSIONAL DRAWING ===== */
+let dimensionalURL = product.dimensionalDrawing?.url || "";
+dimensionalURL = convertDriveToThumbnail(dimensionalURL);
+row.push(dimensionalURL);
+
+/* ===== ILLUMINANCE DRAWING ===== */
+let illuminanceURL = product.illuminanceDrawing?.url || "";
+illuminanceURL = convertDriveToThumbnail(illuminanceURL);
+row.push(illuminanceURL);
 
         groupMap.forEach((specIds, groupTitle) => {
           const groupData = product.technicalSpecifications?.find(

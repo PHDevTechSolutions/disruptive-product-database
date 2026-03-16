@@ -499,7 +499,7 @@ export default function UploadProduct({}: Props) {
           }
 
           // Only process tech-spec columns starting from col 8 onward
-          if (col < 8) continue;
+          if (col < 10) continue;
 
           const isCommercialColumn = groupHeader === "COMMERCIAL DETAILS";
 
@@ -546,6 +546,36 @@ export default function UploadProduct({}: Props) {
 
           /* CTRL + F: FIX IMAGE OBJECT FROM EXCEL */
           let imageCell: any = row.getCell(7).value;
+
+          /* ===== DIMENSIONAL DRAWING ===== */
+          let dimensionalCell: any = row.getCell(8).value;
+          let dimensionalURL = "";
+
+          if (typeof dimensionalCell === "object" && dimensionalCell !== null) {
+            if (dimensionalCell.text) dimensionalURL = dimensionalCell.text;
+            else if (dimensionalCell.hyperlink)
+              dimensionalURL = dimensionalCell.hyperlink;
+            else dimensionalURL = String(dimensionalCell);
+          } else {
+            dimensionalURL = cleanExcelValue(dimensionalCell);
+          }
+
+          dimensionalURL = convertDriveToThumbnail(dimensionalURL);
+
+          /* ===== ILLUMINANCE DRAWING ===== */
+          let illuminanceCell: any = row.getCell(9).value;
+          let illuminanceURL = "";
+
+          if (typeof illuminanceCell === "object" && illuminanceCell !== null) {
+            if (illuminanceCell.text) illuminanceURL = illuminanceCell.text;
+            else if (illuminanceCell.hyperlink)
+              illuminanceURL = illuminanceCell.hyperlink;
+            else illuminanceURL = String(illuminanceCell);
+          } else {
+            illuminanceURL = cleanExcelValue(illuminanceCell);
+          }
+
+          illuminanceURL = convertDriveToThumbnail(illuminanceURL);
           let imageURL = "";
 
           if (typeof imageCell === "object" && imageCell !== null) {
@@ -662,6 +692,12 @@ export default function UploadProduct({}: Props) {
             supplier,
 
             mainImage: imageURL ? { url: imageURL } : null,
+
+            /* ===== DIMENSIONAL DRAWING ===== */
+            dimensionalDrawing: dimensionalURL ? { url: dimensionalURL } : null,
+
+            /* ===== ILLUMINANCE DRAWING ===== */
+            illuminanceDrawing: illuminanceURL ? { url: illuminanceURL } : null,
 
             categoryTypes: [
               {
