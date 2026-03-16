@@ -34,7 +34,12 @@ const convertDriveToThumbnail = (url: string) => {
 type Props = {
   open: boolean;
   onClose: () => void;
+
   mainImage?: { url: string };
+
+  dimensionalDrawing?: { url: string };
+  illuminanceDrawing?: { url: string };
+
   technicalSpecifications?: TechnicalSpecification[];
 };
 
@@ -42,6 +47,8 @@ export default function GenerateTDS({
   open,
   onClose,
   mainImage,
+  dimensionalDrawing,
+  illuminanceDrawing,
   technicalSpecifications,
 }: Props) {
   const [selectedBrand, setSelectedBrand] = useState("");
@@ -49,10 +56,11 @@ export default function GenerateTDS({
   const [productName, setProductName] = useState("");
   const [hideEmptySpecs, setHideEmptySpecs] = useState(true);
 
-  const [dimensionalDrawing, setDimensionalDrawing] = useState<File | null>(
-    null,
-  );
-  const [illuminanceLevel, setIlluminanceLevel] = useState<File | null>(null);
+const [uploadedDimensionalDrawing, setUploadedDimensionalDrawing] =
+  useState<File | null>(null);
+
+const [uploadedIlluminanceLevel, setUploadedIlluminanceLevel] =
+  useState<File | null>(null);
 
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -60,7 +68,7 @@ export default function GenerateTDS({
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (event.target.files) {
-      setDimensionalDrawing(event.target.files[0]);
+      setUploadedDimensionalDrawing(event.target.files[0]);
     }
   };
 
@@ -68,7 +76,7 @@ export default function GenerateTDS({
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (event.target.files) {
-      setIlluminanceLevel(event.target.files[0]);
+      setUploadedIlluminanceLevel(event.target.files[0]);
     }
   };
 
@@ -394,32 +402,72 @@ pdf.line(lineStartX, lineY, lineEndX, lineY);
     );
 
     // Draw images centered under labels
-    if (dimensionalDrawing) {
-      const img = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(dimensionalDrawing);
-      });
+const dimensionalSource = uploadedDimensionalDrawing || dimensionalDrawing;
 
-      pdf.addImage(img, "PNG", startX, drawingY, drawingWidth, drawingHeight);
-    }
+if (dimensionalSource) {
+  let img: string;
 
-    if (illuminanceLevel) {
-      const img2 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(illuminanceLevel);
-      });
+  if (dimensionalSource instanceof File) {
+    img = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(dimensionalSource);
+    });
+  } else {
+    const converted = convertDriveToThumbnail(dimensionalSource.url);
+    const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
 
-      pdf.addImage(
-        img2,
-        "PNG",
-        startX + drawingWidth + gapBetween,
-        drawingY,
-        drawingWidth,
-        drawingHeight,
+    img = await fetch(proxyUrl)
+      .then((r) => r.blob())
+      .then(
+        (blob) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          }),
       );
-    }
+  }
+
+  pdf.addImage(img, "PNG", startX, drawingY, drawingWidth, drawingHeight);
+}
+const illuminanceSource =
+  uploadedIlluminanceLevel || illuminanceDrawing;
+
+if (illuminanceSource) {
+  let img2: string;
+
+  if (illuminanceSource instanceof File) {
+    img2 = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(illuminanceSource);
+    });
+  } else {
+    const converted = convertDriveToThumbnail(illuminanceSource.url);
+    const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
+
+    img2 = await fetch(proxyUrl)
+      .then((r) => r.blob())
+      .then(
+        (blob) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          }),
+      );
+  }
+
+  pdf.addImage(
+    img2,
+    "PNG",
+    startX + drawingWidth + gapBetween,
+    drawingY,
+    drawingWidth,
+    drawingHeight,
+  );
+}
 
     /* ================= FOOTER ================= */
 
@@ -559,27 +607,51 @@ pdf.line(lineStartX, lineY, lineEndX, lineY);
                 className="w-full border rounded-md h-10 px-3 text-sm bg-white"
               />
             </div>
-            {/* DIMENSIONAL DRAWING */}
-            <div className="space-y-2">
-              <p className="text-sm font-semibold">Dimensional Drawing</p>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleDimensionalDrawingChange}
-                className="w-full border rounded-md h-10 px-3 text-sm bg-white"
-              />
-            </div>
+{/* DIMENSIONAL DRAWING */}
+<div className="space-y-2">
+  <p className="text-sm font-semibold">Dimensional Drawing</p>
 
-            {/* ILLUMINANCE LEVEL */}
-            <div className="space-y-2">
-              <p className="text-sm font-semibold">Illuminance Level</p>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleIlluminanceLevelChange}
-                className="w-full border rounded-md h-10 px-3 text-sm bg-white"
-              />
-            </div>
+  {(uploadedDimensionalDrawing || dimensionalDrawing) && (
+    <img
+      src={
+        uploadedDimensionalDrawing
+          ? URL.createObjectURL(uploadedDimensionalDrawing)
+          : convertDriveToThumbnail(dimensionalDrawing!.url)
+      }
+      className="w-[220px] h-[120px] object-contain border rounded-md"
+    />
+  )}
+
+  <input
+    type="file"
+    accept="image/*"
+    onChange={handleDimensionalDrawingChange}
+    className="w-full border rounded-md h-10 px-3 text-sm bg-white"
+  />
+</div>
+
+{/* ILLUMINANCE LEVEL */}
+<div className="space-y-2">
+  <p className="text-sm font-semibold">Illuminance Level</p>
+
+  {(uploadedIlluminanceLevel || illuminanceDrawing) && (
+    <img
+      src={
+        uploadedIlluminanceLevel
+          ? URL.createObjectURL(uploadedIlluminanceLevel)
+          : convertDriveToThumbnail(illuminanceDrawing!.url)
+      }
+      className="w-[220px] h-[120px] object-contain border rounded-md"
+    />
+  )}
+
+  <input
+    type="file"
+    accept="image/*"
+    onChange={handleIlluminanceLevelChange}
+    className="w-full border rounded-md h-10 px-3 text-sm bg-white"
+  />
+</div>
 
             {/* PREVIEW */}
             <div className="flex justify-center font-bold text-base mb-3">
@@ -607,18 +679,18 @@ pdf.line(lineStartX, lineY, lineEndX, lineY);
             </div>
 
             <div className="flex justify-center">
-              <GenerateTDSBrand
-                ref={previewRef}
-                open={true}
-                company={selectedBrand as "Lit" | "Lumera" | "Ecoshift"}
-                productName={productName}
-                itemCode={itemCode}
-                mainImage={mainImage}
-                technicalSpecifications={technicalSpecifications}
-                dimensionalDrawing={dimensionalDrawing}
-                illuminanceLevel={illuminanceLevel}
-                hideEmptySpecs={hideEmptySpecs}
-              />
+<GenerateTDSBrand
+  ref={previewRef}
+  open={true}
+  company={selectedBrand as "Lit" | "Lumera" | "Ecoshift"}
+  productName={productName}
+  itemCode={itemCode}
+  mainImage={mainImage}
+  technicalSpecifications={technicalSpecifications}
+dimensionalDrawing={uploadedDimensionalDrawing || dimensionalDrawing}
+illuminanceLevel={uploadedIlluminanceLevel || illuminanceDrawing}
+  hideEmptySpecs={hideEmptySpecs}
+/>
             </div>
           </>
         )}

@@ -37,10 +37,13 @@ type Props = {
   company: "Lit" | "Lumera" | "Ecoshift" | "";
   productName: string;
   itemCode: string;
+
   mainImage?: { url: string };
+
+  dimensionalDrawing?: File | { url: string } | null;
+  illuminanceLevel?: File | { url: string } | null;
+
   technicalSpecifications?: TechnicalSpecification[];
-  dimensionalDrawing?: File | null;
-  illuminanceLevel?: File | null;
   hideEmptySpecs?: boolean;
 };
 
@@ -317,22 +320,30 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                     <div className="font-semibold mb-2">
                       Dimensional Drawing
                     </div>
-                    {dimensionalDrawing && (
-                      <img
-                        src={URL.createObjectURL(dimensionalDrawing)}
-                        className="w-[220px] h-[120px] object-contain"
-                      />
-                    )}
+{dimensionalDrawing && (
+  <img
+    src={
+      dimensionalDrawing instanceof File
+        ? URL.createObjectURL(dimensionalDrawing)
+        : convertGoogleDriveUrl(dimensionalDrawing.url)
+    }
+    className="w-[220px] h-[120px] object-contain"
+/>
+)}
                   </div>
 
                   <div className="flex flex-col items-center">
                     <div className="font-semibold mb-2">Illuminance Level</div>
-                    {illuminanceLevel && (
-                      <img
-                        src={URL.createObjectURL(illuminanceLevel)}
-                        className="w-[220px] h-[120px] object-contain"
-                      />
-                    )}
+{illuminanceLevel && (
+  <img
+    src={
+      illuminanceLevel instanceof File
+        ? URL.createObjectURL(illuminanceLevel)
+        : convertGoogleDriveUrl(illuminanceLevel.url)
+    }
+    className="w-[220px] h-[120px] object-contain"
+/>
+)}
                   </div>
                 </div>
               </div>

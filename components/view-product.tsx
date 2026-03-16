@@ -16,6 +16,10 @@ type Props = {
 type ProductData = {
   productName?: string;
   mainImage?: { url: string };
+
+  dimensionalDrawing?: { url: string };
+  illuminanceDrawing?: { url: string };
+
   supplier?: { company: string } | null;
   pricePoint?: string;
   brandOrigin?: string;
@@ -30,7 +34,6 @@ type ProductData = {
     }[];
   }[];
 };
-
 type UserData = {
   Firstname: string;
   Lastname: string;
@@ -292,12 +295,14 @@ export default function ViewProduct({ productId, referenceID }: Props) {
             {/* CTRL + F: RIGHT PANEL */}
             {openTDS && (
               <div className="flex flex-col min-h-0 md:w-1/2 border-t md:border-t-0 md:border-l">
-                <GenerateTDS
-                  open={openTDS}
-                  onClose={() => setOpenTDS(false)}
-                  mainImage={product?.mainImage}
-                  technicalSpecifications={product?.technicalSpecifications}
-                />
+<GenerateTDS
+  open={openTDS}
+  onClose={() => setOpenTDS(false)}
+  mainImage={product?.mainImage}
+  dimensionalDrawing={product?.dimensionalDrawing}
+  illuminanceDrawing={product?.illuminanceDrawing}
+  technicalSpecifications={product?.technicalSpecifications}
+/>
               </div>
             )}
           </div>

@@ -1377,9 +1377,9 @@ export default function EditProductPage() {
 
       await syncProductsUsingThisFamily();
 
-      if (mainImage) {
-        await uploadProductMedia(productId!);
-      }
+if (mainImage || dimensionalDrawing || illuminanceDrawing) {
+  await uploadProductMedia(productId!);
+}
       toast.success("Product saved successfully");
 
       router.push("/products");
