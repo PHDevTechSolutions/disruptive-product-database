@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "@/utils/supabase";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 export default async function handler(
   req: NextApiRequest,
@@ -14,7 +16,6 @@ export default async function handler(
 
     const {
       spf_number,
-      customer_name,
       referenceid,
       tsm,
       selectedProducts
@@ -26,17 +27,26 @@ export default async function handler(
 
     const products = Array.isArray(selectedProducts) ? selectedProducts : [];
 
-    /* ARRAYS */
-    const images: string[] = [];
-    const qtys: string[] = [];
-    const specs: string[] = [];
-    const unitCosts: string[] = [];
-    const packaging: string[] = [];
-    const factories: string[] = [];
-    const ports: string[] = [];
-    const subtotals: string[] = [];
+    /* PRODUCT ARRAYS */
 
-    products.forEach((p: any) => {
+    const images:string[] = [];
+    const qtys:string[] = [];
+    const specs:string[] = [];
+    const unitCosts:string[] = [];
+    const packaging:string[] = [];
+    const factories:string[] = [];
+    const ports:string[] = [];
+    const subtotals:string[] = [];
+
+    /* SUPPLIER ARRAYS */
+
+    const company_names:string[] = [];
+    const supplier_brands:string[] = [];
+    const contact_names:string[] = [];
+    const contact_numbers:string[] = [];
+
+    /* LOOP PRODUCTS */
+    for (const p of products) {
 
       const qty = Number(p.qty || 0);
       const unitCost = Number(p?.commercialDetails?.unitCost || 0);
@@ -50,41 +60,83 @@ export default async function handler(
 
       const subtotal = qty * unitCost;
 
-      /* IMAGE */
       images.push(p?.mainImage?.url || "-");
-
-      /* QTY */
       qtys.push(String(qty));
-
-      /* UNIT COST */
       unitCosts.push(String(unitCost));
-
-      /* PACKAGING */
       packaging.push(`${length} x ${width} x ${height}`);
-
-      /* FACTORY */
       factories.push(factory);
-
-      /* PORT */
       ports.push(port);
-
-      /* SUBTOTAL */
       subtotals.push(String(subtotal));
 
-      /* TECHNICAL SPECS */
+      /* TECH SPECS */
+
       const tech =
         p?.technicalSpecifications
-          ?.map((g: any) =>
-            g.specs?.map((s: any) => `${s.specId}: ${s.value}`).join(", ")
+          ?.map((g:any) =>
+            g.specs?.map((s:any)=>`${s.specId}: ${s.value}`).join(", ")
           )
           .join(" | ") || "-";
 
       specs.push(tech);
 
-    });
+      /* SUPPLIER DATA */
 
-    /* CHECK IF SPF EXISTS */
-    const { data: existing, error: checkError } = await supabase
+      const company = p?.supplier?.company || "-";
+      const brand = p?.supplier?.supplierBrand || "-";
+
+      if (!company_names.includes(company)) {
+        company_names.push(company);
+      }
+
+      if (!supplier_brands.includes(brand)) {
+        supplier_brands.push(brand);
+      }
+
+      /* CONTACTS - FETCH FROM SUPPLIER COLLECTION */
+
+      if (p?.supplier?.supplierId) {
+
+        try {
+
+          const supplierRef = doc(db, "suppliers", p.supplier.supplierId);
+          const supplierSnap = await getDoc(supplierRef);
+
+          if (supplierSnap.exists()) {
+
+            const supplierData:any = supplierSnap.data();
+            const contacts = supplierData.contacts || [];
+
+            const names = contacts
+              .map((c:any)=>c.name)
+              .filter(Boolean)
+              .join(" | ");
+
+            const phones = contacts
+              .map((c:any)=>c.phone)
+              .filter(Boolean)
+              .join(" | ");
+
+            if (names && !contact_names.includes(names)) {
+              contact_names.push(names);
+            }
+
+            if (phones && !contact_numbers.includes(phones)) {
+              contact_numbers.push(phones);
+            }
+
+          }
+
+        } catch (err) {
+          console.error("Supplier contact fetch error:", err);
+        }
+
+      }
+
+    }
+
+    /* CHECK EXISTING SPF */
+
+    const { data:existing, error:checkError } = await supabase
       .from("spf_creation")
       .select("id")
       .eq("spf_number", spf_number)
@@ -95,15 +147,22 @@ export default async function handler(
       return res.status(500).json(checkError);
     }
 
-    /* INSERT SPF CREATION */
+    /* INSERT SPF */
+
     if (!existing) {
 
-      const { error: insertError } = await supabase
+      const { error:insertError } = await supabase
         .from("spf_creation")
         .insert({
+
           spf_number,
           referenceid,
           tsm,
+
+          company_name: company_names.join(","),
+          supplier_brand: supplier_brands.join(","),
+          contact_name: contact_names.join(","),
+          contact_number: contact_numbers.join(","),
 
           product_offer_image: images.join(","),
           product_offer_qty: qtys.join(","),
@@ -118,6 +177,7 @@ export default async function handler(
 
           date_created: new Date().toISOString(),
           date_updated: new Date().toISOString()
+
         });
 
       if (insertError) {
@@ -127,8 +187,9 @@ export default async function handler(
 
     }
 
-    /* UPDATE SPF REQUEST STATUS */
-    const { error: updateError } = await supabase
+    /* UPDATE REQUEST */
+
+    const { error:updateError } = await supabase
       .from("spf_request")
       .update({
         status: "Processed by PD",
@@ -142,11 +203,11 @@ export default async function handler(
     }
 
     return res.status(200).json({
-      success: true,
-      message: "SPF created successfully"
+      success:true,
+      message:"SPF created successfully"
     });
 
-  } catch (err: any) {
+  } catch (err:any) {
 
     console.error(err);
 
