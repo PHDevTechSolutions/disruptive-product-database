@@ -1,6 +1,5 @@
 "use client";
 
-
 import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -110,32 +109,32 @@ export default function SPF({ processBy }: SPFProps) {
       const res = await fetch("/api/request/fetch");
       if (!res.ok) throw new Error("Failed to fetch SPF requests");
       const data = await res.json();
-const mapped = data.requests.map((r: any) => ({
-  ...r,
-  date_created: r.date_created
-    ? new Date(r.date_created).toISOString()
-    : null,
-}));
+      const mapped = data.requests.map((r: any) => ({
+        ...r,
+        date_created: r.date_created
+          ? new Date(r.date_created).toISOString()
+          : null,
+      }));
 
-setRequests(mapped);
+      setRequests(mapped);
 
-/* CHECK WHICH SPF ALREADY CREATED */
-const spfNumbers = mapped.map((r: any) => r.spf_number);
+      /* CHECK WHICH SPF ALREADY CREATED */
+      const spfNumbers = mapped.map((r: any) => r.spf_number);
 
-if (spfNumbers.length) {
-  const { data: created } = await supabase
-    .from("spf_creation")
-    .select("spf_number")
-    .in("spf_number", spfNumbers);
+      if (spfNumbers.length) {
+        const { data: created } = await supabase
+          .from("spf_creation")
+          .select("spf_number")
+          .in("spf_number", spfNumbers);
 
-  const map: Record<string, boolean> = {};
+        const map: Record<string, boolean> = {};
 
-  created?.forEach((c: any) => {
-    map[c.spf_number] = true;
-  });
+        created?.forEach((c: any) => {
+          map[c.spf_number] = true;
+        });
 
-  setCreatedSPF(map);
-}
+        setCreatedSPF(map);
+      }
     } catch (err: any) {
       console.error("Fetch error:", err);
       setError(err.message || "Failed to fetch SPF requests");
@@ -180,41 +179,40 @@ if (spfNumbers.length) {
     fetchProducts(rowData.customer_name || "");
   };
 
-const handleSubmit = async () => {
-  try {
-    const allProducts = Object.values(productOffers).flat();
+  const handleSubmit = async () => {
+    try {
+      const allProducts = Object.values(productOffers).flat();
 
-    const res = await fetch("/api/request/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      const res = await fetch("/api/request/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
 
-      body: JSON.stringify({
-        ...formData,
-        selectedProducts: allProducts,
-      }),
-    });
+        body: JSON.stringify({
+          ...formData,
+          selectedProducts: allProducts,
+        }),
+      });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("API ERROR:", errText);
-      toast.error("Failed to create SPF request");
-      throw new Error("Failed to create SPF request");
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("API ERROR:", errText);
+        toast.error("Failed to create SPF request");
+        throw new Error("Failed to create SPF request");
+      }
+
+      const data = await res.json();
+
+      if (data?.success) {
+        toast.success("SPF created successfully");
+      }
+
+      setOpenDialog(false);
+      fetchRequests();
+    } catch (err: any) {
+      console.error("Submit error:", err);
+      toast.error("Something went wrong while creating SPF");
     }
-
-    const data = await res.json();
-
-    if (data?.success) {
-      toast.success("SPF created successfully");
-    }
-
-    setOpenDialog(false);
-    fetchRequests();
-
-  } catch (err: any) {
-    console.error("Submit error:", err);
-    toast.error("Something went wrong while creating SPF");
-  }
-};
+  };
   // Fetch products from Firebase
   const fetchProducts = useCallback((customerName: string) => {
     setLoadingProducts(true);
@@ -304,22 +302,20 @@ const handleSubmit = async () => {
                 </div>
                 <div>{formattedDate}</div>
                 <div>
-<div className="flex gap-2">
+                  <div className="flex gap-2">
+                    <Button
+                      className="rounded-none p-6"
+                      variant="outline"
+                      onClick={() => handleCreateFromRow(req)}
+                    >
+                      Create
+                    </Button>
 
-  <Button
-    className="rounded-none p-6"
-    variant="outline"
-    onClick={() => handleCreateFromRow(req)}
-  >
-    Create
-  </Button>
-
-  {/* SHOW ONLY IF SPF ALREADY CREATED */}
-  {createdSPF[req.spf_number] && (
-    <SPFRequestView spfNumber={req.spf_number} />
-  )}
-
-</div>
+                    {/* SHOW ONLY IF SPF ALREADY CREATED */}
+                    {createdSPF[req.spf_number] && (
+                      <SPFRequestView spfNumber={req.spf_number} />
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -745,13 +741,16 @@ const handleSubmit = async () => {
                                                   <td className="border px-2 py-1 text-center align-middle">
                                                     <input
                                                       type="number"
+                                                      min={0}
                                                       className="w-full border px-1 text-xs"
                                                       placeholder="Qty"
                                                       value={prod.qty || ""}
                                                       onChange={(e) => {
-                                                        const qty = Number(
+                                                        let qty = Number(
                                                           e.target.value,
                                                         );
+
+                                                        if (qty < 0) qty = 0;
 
                                                         setProductOffers(
                                                           (prev) => {

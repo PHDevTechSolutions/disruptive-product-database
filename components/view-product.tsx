@@ -66,6 +66,23 @@ export default function ViewProduct({ productId, referenceID }: Props) {
   const [openTDS, setOpenTDS] = useState(false);
 
   useEffect(() => {
+  if (!open) return;
+
+  const handleEscape = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setOpen(false);
+      setOpenTDS(false); // also close TDS panel if open
+    }
+  };
+
+  window.addEventListener("keydown", handleEscape);
+
+  return () => {
+    window.removeEventListener("keydown", handleEscape);
+  };
+}, [open]);
+
+  useEffect(() => {
     if (!open) return;
 
     async function fetchAll() {
