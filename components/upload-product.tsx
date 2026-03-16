@@ -58,9 +58,10 @@ type TemplateSpec = {
 const cleanExcelValue = (val: any) => {
   if (val === null || val === undefined) return "";
 
+  if (typeof val === "number") return val.toString();
+
   const str = val.toString().trim();
 
-  // treat dash as empty
   if (str === "-") return "";
 
   return str;
@@ -99,6 +100,7 @@ export default function UploadProduct({}: Props) {
   /* ---------------- ELEVATOR MUSIC ---------------- */
 
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const cancelRef = React.useRef(false);
 
   /* ---------------- GENERATE REF ---------------- */
 
@@ -123,15 +125,30 @@ export default function UploadProduct({}: Props) {
 
     const snap = await getDocs(q);
 
-    if (snap.empty) return null;
+    /* IF EXISTS */
+    if (!snap.empty) {
+      const docSnap = snap.docs[0];
+      const data = docSnap.data() as DocumentData;
 
-    const doc = snap.docs[0];
+      return {
+        id: docSnap.id,
+        name: data.name,
+      };
+    }
 
-    const data = doc.data() as DocumentData;
+    /* AUTO CREATE CATEGORY TYPE */
+
+    const newDoc = await addDoc(collection(db, "categoryTypes"), {
+      name,
+      isActive: true,
+      createdAt: serverTimestamp(),
+      whatHappened: "Product Usage Added (Excel Upload)",
+      date_updated: serverTimestamp(),
+    });
 
     return {
-      id: doc.id,
-      name: data.name,
+      id: newDoc.id,
+      name,
     };
   };
 
@@ -150,16 +167,33 @@ export default function UploadProduct({}: Props) {
 
     const snap = await getDocs(q);
 
-    if (snap.empty) return null;
+    /* IF EXISTS */
+    if (!snap.empty) {
+      const docSnap = snap.docs[0];
+      const data = docSnap.data() as DocumentData;
 
-    const doc = snap.docs[0];
+      return {
+        id: docSnap.id,
+        name: data.name,
+        categoryTypeId: data.categoryTypeId,
+      };
+    }
 
-    const data = doc.data() as DocumentData;
+    /* AUTO CREATE PRODUCT FAMILY */
+
+    const newDoc = await addDoc(collection(db, "productFamilies"), {
+      name,
+      categoryTypeId,
+      isActive: true,
+      createdAt: serverTimestamp(),
+      whatHappened: "Product Family Added (Excel Upload)",
+      date_updated: serverTimestamp(),
+    });
 
     return {
-      id: doc.id,
-      name: data.name,
-      categoryTypeId: data.categoryTypeId,
+      id: newDoc.id,
+      name,
+      categoryTypeId,
     };
   };
 
@@ -336,6 +370,7 @@ export default function UploadProduct({}: Props) {
 
   const handleUpload = async () => {
     if (!file) return;
+    cancelRef.current = false;
 
     try {
       // START MUSIC IMMEDIATELY
@@ -365,10 +400,15 @@ export default function UploadProduct({}: Props) {
       let validRows = 0;
 
       for (const ws of workbook.worksheets) {
+        if (cancelRef.current) {
+          toast.message("Upload cancelled");
+          break;
+        }
         let lastUsage = "";
         let lastFamily = "";
 
-        for (let r = 3; r <= ws.rowCount; r++) {
+        for (let r = 4; r <= ws.actualRowCount; r++) {
+          if (cancelRef.current) break;
           const row = ws.getRow(r);
 
           const usage = cleanExcelValue(row.getCell(1).value) || lastUsage;
@@ -393,8 +433,13 @@ export default function UploadProduct({}: Props) {
       setUploadProgress(0);
 
       for (const ws of workbook.worksheets) {
-        const header1 = ws.getRow(1);
-        const header2 = ws.getRow(2);
+        if (cancelRef.current) {
+          toast.message("Upload cancelled");
+          break;
+        }
+        const header1 = ws.getRow(1); // SPECID (actual header)
+        const header2 = ws.getRow(2); // GROUP TITLE
+        const header3 = ws.getRow(3); // SUBGROUP (Packaging Details etc)
 
         const excelColumns: {
           title: string;
@@ -404,22 +449,26 @@ export default function UploadProduct({}: Props) {
 
         /* ---------------- COMMERCIAL DETAILS COLUMNS ---------------- */
 
-        const commercialColumns = [
-          "Unit Cost",
-          "Length",
-          "Width",
-          "Height",
-          "pcs/carton",
-          "Factory Address",
-          "Port of Discharge",
-        ];
-
         for (let col = 8; col <= ws.columnCount; col++) {
-          const groupTitle = cleanExcelValue(header2.getCell(col).value);
           const specId = cleanExcelValue(header1.getCell(col).value);
+          const groupTitle = cleanExcelValue(header2.getCell(col).value);
+          const subGroup = cleanExcelValue(header3.getCell(col).value);
 
-          /* NEVER include COMMERCIAL DETAILS in technical specs */
-          if (groupTitle === "COMMERCIAL DETAILS") continue;
+          const isCommercialColumn =
+            groupTitle === "COMMERCIAL DETAILS" ||
+            subGroup === "Packaging Details (cm)" ||
+            specId === "Unit Cost" ||
+            specId === "Length" ||
+            specId === "Width" ||
+            specId === "Height" ||
+            specId === "pcs/carton" ||
+            specId === "Factory Address" ||
+            specId === "Port of Discharge";
+
+          // Skip commercial columns so they don't go to technicalSpecifications
+          if (isCommercialColumn) continue;
+
+          if (!groupTitle || !specId) continue;
 
           excelColumns.push({
             title: groupTitle,
@@ -439,7 +488,11 @@ export default function UploadProduct({}: Props) {
         let lastSupplier = "";
         let lastImage = "";
 
-        for (let r = 3; r <= ws.rowCount; r++) {
+        for (let r = 4; r <= ws.actualRowCount; r++) {
+          if (cancelRef.current) {
+            toast.message("Upload cancelled");
+            break;
+          }
           const row = ws.getRow(r);
 
           let usage = cleanExcelValue(row.getCell(1).value) || lastUsage;
@@ -476,21 +529,48 @@ export default function UploadProduct({}: Props) {
 
           /* CTRL + F: FIX GOOGLE DRIVE IMAGE */
           imageURL = convertDriveToThumbnail(imageURL);
-          const unitCost = cleanExcelValue(
-            row.getCell(ws.columnCount - 6).value,
-          );
-          const length = cleanExcelValue(row.getCell(ws.columnCount - 5).value);
-          const width = cleanExcelValue(row.getCell(ws.columnCount - 4).value);
-          const height = cleanExcelValue(row.getCell(ws.columnCount - 3).value);
-          const pcsPerCarton = cleanExcelValue(
-            row.getCell(ws.columnCount - 2).value,
-          );
-          const factoryAddress = cleanExcelValue(
-            row.getCell(ws.columnCount - 1).value,
-          );
-          const portOfDischarge = cleanExcelValue(
-            row.getCell(ws.columnCount).value,
-          );
+          let unitCost = "";
+          let length = "";
+          let width = "";
+          let height = "";
+          let pcsPerCarton = "";
+          let factoryAddress = "";
+          let portOfDischarge = "";
+
+          for (let col = 1; col <= ws.columnCount; col++) {
+            const header1 = cleanExcelValue(ws.getRow(1).getCell(col).value);
+            const header2 = cleanExcelValue(ws.getRow(2).getCell(col).value);
+            const header3 = cleanExcelValue(ws.getRow(3).getCell(col).value);
+
+const header =
+  header1?.toString().trim() ||
+  header2?.toString().trim() ||
+  header3?.toString().trim() ||
+  "";
+
+/* CTRL + F: COMMERCIAL DETAILS PARSER */
+
+if (header1 === "Unit Cost")
+  unitCost = cleanExcelValue(row.getCell(col).value);
+
+if (header1 === "Length")
+  length = cleanExcelValue(row.getCell(col).value);
+
+if (header1 === "Width")
+  width = cleanExcelValue(row.getCell(col).value);
+
+if (header1 === "Height")
+  height = cleanExcelValue(row.getCell(col).value);
+
+if (header1 === "pcs/carton")
+  pcsPerCarton = cleanExcelValue(row.getCell(col).value);
+
+if (header1 === "Factory Address")
+  factoryAddress = cleanExcelValue(row.getCell(col).value);
+
+if (header1 === "Port of Discharge")
+  portOfDischarge = cleanExcelValue(row.getCell(col).value);
+          }
 
           /* SAVE LAST VALUES */
 
@@ -503,6 +583,9 @@ export default function UploadProduct({}: Props) {
           lastImage = imageURL;
 
           if (!usage || !family) continue;
+
+          if (!productClass && !pricePoint && !brandOrigin && !supplierBrand)
+            continue;
 
           const category = await findCategoryType(usage);
           if (!category) continue;
@@ -519,11 +602,13 @@ export default function UploadProduct({}: Props) {
           /* CREATE TEMPLATE + SYNC ONLY ONCE */
 
           if (!syncedFamilies.has(syncKey)) {
+            if (cancelRef.current) break;
             await createMissingTemplateSpecs(
               category.id,
               productFamily.id,
               excelColumns,
             );
+            if (cancelRef.current) break;
 
             await syncExistingProductsToTemplate(category.id, productFamily.id);
 
@@ -538,31 +623,34 @@ export default function UploadProduct({}: Props) {
           );
 
           /* BUILD PRODUCT SPECS */
+          const productSpecs = templateSpecs.map((template) => {
+            return {
+              technicalSpecificationId: template.id,
 
-          const productSpecs = templateSpecs.map((template) => ({
-            technicalSpecificationId: template.id,
+              title: template.title,
 
-            title: template.title,
+              specs: template.specs.map((templateSpec) => {
+                const excelMatch = excelColumns.find(
+                  (col) =>
+                    col.title === template.title &&
+                    col.specId === templateSpec.specId,
+                );
 
-            specs: template.specs.map((templateSpec) => {
-              const excelMatch = excelColumns.find(
-                (col) =>
-                  col.title === template.title &&
-                  col.specId === templateSpec.specId,
-              );
-
-              return {
-                specId: templateSpec.specId,
-
-                value: excelMatch
+                const cellValue = excelMatch
                   ? cleanExcelValue(row.getCell(excelMatch.col).value)
-                  : "",
-              };
-            }),
-          }));
+                  : "";
+
+                return {
+                  specId: templateSpec.specId,
+                  value: cellValue,
+                };
+              }),
+            };
+          });
 
           const referenceID = await generateProductReferenceID();
 
+          if (cancelRef.current) break;
           await addDoc(collection(db, "products"), {
             productReferenceID: referenceID,
 
@@ -592,19 +680,19 @@ export default function UploadProduct({}: Props) {
             technicalSpecifications: productSpecs,
 
             commercialDetails: {
-              unitCost,
+              unitCost: unitCost ? parseFloat(unitCost) : null,
 
               packaging: {
-                length,
-                width,
-                height,
+                length: length ? parseFloat(length) : null,
+                width: width ? parseFloat(width) : null,
+                height: height ? parseFloat(height) : null,
               },
 
-              pcsPerCarton,
+              pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
 
-              factoryAddress,
+              factoryAddress: factoryAddress || "",
 
-              portOfDischarge,
+              portOfDischarge: portOfDischarge || "",
             },
 
             isActive: true,
@@ -705,7 +793,22 @@ export default function UploadProduct({}: Props) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              cancelRef.current = true;
+
+              if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+              }
+
+              setUploading(false);
+              setOpen(false);
+
+              toast.message("Upload cancelled");
+            }}
+          >
             Cancel
           </Button>
 

@@ -39,7 +39,8 @@ export default function RequestsPage() {
         if (!res.ok) throw new Error("Failed to fetch user data");
         const data = await res.json();
 
-        const processby = `${data.Firstname ?? ""} ${data.Lastname ?? ""}`.trim();
+        const processby =
+          `${data.Firstname ?? ""} ${data.Lastname ?? ""}`.trim();
 
         setUserDetails({
           process_by: processby,
@@ -65,34 +66,6 @@ export default function RequestsPage() {
       {/* Header */}
       <h1 className="text-2xl font-bold">SPF Requests</h1>
       <Separator />
-
-      {/* ================= SPF PROCESS FLOW ================= */}
-      <Card>
-        <CardHeader>
-          <CardTitle>SPF Process Flow</CardTitle>
-        </CardHeader>
-
-        <CardContent className="grid md:grid-cols-5 gap-4 text-sm">
-          {[
-            { title: "Sales Request", content: "TSA → TSM → Sales Head → PD" },
-            {
-              title: "Product Development",
-              content:
-                "Unit Cost\nPackaging Dimension\nFactory Address\nPort of Discharge",
-            },
-            { title: "Procurement", content: "Final Cost\nGenerate Quotation" },
-            { title: "Client Approval", content: "TSA presents quotation" },
-            { title: "Sales Order", content: "Final SO Generated" },
-          ].map((step, idx) => (
-            <Card key={idx}>
-              <CardHeader>
-                <CardTitle className="text-sm">{step.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="whitespace-pre-line">{step.content}</CardContent>
-            </Card>
-          ))}
-        </CardContent>
-      </Card>
 
       {/* ================= REQUEST TABLE ================= */}
       <SPF processBy={userDetails.process_by} />

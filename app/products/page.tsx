@@ -13,6 +13,7 @@ import FilteringComponentV2 from "@/components/filtering-component-v2";
 import UploadProductModal from "@/components/upload-product";
 import DownloadProduct from "@/components/download-product";
 import ViewProduct from "@/components/view-product";
+import HardDeleteProducts from "@/components/hard-delete-products";
 
 // ===== GOOGLE DRIVE IMAGE FIX =====
 const convertDriveToThumbnail = (url: string) => {
@@ -176,13 +177,15 @@ export default function ProductsPage() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 className="text-xl md:text-2xl font-semibold">Products</h1>
 
-        <div className="flex flex-wrap gap-2">
-          <UploadProductModal />
-          <DownloadProduct products={products} />
-          <Button onClick={() => router.push("/add-product")}>
-            + Add Product
-          </Button>
-        </div>
+<div className="flex flex-wrap gap-2">
+  <UploadProductModal />
+  <DownloadProduct products={products} />
+  <HardDeleteProducts />
+
+  <Button onClick={() => router.push("/add-product")}>
+    + Add Product
+  </Button>
+</div>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
