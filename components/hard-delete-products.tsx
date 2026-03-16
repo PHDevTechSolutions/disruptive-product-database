@@ -61,7 +61,7 @@ export default function HardDeleteProducts() {
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="destructive">
-          Delete All Products
+          **DO NOT CLICK** Delete All Products 
         </Button>
       </DialogTrigger>
 
