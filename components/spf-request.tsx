@@ -854,8 +854,7 @@ export default function SPF({ processBy }: SPFProps) {
 
                                                       return (
                                                         <span className="text-xs font-semibold">
-                                                          ₱{" "}
-                                                          {subtotal.toLocaleString()}
+                                                          ${subtotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </span>
                                                       );
                                                     })()}
