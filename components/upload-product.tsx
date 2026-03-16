@@ -221,6 +221,7 @@ export default function UploadProduct({}: Props) {
       supplierBrand: data.supplierBrand || "",
     };
   };
+
   /* ---------------- AUTO CREATE TEMPLATE ---------------- */
 
   const createMissingTemplateSpecs = async (
@@ -366,8 +367,6 @@ export default function UploadProduct({}: Props) {
 
   /* ---------------- UPLOAD ---------------- */
 
-  /* ---------------- UPLOAD ---------------- */
-
   const handleUpload = async () => {
     if (!file) return;
     cancelRef.current = false;
@@ -392,8 +391,6 @@ export default function UploadProduct({}: Props) {
       const buffer = await file.arrayBuffer();
 
       await workbook.xlsx.load(buffer);
-
-      let total = 0;
 
       /* ---------------- COUNT VALID ROWS FIRST ---------------- */
 
@@ -437,47 +434,88 @@ export default function UploadProduct({}: Props) {
           toast.message("Upload cancelled");
           break;
         }
-        const header1 = ws.getRow(1); // SPECID (actual header)
-        const header2 = ws.getRow(2); // GROUP TITLE
-        const header3 = ws.getRow(3); // SUBGROUP (Packaging Details etc)
 
+        const header1Row = ws.getRow(1); // SPECID (actual header)
+        const header2Row = ws.getRow(2); // GROUP TITLE
+        const header3Row = ws.getRow(3); // SUBGROUP (Packaging Details etc)
+
+        /* ------------------------------------------------------------------ */
+        /* 🔧 FIX: Pre-compute ALL column indices ONCE before the row loop     */
+        /* ------------------------------------------------------------------ */
+
+        // Tech-spec columns (col ≥ 8, non-commercial)
         const excelColumns: {
           title: string;
           specId: string;
           col: number;
         }[] = [];
 
-        /* ---------------- COMMERCIAL DETAILS COLUMNS ---------------- */
+        // Commercial detail column indices — resolved once here
+        const commercialColMap: Record<string, number> = {
+          unitCost: -1,
+          length: -1,
+          width: -1,
+          height: -1,
+          pcsPerCarton: -1,
+          factoryAddress: -1,
+          portOfDischarge: -1,
+        };
 
-        for (let col = 8; col <= ws.columnCount; col++) {
-          const specId = cleanExcelValue(header1.getCell(col).value);
-          const groupTitle = cleanExcelValue(header2.getCell(col).value);
-          const subGroup = cleanExcelValue(header3.getCell(col).value);
+        for (let col = 1; col <= ws.columnCount; col++) {
+          const specHeader = cleanExcelValue(header1Row.getCell(col).value);
+          const groupHeader = cleanExcelValue(header2Row.getCell(col).value);
+          const commercialHeader = cleanExcelValue(
+            header3Row.getCell(col).value,
+          );
 
-          const isCommercialColumn =
-            groupTitle === "COMMERCIAL DETAILS" ||
-            subGroup === "Packaging Details (cm)" ||
-            specId === "Unit Cost" ||
-            specId === "Length" ||
-            specId === "Width" ||
-            specId === "Height" ||
-            specId === "pcs/carton" ||
-            specId === "Factory Address" ||
-            specId === "Port of Discharge";
+          // Map commercial detail headers to their column indices
+          if (commercialHeader === "Unit Cost") {
+            commercialColMap.unitCost = col;
+            continue;
+          }
+          if (commercialHeader === "Length") {
+            commercialColMap.length = col;
+            continue;
+          }
+          if (commercialHeader === "Width") {
+            commercialColMap.width = col;
+            continue;
+          }
+          if (commercialHeader === "Height") {
+            commercialColMap.height = col;
+            continue;
+          }
+          if (commercialHeader === "pcs/carton") {
+            commercialColMap.pcsPerCarton = col;
+            continue;
+          }
+          if (commercialHeader === "Factory Address") {
+            commercialColMap.factoryAddress = col;
+            continue;
+          }
+          if (commercialHeader === "Port of Discharge") {
+            commercialColMap.portOfDischarge = col;
+            continue;
+          }
 
-          // Skip commercial columns so they don't go to technicalSpecifications
+          // Only process tech-spec columns starting from col 8 onward
+          if (col < 8) continue;
+
+          const isCommercialColumn = groupHeader === "COMMERCIAL DETAILS";
+
           if (isCommercialColumn) continue;
-
-          if (!groupTitle || !specId) continue;
+          if (!groupHeader || !specHeader) continue;
 
           excelColumns.push({
-            title: groupTitle,
-            specId,
+            title: groupHeader,
+            specId: specHeader,
             col,
           });
         }
-        /* IMPORTANT: TRACK SYNCED FAMILIES */
 
+        /* ------------------------------------------------------------------ */
+
+        /* IMPORTANT: TRACK SYNCED FAMILIES */
         const syncedFamilies = new Set<string>();
 
         let lastUsage = "";
@@ -493,34 +531,27 @@ export default function UploadProduct({}: Props) {
             toast.message("Upload cancelled");
             break;
           }
+
           const row = ws.getRow(r);
 
           let usage = cleanExcelValue(row.getCell(1).value) || lastUsage;
           let family = cleanExcelValue(row.getCell(2).value) || lastFamily;
-
           let productClass = cleanExcelValue(row.getCell(3).value) || lastClass;
           let pricePoint =
             cleanExcelValue(row.getCell(4).value) || lastPricePoint;
           let brandOrigin =
             cleanExcelValue(row.getCell(5).value) || lastBrandOrigin;
-
           let supplierBrand =
             cleanExcelValue(row.getCell(6).value) || lastSupplier;
+
           /* CTRL + F: FIX IMAGE OBJECT FROM EXCEL */
-
           let imageCell: any = row.getCell(7).value;
-
           let imageURL = "";
 
-          /* Excel sometimes stores links as objects */
           if (typeof imageCell === "object" && imageCell !== null) {
-            if (imageCell.text) {
-              imageURL = imageCell.text;
-            } else if (imageCell.hyperlink) {
-              imageURL = imageCell.hyperlink;
-            } else {
-              imageURL = String(imageCell);
-            }
+            if (imageCell.text) imageURL = imageCell.text;
+            else if (imageCell.hyperlink) imageURL = imageCell.hyperlink;
+            else imageURL = String(imageCell);
           } else {
             imageURL = cleanExcelValue(imageCell);
           }
@@ -529,51 +560,23 @@ export default function UploadProduct({}: Props) {
 
           /* CTRL + F: FIX GOOGLE DRIVE IMAGE */
           imageURL = convertDriveToThumbnail(imageURL);
-          let unitCost = "";
-          let length = "";
-          let width = "";
-          let height = "";
-          let pcsPerCarton = "";
-          let factoryAddress = "";
-          let portOfDischarge = "";
 
-          for (let col = 1; col <= ws.columnCount; col++) {
-            const header1 = cleanExcelValue(ws.getRow(1).getCell(col).value);
-            const header2 = cleanExcelValue(ws.getRow(2).getCell(col).value);
-            const header3 = cleanExcelValue(ws.getRow(3).getCell(col).value);
+          /* ---------------------------------------------------------------- */
+          /* 🔧 FIX: Read commercial details using pre-computed column indices */
+          /* ---------------------------------------------------------------- */
+          const getCellVal = (colIndex: number) =>
+            colIndex > 0 ? cleanExcelValue(row.getCell(colIndex).value) : "";
 
-const header =
-  header1?.toString().trim() ||
-  header2?.toString().trim() ||
-  header3?.toString().trim() ||
-  "";
-
-/* CTRL + F: COMMERCIAL DETAILS PARSER */
-
-if (header1 === "Unit Cost")
-  unitCost = cleanExcelValue(row.getCell(col).value);
-
-if (header1 === "Length")
-  length = cleanExcelValue(row.getCell(col).value);
-
-if (header1 === "Width")
-  width = cleanExcelValue(row.getCell(col).value);
-
-if (header1 === "Height")
-  height = cleanExcelValue(row.getCell(col).value);
-
-if (header1 === "pcs/carton")
-  pcsPerCarton = cleanExcelValue(row.getCell(col).value);
-
-if (header1 === "Factory Address")
-  factoryAddress = cleanExcelValue(row.getCell(col).value);
-
-if (header1 === "Port of Discharge")
-  portOfDischarge = cleanExcelValue(row.getCell(col).value);
-          }
+          const unitCost = getCellVal(commercialColMap.unitCost);
+          const length = getCellVal(commercialColMap.length);
+          const width = getCellVal(commercialColMap.width);
+          const height = getCellVal(commercialColMap.height);
+          const pcsPerCarton = getCellVal(commercialColMap.pcsPerCarton);
+          const factoryAddress = getCellVal(commercialColMap.factoryAddress);
+          const portOfDischarge = getCellVal(commercialColMap.portOfDischarge);
+          /* ---------------------------------------------------------------- */
 
           /* SAVE LAST VALUES */
-
           lastUsage = usage;
           lastFamily = family;
           lastClass = productClass;
@@ -596,11 +599,9 @@ if (header1 === "Port of Discharge")
           const supplier = await findSupplier(supplierBrand);
 
           /* UNIQUE SYNC KEY */
-
           const syncKey = category.id + "_" + productFamily.id;
 
           /* CREATE TEMPLATE + SYNC ONLY ONCE */
-
           if (!syncedFamilies.has(syncKey)) {
             if (cancelRef.current) break;
             await createMissingTemplateSpecs(
@@ -616,7 +617,6 @@ if (header1 === "Port of Discharge")
           }
 
           /* GET UPDATED TEMPLATE */
-
           const templateSpecs = await findTemplateSpecs(
             category.id,
             productFamily.id,
@@ -651,6 +651,7 @@ if (header1 === "Port of Discharge")
           const referenceID = await generateProductReferenceID();
 
           if (cancelRef.current) break;
+
           await addDoc(collection(db, "products"), {
             productReferenceID: referenceID,
 
@@ -679,6 +680,7 @@ if (header1 === "Port of Discharge")
 
             technicalSpecifications: productSpecs,
 
+            /* 🔧 FIX: commercialDetails now correctly populated */
             commercialDetails: {
               unitCost: unitCost ? parseFloat(unitCost) : null,
 
@@ -689,9 +691,7 @@ if (header1 === "Port of Discharge")
               },
 
               pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
-
               factoryAddress: factoryAddress || "",
-
               portOfDischarge: portOfDischarge || "",
             },
 
@@ -714,7 +714,6 @@ if (header1 === "Port of Discharge")
       toast.success("Upload complete");
 
       setOpen(false);
-
       setFile(null);
       setUploadProgress(0);
       setTotalRows(0);

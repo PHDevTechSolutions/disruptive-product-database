@@ -28,26 +28,25 @@ type Props = {
 export default function DownloadProduct({ products }: Props) {
   const [open, setOpen] = React.useState(false);
 
-
   const convertDriveToThumbnail = (url?: string) => {
-  if (!url) return "";
+    if (!url) return "";
 
-  if (!url.includes("drive.google.com")) return url;
+    if (!url.includes("drive.google.com")) return url;
 
-  let fileId = "";
+    let fileId = "";
 
-  const match1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    const match1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
 
-  if (match1 && match1[1]) fileId = match1[1];
-  if (match2 && match2[1]) fileId = match2[1];
+    if (match1 && match1[1]) fileId = match1[1];
+    if (match2 && match2[1]) fileId = match2[1];
 
-  if (fileId) {
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
-  }
+    if (fileId) {
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    }
 
-  return url;
-};
+    return url;
+  };
 
   const GROUP_COLORS = ["BDD7EE", "FFE699"];
 
@@ -73,35 +72,35 @@ export default function DownloadProduct({ products }: Props) {
 
       /* GET TEMPLATE FROM FIRESTORE */
 
-const categoryTypeId =
-  sheetProducts[0]?.categoryTypes?.[0]?.productUsageId || null;
+      const categoryTypeId =
+        sheetProducts[0]?.categoryTypes?.[0]?.productUsageId || null;
 
-const productFamilyId =
-  sheetProducts[0]?.productFamilies?.[0]?.productFamilyId || null;
+      const productFamilyId =
+        sheetProducts[0]?.productFamilies?.[0]?.productFamilyId || null;
 
-let templateSnap: any = { forEach: () => {} };
+      let templateSnap: any = { forEach: () => {} };
 
-if (categoryTypeId && productFamilyId) {
-  templateSnap = await getDocs(
-    query(
-      collection(db, "technicalSpecifications"),
-      where("categoryTypeId", "==", categoryTypeId),
-      where("productFamilyId", "==", productFamilyId),
-      where("isActive", "==", true),
-    ),
-  );
-}
+      if (categoryTypeId && productFamilyId) {
+        templateSnap = await getDocs(
+          query(
+            collection(db, "technicalSpecifications"),
+            where("categoryTypeId", "==", categoryTypeId),
+            where("productFamilyId", "==", productFamilyId),
+            where("isActive", "==", true),
+          ),
+        );
+      }
 
       const groupMap = new Map<string, string[]>();
 
-templateSnap.forEach((doc: any) => {
-  const data = doc.data();
+      templateSnap.forEach((doc: any) => {
+        const data = doc.data();
 
-  groupMap.set(
-    data.title,
-    data.specs.map((s: any) => s.specId),
-  );
-});
+        groupMap.set(
+          data.title,
+          data.specs.map((s: any) => s.specId),
+        );
+      });
       /* STATIC COLUMNS */
 
       const staticColumns = [
@@ -311,7 +310,6 @@ Unit Cost | Length | Width | Height | pcs/carton | Factory Address | Port of Dis
 
       /* ADD PRODUCT ROWS */
 
-      
       sheetProducts.forEach((product) => {
         const row: any[] = [];
 
@@ -319,13 +317,13 @@ Unit Cost | Length | Width | Height | pcs/carton | Factory Address | Port of Dis
         row.push(product.productFamilies?.[0]?.productFamilyName || "");
         row.push(product.productClass || "");
         row.push(product.pricePoint || "");
-        row.push(product.brandOrigin || "");
-        row.push(product.supplier?.supplierBrand || "");
+        row.push(product.brandOrigin || "CHINA");
+        row.push(product.supplier?.supplierBrand || "ECONOMY");
 
-let imageURL = product.mainImage?.url || "";
+        let imageURL = product.mainImage?.url || "";
 
-/* CTRL + F: FIX GOOGLE DRIVE IMAGE */
-imageURL = convertDriveToThumbnail(imageURL);
+        /* CTRL + F: FIX GOOGLE DRIVE IMAGE */
+        imageURL = convertDriveToThumbnail(imageURL);
 
         row.push(imageURL);
 
@@ -357,35 +355,35 @@ imageURL = convertDriveToThumbnail(imageURL);
         ws.addRow(row);
       });
 
-const specStartCol = staticColumns.length + 1;
-const specEndCol = ws.columnCount - 7; // before commercial details
+      const specStartCol = staticColumns.length + 1;
+      const specEndCol = ws.columnCount - 7; // before commercial details
 
-for (let row = 4; row <= ws.rowCount; row++) {
-  for (let col = specStartCol; col <= specEndCol; col++) {
-    const cell = ws.getRow(row).getCell(col);
+      for (let row = 4; row <= ws.rowCount; row++) {
+        for (let col = specStartCol; col <= specEndCol; col++) {
+          const cell = ws.getRow(row).getCell(col);
 
-    cell.alignment = {
-      vertical: "middle",
-      horizontal: "center",
-      wrapText: true,
-    };
-  }
-}
+          cell.alignment = {
+            vertical: "middle",
+            horizontal: "center",
+            wrapText: true,
+          };
+        }
+      }
 
-/* CTRL + F: DISABLE ROW MERGING */
-const mergeColumns = ws.columnCount;
+      /* CTRL + F: DISABLE ROW MERGING */
+      const mergeColumns = ws.columnCount;
 
-for (let row = 4; row <= ws.rowCount; row++) {
-  for (let col = 1; col <= mergeColumns; col++) {
-    const cell = ws.getRow(row).getCell(col);
+      for (let row = 4; row <= ws.rowCount; row++) {
+        for (let col = 1; col <= mergeColumns; col++) {
+          const cell = ws.getRow(row).getCell(col);
 
-    cell.alignment = {
-      vertical: "middle",
-      horizontal: "center",
-      wrapText: true,
-    };
-  }
-}
+          cell.alignment = {
+            vertical: "middle",
+            horizontal: "center",
+            wrapText: true,
+          };
+        }
+      }
 
       /* AUTO WIDTH */
 
