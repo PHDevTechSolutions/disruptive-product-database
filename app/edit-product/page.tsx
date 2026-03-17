@@ -1333,11 +1333,11 @@ export default function EditProductPage() {
         commercialDetails: {
           unitCost: unitCost ? parseFloat(unitCost) : null,
 
-          packaging: {
-            length: packLength ? parseFloat(packLength) : null,
-            width: packWidth ? parseFloat(packWidth) : null,
-            height: packHeight ? parseFloat(packHeight) : null,
-          },
+packaging: {
+  length: packLength ? `${parseFloat(packLength)} cm` : null,
+  width: packWidth ? `${parseFloat(packWidth)} cm` : null,
+  height: packHeight ? `${parseFloat(packHeight)} cm` : null,
+},
 
           pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
 

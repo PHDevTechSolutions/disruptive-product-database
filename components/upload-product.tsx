@@ -597,10 +597,20 @@ export default function UploadProduct({}: Props) {
           const getCellVal = (colIndex: number) =>
             colIndex > 0 ? cleanExcelValue(row.getCell(colIndex).value) : "";
 
+          const cleanCM = (val: string) => {
+            if (!val) return "";
+
+            // remove ALL non-numeric except dot
+            const num = val.replace(/[^0-9.]/g, "");
+
+            return num;
+          };
+
           const unitCost = getCellVal(commercialColMap.unitCost);
-          const length = getCellVal(commercialColMap.length);
-          const width = getCellVal(commercialColMap.width);
-          const height = getCellVal(commercialColMap.height);
+
+          const length = cleanCM(getCellVal(commercialColMap.length));
+          const width = cleanCM(getCellVal(commercialColMap.width));
+          const height = cleanCM(getCellVal(commercialColMap.height));
           const pcsPerCarton = getCellVal(commercialColMap.pcsPerCarton);
           const factoryAddress = getCellVal(commercialColMap.factoryAddress);
           const portOfDischarge = getCellVal(commercialColMap.portOfDischarge);
@@ -721,9 +731,9 @@ export default function UploadProduct({}: Props) {
               unitCost: unitCost ? parseFloat(unitCost) : null,
 
               packaging: {
-                length: length ? parseFloat(length) : null,
-                width: width ? parseFloat(width) : null,
-                height: height ? parseFloat(height) : null,
+                length: length ? `${parseFloat(length)} cm` : null,
+                width: width ? `${parseFloat(width)} cm` : null,
+                height: height ? `${parseFloat(height)} cm` : null,
               },
 
               pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
