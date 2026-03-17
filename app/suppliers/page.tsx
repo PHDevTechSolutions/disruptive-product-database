@@ -1,7 +1,6 @@
 "use client";
 
-import * as XLSX from "xlsx";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -14,18 +13,10 @@ import DeleteSupplier from "@/components/delete-supplier";
 import FilterSupplier, {
   SupplierFilterValues,
 } from "@/components/filter-supplier";
-
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import DownloadSupplier from "@/components/download-supplier";
 
 import { Pencil, Trash2, Filter, Upload } from "lucide-react";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { getCountryCallingCode, CountryCode } from "libphonenumber-js";
 
 import { db } from "@/lib/firebase";
@@ -39,7 +30,6 @@ type UserData = {
 
 const highlightText = (text: string, keyword: string) => {
   if (!keyword) return text;
-
   const regex = new RegExp(`(${keyword})`, "gi");
   return text.split(regex).map((part, i) =>
     part.toLowerCase() === keyword.toLowerCase() ? (
@@ -51,6 +41,7 @@ const highlightText = (text: string, keyword: string) => {
     ),
   );
 };
+
 const formatWebsite = (url?: string) => {
   if (!url) return undefined;
   return url.startsWith("http://") || url.startsWith("https://")
@@ -65,10 +56,7 @@ type Supplier = {
   addresses: string[];
   emails?: string[];
   website?: string[];
-  contacts?: {
-    name: string;
-    phone: string;
-  }[];
+  contacts?: { name: string; phone: string }[];
   forteProducts?: string[];
   products?: string[];
   certificates?: string[];
@@ -78,6 +66,34 @@ type Supplier = {
   createdAt?: any;
   updatedAt?: any;
 };
+
+/* Column definitions — single source of truth for widths */
+const COL_WIDTHS = [
+  "w-[100px]",   // Actions
+  "w-[160px]",   // Company Name
+  "w-[120px]",   // Supplier Brand
+  "w-[220px]",   // Addresses
+  "w-[180px]",   // Emails
+  "w-[160px]",   // Website
+  "w-[160px]",   // Contact
+  "w-[140px]",   // Forte Product(s)
+  "w-[140px]",   // Product(s)
+  "w-[120px]",   // Certificate(s)
+];
+
+const HEADERS = [
+  { label: "Actions",         align: "text-left"   },
+  { label: "Company Name",    align: "text-left"   },
+  { label: "Supplier Brand",  align: "text-center" },
+  { label: "Addresses",       align: "text-center" },
+  { label: "Emails",          align: "text-center" },
+  { label: "Website",         align: "text-center" },
+  { label: "Contact",         align: "text-center" },
+  { label: "Forte Product(s)",align: "text-center" },
+  { label: "Product(s)",      align: "text-center" },
+  { label: "Certificate(s)",  align: "text-center" },
+];
+
 export default function Suppliers() {
   const router = useRouter();
   const { userId } = useUser();
@@ -91,16 +107,10 @@ export default function Suppliers() {
   const [deleteSupplierOpen, setDeleteSupplierOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
-    null,
-  );
-
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
-  /* 🔍 Search */
   const [search, setSearch] = useState("");
-
-  /* 🧰 Filters */
   const [filters, setFilters] = useState<SupplierFilterValues>({
     company: "",
     internalCode: "",
@@ -110,22 +120,15 @@ export default function Suppliers() {
     phoneCountry: "",
   });
 
-  /* 📄 Pagination */
   const DESKTOP_ITEMS_PER_PAGE = 10;
   const MOBILE_ITEMS_PER_PAGE = 3;
-
   const [itemsPerPage, setItemsPerPage] = useState(DESKTOP_ITEMS_PER_PAGE);
   const [currentPage, setCurrentPage] = useState(1);
 
   /* ---------------- Auth / User ---------------- */
   useEffect(() => {
     if (userId === null) return;
-
-    if (!userId) {
-      router.push("/login");
-      return;
-    }
-
+    if (!userId) { router.push("/login"); return; }
     async function fetchUser() {
       try {
         const res = await fetch(`/api/users?id=${userId}`);
@@ -133,219 +136,109 @@ export default function Suppliers() {
         setUser(await res.json());
       } catch (err) {
         console.error(err);
-      } finally {
-        setLoading(false);
       }
     }
-
     fetchUser();
   }, [userId, router]);
 
   /* ---------------- Fetch Suppliers (Realtime) ---------------- */
   useEffect(() => {
-    const q = query(
-      collection(db, "suppliers"),
-      orderBy("date_updated", "desc"),
-    );
-
+    if (!userId) return;
+    const q = query(collection(db, "suppliers"), where("isActive", "==", true));
     const unsub = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs
-        .map((doc) => {
-          const data = doc.data();
-
-          return {
-            id: doc.id,
-            ...data,
-
-            // ✅ NORMALIZE website
-            website: Array.isArray(data.website)
-              ? data.website
-              : data.website
-                ? [data.website]
-                : [],
-          };
-        })
-        .filter((s: any) => s.isActive !== false);
-
+      const list = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          website: Array.isArray(data.website)
+            ? data.website
+            : data.website ? [data.website] : [],
+        };
+      });
       setSuppliers(list as Supplier[]);
+      setLoading(false);
     });
-
     return () => unsub();
-  }, []);
+  }, [userId]);
 
-  /* ---------------- Reset Page on Search / Filter ---------------- */
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, filters]);
+  useEffect(() => { setCurrentPage(1); }, [search, filters]);
 
   useEffect(() => {
     const handleResize = () => {
-      setItemsPerPage(
-        window.innerWidth < 768
-          ? MOBILE_ITEMS_PER_PAGE
-          : DESKTOP_ITEMS_PER_PAGE,
-      );
+      setItemsPerPage(window.innerWidth < 768 ? MOBILE_ITEMS_PER_PAGE : DESKTOP_ITEMS_PER_PAGE);
     };
-
-    handleResize(); // initial check
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  /* ---------------- Search + Filter Logic ---------------- */
-  const filteredSuppliers = suppliers
-    .filter((s) => {
-      const keyword = search.toLowerCase();
+  /* ---------------- Search + Filter ---------------- */
+  const filteredSuppliers = useMemo(() => {
+    return suppliers
+      .filter((s) => {
+        const keyword = search.toLowerCase();
+        const searchMatch =
+          s.company?.toLowerCase().includes(keyword) ||
+          s.addresses?.some((v) => v.toLowerCase().includes(keyword)) ||
+          s.emails?.some((v) => v.toLowerCase().includes(keyword)) ||
+          s.website?.some((v) => v.toLowerCase().includes(keyword)) ||
+          s.contacts?.some(
+            (c) =>
+              c.name?.toLowerCase().includes(keyword) ||
+              c.phone?.toLowerCase().includes(keyword),
+          ) ||
+          s.forteProducts?.some((v) => v.toLowerCase().includes(keyword)) ||
+          s.products?.some((v) => v.toLowerCase().includes(keyword)) ||
+          s.certificates?.some((v) => v.toLowerCase().includes(keyword));
 
-      const searchMatch =
-        s.company?.toLowerCase().includes(keyword) ||
-        // Addresses
-        s.addresses?.some((v) => v.toLowerCase().includes(keyword)) ||
-        // Emails
-        s.emails?.some((v) => v.toLowerCase().includes(keyword)) ||
-        // Websites ✅
-        s.website?.some((v) => v.toLowerCase().includes(keyword)) ||
-        // Contacts (name + phone)
-        s.contacts?.some(
-          (c) =>
-            c.name?.toLowerCase().includes(keyword) ||
-            c.phone?.toLowerCase().includes(keyword),
-        ) ||
-        // Forte Products
-        s.forteProducts?.some((v) => v.toLowerCase().includes(keyword)) ||
-        // Products
-        s.products?.some((v) => v.toLowerCase().includes(keyword)) ||
-        // Certificates
-        s.certificates?.some((v) => v.toLowerCase().includes(keyword));
+        const filterMatch =
+          (!filters.company || s.company.toLowerCase().includes(filters.company.toLowerCase())) &&
+          (!filters.email || s.emails?.some((e) => e.toLowerCase().includes(filters.email.toLowerCase()))) &&
+          (filters.hasContacts === null ||
+            (filters.hasContacts
+              ? s.contacts && s.contacts.length > 0
+              : !s.contacts || s.contacts.length === 0)) &&
+          (!filters.phoneCountry ||
+            s.contacts?.some((c) => {
+              try {
+                const callingCode = getCountryCallingCode(filters.phoneCountry as CountryCode);
+                return c.phone?.startsWith("+" + callingCode);
+              } catch { return false; }
+            }));
 
-      const filterMatch =
-        (!filters.company ||
-          s.company.toLowerCase().includes(filters.company.toLowerCase())) &&
-        (!filters.email ||
-          s.emails?.some((e) =>
-            e.toLowerCase().includes(filters.email.toLowerCase()),
-          )) &&
-        (filters.hasContacts === null ||
-          (filters.hasContacts
-            ? s.contacts && s.contacts.length > 0
-            : !s.contacts || s.contacts.length === 0)) &&
-        (!filters.phoneCountry ||
-          s.contacts?.some((c) => {
-            try {
-              const callingCode = getCountryCallingCode(
-                filters.phoneCountry as CountryCode,
-              );
-              return c.phone?.startsWith("+" + callingCode);
-            } catch {
-              return false;
-            }
-          }));
-
-      return searchMatch && filterMatch;
-    })
-    .sort((a, b) => {
-      if (!filters.sortAlpha) return 0;
-      return filters.sortAlpha === "asc"
-        ? a.company.localeCompare(b.company)
-        : b.company.localeCompare(a.company);
-    });
+        return searchMatch && filterMatch;
+      })
+      .sort((a, b) => {
+        if (!filters.sortAlpha) return 0;
+        return filters.sortAlpha === "asc"
+          ? a.company.localeCompare(b.company)
+          : b.company.localeCompare(a.company);
+      });
+  }, [suppliers, search, filters]);
 
   /* ---------------- Pagination ---------------- */
-  const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredSuppliers.length / itemsPerPage));
 
-  const paginatedSuppliers = filteredSuppliers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const paginatedSuppliers = useMemo(() => {
+    return filteredSuppliers.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage,
+    );
+  }, [filteredSuppliers, currentPage, itemsPerPage]);
 
-  /* ---------------- Clamp Invalid Page on Resize / Pagination ---------------- */
   useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
-    }
+    if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
   }, [itemsPerPage, totalPages]);
 
-  /* ---------------- Download CSV ---------------- */
-  const handleDownloadCSV = () => {
-    if (filteredSuppliers.length === 0) return;
-
-    const headers = [
-      "Company Name",
-      "Supplier Brand",
-      "Addresses",
-      "Emails",
-      "Website",
-      "Contact Name(s)",
-      "Phone Number(s)",
-      "Forte Product(s)",
-      "Product(s)",
-      "Certificate(s)",
-    ];
-
-    const rows = filteredSuppliers.map((s) => {
-      const contactNames = s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
-      const contactPhones =
-        s.contacts?.map((c) => c.phone).filter(Boolean) ?? [];
-
-      return [
-        s.company ?? "",
-        s.supplierBrand ?? "",
-        s.addresses?.join(" | ") ?? "",
-        s.emails?.join(" | ") ?? "",
-        s.website?.join(" | ") ?? "",
-        contactNames.join(" | "),
-        contactPhones.join(" | "),
-        s.forteProducts?.join(" | ") ?? "",
-        s.products?.join(" | ") ?? "",
-        s.certificates?.join(" | ") ?? "",
-      ];
-    });
-
-    let table = `<table border="1">`;
-
-    // HEADER
-    table += `<tr style="background:#f4cccc;font-weight:bold;">`;
-    headers.forEach((h) => {
-      table += `<th>${h}</th>`;
-    });
-    table += `</tr>`;
-
-    // ROWS
-    rows.forEach((row) => {
-      table += `<tr>`;
-      row.forEach((cell) => {
-        table += `<td>${cell}</td>`;
-      });
-      table += `</tr>`;
-    });
-
-    table += `</table>`;
-
-    const blob = new Blob([table], {
-      type: "application/vnd.ms-excel",
-    });
-
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "suppliers.xls";
-    document.body.appendChild(link);
-    link.click();
-
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
   return (
-    <div className="h-[100dvh] overflow-y-auto p-6 space-y-6 pb-[140px] md:pb-">
+    <div className="h-dvh flex flex-col p-4 md:p-6 gap-4 overflow-hidden">
       <SidebarTrigger className="hidden md:flex" />
 
       {/* HEADER */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-semibold">Suppliers</h1>
-
-        <div className="flex flex-col gap-2 w-full md:w-auto md:flex-row md:items-center">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between shrink-0">
+        <h1 className="text-xl md:text-2xl font-semibold">Suppliers</h1>
+        <div className="flex flex-wrap gap-2">
           <input
             type="text"
             placeholder="Search supplier..."
@@ -353,61 +246,35 @@ export default function Suppliers() {
             onChange={(e) => setSearch(e.target.value)}
             className="h-9 w-full md:w-64 rounded-md border px-3 text-sm"
           />
-
-          <Button
-            onClick={() => setAddSupplierOpen(true)}
-            className="w-full md:w-auto cursor-pointer"
-          >
+          <Button onClick={() => setAddSupplierOpen(true)} className="cursor-pointer">
             + Add Supplier
           </Button>
-
-          <Button
-            variant="outline"
-            className="w-full md:w-auto cursor-pointer gap-1"
-            onClick={() => setUploadSupplierOpen(true)}
-          >
-            <Upload className="h-4 w-4" />
-            Upload
+          <Button variant="outline" className="cursor-pointer gap-1" onClick={() => setUploadSupplierOpen(true)}>
+            <Upload className="h-4 w-4" /> Upload
           </Button>
-
-          <Button
-            variant="outline"
-            onClick={() => setFilterOpen(true)}
-            className="gap-1 w-full md:w-auto cursor-pointer"
-          >
-            <Filter className="h-4 w-4" />
-            Filter
+          <Button variant="outline" onClick={() => setFilterOpen(true)} className="gap-1 cursor-pointer">
+            <Filter className="h-4 w-4" /> Filter
           </Button>
-
-          <Button
-            onClick={handleDownloadCSV}
-            className="w-full md:w-auto cursor-pointer bg-green-600 hover:bg-green-700 text-white"
-          >
-            Download CSV
-          </Button>
+          <DownloadSupplier suppliers={filteredSuppliers} />
         </div>
       </div>
 
-      {/* PAGINATION (OUTSIDE SCROLL) */}
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-md">
+      {/* PAGINATION BAR */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-md shrink-0">
         <span className="text-xs sm:text-sm text-center sm:text-left">
           Page {currentPage} of {totalPages || 1}
         </span>
-
         <div className="flex gap-2 justify-center sm:justify-end">
           <Button
-            size="sm"
-            variant="outline"
+            size="sm" variant="outline"
             disabled={currentPage === 1}
             onClick={() => setCurrentPage((p) => p - 1)}
             className="cursor-pointer"
           >
             Previous
           </Button>
-
           <Button
-            size="sm"
-            variant="outline"
+            size="sm" variant="outline"
             disabled={currentPage === totalPages || totalPages === 0}
             onClick={() => setCurrentPage((p) => p + 1)}
             className="cursor-pointer"
@@ -416,123 +283,98 @@ export default function Suppliers() {
           </Button>
         </div>
       </div>
-      {/* DESKTOP TABLE VIEW */}
-      <div className="hidden md:block rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader className="bg-red-100">
-            <TableRow>
-              <TableHead className="font-bold">Actions</TableHead>
-              <TableHead className="font-bold">Company Name</TableHead>
-              <TableHead className="font-bold">Supplier Brand</TableHead>
-              <TableHead className="text-center font-bold">Addresses</TableHead>
-              <TableHead className="text-center font-bold">Emails</TableHead>
-              <TableHead className="text-center font-bold">Website</TableHead>
-              <TableHead className="text-center font-bold">Contact</TableHead>
-              <TableHead className="text-center font-bold">
-                Forte Product(s)
-              </TableHead>
-              <TableHead className="text-center font-bold">
-                Product(s)
-              </TableHead>
-              <TableHead className="text-center font-bold">
-                Certificate(s)
-              </TableHead>
-            </TableRow>
-          </TableHeader>
 
-          <TableBody>
-            {filteredSuppliers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={10} className="text-center py-8">
+      {/* ✅ DESKTOP TABLE — single table, thead sticky, tbody scrolls */}
+      <div className="hidden md:block flex-1 min-h-0 rounded-md border overflow-auto">
+        <table className="w-full text-sm border-collapse">
+
+          {/* ✅ sticky thead — same table so columns always align */}
+          <thead className="bg-red-100 sticky top-0 z-10">
+            <tr>
+              {HEADERS.map((h, i) => (
+                <th
+                  key={h.label}
+                  className={`${COL_WIDTHS[i]} ${h.align} font-bold px-3 py-3 border-b whitespace-nowrap`}
+                >
+                  {h.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={10} className="text-center py-8 text-muted-foreground">
+                  Loading suppliers...
+                </td>
+              </tr>
+            ) : filteredSuppliers.length === 0 ? (
+              <tr>
+                <td colSpan={10} className="text-center py-8 text-muted-foreground">
                   No suppliers found.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : (
               paginatedSuppliers.map((s) => (
-                <TableRow key={s.id}>
+                <tr key={s.id} className="border-b hover:bg-muted/40 align-middle">
+
                   {/* ACTIONS */}
-                  <TableCell>
-                    <div className="flex gap-2">
+                  <td className={`${COL_WIDTHS[0]} px-3 py-3`}>
+                    <div className="flex gap-2 justify-start">
                       <Button
-                        variant="outline"
-                        size="sm"
-                        className="cursor-pointer"
-                        onClick={() => {
-                          setSelectedSupplier(s);
-                          setEditSupplierOpen(true);
-                        }}
+                        variant="outline" size="sm" className="cursor-pointer"
+                        onClick={() => { setSelectedSupplier(s); setEditSupplierOpen(true); }}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-
                       <Button
-                        variant="destructive"
-                        size="sm"
-                        className="cursor-pointer"
-                        onClick={() => {
-                          setSelectedSupplier(s);
-                          setDeleteSupplierOpen(true);
-                        }}
+                        variant="destructive" size="sm" className="cursor-pointer"
+                        onClick={() => { setSelectedSupplier(s); setDeleteSupplierOpen(true); }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  </TableCell>
+                  </td>
 
-                  {/* COMPANY */}
-                  <TableCell className="whitespace-normal break-words">
-                    <span className="text-base font-semibold">
-                      {highlightText(s.company, search)}
-                    </span>
-                  </TableCell>
+                  {/* COMPANY NAME */}
+                  <td className={`${COL_WIDTHS[1]} px-3 py-3 text-left`}>
+                    <span className="font-semibold">{highlightText(s.company, search)}</span>
+                  </td>
 
                   {/* SUPPLIER BRAND */}
-                  <TableCell className="whitespace-normal break-words">
-                    {s.supplierBrand ? (
-                      <span className="font-semibold">
-                        {highlightText(s.supplierBrand, search)}
-                      </span>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
+                  <td className={`${COL_WIDTHS[2]} px-3 py-3 text-center`}>
+                    {s.supplierBrand
+                      ? <span className="font-semibold">{highlightText(s.supplierBrand, search)}</span>
+                      : <span className="text-muted-foreground">-</span>}
+                  </td>
 
                   {/* ADDRESSES */}
-                  <TableCell className="align-middle max-w-[420px] break-words whitespace-normal">
+                  <td className={`${COL_WIDTHS[3]} px-3 py-3 text-center`}>
                     {s.addresses?.length ? (
-                      s.addresses.length === 1 ? (
-                        <div className="text-center">
-                          {highlightText(s.addresses[0], search)}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col space-y-4 text-left">
-                          {s.addresses.map((item, i) => (
-                            <div key={i}>{highlightText(item, search)}</div>
-                          ))}
-                        </div>
-                      )
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-
-                  {/* EMAILS */}
-                  <TableCell className="text-center">
-                    {s.emails?.length ? (
-                      <div className="flex flex-col items-center space-y-4">
-                        {s.emails.map((item, i) => (
-                          <div key={i}>{highlightText(item, search)}</div>
+                      <div className="flex flex-col items-center gap-3">
+                        {s.addresses.map((item, i) => (
+                          <div key={i} className="break-words">{highlightText(item, search)}</div>
                         ))}
                       </div>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
+                    ) : <span className="text-muted-foreground">-</span>}
+                  </td>
+
+                  {/* EMAILS */}
+                  <td className={`${COL_WIDTHS[4]} px-3 py-3 text-center`}>
+                    {s.emails?.length ? (
+                      <div className="flex flex-col items-center gap-3">
+                        {s.emails.map((item, i) => (
+                          <div key={i} className="break-all">{highlightText(item, search)}</div>
+                        ))}
+                      </div>
+                    ) : <span className="text-muted-foreground">-</span>}
+                  </td>
 
                   {/* WEBSITE */}
-                  <TableCell className="text-center">
+                  <td className={`${COL_WIDTHS[5]} px-3 py-3 text-center`}>
                     {s.website?.length ? (
-                      <div className="flex flex-col items-center space-y-4">
+                      <div className="flex flex-col items-center gap-3">
                         {s.website.map((site, i) => (
                           <a
                             key={i}
@@ -545,137 +387,103 @@ export default function Suppliers() {
                           </a>
                         ))}
                       </div>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
+                    ) : <span className="text-muted-foreground">-</span>}
+                  </td>
 
-                  {/* CONTACTS */}
-                  <TableCell className="text-center">
+                  {/* CONTACT */}
+                  <td className={`${COL_WIDTHS[6]} px-3 py-3 text-center`}>
                     {s.contacts?.length ? (
-                      <div className="flex flex-col items-center space-y-4">
+                      <div className="flex flex-col items-center gap-3">
                         {s.contacts.map((c, i) => (
                           <div key={i}>
-                            <div className="font-medium">
-                              {highlightText(c.name, search)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {highlightText(c.phone, search)}
-                            </div>
+                            <div className="font-medium">{highlightText(c.name, search)}</div>
+                            <div className="text-xs text-muted-foreground">{highlightText(c.phone, search)}</div>
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
+                    ) : <span className="text-muted-foreground">-</span>}
+                  </td>
 
                   {/* FORTE PRODUCTS */}
-                  <TableCell className="text-center">
+                  <td className={`${COL_WIDTHS[7]} px-3 py-3 text-center`}>
                     {s.forteProducts?.length ? (
-                      <div className="flex flex-col items-center space-y-4">
+                      <div className="flex flex-col items-center gap-3">
                         {s.forteProducts.map((item, i) => (
                           <div key={i}>{highlightText(item, search)}</div>
                         ))}
                       </div>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
+                    ) : <span className="text-muted-foreground">-</span>}
+                  </td>
 
                   {/* PRODUCTS */}
-                  <TableCell className="text-center">
+                  <td className={`${COL_WIDTHS[8]} px-3 py-3 text-center`}>
                     {s.products?.length ? (
-                      <div className="flex flex-col items-center space-y-4">
+                      <div className="flex flex-col items-center gap-3">
                         {s.products.map((item, i) => (
                           <div key={i}>{highlightText(item, search)}</div>
                         ))}
                       </div>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
+                    ) : <span className="text-muted-foreground">-</span>}
+                  </td>
 
                   {/* CERTIFICATES */}
-                  <TableCell className="text-center">
+                  <td className={`${COL_WIDTHS[9]} px-3 py-3 text-center`}>
                     {s.certificates?.length ? (
-                      <div className="flex flex-col items-center space-y-4">
+                      <div className="flex flex-col items-center gap-3">
                         {s.certificates.map((item, i) => (
                           <div key={i}>{highlightText(item, search)}</div>
                         ))}
                       </div>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                </TableRow>
+                    ) : <span className="text-muted-foreground">-</span>}
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       {/* MOBILE CARD VIEW */}
-      <div className="md:hidden space-y-4">
-        {filteredSuppliers.length === 0 ? (
-          <div className="text-center py-8 border rounded-md text-sm text-muted-foreground">
-            No suppliers found.
-          </div>
+      <div className="md:hidden flex-1 overflow-y-auto space-y-4 min-h-0">
+        {loading ? (
+          <div className="text-center py-8 text-sm text-muted-foreground">Loading suppliers...</div>
+        ) : filteredSuppliers.length === 0 ? (
+          <div className="text-center py-8 border rounded-md text-sm text-muted-foreground">No suppliers found.</div>
         ) : (
           paginatedSuppliers.map((s) => (
-            <div
-              key={s.id}
-              className="border rounded-lg p-4 space-y-4 shadow-sm"
-            >
-              {/* HEADER */}
+            <div key={s.id} className="border rounded-lg p-4 space-y-4 shadow-sm">
               <div className="flex items-start justify-between">
-                <h3 className="text-lg font-bold underline leading-tight">
-                  {highlightText(s.company, search)}
-                </h3>
-
+                <h3 className="text-lg font-bold underline leading-tight">{highlightText(s.company, search)}</h3>
                 {s.supplierBrand && (
-                  <div className="text-xs font-semibold">
-                    Brand: {highlightText(s.supplierBrand, search)}
-                  </div>
+                  <div className="text-xs font-semibold">Brand: {highlightText(s.supplierBrand, search)}</div>
                 )}
               </div>
 
-              {/* BODY */}
               <div className="text-sm space-y-4 text-center">
-                <div>
-                  <strong>Addresses</strong>
-                  <div className="flex flex-col space-y-4 text-muted-foreground">
-                    {s.addresses?.length
-                      ? s.addresses.map((item, i) => (
-                          <div key={i}>{highlightText(item, search)}</div>
-                        ))
-                      : "-"}
+                {[
+                  { label: "Addresses", items: s.addresses },
+                  { label: "Emails", items: s.emails },
+                  { label: "Forte Products", items: s.forteProducts },
+                  { label: "Products", items: s.products },
+                  { label: "Certificates", items: s.certificates },
+                ].map(({ label, items }) => (
+                  <div key={label}>
+                    <strong>{label}</strong>
+                    <div className="flex flex-col space-y-4 text-muted-foreground">
+                      {items?.length
+                        ? items.map((item, i) => <div key={i}>{highlightText(item, search)}</div>)
+                        : "-"}
+                    </div>
                   </div>
-                </div>
-
-                <div>
-                  <strong>Emails</strong>
-                  <div className="flex flex-col space-y-4 text-muted-foreground">
-                    {s.emails?.length
-                      ? s.emails.map((item, i) => (
-                          <div key={i}>{highlightText(item, search)}</div>
-                        ))
-                      : "-"}
-                  </div>
-                </div>
+                ))}
 
                 <div>
                   <strong>Website</strong>
                   <div className="flex flex-col space-y-4">
                     {s.website?.length
                       ? s.website.map((site, i) => (
-                          <a
-                            key={i}
-                            href={formatWebsite(site)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 underline break-all"
-                          >
+                          <a key={i} href={formatWebsite(site)} target="_blank" rel="noopener noreferrer"
+                            className="text-blue-600 underline break-all">
                             {highlightText(site, search)}
                           </a>
                         ))
@@ -688,46 +496,25 @@ export default function Suppliers() {
                   <div className="flex flex-col space-y-4 text-muted-foreground">
                     {s.contacts?.length
                       ? s.contacts.map((c, i) => (
-                          <div key={i}>
-                            {highlightText(c.name, search)} (
-                            {highlightText(c.phone, search)})
-                          </div>
+                          <div key={i}>{highlightText(c.name, search)} ({highlightText(c.phone, search)})</div>
                         ))
                       : "-"}
                   </div>
                 </div>
 
-                <div>
-                  <strong>Forte Products</strong>
-                  <div className="flex flex-col space-y-4 text-muted-foreground">
-                    {s.forteProducts?.length
-                      ? s.forteProducts.map((item, i) => (
-                          <div key={i}>{highlightText(item, search)}</div>
-                        ))
-                      : "-"}
-                  </div>
-                </div>
-
-                <div>
-                  <strong>Products</strong>
-                  <div className="flex flex-col space-y-4 text-muted-foreground">
-                    {s.products?.length
-                      ? s.products.map((item, i) => (
-                          <div key={i}>{highlightText(item, search)}</div>
-                        ))
-                      : "-"}
-                  </div>
-                </div>
-
-                <div>
-                  <strong>Certificates</strong>
-                  <div className="flex flex-col space-y-4 text-muted-foreground">
-                    {s.certificates?.length
-                      ? s.certificates.map((item, i) => (
-                          <div key={i}>{highlightText(item, search)}</div>
-                        ))
-                      : "-"}
-                  </div>
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline" size="sm" className="flex-1 cursor-pointer"
+                    onClick={() => { setSelectedSupplier(s); setEditSupplierOpen(true); }}
+                  >
+                    <Pencil className="h-4 w-4 mr-1" /> Edit
+                  </Button>
+                  <Button
+                    variant="destructive" size="sm" className="flex-1 cursor-pointer"
+                    onClick={() => { setSelectedSupplier(s); setDeleteSupplierOpen(true); }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" /> Delete
+                  </Button>
                 </div>
               </div>
             </div>
@@ -735,32 +522,15 @@ export default function Suppliers() {
         )}
       </div>
 
+      {/* MODALS */}
       <AddSupplier open={addSupplierOpen} onOpenChange={setAddSupplierOpen} />
-      <UploadSupplier
-        open={uploadSupplierOpen}
-        onOpenChange={setUploadSupplierOpen}
-      />
-
-      <FilterSupplier
-        open={filterOpen}
-        onOpenChange={setFilterOpen}
-        onApply={setFilters}
-      />
-
+      <UploadSupplier open={uploadSupplierOpen} onOpenChange={setUploadSupplierOpen} />
+      <FilterSupplier open={filterOpen} onOpenChange={setFilterOpen} onApply={setFilters} />
       {selectedSupplier && (
-        <EditSupplier
-          open={editSupplierOpen}
-          onOpenChange={setEditSupplierOpen}
-          supplier={selectedSupplier}
-        />
+        <EditSupplier open={editSupplierOpen} onOpenChange={setEditSupplierOpen} supplier={selectedSupplier} />
       )}
-
       {selectedSupplier && (
-        <DeleteSupplier
-          open={deleteSupplierOpen}
-          onOpenChange={setDeleteSupplierOpen}
-          supplier={selectedSupplier}
-        />
+        <DeleteSupplier open={deleteSupplierOpen} onOpenChange={setDeleteSupplierOpen} supplier={selectedSupplier} />
       )}
     </div>
   );
