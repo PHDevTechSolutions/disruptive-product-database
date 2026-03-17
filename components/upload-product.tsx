@@ -53,6 +53,7 @@ type TemplateSpec = {
   specs: {
     specId: string;
   }[];
+  sortOrder?: number;
 };
 
 const cleanExcelValue = (val: any) => {
@@ -242,28 +243,44 @@ export default function UploadProduct({}: Props) {
 
     const existingTitles = templateSnap.docs.map((doc) => doc.data().title);
 
-    const excelGroups = [...new Set(excelColumns.map((col) => col.title))];
+    // Use a Map to preserve Excel insertion order (Set does NOT guarantee order)
+    const excelGroupsMap = new Map<string, { specId: string }[]>();
+    for (const col of excelColumns) {
+      if (!excelGroupsMap.has(col.title)) {
+        excelGroupsMap.set(col.title, []);
+      }
+      excelGroupsMap.get(col.title)!.push({ specId: col.specId });
+    }
 
-    for (const title of excelGroups) {
+    // excelGroupsMap.keys() is in insertion order = Excel column order
+    let sortOrder = 0;
+    for (const [title, specs] of excelGroupsMap) {
+      sortOrder++;
+
       if (!existingTitles.includes(title)) {
-        const specs = excelColumns
-
-          .filter((col) => col.title === title)
-
-          .map((col) => ({
-            specId: col.specId,
-          }));
-
+        // Create new template group
         await addDoc(collection(db, "technicalSpecifications"), {
           categoryTypeId,
           productFamilyId,
           title,
           specs,
+          sortOrder, // store Excel order
           isActive: true,
           createdAt: serverTimestamp(),
           whatHappened: "Product Added",
           date_updated: serverTimestamp(),
         });
+      } else {
+        // Update sortOrder on existing doc to match current Excel
+        const existingDoc = templateSnap.docs.find(
+          (doc) => doc.data().title === title,
+        );
+        if (existingDoc) {
+          await updateDoc(existingDoc.ref, {
+            sortOrder,
+            date_updated: serverTimestamp(),
+          });
+        }
       }
     }
   };
@@ -284,15 +301,18 @@ export default function UploadProduct({}: Props) {
 
     const snap = await getDocs(q);
 
-    return snap.docs.map((doc) => {
-      const data = doc.data() as DocumentData;
+    return snap.docs
+      .map((doc) => {
+        const data = doc.data() as DocumentData;
 
-      return {
-        id: doc.id,
-        title: data.title,
-        specs: data.specs || [],
-      };
-    });
+        return {
+          id: doc.id,
+          title: data.title,
+          specs: data.specs || [],
+          sortOrder: data.sortOrder ?? 999, // fallback for old docs without sortOrder
+        };
+      })
+      .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999)); // sort by Excel order
   };
 
   /* ---------------- SYNC EXISTING PRODUCTS ---------------- */
@@ -310,11 +330,14 @@ export default function UploadProduct({}: Props) {
       ),
     );
 
-    const templates = templateSnap.docs.map((doc) => ({
-      id: doc.id,
-      title: doc.data().title,
-      specs: doc.data().specs || [],
-    }));
+    const templates = templateSnap.docs
+      .map((doc) => ({
+        id: doc.id,
+        title: doc.data().title,
+        specs: doc.data().specs || [],
+        sortOrder: doc.data().sortOrder ?? 999,
+      }))
+      .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999));
 
     const productSnap = await getDocs(collection(db, "products"));
 
