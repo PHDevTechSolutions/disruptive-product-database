@@ -15,6 +15,13 @@ type Props = {
   onFilter: (filtered: any[]) => void;
 };
 
+// ✅ Helper: resolve effective brandOrigin and pricePoint with defaults
+const getEffectiveBrandOrigin = (p: any): string =>
+  p.brandOrigin || "CHINA";
+
+const getEffectivePricePoint = (p: any): string =>
+  p.pricePoint || "ECONOMY";
+
 export default function FilteringComponent({ products, onFilter }: Props) {
   const [filters, setFilters] = useState<Record<string, string[]>>({});
 
@@ -103,8 +110,9 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       .map((p) => p.productFamilies?.[0]?.productFamilyName),
   );
 
-  const pricePoints = uniq(products.map((p) => p.pricePoint));
-  const brandOrigins = uniq(products.map((p) => p.brandOrigin));
+  // ✅ Use effective values for pricePoints and brandOrigins so defaults appear
+  const pricePoints = uniq(products.map((p) => getEffectivePricePoint(p)));
+  const brandOrigins = uniq(products.map((p) => getEffectiveBrandOrigin(p)));
   const productClasses = uniq(products.map((p) => p.productClass));
 
   /* ================= TECH SPECS ================= */
@@ -123,8 +131,9 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName))
       return false;
     if (!check("Product Class", p.productClass)) return false;
-    if (!check("Price Point", p.pricePoint)) return false;
-    if (!check("Brand Origin", p.brandOrigin)) return false;
+    // ✅ Use effective values for Price Point and Brand Origin
+    if (!check("Price Point", getEffectivePricePoint(p))) return false;
+    if (!check("Brand Origin", getEffectiveBrandOrigin(p))) return false;
     if (!check("Supplier Brand", p.supplier?.supplierBrand)) return false;
     return true;
   });
@@ -151,14 +160,15 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           !filters["Product Class"].includes(p.productClass)
         )
           return false;
+        // ✅ Use effective values
         if (
           filters["Price Point"]?.length &&
-          !filters["Price Point"].includes(p.pricePoint)
+          !filters["Price Point"].includes(getEffectivePricePoint(p))
         )
           return false;
         if (
           filters["Brand Origin"]?.length &&
-          !filters["Brand Origin"].includes(p.brandOrigin)
+          !filters["Brand Origin"].includes(getEffectiveBrandOrigin(p))
         )
           return false;
         return true;
@@ -220,8 +230,9 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         return false;
       if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName))
         return false;
-      if (!check("Price Point", p.pricePoint)) return false;
-      if (!check("Brand Origin", p.brandOrigin)) return false;
+      // ✅ Use effective values so no-supplier products match ECONOMY / CHINA filters
+      if (!check("Price Point", getEffectivePricePoint(p))) return false;
+      if (!check("Brand Origin", getEffectiveBrandOrigin(p))) return false;
       if (!check("Product Class", p.productClass)) return false;
       if (!check("Supplier", p.supplier?.company)) return false;
 
@@ -444,7 +455,7 @@ export default function FilteringComponent({ products, onFilter }: Props) {
             </div>
           )}
 
-          {/* STEP 6 — ✅ Supplier Brand now uses same Section style, no more pink wrapper */}
+          {/* STEP 6 */}
           {visibleSteps.includes("Supplier Brand") && (
             <div
               ref={setStepRef("Supplier Brand")}
@@ -457,7 +468,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
                 ← Back
               </button>
 
-              {/* ✅ Supplier Brand — identical Section component as all other steps */}
               <Section
                 title="Supplier Brand"
                 items={suppliers}
@@ -468,7 +478,7 @@ export default function FilteringComponent({ products, onFilter }: Props) {
                 products={products}
               />
 
-              {/* ✅ Tech Specs grouped cards */}
+              {/* Tech Specs grouped cards */}
               {Object.keys(technicalSpecs).length > 0 && (
                 <div className="space-y-3">
                   {Object.entries(technicalSpecs)
@@ -519,8 +529,14 @@ const stepColors: Record<string, string> = {
 };
 
 /* ================= SECTION ================= */
-// ✅ Items > this threshold get a scrollable container + collapse toggle
 const COLLAPSE_THRESHOLD = 6;
+
+// ✅ Reuse same effective value helpers inside Section
+const getEffectiveBrandOriginLocal = (p: any): string =>
+  p.brandOrigin || "CHINA";
+
+const getEffectivePricePointLocal = (p: any): string =>
+  p.pricePoint || "ECONOMY";
 
 function Section({
   title,
@@ -556,7 +572,7 @@ function Section({
     "Product Class",
     "Price Point",
     "Brand Origin",
-    "Supplier",
+    "Supplier Brand",
   ];
 
   const currentStepIndex = stepOrder.indexOf(title);
@@ -573,8 +589,9 @@ function Section({
       else if (step === "Product Family")
         value = p.productFamilies?.[0]?.productFamilyName;
       else if (step === "Product Class") value = p.productClass;
-      else if (step === "Price Point") value = p.pricePoint;
-      else if (step === "Brand Origin") value = p.brandOrigin;
+      // ✅ Use effective defaults for Price Point and Brand Origin
+      else if (step === "Price Point") value = getEffectivePricePointLocal(p);
+      else if (step === "Brand Origin") value = getEffectiveBrandOriginLocal(p);
       else if (step === "Supplier Brand") value = p.supplier?.supplierBrand;
 
       return filters[step].includes(value);
@@ -608,8 +625,9 @@ function Section({
     else if (title === "Product Family")
       value = p.productFamilies?.[0]?.productFamilyName;
     else if (title === "Product Class") value = p.productClass;
-    else if (title === "Price Point") value = p.pricePoint;
-    else if (title === "Brand Origin") value = p.brandOrigin;
+    // ✅ Use effective defaults so counts are correct
+    else if (title === "Price Point") value = getEffectivePricePointLocal(p);
+    else if (title === "Brand Origin") value = getEffectiveBrandOriginLocal(p);
     else if (title === "Supplier Brand") value = p.supplier?.supplierBrand;
     else if (title.includes("||")) {
       const [groupTitle, specName] = title.split("||");
@@ -750,7 +768,6 @@ function Section({
     ? "bg-white"
     : (stepColors[title] ?? "bg-gray-50");
 
-  // ✅ Long list = more than threshold AND not currently searching
   const isLongList = visible.length > COLLAPSE_THRESHOLD;
   const showScrollable = isLongList && !input;
 
@@ -759,7 +776,6 @@ function Section({
       {/* Header row with optional collapse toggle */}
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">{label ?? title}</p>
-        {/* ✅ Show collapse toggle only for long lists when not searching */}
         {isLongList && !input && (
           <button
             className="text-xs text-blue-600 underline shrink-0 ml-2"
@@ -776,7 +792,7 @@ function Section({
           value={input}
           onValueChange={(val) => {
             setInput(val);
-            if (val) setIsCollapsed(false); // auto-expand on search
+            if (val) setIsCollapsed(false);
           }}
         />
 
@@ -795,7 +811,6 @@ function Section({
         )}
 
         {visible.length > 0 && (
-          // ✅ Long list collapsed: max-h 200px scrollable. Expanded or short: natural height with max-h 240px scroll.
           <CommandGroup
             className={
               showScrollable
