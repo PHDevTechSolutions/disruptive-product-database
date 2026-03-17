@@ -30,7 +30,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   const [visibleSteps, setVisibleSteps] = useState<string[]>(["Product Usage"]);
 
-  // ✅ Ref for the sidebar scroll container
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const getPreviousStep = () => {
@@ -48,22 +47,21 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     stepRefs.current[step] = el;
   };
 
-  // ✅ Scroll within the sidebar container only — never touches window scroll
   const scrollToStep = (step: string) => {
     setTimeout(() => {
       const el = stepRefs.current[step];
       const container = scrollContainerRef.current;
       if (!el || !container) return;
-
       const elTop = el.getBoundingClientRect().top;
       const containerTop = container.getBoundingClientRect().top;
       const offset = elTop - containerTop + container.scrollTop - 16;
-
       container.scrollTo({ top: offset, behavior: "smooth" });
     }, 100);
   };
 
-  const [searchFilters, setSearchFilters] = useState<Record<string, string>>({});
+  const [searchFilters, setSearchFilters] = useState<Record<string, string>>(
+    {},
+  );
 
   const uniq = (arr: any[]) => Array.from(new Set(arr.filter(Boolean)));
 
@@ -120,25 +118,49 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       if (!filters[key]?.length) return true;
       return filters[key].includes(value);
     };
-
-    if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName)) return false;
-    if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName)) return false;
+    if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName))
+      return false;
+    if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName))
+      return false;
     if (!check("Product Class", p.productClass)) return false;
     if (!check("Price Point", p.pricePoint)) return false;
     if (!check("Brand Origin", p.brandOrigin)) return false;
     if (!check("Supplier Brand", p.supplier?.supplierBrand)) return false;
-
     return true;
   });
 
   const suppliers = uniq(
     products
       .filter((p) => {
-        if (filters["Product Usage"]?.length && !filters["Product Usage"].includes(p.categoryTypes?.[0]?.categoryTypeName)) return false;
-        if (filters["Product Family"]?.length && !filters["Product Family"].includes(p.productFamilies?.[0]?.productFamilyName)) return false;
-        if (filters["Product Class"]?.length && !filters["Product Class"].includes(p.productClass)) return false;
-        if (filters["Price Point"]?.length && !filters["Price Point"].includes(p.pricePoint)) return false;
-        if (filters["Brand Origin"]?.length && !filters["Brand Origin"].includes(p.brandOrigin)) return false;
+        if (
+          filters["Product Usage"]?.length &&
+          !filters["Product Usage"].includes(
+            p.categoryTypes?.[0]?.categoryTypeName,
+          )
+        )
+          return false;
+        if (
+          filters["Product Family"]?.length &&
+          !filters["Product Family"].includes(
+            p.productFamilies?.[0]?.productFamilyName,
+          )
+        )
+          return false;
+        if (
+          filters["Product Class"]?.length &&
+          !filters["Product Class"].includes(p.productClass)
+        )
+          return false;
+        if (
+          filters["Price Point"]?.length &&
+          !filters["Price Point"].includes(p.pricePoint)
+        )
+          return false;
+        if (
+          filters["Brand Origin"]?.length &&
+          !filters["Brand Origin"].includes(p.brandOrigin)
+        )
+          return false;
         return true;
       })
       .map((p) => p.supplier?.supplierBrand),
@@ -188,12 +210,16 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           });
         }
         if (searchFilters[key])
-          return value?.toLowerCase().includes(searchFilters[key].toLowerCase());
+          return value
+            ?.toLowerCase()
+            .includes(searchFilters[key].toLowerCase());
         return true;
       };
 
-      if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName)) return false;
-      if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName)) return false;
+      if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName))
+        return false;
+      if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName))
+        return false;
       if (!check("Price Point", p.pricePoint)) return false;
       if (!check("Brand Origin", p.brandOrigin)) return false;
       if (!check("Product Class", p.productClass)) return false;
@@ -237,15 +263,10 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       if (!alreadySelected && title !== "Supplier Brand") {
         if (currentIndex !== -1 && currentIndex < stepOrder.length - 1) {
           const nextStep = stepOrder[currentIndex + 1];
-
           setVisibleSteps((prevSteps) => {
-            if (!prevSteps.includes(nextStep)) {
-              return [...prevSteps, nextStep];
-            }
+            if (!prevSteps.includes(nextStep)) return [...prevSteps, nextStep];
             return prevSteps;
           });
-
-          // ✅ Scroll within sidebar only
           scrollToStep(nextStep);
         }
       }
@@ -257,9 +278,7 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   const handleBack = (title: string) => {
     const currentIndex = stepOrder.indexOf(title);
     if (currentIndex <= 0) return;
-
     setVisibleSteps(stepOrder.slice(0, currentIndex));
-
     setFilters((prev) => {
       const updated = { ...prev };
       stepOrder.slice(currentIndex).forEach((step) => {
@@ -277,10 +296,8 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 
   /* ================= UI ================= */
   return (
-    // ✅ Outer container: no scroll here, parent (page) controls sidebar scroll
     <div className="border rounded-lg bg-card flex flex-col h-full">
-
-      {/* ✅ Sticky header inside the sidebar */}
+      {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-card p-4 border-b rounded-t-lg">
         <div className="flex justify-between items-center">
           <h2 className="font-semibold">Filters</h2>
@@ -307,114 +324,140 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         </div>
       </div>
 
-      {/* ✅ Scrollable body — this is the scroll container for smooth scrollToStep */}
-      <div ref={scrollContainerRef} className="overflow-y-auto flex-1 p-4 space-y-6">
+      {/* Scrollable body */}
+      <div
+        ref={scrollContainerRef}
+        className="overflow-y-auto flex-1 p-4 space-y-6"
+      >
+        <div className="flex flex-col gap-4">
+          {/* STEP 1 */}
+          {visibleSteps.includes("Product Usage") && (
+            <div
+              ref={setStepRef("Product Usage")}
+              className="w-full scroll-mt-4"
+            >
+              <Section
+                title="Product Usage"
+                items={productUsages}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
+            </div>
+          )}
 
-        <div className="space-y-4">
-          <div className="flex flex-col gap-4">
+          {/* STEP 2 */}
+          {visibleSteps.includes("Product Family") && (
+            <div
+              ref={setStepRef("Product Family")}
+              className="w-full space-y-2 scroll-mt-4"
+            >
+              <button
+                className="text-xs text-blue-600 underline"
+                onClick={() => handleBack("Product Family")}
+              >
+                ← Back
+              </button>
+              <Section
+                title="Product Family"
+                items={productFamilies}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
+            </div>
+          )}
 
-            {/* STEP 1 */}
-            {visibleSteps.includes("Product Usage") && (
-              <div ref={setStepRef("Product Usage")} className="w-full shrink-0 scroll-mt-4">
-                <Section
-                  title="Product Usage"
-                  items={productUsages}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+          {/* STEP 3 */}
+          {visibleSteps.includes("Product Class") && (
+            <div
+              ref={setStepRef("Product Class")}
+              className="w-full space-y-2 scroll-mt-4"
+            >
+              <button
+                className="text-xs text-blue-600 underline"
+                onClick={() => handleBack("Product Class")}
+              >
+                ← Back
+              </button>
+              <Section
+                title="Product Class"
+                items={productClasses}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
+            </div>
+          )}
 
-            {/* STEP 2 */}
-            {visibleSteps.includes("Product Family") && (
-              <div ref={setStepRef("Product Family")} className="w-full shrink-0 space-y-2 scroll-mt-4">
-                <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Product Family")}>
-                  ← Back
-                </button>
-                <Section
-                  title="Product Family"
-                  items={productFamilies}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+          {/* STEP 4 */}
+          {visibleSteps.includes("Price Point") && (
+            <div
+              ref={setStepRef("Price Point")}
+              className="w-full space-y-2 scroll-mt-4"
+            >
+              <button
+                className="text-xs text-blue-600 underline"
+                onClick={() => handleBack("Price Point")}
+              >
+                ← Back
+              </button>
+              <Section
+                title="Price Point"
+                items={pricePoints}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
+            </div>
+          )}
 
-            {/* STEP 3 */}
-            {visibleSteps.includes("Product Class") && (
-              <div ref={setStepRef("Product Class")} className="w-full shrink-0 space-y-2 scroll-mt-4">
-                <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Product Class")}>
-                  ← Back
-                </button>
-                <Section
-                  title="Product Class"
-                  items={productClasses}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+          {/* STEP 5 */}
+          {visibleSteps.includes("Brand Origin") && (
+            <div
+              ref={setStepRef("Brand Origin")}
+              className="w-full space-y-2 scroll-mt-4"
+            >
+              <button
+                className="text-xs text-blue-600 underline"
+                onClick={() => handleBack("Brand Origin")}
+              >
+                ← Back
+              </button>
+              <Section
+                title="Brand Origin"
+                items={brandOrigins}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
+            </div>
+          )}
 
-            {/* STEP 4 */}
-            {visibleSteps.includes("Price Point") && (
-              <div ref={setStepRef("Price Point")} className="w-full shrink-0 space-y-2 scroll-mt-4">
-                <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Price Point")}>
-                  ← Back
-                </button>
-                <Section
-                  title="Price Point"
-                  items={pricePoints}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
+          {/* STEP 6 — ✅ Supplier Brand now uses same Section style, no more pink wrapper */}
+          {visibleSteps.includes("Supplier Brand") && (
+            <div
+              ref={setStepRef("Supplier Brand")}
+              className="w-full space-y-4 scroll-mt-4"
+            >
+              <button
+                className="text-xs text-blue-600 underline"
+                onClick={() => handleBack("Supplier Brand")}
+              >
+                ← Back
+              </button>
 
-            {/* STEP 5 */}
-            {visibleSteps.includes("Brand Origin") && (
-              <div ref={setStepRef("Brand Origin")} className="w-full shrink-0 space-y-2 scroll-mt-4">
-                <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Brand Origin")}>
-                  ← Back
-                </button>
-                <Section
-                  title="Brand Origin"
-                  items={brandOrigins}
-                  filters={filters}
-                  toggle={toggle}
-                  setSearch={setSearch}
-                  sourceProducts={sourceProducts}
-                  products={products}
-                />
-              </div>
-            )}
-
-          </div>
-        </div>
-
-        {/* STEP 6 — Supplier Brand + Tech Specs */}
-        {visibleSteps.includes("Supplier Brand") && (
-          <div
-            ref={setStepRef("Supplier Brand")}
-            className="space-y-4 scroll-mt-4 bg-pink-100 p-3 rounded"
-          >
-            <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Supplier Brand")}>
-              ← Back
-            </button>
-            <h3 className="font-semibold text-base">Technical Specifications</h3>
-
-            <div className="w-full shrink-0">
+              {/* ✅ Supplier Brand — identical Section component as all other steps */}
               <Section
                 title="Supplier Brand"
                 items={suppliers}
@@ -424,31 +467,42 @@ export default function FilteringComponent({ products, onFilter }: Props) {
                 sourceProducts={sourceProducts}
                 products={products}
               />
-            </div>
 
-            <div className="flex flex-col gap-4">
-              {Object.entries(technicalSpecs).map(([gt, s]) => (
-                <div key={gt} className="border rounded p-3 space-y-3 bg-card">
-                  <p className="font-semibold text-sm">{gt}</p>
-                  {Object.entries(s).map(([sn, vals]) => (
-                    <Section
-                      key={sn}
-                      title={`${gt}||${sn}`}
-                      label={sn}
-                      items={[...vals]}
-                      filters={filters}
-                      toggle={toggle}
-                      setSearch={setSearch}
-                      sourceProducts={sourceProducts}
-                      products={products}
-                    />
-                  ))}
+              {/* ✅ Tech Specs grouped cards */}
+              {Object.keys(technicalSpecs).length > 0 && (
+                <div className="space-y-3">
+                  {Object.entries(technicalSpecs)
+                    .filter(([_, s]) =>
+                      Object.values(s).some((vals) => vals.size > 0),
+                    )
+                    .map(([gt, s]) => (
+                      <div
+                        key={gt}
+                        className="border rounded p-3 space-y-3 bg-pink-100"
+                      >
+                        <p className="font-semibold text-sm uppercase tracking-wide">
+                          {gt}
+                        </p>
+                        {Object.entries(s).map(([sn, vals]) => (
+                          <Section
+                            key={sn}
+                            title={`${gt}||${sn}`}
+                            label={sn}
+                            items={[...vals]}
+                            filters={filters}
+                            toggle={toggle}
+                            setSearch={setSearch}
+                            sourceProducts={sourceProducts}
+                            products={products}
+                          />
+                        ))}
+                      </div>
+                    ))}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        )}
-
+          )}
+        </div>
       </div>
     </div>
   );
@@ -465,6 +519,9 @@ const stepColors: Record<string, string> = {
 };
 
 /* ================= SECTION ================= */
+// ✅ Items > this threshold get a scrollable container + collapse toggle
+const COLLAPSE_THRESHOLD = 6;
+
 function Section({
   title,
   label,
@@ -476,10 +533,14 @@ function Section({
   products,
 }: any) {
   const [input, setInput] = useState("");
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const splitValues = (value: string): string[] => {
     if (!value) return [];
-    return value.split("|").map((v: string) => v.trim()).filter(Boolean);
+    return value
+      .split("|")
+      .map((v: string) => v.trim())
+      .filter(Boolean);
   };
 
   useEffect(() => {
@@ -507,8 +568,10 @@ function Section({
       if (!filters[step]?.length) return true;
 
       let value;
-      if (step === "Product Usage") value = p.categoryTypes?.[0]?.categoryTypeName;
-      else if (step === "Product Family") value = p.productFamilies?.[0]?.productFamilyName;
+      if (step === "Product Usage")
+        value = p.categoryTypes?.[0]?.categoryTypeName;
+      else if (step === "Product Family")
+        value = p.productFamilies?.[0]?.productFamilyName;
       else if (step === "Product Class") value = p.productClass;
       else if (step === "Price Point") value = p.pricePoint;
       else if (step === "Brand Origin") value = p.brandOrigin;
@@ -531,7 +594,8 @@ function Section({
           splitValues(val).forEach((v: string) => productVals.push(v));
         });
       });
-      if (vals.length && !vals.some((v) => productVals.includes(v))) return false;
+      if (vals.length && !vals.some((v) => productVals.includes(v)))
+        return false;
     }
 
     return true;
@@ -539,8 +603,10 @@ function Section({
 
   baseList?.forEach((p: any) => {
     let value;
-    if (title === "Product Usage") value = p.categoryTypes?.[0]?.categoryTypeName;
-    else if (title === "Product Family") value = p.productFamilies?.[0]?.productFamilyName;
+    if (title === "Product Usage")
+      value = p.categoryTypes?.[0]?.categoryTypeName;
+    else if (title === "Product Family")
+      value = p.productFamilies?.[0]?.productFamilyName;
     else if (title === "Product Class") value = p.productClass;
     else if (title === "Price Point") value = p.pricePoint;
     else if (title === "Brand Origin") value = p.brandOrigin;
@@ -576,29 +642,20 @@ function Section({
     const itemNums = extractNumbers(i);
     const inputNums = extractNumbers(input);
 
-    if (itemNums.length === 0) {
+    if (itemNums.length === 0)
       return i.toLowerCase().includes(input.toLowerCase());
-    }
 
     if (inputNums.length >= 2) {
-      const inputMin = inputNums[0];
-      const inputMax = inputNums[1];
-      if (itemNums.length >= 2) {
-        const itemMin = itemNums[0];
-        const itemMax = itemNums[1];
-        return inputMin >= itemMin && inputMax <= itemMax;
-      }
+      if (itemNums.length >= 2)
+        return inputNums[0] >= itemNums[0] && inputNums[1] <= itemNums[1];
       return false;
     }
 
     if (inputNums.length === 1) {
       const inputVal = inputNums[0];
-      if (itemNums.length >= 2) {
+      if (itemNums.length >= 2)
         return inputVal >= itemNums[0] && inputVal <= itemNums[1];
-      }
-      if (itemNums.length === 1) {
-        return itemNums[0] >= inputVal;
-      }
+      if (itemNums.length === 1) return itemNums[0] >= inputVal;
     }
 
     return i.toLowerCase().includes(input.toLowerCase());
@@ -612,7 +669,12 @@ function Section({
         matrix[i][j] =
           b[i - 1] === a[j - 1]
             ? matrix[i - 1][j - 1]
-            : 1 + Math.min(matrix[i - 1][j], matrix[i][j - 1], matrix[i - 1][j - 1]);
+            : 1 +
+              Math.min(
+                matrix[i - 1][j],
+                matrix[i][j - 1],
+                matrix[i - 1][j - 1],
+              );
       }
     }
     return matrix[b.length][a.length];
@@ -628,7 +690,6 @@ function Section({
     "Closest available",
     "You might be looking for",
   ];
-
   const pickPhrase = () =>
     suggestionPhrases[Math.floor(Math.random() * suggestionPhrases.length)];
 
@@ -643,11 +704,10 @@ function Section({
     const inputNums = extractNumbers(input);
 
     if (inputNums.length > 0) {
-      let bestItem = null;
-      let bestDiff = Infinity;
-      let highestItem = null;
-      let highestValue = -Infinity;
-
+      let bestItem = null,
+        bestDiff = Infinity,
+        highestItem = null,
+        highestValue = -Infinity;
       items.forEach((item: string) => {
         const nums = extractNumbers(item);
         if (nums.length === 0) return;
@@ -664,15 +724,14 @@ function Section({
           }
         }
       });
-
-      if (!bestItem && highestItem) return { value: highestItem, phrase: "Highest available" };
+      if (!bestItem && highestItem)
+        return { value: highestItem, phrase: "Highest available" };
       if (bestItem) return { value: bestItem, phrase: pickPhrase() };
       return null;
     }
 
-    let bestMatch = null;
-    let bestScore = Infinity;
-
+    let bestMatch = null,
+      bestScore = Infinity;
     items.forEach((item: string) => {
       if (/\d/.test(item)) return;
       const score = levenshtein(input.toLowerCase(), item.toLowerCase());
@@ -686,17 +745,39 @@ function Section({
     return null;
   })();
 
-  const stepColor = stepColors[title] ?? "bg-gray-50";
+  const isTechSpec = title.includes("||");
+  const stepColor = isTechSpec
+    ? "bg-white"
+    : (stepColors[title] ?? "bg-gray-50");
+
+  // ✅ Long list = more than threshold AND not currently searching
+  const isLongList = visible.length > COLLAPSE_THRESHOLD;
+  const showScrollable = isLongList && !input;
 
   return (
     <div className={`border rounded p-2 space-y-2 ${stepColor}`}>
-      <p className="text-sm font-medium">{label ?? title}</p>
+      {/* Header row with optional collapse toggle */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium">{label ?? title}</p>
+        {/* ✅ Show collapse toggle only for long lists when not searching */}
+        {isLongList && !input && (
+          <button
+            className="text-xs text-blue-600 underline shrink-0 ml-2"
+            onClick={() => setIsCollapsed((prev) => !prev)}
+          >
+            {isCollapsed ? `Show all (${visible.length})` : "Collapse"}
+          </button>
+        )}
+      </div>
 
       <Command shouldFilter={false}>
         <CommandInput
           placeholder="Type to search..."
           value={input}
-          onValueChange={setInput}
+          onValueChange={(val) => {
+            setInput(val);
+            if (val) setIsCollapsed(false); // auto-expand on search
+          }}
         />
 
         {visible.length === 0 && (
@@ -714,10 +795,19 @@ function Section({
         )}
 
         {visible.length > 0 && (
-          <CommandGroup>
+          // ✅ Long list collapsed: max-h 200px scrollable. Expanded or short: natural height with max-h 240px scroll.
+          <CommandGroup
+            className={
+              showScrollable
+                ? isCollapsed
+                  ? "max-h-[200px] overflow-y-auto"
+                  : "max-h-[240px] overflow-y-auto"
+                : ""
+            }
+          >
             {visible.map((i: string) => {
-              const isDisabled = (counts[i] ?? 0) === 0 && !filters[title]?.includes(i);
-
+              const isDisabled =
+                (counts[i] ?? 0) === 0 && !filters[title]?.includes(i);
               return (
                 <CommandItem
                   key={i}
@@ -728,9 +818,7 @@ function Section({
                   className={isDisabled ? "opacity-40" : ""}
                 >
                   <Check
-                    className={`mr-2 h-4 w-4 ${
-                      filters[title]?.includes(i) ? "opacity-100" : "opacity-0"
-                    }`}
+                    className={`mr-2 h-4 w-4 ${filters[title]?.includes(i) ? "opacity-100" : "opacity-0"}`}
                   />
                   <div className="flex justify-between w-full">
                     <span>{i}</span>
