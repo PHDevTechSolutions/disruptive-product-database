@@ -228,11 +228,12 @@ export default function EditProductPage() {
     ipSecond: string;
   };
 
-  type TechnicalSpecification = {
-    id: string;
-    title: string;
-    specs: SpecRow[];
-  };
+type TechnicalSpecification = {
+  id: string;
+  title: string;
+  specs: SpecRow[];
+  sortOrder?: number; // 🔥 ADD THIS
+};
 
   const [technicalSpecs, setTechnicalSpecs] = useState<
     TechnicalSpecification[]
@@ -463,13 +464,19 @@ export default function EditProductPage() {
       }
 
       if (Array.isArray(data.technicalSpecifications)) {
-        setTechnicalSpecs(
-          data.technicalSpecifications.map((spec: any) => ({
-            id: spec.technicalSpecificationId,
-            title: spec.title,
-            specs: spec.specs,
-          })),
-        );
+setTechnicalSpecs(
+  data.technicalSpecifications
+    .map((spec: any) => ({
+      id: spec.technicalSpecificationId,
+      title: spec.title,
+      sortOrder: spec.sortOrder ?? 999, // 🔥 IMPORTANT
+      specs: spec.specs,
+    }))
+    .sort(
+  (a: TechnicalSpecification, b: TechnicalSpecification) =>
+    (a.sortOrder ?? 999) - (b.sortOrder ?? 999),
+)
+);
       }
     });
 
@@ -774,7 +781,7 @@ export default function EditProductPage() {
 
     const batch = writeBatch(db);
 
-    technicalSpecs.forEach((spec) => {
+    technicalSpecs.forEach((spec, index) => {
       if (!spec.title.trim()) return;
 
       const existing = snapshot.docs.find((d) => d.data().title === spec.title);
@@ -790,6 +797,8 @@ export default function EditProductPage() {
         title: spec.title,
 
         specs: spec.specs,
+
+        sortOrder: index + 1,
 
         isActive: true,
 
@@ -946,17 +955,21 @@ export default function EditProductPage() {
       ),
     );
 
-    const loadedSpecs = snapshot.docs.map((doc) => {
-      const data = doc.data();
+const loadedSpecs = snapshot.docs
+  .map((doc) => {
+    const data = doc.data();
 
-      return {
-        id: doc.id,
-
-        title: data.title,
-
-        specs: data.specs || [],
-      };
-    });
+    return {
+      id: doc.id,
+      title: data.title,
+      sortOrder: data.sortOrder ?? 999, // 🔥 ADD THIS
+      specs: (data.specs || []).map((row: any) => ({
+        ...row,
+        value: "",
+      })),
+    };
+  })
+  .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999)); // 🔥 SORT
 
     setTechnicalSpecs(loadedSpecs);
   };
@@ -1187,6 +1200,8 @@ export default function EditProductPage() {
 
         specs: spec.specs,
 
+        sortOrder: i + 1,
+
         isActive: true,
 
         updatedAt: serverTimestamp(),
@@ -1228,32 +1243,30 @@ export default function EditProductPage() {
 
         const existingSpecs = data.technicalSpecifications || [];
 
-        const mergedSpecs = technicalSpecs.map((templateSpec) => {
-          const existingSpec = existingSpecs.find(
-            (s: any) => s.technicalSpecificationId === templateSpec.id,
-          );
+const mergedSpecs = technicalSpecs.map((templateSpec, index) => {
+  const existingSpec = existingSpecs.find(
+    (s: any) => s.technicalSpecificationId === templateSpec.id,
+  );
 
-          return {
-            technicalSpecificationId: templateSpec.id,
+  return {
+    technicalSpecificationId: templateSpec.id,
+    title: templateSpec.title,
+    sortOrder: index + 1, // 🔥 ADD THIS
+    specs: templateSpec.specs.map((templateRow: SpecRow) => {
+      const existingRow = existingSpec?.specs?.find(
+        (r: SpecRow) => r.specId === templateRow.specId,
+      );
 
-            title: templateSpec.title,
-
-            specs: templateSpec.specs.map((templateRow: SpecRow) => {
-              const existingRow = existingSpec?.specs?.find(
-                (r: SpecRow) => r.specId === templateRow.specId,
-              );
-
-              return {
-                specId: templateRow.specId,
-
-                value:
-                  productDoc.id === productId
-                    ? templateRow.value || ""
-                    : existingRow?.value || "",
-              };
-            }),
-          };
-        });
+      return {
+        specId: templateRow.specId,
+        value:
+          productDoc.id === productId
+            ? templateRow.value || ""
+            : existingRow?.value || "",
+      };
+    }),
+  };
+});
 
         batch.update(ref, {
           technicalSpecifications: mergedSpecs,
@@ -1346,20 +1359,19 @@ packaging: {
           portOfDischarge: portOfDischarge || "",
         },
 
-        technicalSpecifications: technicalSpecs
-          .filter((spec) => spec.title.trim() !== "")
-          .map((spec) => ({
-            technicalSpecificationId: spec.id || "",
-            title: spec.title,
-            specs: spec.specs
-              .filter((row) => row.specId.trim() !== "")
-              .map((row) => ({
-                specId: row.specId.trim(),
-
-                // ✅ FIX HERE
-                value: row.value?.trim() || "",
-              })),
-          })),
+technicalSpecifications: technicalSpecs
+  .filter((spec) => spec.title.trim() !== "")
+  .map((spec, index) => ({
+    technicalSpecificationId: spec.id || "",
+    title: spec.title,
+    sortOrder: index + 1, // 🔥 ADD THIS
+    specs: spec.specs
+      .filter((row) => row.specId.trim() !== "")
+      .map((row) => ({
+        specId: row.specId.trim(),
+        value: row.value?.trim() || "",
+      })),
+  })),
 
         ...((mainImage || dimensionalDrawing || illuminanceDrawing) && {
           mediaStatus: "pending",

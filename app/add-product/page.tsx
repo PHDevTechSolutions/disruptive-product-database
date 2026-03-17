@@ -642,7 +642,7 @@ export default function AddProductPage() {
 
     const batch = writeBatch(db);
 
-    technicalSpecs.forEach((spec) => {
+    technicalSpecs.forEach((spec, index) => {
       if (!spec.title.trim()) return;
 
       const existing = snapshot.docs.find((d) => d.data().title === spec.title);
@@ -654,8 +654,8 @@ export default function AddProductPage() {
       batch.set(ref, {
         categoryTypeId,
         productFamilyId,
-
         title: spec.title.trim(),
+        sortOrder: index + 1,
 
         specs: spec.specs
           .filter((row) => row.specId.trim() !== "")
@@ -908,21 +908,21 @@ export default function AddProductPage() {
       ),
     );
 
-    const loadedSpecs = snapshot.docs.map((doc) => {
-      const data = doc.data();
+const loadedSpecs = snapshot.docs
+  .map((doc) => {
+    const data = doc.data();
 
-      return {
-        id: doc.id,
-
-        title: data.title,
-
-        specs: (data.specs || []).map((row: any) => ({
-          ...row,
-
-          value: "",
-        })),
-      };
-    });
+    return {
+      id: doc.id,
+      title: data.title,
+      sortOrder: data.sortOrder ?? 999, // 🔥 ADD THIS
+      specs: (data.specs || []).map((row: any) => ({
+        ...row,
+        value: "",
+      })),
+    };
+  })
+  .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999)); // 🔥 SORT
 
     setTechnicalSpecs(loadedSpecs);
   };
