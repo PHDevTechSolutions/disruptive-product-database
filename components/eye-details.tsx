@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Info, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Info } from "lucide-react";
 
 type ActiveFilters = Record<string, string[]>;
 
@@ -21,8 +21,36 @@ const BASE_STEP_LABELS: Record<string, string> = {
 
 export default function EyeDetails({ groupTitle, filters }: Props) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
 
-  // Base filters
+  const hoverTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // ✅ 1 second hover
+  const handleMouseEnter = () => {
+    hoverTimer.current = setTimeout(() => {
+      setOpen(true);
+    }, 1000);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setOpen(false);
+  };
+
   const activeBaseFilters = Object.entries(BASE_STEP_LABELS)
     .map(([key, label]) => ({
       label,
@@ -30,7 +58,6 @@ export default function EyeDetails({ groupTitle, filters }: Props) {
     }))
     .filter((f) => f.values.length > 0);
 
-  // Tech filters (previous groups only)
   const activeTechFilters: { group: string; spec: string; values: string[] }[] = [];
   Object.entries(filters).forEach(([key, vals]) => {
     if (!key.includes("||")) return;
@@ -44,93 +71,79 @@ export default function EyeDetails({ groupTitle, filters }: Props) {
     activeBaseFilters.length > 0 || activeTechFilters.length > 0;
 
   return (
-    <>
-      {/* Trigger Button */}
+    <div
+      ref={ref}
+      className="relative inline-block"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((prev) => !prev);
+        }}
         className="text-pink-400 hover:text-pink-700 transition-colors"
-        title={`See active filters for ${groupTitle}`}
+        // ❌ removed title (tooltip)
       >
         <Info className="w-4 h-4" />
       </button>
 
-      {/* MODAL */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Overlay */}
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setOpen(false)}
-          />
+        <div className="absolute z-50 right-0 top-6 w-72 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-xl p-3 text-xs space-y-2">
+          {/* Header */}
+          <p className="font-semibold text-gray-700 uppercase tracking-wide text-[11px] border-b pb-1">
+            Showing <span className="text-pink-600">{groupTitle}</span> because:
+          </p>
 
-          {/* Modal Content */}
-          <div className="relative z-50 w-[90%] max-w-md bg-white rounded-xl shadow-2xl p-4 space-y-3">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b pb-2">
-              <p className="font-semibold text-gray-700 text-sm">
-                Showing{" "}
-                <span className="text-pink-600">{groupTitle}</span> because:
+          {!hasAnything && (
+            <p className="text-gray-400 italic">No filters applied yet.</p>
+          )}
+
+          {activeBaseFilters.map(({ label, values }) => (
+            <div key={label} className="space-y-1">
+              <p className="font-medium text-gray-400 uppercase text-[10px] tracking-widest">
+                {label}
               </p>
-              <button onClick={() => setOpen(false)}>
-                <X className="w-4 h-4 text-gray-500 hover:text-black" />
-              </button>
-            </div>
-
-            {!hasAnything && (
-              <p className="text-gray-400 italic text-sm">
-                No filters applied yet.
-              </p>
-            )}
-
-            {/* Base Filters */}
-            {activeBaseFilters.map(({ label, values }) => (
-              <div key={label} className="space-y-1">
-                <p className="font-medium text-gray-400 uppercase text-[10px] tracking-widest">
-                  {label}
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {values.map((v) => (
-                    <span
-                      key={v}
-                      className="bg-pink-100 text-pink-700 border border-pink-200 rounded px-2 py-0.5 text-xs font-medium"
-                    >
-                      {v}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            {/* Previous Tech Filters */}
-            {activeTechFilters.length > 0 && (
-              <div className="border-t pt-2 space-y-2">
-                <p className="font-medium text-gray-400 uppercase text-[10px] tracking-widest">
-                  Previous Spec Filters
-                </p>
-
-                {activeTechFilters.map(({ group, spec, values }) => (
-                  <div key={`${group}||${spec}`} className="space-y-1">
-                    <p className="text-gray-500 text-xs">
-                      <span className="font-semibold">{group}</span> › {spec}
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {values.map((v) => (
-                        <span
-                          key={v}
-                          className="bg-purple-100 text-purple-700 border border-purple-200 rounded px-2 py-0.5 text-xs font-medium"
-                        >
-                          {v}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+              <div className="flex flex-wrap gap-1">
+                {values.map((v) => (
+                  <span
+                    key={v}
+                    className="bg-pink-100 text-pink-700 border border-pink-200 rounded px-1.5 py-0.5 text-[11px] font-medium"
+                  >
+                    {v}
+                  </span>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          ))}
+
+          {activeTechFilters.length > 0 && (
+            <div className="border-t pt-2 space-y-2">
+              <p className="font-medium text-gray-400 uppercase text-[10px] tracking-widest">
+                Previous Spec Filters
+              </p>
+              {activeTechFilters.map(({ group, spec, values }) => (
+                <div key={`${group}||${spec}`} className="space-y-1">
+                  <p className="text-gray-500 text-[10px]">
+                    <span className="font-semibold">{group}</span> › {spec}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {values.map((v) => (
+                      <span
+                        key={v}
+                        className="bg-purple-100 text-purple-700 border border-purple-200 rounded px-1.5 py-0.5 text-[11px] font-medium"
+                      >
+                        {v}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
-    </>
+    </div>
   );
 }
