@@ -156,21 +156,21 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
             height: "1056px",
           }}
         >
-{/* HEADER */}
-<Image
-  src={selected.header}
-  alt="Header"
-  width={816}
-  height={HEADER_HEIGHT}
-  priority
-  className="absolute top-0 left-0 w-full"
-/>
+          {/* HEADER */}
+          <Image
+            src={selected.header}
+            alt="Header"
+            width={816}
+            height={HEADER_HEIGHT}
+            priority
+            className="absolute top-0 left-0 w-full"
+          />
 
           {/* CENTER AREA */}
-<div
-  style={{
-    height: CONTENT_AREA,
-    marginTop: HEADER_HEIGHT,
+          <div
+            style={{
+              height: CONTENT_AREA,
+              marginTop: HEADER_HEIGHT,
               display: "flex",
               justifyContent: "center",
               alignItems: "flex-start",
@@ -320,30 +320,30 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                     <div className="font-semibold mb-2">
                       Dimensional Drawing
                     </div>
-{dimensionalDrawing && (
-  <img
-    src={
-      dimensionalDrawing instanceof File
-        ? URL.createObjectURL(dimensionalDrawing)
-        : convertGoogleDriveUrl(dimensionalDrawing.url)
-    }
-    className="w-[220px] h-[120px] object-contain"
-/>
-)}
+                    {dimensionalDrawing && (
+                      <img
+                        src={
+                          dimensionalDrawing instanceof File
+                            ? URL.createObjectURL(dimensionalDrawing)
+                            : convertGoogleDriveUrl(dimensionalDrawing.url)
+                        }
+                        className="w-[220px] h-[120px] object-contain"
+                      />
+                    )}
                   </div>
 
                   <div className="flex flex-col items-center">
                     <div className="font-semibold mb-2">Illuminance Level</div>
-{illuminanceLevel && (
-  <img
-    src={
-      illuminanceLevel instanceof File
-        ? URL.createObjectURL(illuminanceLevel)
-        : convertGoogleDriveUrl(illuminanceLevel.url)
-    }
-    className="w-[220px] h-[120px] object-contain"
-/>
-)}
+                    {illuminanceLevel && (
+                      <img
+                        src={
+                          illuminanceLevel instanceof File
+                            ? URL.createObjectURL(illuminanceLevel)
+                            : convertGoogleDriveUrl(illuminanceLevel.url)
+                        }
+                        className="w-[220px] h-[120px] object-contain"
+                      />
+                    )}
                   </div>
                 </div>
               </div>

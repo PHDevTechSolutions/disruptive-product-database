@@ -40,7 +40,6 @@ type UserData = {
   Role: string;
 };
 
-
 const convertDriveToThumbnail = (url?: string) => {
   if (!url) return "";
 
@@ -67,23 +66,24 @@ export default function ViewProduct({ productId, referenceID }: Props) {
 
   /* CTRL + F: OPEN TDS STATE */
   const [openTDS, setOpenTDS] = useState(false);
+  const [hideEmptySpecs, setHideEmptySpecs] = useState(true);
 
   useEffect(() => {
-  if (!open) return;
+    if (!open) return;
 
-  const handleEscape = (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      setOpen(false);
-      setOpenTDS(false); // also close TDS panel if open
-    }
-  };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        setOpenTDS(false); // also close TDS panel if open
+      }
+    };
 
-  window.addEventListener("keydown", handleEscape);
+    window.addEventListener("keydown", handleEscape);
 
-  return () => {
-    window.removeEventListener("keydown", handleEscape);
-  };
-}, [open]);
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -170,10 +170,10 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                   <div className="space-y-4">
                     <div className="w-full h-[320px] border rounded bg-white flex items-center justify-center">
                       {product?.mainImage?.url ? (
-<img
-  src={convertDriveToThumbnail(product.mainImage.url)}
-  className="max-w-full max-h-full object-contain"
-/>
+                        <img
+                          src={convertDriveToThumbnail(product.mainImage.url)}
+                          className="max-w-full max-h-full object-contain"
+                        />
                       ) : (
                         <span>-</span>
                       )}
@@ -193,6 +193,21 @@ export default function ViewProduct({ productId, referenceID }: Props) {
 
                 {/* DETAILS */}
                 <div className="flex-1 overflow-auto pr-2 pb-[140px] md:pb-0">
+                  {/* REMOVE EMPTY SPECIFICATIONS */}
+                  <div className="mb-4 flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={hideEmptySpecs}
+                      onChange={(e) => setHideEmptySpecs(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+
+                    <span className="text-sm">
+                      {hideEmptySpecs
+                        ? "Remove Empty Specifications (ON)"
+                        : "Remove Empty Specifications (OFF)"}
+                    </span>
+                  </div>
                   {loading ? (
                     <p>Loading...</p>
                   ) : (
@@ -261,7 +276,9 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                         <div className="border p-4 text-center">-</div>
                       ) : (
                         product.technicalSpecifications
-                        ?.filter((group) => group.title !== "COMMERCIAL DETAILS")
+                          ?.filter(
+                            (group) => group.title !== "COMMERCIAL DETAILS",
+                          )
                           .map((group, i) => (
                             <div key={i} className="mb-4">
                               <div className="font-semibold mb-2">
@@ -270,17 +287,50 @@ export default function ViewProduct({ productId, referenceID }: Props) {
 
                               <table className="w-full border">
                                 <tbody>
-                                  {group.specs.map((spec, s) => (
-                                    <tr key={s}>
-                                      <td className="border p-2 font-semibold w-[40%]">
-                                        {spec.specId || "-"}
-                                      </td>
+                                  {group.specs
+                                    .filter((spec) => {
+                                      if (!hideEmptySpecs) return true;
 
-                                      <td className="border p-2">
-                                        {spec.value || "-"}
-                                      </td>
-                                    </tr>
-                                  ))}
+                                      if (!spec.value) return false;
+
+                                      const val = spec.value.trim();
+
+                                      return val !== "" && val !== "-";
+                                    })
+                                    .map((spec, s) => {
+                                      const activeFilters =
+                                        (window as any).__ACTIVE_FILTERS__ ||
+                                        [];
+
+                                      let displayValue = spec.value || "-";
+
+                                      if (activeFilters.length && spec.value) {
+                                        const values = spec.value
+                                          .split("|")
+                                          .map((v) => v.trim())
+                                          .filter(Boolean);
+
+                                        const matched = values.filter((v) =>
+                                          activeFilters.includes(v),
+                                        );
+
+                                        if (matched.length) {
+                                          displayValue = matched.join(" | ");
+                                        }
+                                      }
+
+                                      return (
+                                        <tr key={s}>
+                                          <td className="border p-2 font-semibold w-[40%]">
+                                            {spec.specId || "-"}
+                                          </td>
+
+                                          <td className="border p-2">
+                                            {displayValue}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
                                 </tbody>
                               </table>
                             </div>
@@ -295,14 +345,14 @@ export default function ViewProduct({ productId, referenceID }: Props) {
             {/* CTRL + F: RIGHT PANEL */}
             {openTDS && (
               <div className="flex flex-col min-h-0 md:w-1/2 border-t md:border-t-0 md:border-l">
-<GenerateTDS
-  open={openTDS}
-  onClose={() => setOpenTDS(false)}
-  mainImage={product?.mainImage}
-  dimensionalDrawing={product?.dimensionalDrawing}
-  illuminanceDrawing={product?.illuminanceDrawing}
-  technicalSpecifications={product?.technicalSpecifications}
-/>
+                <GenerateTDS
+                  open={openTDS}
+                  onClose={() => setOpenTDS(false)}
+                  mainImage={product?.mainImage}
+                  dimensionalDrawing={product?.dimensionalDrawing}
+                  illuminanceDrawing={product?.illuminanceDrawing}
+                  technicalSpecifications={product?.technicalSpecifications}
+                />
               </div>
             )}
           </div>
