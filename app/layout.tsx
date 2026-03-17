@@ -16,7 +16,7 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Inventory Management System",
+  title: "Disruptive Product Database",
   description: "Aaron Espiritu",
 };
 

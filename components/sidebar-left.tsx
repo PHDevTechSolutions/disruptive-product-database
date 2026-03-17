@@ -79,7 +79,7 @@ export function SidebarLeft() {
       <SidebarHeader className="h-16 px-4 flex items-center">
         {state === "expanded" && (
           <span className="text-lg font-bold tracking-tight text-gray-900">
-            Inventory
+            Product Database
           </span>
         )}
       </SidebarHeader>
