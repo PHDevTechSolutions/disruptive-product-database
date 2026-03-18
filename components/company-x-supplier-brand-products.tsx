@@ -8,11 +8,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Package } from "lucide-react";
+import {
+  Package,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  Factory,
+  Anchor,
+  Box,
+  Tag,
+  DollarSign,
+  Layers,
+} from "lucide-react";
 
 /* ---------------- Types ---------------- */
 type Props = {
@@ -70,7 +80,7 @@ export default function SupplierProducts({
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  /* ---------------- Fetch Products by Supplier Brand ---------------- */
+  /* ---------------- Fetch Products ---------------- */
   useEffect(() => {
     if (!open) return;
 
@@ -81,23 +91,13 @@ export default function SupplierProducts({
       setExpandedId(null);
 
       try {
-        /*
-          Products are linked to a supplier via the `supplier` field:
-          { supplierId, company, supplierBrand }
-
-          We match by supplierId first (most reliable), then fall back
-          to supplierBrand string match for products uploaded via Excel
-          where supplierId may not have been stored.
-        */
         const q = query(
           collection(db, "products"),
           where("isActive", "==", true),
           where("supplier.supplierId", "==", supplierId),
         );
-
         const snap = await getDocs(q);
 
-        // Also fetch by supplierBrand string for Excel-uploaded products
         let fallbackSnap: typeof snap | null = null;
         if (supplierBrand) {
           const qBrand = query(
@@ -108,13 +108,10 @@ export default function SupplierProducts({
           fallbackSnap = await getDocs(qBrand);
         }
 
-        // Merge results, deduplicate by doc id
         const merged = new Map<string, Product>();
-
         snap.docs.forEach((doc) => {
           merged.set(doc.id, { id: doc.id, ...doc.data() } as Product);
         });
-
         fallbackSnap?.docs.forEach((doc) => {
           if (!merged.has(doc.id)) {
             merged.set(doc.id, { id: doc.id, ...doc.data() } as Product);
@@ -136,8 +133,8 @@ export default function SupplierProducts({
   const filtered = React.useMemo(() => {
     const kw = search.toLowerCase();
     if (!kw) return products;
-    return products.filter((p) => {
-      return (
+    return products.filter(
+      (p) =>
         p.productReferenceID?.toLowerCase().includes(kw) ||
         p.productClass?.toLowerCase().includes(kw) ||
         p.pricePoint?.toLowerCase().includes(kw) ||
@@ -156,9 +153,8 @@ export default function SupplierProducts({
                 r.specId.toLowerCase().includes(kw) ||
                 r.value.toLowerCase().includes(kw),
             ),
-        )
-      );
-    });
+        ),
+    );
   }, [products, search]);
 
   const toggleExpand = (id: string) => {
@@ -167,218 +163,303 @@ export default function SupplierProducts({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-full max-h-[90vh] flex flex-col gap-0 p-0">
-        {/* HEADER */}
-        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <Package className="w-5 h-5 text-blue-600" />
-            <span>
-              Products by{" "}
-              <span className="text-blue-700 font-bold">{company}</span>
-              {supplierBrand && (
-                <span className="text-muted-foreground font-normal text-sm ml-2">
-                  ({supplierBrand})
-                </span>
-              )}
-            </span>
-          </DialogTitle>
+      <DialogContent className="max-w-3xl w-full max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border-0">
 
-          {/* SEARCH + COUNT */}
-          <div className="flex items-center gap-3 mt-3">
+        {/* ── HEADER ── */}
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-5 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-t-2xl">
+          <div className="flex items-start gap-4">
+            {/* Icon */}
+            <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 border border-white/20 shrink-0">
+              <Package className="w-5 h-5 text-white" />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="text-white text-lg font-bold leading-snug tracking-tight">
+                {company}
+                {supplierBrand && (
+                  <span className="ml-2 text-sm font-normal text-slate-300">
+                    · {supplierBrand}
+                  </span>
+                )}
+              </DialogTitle>
+              <p className="text-slate-400 text-[11px] mt-0.5 uppercase tracking-widest font-medium">
+                Product Catalog
+              </p>
+            </div>
+
+            {/* Count pill */}
+            {!loading && (
+              <div className="shrink-0 flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-full px-3 py-1">
+                <Layers className="w-3.5 h-3.5 text-slate-300" />
+                <span className="text-sm font-bold text-white">{filtered.length}</span>
+                <span className="text-xs text-slate-400">
+                  {filtered.length === 1 ? "product" : "products"}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Search */}
+          <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             <Input
-              placeholder="Search products..."
+              placeholder="Search by ID, class, category..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 text-sm"
+              className="pl-9 h-9 text-sm bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-white/30 rounded-lg"
             />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {loading ? "Loading..." : `${filtered.length} product${filtered.length !== 1 ? "s" : ""}`}
-            </span>
           </div>
         </DialogHeader>
 
-        {/* BODY */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-          {loading ? (
-            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
-              <div className="flex flex-col items-center gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-                Loading products...
+        {/* ── BODY ── */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2.5 bg-slate-50">
+
+          {/* Loading */}
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+              <div className="w-9 h-9 rounded-full border-2 border-slate-200 border-t-slate-500 animate-spin mb-4" />
+              <p className="text-sm font-medium">Loading products…</p>
+            </div>
+          )}
+
+          {/* Empty */}
+          {!loading && filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center mb-4">
+                <Package className="w-8 h-8 text-slate-300" />
               </div>
+              <p className="text-sm font-semibold text-slate-500">
+                {search
+                  ? "No products match your search."
+                  : "No products found for this supplier."}
+              </p>
+              {search && (
+                <p className="text-xs text-slate-400 mt-1">Try a different keyword.</p>
+              )}
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-sm gap-2">
-              <Package className="w-10 h-10 opacity-30" />
-              {search ? "No products match your search." : "No products found for this supplier."}
-            </div>
-          ) : (
-            filtered.map((product) => (
-              <div
-                key={product.id}
-                className="border rounded-lg overflow-hidden"
-              >
-                {/* PRODUCT CARD HEADER — always visible */}
-                <button
-                  className="w-full text-left px-4 py-3 flex items-center gap-4 hover:bg-muted/40 transition cursor-pointer"
-                  onClick={() => toggleExpand(product.id)}
+          )}
+
+          {/* Cards */}
+          {!loading &&
+            filtered.map((product) => {
+              const isExpanded = expandedId === product.id;
+              return (
+                <div
+                  key={product.id}
+                  className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300"
                 >
-                  {/* THUMBNAIL */}
-                  <div className="w-14 h-14 rounded-md border overflow-hidden shrink-0 bg-gray-50 flex items-center justify-center">
-                    {product.mainImage?.url ? (
-                      <img
-                        src={product.mainImage.url}
-                        alt={product.productReferenceID}
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <Package className="w-6 h-6 text-gray-300" />
-                    )}
-                  </div>
-
-                  {/* BASIC INFO */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-sm">
-                        {product.productReferenceID || "—"}
-                      </span>
-                      {product.productClass && (
-                        <Badge variant="outline" className="text-xs">
-                          {product.productClass}
-                        </Badge>
-                      )}
-                      {product.pricePoint && (
-                        <Badge variant="secondary" className="text-xs">
-                          {product.pricePoint}
-                        </Badge>
-                      )}
-                      {product.brandOrigin && (
-                        <Badge className="text-xs bg-blue-100 text-blue-700 hover:bg-blue-100">
-                          {product.brandOrigin}
-                        </Badge>
+                  {/* Card row */}
+                  <button
+                    className="w-full text-left px-4 py-3.5 flex items-center gap-4 hover:bg-slate-50/80 transition-colors cursor-pointer"
+                    onClick={() => toggleExpand(product.id)}
+                  >
+                    {/* Thumbnail */}
+                    <div className="w-14 h-14 rounded-lg border border-slate-100 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden">
+                      {product.mainImage?.url ? (
+                        <img
+                          src={product.mainImage.url}
+                          alt={product.productReferenceID}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <Package className="w-6 h-6 text-slate-300" />
                       )}
                     </div>
 
-                    <div className="text-xs text-muted-foreground mt-1 truncate">
-                      {product.categoryTypes?.map((c) => c.categoryTypeName).join(", ") || "—"}
-                      {product.productFamilies?.length ? (
-                        <span className="ml-1">
-                          › {product.productFamilies.map((f) => f.productFamilyName).join(", ")}
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                        <span className="font-bold text-sm text-slate-800 tracking-tight">
+                          {product.productReferenceID || "—"}
                         </span>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {/* EXPAND INDICATOR */}
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    {expandedId === product.id ? "▲ Hide" : "▼ Details"}
-                  </span>
-                </button>
-
-                {/* EXPANDED DETAILS */}
-                {expandedId === product.id && (
-                  <div className="border-t px-4 py-4 bg-muted/20 space-y-4 text-sm">
-
-                    {/* IMAGES ROW */}
-                    {(product.mainImage?.url) && (
-                      <div className="flex gap-3 flex-wrap">
-                        {product.mainImage?.url && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Main Image</p>
-                            <img
-                              src={product.mainImage.url}
-                              alt="main"
-                              className="w-28 h-28 object-contain border rounded-md bg-white"
-                            />
-                          </div>
+                        {product.productClass && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                            <Tag className="w-2.5 h-2.5" />
+                            {product.productClass}
+                          </span>
+                        )}
+                        {product.pricePoint && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                            <DollarSign className="w-2.5 h-2.5" />
+                            {product.pricePoint}
+                          </span>
+                        )}
+                        {product.brandOrigin && (
+                          <span className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                            {product.brandOrigin}
+                          </span>
                         )}
                       </div>
-                    )}
 
-                    {/* COMMERCIAL DETAILS */}
-                    {product.commercialDetails && (
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-orange-600 mb-2">
-                          Commercial Details
-                        </p>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 text-xs">
-                          {product.commercialDetails.unitCost != null && (
-                            <div>
-                              <span className="font-medium">Unit Cost: </span>
-                              <span>USD {product.commercialDetails.unitCost}</span>
+                      <p className="text-xs text-slate-400 truncate leading-relaxed">
+                        {product.categoryTypes
+                          ?.map((c) => c.categoryTypeName)
+                          .join(", ") || "—"}
+                        {product.productFamilies?.length ? (
+                          <span className="text-slate-300 mx-1">›</span>
+                        ) : null}
+                        {product.productFamilies
+                          ?.map((f) => f.productFamilyName)
+                          .join(", ")}
+                      </p>
+                    </div>
+
+                    {/* Expand indicator */}
+                    <div
+                      className={`shrink-0 flex items-center justify-center w-7 h-7 rounded-full border transition-colors ${
+                        isExpanded
+                          ? "bg-slate-800 border-slate-800 text-white"
+                          : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"
+                      }`}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      )}
+                    </div>
+                  </button>
+
+                  {/* ── Expanded details ── */}
+                  {isExpanded && (
+                    <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-5 space-y-5 text-sm">
+
+                      {/* Large image */}
+                      {product.mainImage?.url && (
+                        <div className="flex justify-center">
+                          <img
+                            src={product.mainImage.url}
+                            alt="main"
+                            className="h-40 object-contain rounded-xl border border-slate-200 bg-white p-2 shadow-sm"
+                          />
+                        </div>
+                      )}
+
+                      {/* Commercial Details */}
+                      {product.commercialDetails && (
+                        <div className="rounded-xl border border-orange-100 bg-orange-50/50 p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-5 h-5 rounded-md bg-orange-100 flex items-center justify-center">
+                              <DollarSign className="w-3 h-3 text-orange-600" />
                             </div>
-                          )}
-                          {product.commercialDetails.pcsPerCarton != null && (
-                            <div>
-                              <span className="font-medium">pcs/carton: </span>
-                              <span>{product.commercialDetails.pcsPerCarton}</span>
-                            </div>
-                          )}
-                          {product.commercialDetails.packaging && (
-                            <div>
-                              <span className="font-medium">Packaging: </span>
-                              <span>
-                                {[
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-orange-600">
+                              Commercial Details
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-xs">
+                            {product.commercialDetails.unitCost != null && (
+                              <DetailItem
+                                icon={<DollarSign className="w-3 h-3" />}
+                                label="Unit Cost"
+                                value={`USD ${product.commercialDetails.unitCost}`}
+                              />
+                            )}
+                            {product.commercialDetails.pcsPerCarton != null && (
+                              <DetailItem
+                                icon={<Box className="w-3 h-3" />}
+                                label="pcs / carton"
+                                value={String(product.commercialDetails.pcsPerCarton)}
+                              />
+                            )}
+                            {product.commercialDetails.packaging && (
+                              <DetailItem
+                                icon={<Box className="w-3 h-3" />}
+                                label="Packaging"
+                                value={[
                                   product.commercialDetails.packaging.length,
                                   product.commercialDetails.packaging.width,
                                   product.commercialDetails.packaging.height,
                                 ]
                                   .filter(Boolean)
                                   .join(" × ")}
-                              </span>
-                            </div>
-                          )}
-                          {product.commercialDetails.factoryAddress && (
-                            <div className="col-span-2">
-                              <span className="font-medium">Factory: </span>
-                              <span>{product.commercialDetails.factoryAddress}</span>
-                            </div>
-                          )}
-                          {product.commercialDetails.portOfDischarge && (
-                            <div>
-                              <span className="font-medium">Port: </span>
-                              <span>{product.commercialDetails.portOfDischarge}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* TECHNICAL SPECIFICATIONS */}
-                    {product.technicalSpecifications && product.technicalSpecifications.length > 0 && (
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-blue-700 mb-2">
-                          Technical Specifications
-                        </p>
-                        <div className="space-y-3">
-                          {product.technicalSpecifications.map((group, gi) => {
-                            const filledSpecs = group.specs.filter((r) => r.value?.trim());
-                            if (filledSpecs.length === 0) return null;
-                            return (
-                              <div key={gi}>
-                                <p className="text-xs font-semibold text-muted-foreground mb-1">
-                                  {group.title}
-                                </p>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 text-xs">
-                                  {filledSpecs.map((spec, si) => (
-                                    <div key={si}>
-                                      <span className="font-medium">{spec.specId}: </span>
-                                      <span>{spec.value}</span>
-                                    </div>
-                                  ))}
-                                </div>
+                              />
+                            )}
+                            {product.commercialDetails.factoryAddress && (
+                              <div className="col-span-2">
+                                <DetailItem
+                                  icon={<Factory className="w-3 h-3" />}
+                                  label="Factory"
+                                  value={product.commercialDetails.factoryAddress}
+                                />
                               </div>
-                            );
-                          })}
+                            )}
+                            {product.commercialDetails.portOfDischarge && (
+                              <DetailItem
+                                icon={<Anchor className="w-3 h-3" />}
+                                label="Port"
+                                value={product.commercialDetails.portOfDischarge}
+                              />
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))
-          )}
+                      )}
+
+                      {/* Technical Specifications */}
+                      {product.technicalSpecifications &&
+                        product.technicalSpecifications.length > 0 && (
+                          <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-5 h-5 rounded-md bg-blue-100 flex items-center justify-center">
+                                <Layers className="w-3 h-3 text-blue-700" />
+                              </div>
+                              <p className="text-[11px] font-bold uppercase tracking-widest text-blue-700">
+                                Technical Specifications
+                              </p>
+                            </div>
+                            <div className="space-y-4">
+                              {product.technicalSpecifications.map((group, gi) => {
+                                const filledSpecs = group.specs.filter((r) =>
+                                  r.value?.trim(),
+                                );
+                                if (!filledSpecs.length) return null;
+                                return (
+                                  <div key={gi}>
+                                    <p className="text-[11px] font-semibold text-blue-500 uppercase tracking-wider mb-2">
+                                      {group.title}
+                                    </p>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-xs">
+                                      {filledSpecs.map((spec, si) => (
+                                        <DetailItem
+                                          key={si}
+                                          label={spec.specId}
+                                          value={spec.value}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ── Detail key-value helper ── */
+function DetailItem({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+        {icon}
+        {label}
+      </span>
+      <span className="text-slate-700 font-medium leading-snug">{value}</span>
+    </div>
   );
 }
