@@ -54,7 +54,153 @@ type ExcelRow = {
   "Certificate(s)"?: string;
 };
 
-const safeSplit = (value: any) => {
+/* ---------------- Phone Helpers ---------------- */
+
+/**
+ * Country-code prefix map (longest-match first so +852 beats +85).
+ * Extend as needed.
+ */
+const COUNTRY_DIAL_CODES: Record<string, string> = {
+  // Asia
+  "86":  "CN", // China
+  "852": "HK", // Hong Kong
+  "853": "MO", // Macau
+  "886": "TW", // Taiwan
+  "81":  "JP", // Japan
+  "82":  "KR", // South Korea
+  "84":  "VN", // Vietnam
+  "66":  "TH", // Thailand
+  "60":  "MY", // Malaysia
+  "65":  "SG", // Singapore
+  "63":  "PH", // Philippines
+  "62":  "ID", // Indonesia
+  "91":  "IN", // India
+  "92":  "PK", // Pakistan
+  "880": "BD", // Bangladesh
+  "94":  "LK", // Sri Lanka
+  "95":  "MM", // Myanmar
+  "855": "KH", // Cambodia
+  "856": "LA", // Laos
+  "673": "BN", // Brunei
+  "977": "NP", // Nepal
+  "975": "BT", // Bhutan
+  // Middle East
+  "971": "AE", // UAE
+  "966": "SA", // Saudi Arabia
+  "974": "QA", // Qatar
+  "965": "KW", // Kuwait
+  "968": "OM", // Oman
+  "973": "BH", // Bahrain
+  "962": "JO", // Jordan
+  "961": "LB", // Lebanon
+  "972": "IL", // Israel
+  "90":  "TR", // Turkey
+  // Europe
+  "44":  "GB", // UK
+  "49":  "DE", // Germany
+  "33":  "FR", // France
+  "39":  "IT", // Italy
+  "34":  "ES", // Spain
+  "31":  "NL", // Netherlands
+  "32":  "BE", // Belgium
+  "41":  "CH", // Switzerland
+  "43":  "AT", // Austria
+  "48":  "PL", // Poland
+  "7":   "RU", // Russia
+  "380": "UA", // Ukraine
+  "30":  "GR", // Greece
+  "351": "PT", // Portugal
+  "46":  "SE", // Sweden
+  "47":  "NO", // Norway
+  "45":  "DK", // Denmark
+  "358": "FI", // Finland
+  "420": "CZ", // Czech Republic
+  "36":  "HU", // Hungary
+  "40":  "RO", // Romania
+  "359": "BG", // Bulgaria
+  "385": "HR", // Croatia
+  "381": "RS", // Serbia
+  "386": "SI", // Slovenia
+  "421": "SK", // Slovakia
+  // Americas
+  "1":   "US", // USA / Canada
+  "52":  "MX", // Mexico
+  "55":  "BR", // Brazil
+  "54":  "AR", // Argentina
+  "56":  "CL", // Chile
+  "57":  "CO", // Colombia
+  "51":  "PE", // Peru
+  "58":  "VE", // Venezuela
+  "593": "EC", // Ecuador
+  "591": "BO", // Bolivia
+  "595": "PY", // Paraguay
+  "598": "UY", // Uruguay
+  // Africa
+  "27":  "ZA", // South Africa
+  "234": "NG", // Nigeria
+  "254": "KE", // Kenya
+  "233": "GH", // Ghana
+  "212": "MA", // Morocco
+  "213": "DZ", // Algeria
+  "216": "TN", // Tunisia
+  "20":  "EG", // Egypt
+  "251": "ET", // Ethiopia
+  "255": "TZ", // Tanzania
+  "256": "UG", // Uganda
+  // Oceania
+  "61":  "AU", // Australia
+  "64":  "NZ", // New Zealand
+};
+
+/**
+ * Given a raw phone string from Excel, returns:
+ *   { normalized: "+86XXXXXXXXXX", country: "CN", isPhone: true }
+ * or
+ *   { normalized: "WeChat: john", country: null, isPhone: false }
+ *
+ * Rules:
+ *  1. If starts with "+" → it's a phone, find country from dial code map.
+ *  2. If all digits (possibly with spaces/dashes) → treat as phone, prepend "+".
+ *  3. Otherwise → non-phone (WeChat, TikTok, etc.).
+ */
+const parsePhone = (
+  raw: string,
+): { normalized: string; country: string | null; isPhone: boolean } => {
+  const trimmed = raw.trim();
+  if (!trimmed) return { normalized: trimmed, country: null, isPhone: false };
+
+  let digits = "";
+
+  if (trimmed.startsWith("+")) {
+    // Strip the + and any formatting chars
+    digits = trimmed.slice(1).replace(/[\s\-().]/g, "");
+  } else if (/^[\d\s\-().]+$/.test(trimmed)) {
+    // Pure numeric string — treat as phone, no + yet
+    digits = trimmed.replace(/[\s\-().]/g, "");
+  } else {
+    // Non-numeric → others (WeChat, TikTok, etc.)
+    return { normalized: trimmed, country: null, isPhone: false };
+  }
+
+  // Find country by longest matching prefix (3 digits first, then 2, then 1)
+  let country: string | null = null;
+  for (const len of [3, 2, 1]) {
+    const prefix = digits.slice(0, len);
+    if (COUNTRY_DIAL_CODES[prefix]) {
+      country = COUNTRY_DIAL_CODES[prefix];
+      break;
+    }
+  }
+
+  return {
+    normalized: `+${digits}`,
+    country,
+    isPhone: true,
+  };
+};
+
+/* ---------------- General Helpers ---------------- */
+const safeSplit = (value: any): string[] => {
   if (Array.isArray(value))
     return value
       .map(String)
@@ -74,11 +220,30 @@ const safeSplit = (value: any) => {
     .map((v) => v.trim())
     .filter(Boolean);
 };
+
 const normalizeJoin = (arr?: string[]) =>
   arr && arr.length ? arr.join(" | ") : "";
 
 const normalizeContacts = (arr?: { name: string; phone: string }[]) =>
   arr && arr.length ? arr.map((c) => `${c.name}|${c.phone}`).join(" | ") : "";
+
+/**
+ * Parse pipe-separated phone strings from Excel into normalized contacts.
+ * Each phone is auto-detected as phone/other and normalized accordingly.
+ */
+const parseContacts = (
+  rawNames: string,
+  rawPhones: string,
+): { name: string; phone: string }[] => {
+  const names = safeSplit(rawNames);
+  const phones = safeSplit(rawPhones);
+
+  return names.map((name, i) => {
+    const rawPhone = phones[i] || "";
+    const { normalized } = parsePhone(rawPhone);
+    return { name, phone: normalized };
+  });
+};
 
 /* ---------------- Component ---------------- */
 function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
@@ -94,7 +259,6 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   const [conflicts, setConflicts] = useState<SupplierConflict[]>([]);
   const [warningOpen, setWarningOpen] = useState(false);
 
-  /* ✅ file input ref (ADDED) */
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   /* ---------------- Fetch user ---------------- */
@@ -153,11 +317,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         description: `${json.length} rows detected`,
       });
 
-      // ✅ RESET INPUT (IMPORTANT FIX)
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error(error);
-
       toast.error("Invalid or corrupted Excel file");
     }
   };
@@ -176,11 +338,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     }
 
     readExcel(file);
-
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  /* ✅ CLICK FILE PICKER (ADDED) */
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -191,7 +351,6 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     }
 
     readExcel(file);
-
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -212,7 +371,6 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
       const snap = await getDocs(collection(db, "suppliers"));
 
-      // 🔑 company(lowercase) → { id, isActive }
       const supplierMap = new Map<
         string,
         { id: string; isActive: boolean; data: any }
@@ -243,6 +401,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
             (row as any)["company"] ??
             "",
         ).trim();
+
         if (!company) {
           skipped++;
           continue;
@@ -251,20 +410,22 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         const key = company.toLowerCase();
         const existing = supplierMap.get(key);
 
-        // 🔴 EXISTING & ACTIVE → SKIP
+        // ✅ Parse contacts with auto phone detection
+        const incomingContacts = parseContacts(
+          String(row["Contact Name(s)"] ?? ""),
+          String(row["Phone Number(s)"] ?? ""),
+        );
+
+        // 🔴 EXISTING & ACTIVE → check for differences
         if (existing?.isActive) {
           const existingData = existing.data;
 
           const incomingData = {
-            supplierBrand: String(row["Supplier Brand"] ?? "").trim(), // ✅ ADD
-
+            supplierBrand: String(row["Supplier Brand"] ?? "").trim(),
             addresses: safeSplit(row.Addresses),
             emails: safeSplit(row.Emails),
             website: row.Website || "",
-            contacts: safeSplit(row["Contact Name(s)"]).map((n, i) => ({
-              name: n,
-              phone: safeSplit(row["Phone Number(s)"])[i] || "",
-            })),
+            contacts: incomingContacts,
             forteProducts: safeSplit(row["Forte Product(s)"]),
             products: safeSplit(row["Product(s)"]),
             certificates: safeSplit(row["Certificate(s)"]),
@@ -300,40 +461,23 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           continue;
         }
 
-        /* ---------------- HELPERS ---------------- */
-        const splitPipe = (v?: string) =>
-          String(v || "")
-            .split("|")
-            .map((s) => s.trim())
-            .filter(Boolean);
-
-        // 🔁 EXISTING BUT INACTIVE → REACTIVATE
-        // ♻ EXISTING (ACTIVE OR INACTIVE) → UPDATE ALL FIELDS
-        // ♻ EXISTING SUPPLIER → ALWAYS UPDATE (ACTIVE OR INACTIVE)
+        // 🔁 EXISTING BUT INACTIVE → REACTIVATE & UPDATE
         if (existing) {
-          const names = splitPipe(row["Contact Name(s)"]);
-          const phones = splitPipe(row["Phone Number(s)"]);
-
           const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
 
           await updateDoc(doc(db, "suppliers", existing.id), {
             whatHappened: "Supplier Added",
             date_updated: serverTimestamp(),
             supplierId: existing.id,
-
             supplierBrand,
             supplierbrandId: existing.id,
-
-            addresses: splitPipe(row.Addresses),
-            emails: splitPipe(row.Emails),
+            addresses: safeSplit(row.Addresses),
+            emails: safeSplit(row.Emails),
             website: row.Website || "",
-            contacts: names.map((n, i) => ({
-              name: n,
-              phone: phones[i] || "",
-            })),
-            forteProducts: splitPipe(row["Forte Product(s)"]),
-            products: splitPipe(row["Product(s)"]),
-            certificates: splitPipe(row["Certificate(s)"]),
+            contacts: incomingContacts, // ✅ normalized phones
+            forteProducts: safeSplit(row["Forte Product(s)"]),
+            products: safeSplit(row["Product(s)"]),
+            certificates: safeSplit(row["Certificate(s)"]),
             isActive: true,
             updatedAt: serverTimestamp(),
           });
@@ -344,24 +488,15 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         }
 
         // 🟢 NEW SUPPLIER → INSERT
-        const contactNames = safeSplit(row["Contact Name(s)"]);
-        const contactPhones = safeSplit(row["Phone Number(s)"]);
-
-        const contacts = contactNames.map((name, i) => ({
-          name,
-          phone: contactPhones[i] || "",
-        }));
-
         const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
 
         const docRef = await addDoc(collection(db, "suppliers"), {
           company,
           supplierBrand,
-
           addresses: safeSplit(row.Addresses),
           emails: safeSplit(row.Emails),
           website: row.Website || "",
-          contacts,
+          contacts: incomingContacts, // ✅ normalized phones
           forteProducts: safeSplit(row["Forte Product(s)"]),
           products: safeSplit(row["Product(s)"]),
           certificates: safeSplit(row["Certificate(s)"]),
@@ -371,8 +506,6 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           createdAt: serverTimestamp(),
         });
 
-        // 2️⃣ Save Firestore ID as companyId
-        // 2️⃣ Save Firestore ID as supplierId
         await updateDoc(doc(db, "suppliers", docRef.id), {
           supplierId: docRef.id,
           supplierbrandId: docRef.id,
@@ -380,19 +513,17 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           date_updated: serverTimestamp(),
         });
 
-        supplierMap.set(key, {
-          id: "new",
-          isActive: true,
-          data: {},
-        });
+        supplierMap.set(key, { id: "new", isActive: true, data: {} });
         inserted++;
       }
+
       if (detectedConflicts.length > 0) {
         setConflicts(detectedConflicts);
         setWarningOpen(true);
         setLoading(false);
         return;
       }
+
       if (inserted === 0 && reactivated === 0) {
         toast.warning("No suppliers uploaded", {
           description: "All rows were skipped (duplicates or invalid data)",
@@ -424,7 +555,6 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
           <Separator />
 
-          {/* ✅ CLICK + DRAG ZONE */}
           <div
             onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => {
@@ -451,7 +581,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
           {rows.length > 0 && (
             <div className="mt-4 border rounded-md overflow-x-auto max-h-[300px]">
-              <table className="min-w-[1200px]text-sm">
+              <table className="min-w-[1200px] text-sm">
                 <thead className="sticky top-0 bg-red-100 border-b">
                   <tr className="font-bold">
                     <th className="p-2">Company Name</th>
@@ -467,20 +597,33 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, i) => (
-                    <tr key={i}>
-                      <td className="p-2">{row["Company Name"] || "-"}</td>
-                      <td className="p-2">{row["Supplier Brand"] || "-"}</td>
-                      <td className="p-2">{row.Addresses || "-"}</td>
-                      <td className="p-2">{row.Emails || "-"}</td>
-                      <td className="p-2">{row.Website || "-"}</td>
-                      <td className="p-2">{row["Contact Name(s)"] || "-"}</td>
-                      <td className="p-2">{row["Phone Number(s)"] || "-"}</td>
-                      <td className="p-2">{row["Forte Product(s)"] || "-"}</td>
-                      <td className="p-2">{row["Product(s)"] || "-"}</td>
-                      <td className="p-2">{row["Certificate(s)"] || "-"}</td>
-                    </tr>
-                  ))}
+                  {rows.map((row, i) => {
+                    // ✅ Preview normalized phones in the table too
+                    const previewPhones = safeSplit(
+                      String(row["Phone Number(s)"] ?? ""),
+                    )
+                      .map((p) => parsePhone(p).normalized)
+                      .join(" | ");
+
+                    return (
+                      <tr key={i}>
+                        <td className="p-2">{row["Company Name"] || "-"}</td>
+                        <td className="p-2">{row["Supplier Brand"] || "-"}</td>
+                        <td className="p-2">{row.Addresses || "-"}</td>
+                        <td className="p-2">{row.Emails || "-"}</td>
+                        <td className="p-2">{row.Website || "-"}</td>
+                        <td className="p-2">
+                          {row["Contact Name(s)"] || "-"}
+                        </td>
+                        <td className="p-2">{previewPhones || "-"}</td>
+                        <td className="p-2">
+                          {row["Forte Product(s)"] || "-"}
+                        </td>
+                        <td className="p-2">{row["Product(s)"] || "-"}</td>
+                        <td className="p-2">{row["Certificate(s)"] || "-"}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -523,11 +666,10 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
               await updateDoc(doc(db, "suppliers", c.supplierId), {
                 supplierBrand: c.incoming.supplierBrand,
                 supplierbrandId: c.supplierId,
-
                 addresses: c.incoming.addresses,
                 emails: c.incoming.emails,
                 website: c.incoming.website,
-                contacts: c.incoming.contacts,
+                contacts: c.incoming.contacts, // ✅ already normalized
                 forteProducts: c.incoming.forteProducts,
                 products: c.incoming.products,
                 certificates: c.incoming.certificates,

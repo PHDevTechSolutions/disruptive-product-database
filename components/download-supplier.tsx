@@ -22,6 +22,28 @@ type DownloadSupplierProps = {
   suppliers: Supplier[];
 };
 
+/* ---------------- Helpers ---------------- */
+
+/**
+ * Ensures a phone string is stored/exported with its leading +.
+ * e.g. "8613800138000" → "+8613800138000"
+ *      "+8613800138000" → "+8613800138000"  (no change)
+ *      "WeChat: john"  → "WeChat: john"     (non-numeric, untouched)
+ */
+const normalizePhone = (phone: string): string => {
+  const trimmed = phone.trim();
+  if (!trimmed) return trimmed;
+
+  // Already has + prefix → return as-is
+  if (trimmed.startsWith("+")) return trimmed;
+
+  // Pure digits (or digits with spaces/dashes) → prepend +
+  if (/^[\d\s\-().]+$/.test(trimmed)) return `+${trimmed.replace(/\s+/g, "")}`;
+
+  // Non-numeric (WeChat, TikTok, etc.) → return untouched
+  return trimmed;
+};
+
 export default function DownloadSupplier({ suppliers }: DownloadSupplierProps) {
   const handleDownloadCSV = () => {
     if (suppliers.length === 0) return;
@@ -40,8 +62,14 @@ export default function DownloadSupplier({ suppliers }: DownloadSupplierProps) {
     ];
 
     const rows = suppliers.map((s) => {
-      const contactNames = s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
-      const contactPhones = s.contacts?.map((c) => c.phone).filter(Boolean) ?? [];
+      const contactNames =
+        s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
+
+      // ✅ Normalize every phone so +86 etc. are preserved in the export
+      const contactPhones =
+        s.contacts
+          ?.map((c) => normalizePhone(c.phone))
+          .filter(Boolean) ?? [];
 
       return [
         s.company ?? "",
@@ -70,7 +98,10 @@ export default function DownloadSupplier({ suppliers }: DownloadSupplierProps) {
     rows.forEach((row) => {
       table += `<tr>`;
       row.forEach((cell) => {
-        table += `<td>${cell}</td>`;
+        // ✅ Wrap cell in a <span> with mso-number-format to force Excel
+        //    to treat the value as text — prevents +86... from being
+        //    mangled into a number or formula error.
+        table += `<td style="mso-number-format:'\\@'">${cell}</td>`;
       });
       table += `</tr>`;
     });
