@@ -15,6 +15,9 @@ import FilterSupplier, {
 } from "@/components/filter-supplier";
 import DownloadSupplier from "@/components/download-supplier";
 
+/* 🔹 NEW: Supplier Products Modal */
+import SupplierProducts from "@/components/company-x-supplier-brand-products";
+
 import { Pencil, Trash2, Filter, Upload } from "lucide-react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { getCountryCallingCode, CountryCode } from "libphonenumber-js";
@@ -82,16 +85,16 @@ const COL_WIDTHS = [
 ];
 
 const HEADERS = [
-  { label: "Actions",         align: "text-left"   },
-  { label: "Company Name",    align: "text-left"   },
-  { label: "Supplier Brand",  align: "text-center" },
-  { label: "Addresses",       align: "text-center" },
-  { label: "Emails",          align: "text-center" },
-  { label: "Website",         align: "text-center" },
-  { label: "Contact",         align: "text-center" },
-  { label: "Forte Product(s)",align: "text-center" },
-  { label: "Product(s)",      align: "text-center" },
-  { label: "Certificate(s)",  align: "text-center" },
+  { label: "Actions",          align: "text-left"   },
+  { label: "Company Name",     align: "text-left"   },
+  { label: "Supplier Brand",   align: "text-center" },
+  { label: "Addresses",        align: "text-center" },
+  { label: "Emails",           align: "text-center" },
+  { label: "Website",          align: "text-center" },
+  { label: "Contact",          align: "text-center" },
+  { label: "Forte Product(s)", align: "text-center" },
+  { label: "Product(s)",       align: "text-center" },
+  { label: "Certificate(s)",   align: "text-center" },
 ];
 
 export default function Suppliers() {
@@ -119,6 +122,14 @@ export default function Suppliers() {
     sortAlpha: "",
     phoneCountry: "",
   });
+
+  /* 🔹 NEW: Supplier Products Modal State */
+  const [supplierProductsOpen, setSupplierProductsOpen] = useState(false);
+  const [supplierProductsTarget, setSupplierProductsTarget] = useState<{
+    supplierId: string;
+    company: string;
+    supplierBrand: string;
+  } | null>(null);
 
   const DESKTOP_ITEMS_PER_PAGE = 10;
   const MOBILE_ITEMS_PER_PAGE = 3;
@@ -172,6 +183,16 @@ export default function Suppliers() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  /* 🔹 NEW: Open supplier products modal */
+  const openSupplierProducts = (s: Supplier) => {
+    setSupplierProductsTarget({
+      supplierId: s.id,
+      company: s.company,
+      supplierBrand: s.supplierBrand || "",
+    });
+    setSupplierProductsOpen(true);
+  };
 
   /* ---------------- Search + Filter ---------------- */
   const filteredSuppliers = useMemo(() => {
@@ -284,11 +305,10 @@ export default function Suppliers() {
         </div>
       </div>
 
-      {/* ✅ DESKTOP TABLE — single table, thead sticky, tbody scrolls */}
+      {/* ✅ DESKTOP TABLE */}
       <div className="hidden md:block flex-1 min-h-0 rounded-md border overflow-auto">
         <table className="w-full text-sm border-collapse">
 
-          {/* ✅ sticky thead — same table so columns always align */}
           <thead className="bg-red-100 sticky top-0 z-10">
             <tr>
               {HEADERS.map((h, i) => (
@@ -337,16 +357,28 @@ export default function Suppliers() {
                     </div>
                   </td>
 
-                  {/* COMPANY NAME */}
+                  {/* 🔹 COMPANY NAME — clickable */}
                   <td className={`${COL_WIDTHS[1]} px-3 py-3 text-left`}>
-                    <span className="font-semibold">{highlightText(s.company, search)}</span>
+                    <button
+                      onClick={() => openSupplierProducts(s)}
+                      className="font-semibold text-blue-600 hover:underline hover:text-blue-800 transition text-left cursor-pointer"
+                    >
+                      {highlightText(s.company, search)}
+                    </button>
                   </td>
 
-                  {/* SUPPLIER BRAND */}
+                  {/* 🔹 SUPPLIER BRAND — clickable */}
                   <td className={`${COL_WIDTHS[2]} px-3 py-3 text-center`}>
-                    {s.supplierBrand
-                      ? <span className="font-semibold">{highlightText(s.supplierBrand, search)}</span>
-                      : <span className="text-muted-foreground">-</span>}
+                    {s.supplierBrand ? (
+                      <button
+                        onClick={() => openSupplierProducts(s)}
+                        className="font-semibold text-blue-600 hover:underline hover:text-blue-800 transition cursor-pointer"
+                      >
+                        {highlightText(s.supplierBrand, search)}
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </td>
 
                   {/* ADDRESSES */}
@@ -453,9 +485,22 @@ export default function Suppliers() {
           paginatedSuppliers.map((s) => (
             <div key={s.id} className="border rounded-lg p-4 space-y-4 shadow-sm">
               <div className="flex items-start justify-between">
-                <h3 className="text-lg font-bold underline leading-tight">{highlightText(s.company, search)}</h3>
+                {/* 🔹 MOBILE: Company Name — clickable */}
+                <button
+                  onClick={() => openSupplierProducts(s)}
+                  className="text-lg font-bold underline text-blue-600 hover:text-blue-800 leading-tight text-left cursor-pointer"
+                >
+                  {highlightText(s.company, search)}
+                </button>
+
                 {s.supplierBrand && (
-                  <div className="text-xs font-semibold">Brand: {highlightText(s.supplierBrand, search)}</div>
+                  /* 🔹 MOBILE: Supplier Brand — clickable */
+                  <button
+                    onClick={() => openSupplierProducts(s)}
+                    className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
+                  >
+                    Brand: {highlightText(s.supplierBrand, search)}
+                  </button>
                 )}
               </div>
 
@@ -531,6 +576,17 @@ export default function Suppliers() {
       )}
       {selectedSupplier && (
         <DeleteSupplier open={deleteSupplierOpen} onOpenChange={setDeleteSupplierOpen} supplier={selectedSupplier} />
+      )}
+
+      {/* 🔹 NEW: Supplier Products Modal */}
+      {supplierProductsTarget && (
+        <SupplierProducts
+          open={supplierProductsOpen}
+          onOpenChange={setSupplierProductsOpen}
+          supplierId={supplierProductsTarget.supplierId}
+          company={supplierProductsTarget.company}
+          supplierBrand={supplierProductsTarget.supplierBrand}
+        />
       )}
     </div>
   );
