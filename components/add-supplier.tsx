@@ -1,8 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useState } from "react";
-import { Plus, Minus } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Plus, Minus, ChevronsUpDown, Check, Phone } from "lucide-react";
+import {
+  getCountries,
+  getCountryCallingCode,
+  CountryCode,
+} from "libphonenumber-js";
 
 import {
   Sheet,
@@ -15,11 +20,23 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import PhoneInput from "react-phone-number-input";
-import "react-phone-number-input/style.css";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 import { useUser } from "@/contexts/UserContext";
@@ -27,15 +44,185 @@ import { useUser } from "@/contexts/UserContext";
 import {
   collection,
   addDoc,
-  updateDoc, // 👈 ADD THIS
-  doc, // 👈 ADD THIS
+  updateDoc,
+  doc,
   serverTimestamp,
   getDocs,
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
 
-/* ---------------- Types ---------------- */
+/* ─────────────────────────────────────────────
+   Country display helpers
+───────────────────────────────────────────── */
+const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+
+type CountryOption = {
+  code: CountryCode;
+  name: string;
+  dialCode: string;
+  flag: string;
+};
+
+const ALL_COUNTRIES: CountryOption[] = getCountries()
+  .map((code) => {
+    try {
+      return {
+        code,
+        name: regionNames.of(code) ?? code,
+        dialCode: `+${getCountryCallingCode(code)}`,
+        flag: code
+          .toUpperCase()
+          .replace(/./g, (c) =>
+            String.fromCodePoint(127397 + c.charCodeAt(0)),
+          ),
+      };
+    } catch {
+      return null;
+    }
+  })
+  .filter(Boolean)
+  .sort((a, b) => a!.name.localeCompare(b!.name)) as CountryOption[];
+
+/* ─────────────────────────────────────────────
+   CountryCombobox — searchable country picker
+───────────────────────────────────────────── */
+type CountryComboboxProps = {
+  value: CountryCode;
+  onChange: (code: CountryCode, dialCode: string) => void;
+};
+
+function CountryCombobox({ value, onChange }: CountryComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const selected = ALL_COUNTRIES.find((c) => c.code === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-[160px] justify-between font-normal shrink-0"
+        >
+          <span className="flex items-center gap-2 truncate">
+            <span className="text-base leading-none">{selected?.flag}</span>
+            <span className="text-sm">{selected?.dialCode}</span>
+            <span className="text-xs text-muted-foreground truncate">
+              {selected?.name}
+            </span>
+          </span>
+          <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent className="w-[280px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search country…" className="h-9" />
+          <CommandList className="max-h-60">
+            <CommandEmpty>No country found.</CommandEmpty>
+            <CommandGroup>
+              {ALL_COUNTRIES.map((country) => (
+                <CommandItem
+                  key={country.code}
+                  value={`${country.name} ${country.dialCode} ${country.code}`}
+                  onSelect={() => {
+                    onChange(country.code, country.dialCode);
+                    setOpen(false);
+                  }}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="text-base">{country.flag}</span>
+                  <span className="flex-1 truncate text-sm">{country.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {country.dialCode}
+                  </span>
+                  <Check
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      value === country.code ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   PhoneField — country combobox + number input
+───────────────────────────────────────────── */
+type PhoneFieldProps = {
+  value: string; // full e.164 e.g. "+8613800138000"
+  onChange: (val: string) => void;
+  defaultCountry?: CountryCode;
+};
+
+function PhoneField({
+  value,
+  onChange,
+  defaultCountry = "CN",
+}: PhoneFieldProps) {
+  const [country, setCountry] = useState<CountryCode>(defaultCountry);
+  const [localNumber, setLocalNumber] = useState("");
+
+  // Initialise from value prop (e.g. when editing existing data)
+  useEffect(() => {
+    if (!value) return;
+    const matched = ALL_COUNTRIES.find(
+      (c) => value.startsWith(c.dialCode) && c.dialCode.length > 1,
+    );
+    if (matched) {
+      setCountry(matched.code);
+      setLocalNumber(value.slice(matched.dialCode.length).trim());
+    } else {
+      setLocalNumber(value.replace(/^\+/, ""));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCountryChange = (code: CountryCode, dialCode: string) => {
+    setCountry(code);
+    const digits = localNumber.replace(/\D/g, "");
+    onChange(`${dialCode}${digits}`);
+  };
+
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^\d\s\-().]/g, "");
+    setLocalNumber(raw);
+    const dialCode = `+${getCountryCallingCode(country)}`;
+    const digits = raw.replace(/\D/g, "");
+    onChange(digits ? `${dialCode}${digits}` : "");
+  };
+
+  const dialCode = `+${getCountryCallingCode(country)}`;
+
+  return (
+    <div className="flex gap-2 items-center w-full">
+      <CountryCombobox value={country} onChange={handleCountryChange} />
+      <div className="relative flex-1">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground select-none pointer-events-none">
+          {dialCode}
+        </span>
+        <Input
+          value={localNumber}
+          onChange={handleNumberChange}
+          placeholder="XXX XXXX XXXX"
+          className="pl-14"
+          inputMode="tel"
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Types
+───────────────────────────────────────────── */
 type UserDetails = {
   Firstname: string;
   Lastname: string;
@@ -49,38 +236,38 @@ type AddSupplierProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+/* ─────────────────────────────────────────────
+   AddSupplier
+───────────────────────────────────────────── */
 function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
   const { userId } = useUser();
   const [user, setUser] = useState<UserDetails | null>(null);
 
-  /* ---------------- VALIDATION STATES ---------------- */
+  /* Validation */
   const [companyError, setCompanyError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [isDuplicateCompany, setIsDuplicateCompany] = useState(false);
 
-  /* ---------------- Base Fields ---------------- */
+  /* Base fields */
   const [company, setCompany] = useState("");
   const [supplierBrand, setSupplierBrand] = useState("");
-
   const [addresses, setAddresses] = useState<string[]>([""]);
   const [emails, setEmails] = useState<string[]>([""]);
   const [website, setWebsite] = useState<string[]>([""]);
 
-  /* ---------------- Multi Fields ---------------- */
+  /* Contacts */
   const [contactNames, setContactNames] = useState<string[]>([""]);
   const [contactNumbers, setContactNumbers] = useState<string[]>([""]);
-  const [contactTypes, setContactTypes] = useState<("phone" | "other")[]>([
-    "phone",
-  ]);
+  const [contactTypes, setContactTypes] = useState<("phone" | "other")[]>(["phone"]);
 
+  /* Other fields */
   const [forteProducts, setForteProducts] = useState<string[]>([""]);
   const [products, setProducts] = useState<string[]>([""]);
   const [certificates, setCertificates] = useState<string[]>([""]);
 
-  /* ---------------- Silent user detection ---------------- */
+  /* ── User fetch ── */
   useEffect(() => {
     if (!userId) return;
-
     fetch(`/api/users?id=${encodeURIComponent(userId)}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch user");
@@ -92,31 +279,26 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
           Lastname: data.Lastname ?? "",
           Role: data.Role ?? "",
           Email: data.Email ?? "",
-          ReferenceID: data.ReferenceID ?? "", // ← ADD
+          ReferenceID: data.ReferenceID ?? "",
         });
       })
-      .catch((err) => {
-        console.error("AddSupplier user fetch error:", err);
-      });
+      .catch((err) => console.error("AddSupplier user fetch error:", err));
   }, [userId]);
 
-  /* ---------------- DUPLICATE COMPANY CHECK ---------------- */
+  /* ── Duplicate company check ── */
   useEffect(() => {
     if (!company.trim()) {
       setCompanyError("");
       setIsDuplicateCompany(false);
       return;
     }
-
-    const checkDuplicateCompany = async () => {
+    const check = async () => {
       const snap = await getDocs(collection(db, "suppliers"));
-
       const exists = snap.docs.some(
-        (doc) =>
-          doc.data().isActive !== false &&
-          doc.data().company?.toLowerCase() === company.toLowerCase(),
+        (d) =>
+          d.data().isActive !== false &&
+          d.data().company?.toLowerCase() === company.toLowerCase(),
       );
-
       if (exists) {
         setCompanyError("Company already exists");
         setIsDuplicateCompany(true);
@@ -125,92 +307,87 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
         setIsDuplicateCompany(false);
       }
     };
-
-    checkDuplicateCompany();
+    check();
   }, [company]);
 
-  /* ---------------- EMAIL ARRAY VALIDATION ---------------- */
+  /* ── Email validation ── */
   useEffect(() => {
     const invalid = emails.some((e) => e && !e.includes("@"));
-
-    if (invalid) {
-      setEmailError("One or more emails are invalid");
-    } else {
-      setEmailError("");
-    }
+    setEmailError(invalid ? "One or more emails are invalid" : "");
   }, [emails]);
 
-  const generateAlphaNumeric = (length = 6) => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let result = "";
-    for (let i = 0; i < length; i++) {
-      result += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return result;
-  };
-
-  /* ---------------- Helpers ---------------- */
-
-  const updateContactType = (index: number, value: "phone" | "other") => {
-    setContactTypes((prev) =>
-      prev.map((item, i) => (i === index ? value : item)),
-    );
-  };
-
-  const addContactTypeAfter = (index: number) => {
-    setContactTypes((prev) => {
-      const copy = [...prev];
-      copy.splice(index + 1, 0, "phone");
-      return copy;
-    });
-  };
-
-  const removeContactType = (index: number) => {
-    setContactTypes((prev) =>
-      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
-    );
-  };
+  /* ── Generic list helpers ── */
   const updateList = (
     setter: React.Dispatch<React.SetStateAction<string[]>>,
     index: number,
     value: string,
-  ) => {
-    setter((prev) => prev.map((item, i) => (i === index ? value : item)));
-  };
+  ) => setter((prev) => prev.map((item, i) => (i === index ? value : item)));
 
   const addRowAfter = (
     setter: React.Dispatch<React.SetStateAction<string[]>>,
     index: number,
-  ) => {
+  ) =>
     setter((prev) => {
       const copy = [...prev];
       copy.splice(index + 1, 0, "");
       return copy;
     });
-  };
 
   const removeRow = (
     setter: React.Dispatch<React.SetStateAction<string[]>>,
     index: number,
-  ) => {
+  ) =>
     setter((prev) =>
       prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
     );
+
+  /* ── Contact type helpers ── */
+  const updateContactType = (index: number, value: "phone" | "other") =>
+    setContactTypes((prev) =>
+      prev.map((item, i) => (i === index ? value : item)),
+    );
+
+  const addContactTypeAfter = (index: number) =>
+    setContactTypes((prev) => {
+      const copy = [...prev];
+      copy.splice(index + 1, 0, "phone");
+      return copy;
+    });
+
+  const removeContactType = (index: number) =>
+    setContactTypes((prev) =>
+      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
+    );
+
+  /* ── Reset ── */
+  const resetForm = () => {
+    setCompany("");
+    setSupplierBrand("");
+    setAddresses([""]);
+    setEmails([""]);
+    setWebsite([""]);
+    setContactNames([""]);
+    setContactNumbers([""]);
+    setContactTypes(["phone"]);
+    setForteProducts([""]);
+    setProducts([""]);
+    setCertificates([""]);
   };
 
+  /* ── Save ── */
   const handleSaveSupplier = async () => {
     try {
       if (!company.trim()) {
         toast.error("Company is required");
         return;
       }
+
       const supplierData = {
         company,
         supplierBrand,
         addresses: addresses.filter(Boolean),
         emails: emails.filter(Boolean),
         website: website.filter(Boolean),
-
         contacts: contactNames.map((name, index) => ({
           name,
           phone: contactNumbers[index]
@@ -220,40 +397,23 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
         forteProducts: forteProducts.filter(Boolean),
         products: products.filter(Boolean),
         certificates: certificates.filter(Boolean),
-
         createdBy: userId || null,
         referenceID: user?.ReferenceID || null,
         isActive: true,
         createdAt: serverTimestamp(),
       };
 
-      // 1️⃣ CREATE supplier
       const docRef = await addDoc(collection(db, "suppliers"), supplierData);
 
-      // 2️⃣ SAVE supplierId (same as Firestore document ID)
       await updateDoc(doc(db, "suppliers", docRef.id), {
         supplierId: docRef.id,
         supplierbrandId: docRef.id,
         whatHappened: "Supplier Added",
         date_updated: serverTimestamp(),
       });
-      toast.success("Supplier saved successfully", {
-        description: company,
-      });
 
-      setCompany("");
-      setSupplierBrand("");
-
-      setAddresses([""]);
-      setEmails([""]);
-      setWebsite([""]);
-      setContactNames([""]);
-      setContactNumbers([""]);
-      setContactTypes(["phone"]);
-      setForteProducts([""]);
-      setProducts([""]);
-      setCertificates([""]);
-
+      toast.success("Supplier saved successfully", { description: company });
+      resetForm();
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving supplier:", error);
@@ -261,6 +421,63 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
     }
   };
 
+  /* ─────────────────────────────────────────
+     Reusable row renderer for simple lists
+  ───────────────────────────────────────── */
+  const renderListRows = (
+    items: string[],
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+    placeholder: string,
+    multiline = false,
+  ) =>
+    items.map((item, index) => (
+      <div
+        key={index}
+        className={cn(
+          "grid gap-2 items-start",
+          multiline ? "grid-cols-[1fr_auto]" : "grid-cols-[1fr_auto]",
+        )}
+      >
+        {multiline ? (
+          <Textarea
+            value={item}
+            onChange={(e) => updateList(setter, index, e.target.value)}
+            placeholder={placeholder}
+          />
+        ) : (
+          <Input
+            value={item}
+            onChange={(e) => updateList(setter, index, e.target.value)}
+            placeholder={placeholder}
+          />
+        )}
+        <div className={cn("flex gap-1", multiline && "pt-2")}>
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            className="cursor-pointer"
+            onClick={() => addRowAfter(setter, index)}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            className="cursor-pointer"
+            disabled={items.length === 1}
+            onClick={() => removeRow(setter, index)}
+          >
+            <Minus className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    ));
+
+  /* ─────────────────────────────────────────
+     Render
+  ───────────────────────────────────────── */
   return (
     <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto px-6 z-50 pb-[140px]">
@@ -270,25 +487,25 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
         </SheetHeader>
 
         <Separator className="my-4" />
-        {/* ---------------- User Info ---------------- */}
+
+        {/* User info */}
         {user && (
-          <div className="rounded-md border p-3 text-sm space-y-1 bg-muted/40">
+          <div className="rounded-md border p-3 text-sm space-y-1 bg-muted/40 mb-6">
             <div>
               <span className="font-medium">Welcome:</span> {user.Firstname}{" "}
               {user.Lastname}
             </div>
-
             <div>
               <span className="font-medium">Role:</span> {user.Role}
             </div>
-
             <div>
               <span className="font-medium">Email:</span> {user.Email}
             </div>
           </div>
         )}
+
         <div className="space-y-6">
-          {/* Company + Supplier Brand */}
+          {/* Company + Brand */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Company</Label>
@@ -301,7 +518,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
                 <p className="text-sm text-red-600">{companyError}</p>
               )}
             </div>
-
             <div className="space-y-1">
               <Label>Supplier Brand</Label>
               <Input
@@ -315,50 +531,12 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
           {/* Addresses */}
           <div className="space-y-3">
             <Label>Addresses</Label>
-
-            {addresses.map((addr, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-[1fr_auto] gap-2 items-start"
-              >
-                <Textarea
-                  value={addr}
-                  onChange={(e) =>
-                    updateList(setAddresses, index, e.target.value)
-                  }
-                  placeholder="Full address"
-                />
-
-                <div className="flex gap-1 pt-2">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="cursor-pointer"
-                    onClick={() => addRowAfter(setAddresses, index)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="cursor-pointer"
-                    disabled={addresses.length === 1}
-                    onClick={() => removeRow(setAddresses, index)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+            {renderListRows(addresses, setAddresses, "Full address", true)}
           </div>
 
           {/* Emails */}
           <div className="space-y-3">
             <Label>Emails</Label>
-
             {emails.map((mail, index) => (
               <div
                 key={index}
@@ -370,7 +548,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
                   placeholder="company@email.com"
                   onChange={(e) => updateList(setEmails, index, e.target.value)}
                 />
-
                 <div className="flex gap-1">
                   <Button
                     type="button"
@@ -381,7 +558,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
-
                   <Button
                     type="button"
                     size="icon"
@@ -395,135 +571,93 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
                 </div>
               </div>
             ))}
-
-            {emailError && <p className="text-sm text-red-600">{emailError}</p>}
+            {emailError && (
+              <p className="text-sm text-red-600">{emailError}</p>
+            )}
           </div>
 
           {/* Website */}
           <div className="space-y-3">
             <Label>Website (optional)</Label>
-
-            {website.map((site, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-[1fr_auto] gap-2 items-center"
-              >
-                <Input
-                  value={site}
-                  placeholder="https://example.com"
-                  onChange={(e) =>
-                    updateList(setWebsite, index, e.target.value)
-                  }
-                />
-
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    onClick={() => addRowAfter(setWebsite, index)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    disabled={website.length === 1}
-                    onClick={() => removeRow(setWebsite, index)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+            {renderListRows(website, setWebsite, "https://example.com")}
           </div>
 
-          {/* Contacts */}
+          {/* ── Contacts ── */}
           <div className="space-y-3">
             <Label>Contacts</Label>
 
             {contactNames.map((_, index) => (
-              <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                {/* Name */}
-                <Input
-                  placeholder="Contact Name"
-                  value={contactNames[index]}
-                  onChange={(e) =>
-                    updateList(setContactNames, index, e.target.value)
-                  }
-                />
+              <div key={index} className="space-y-2 rounded-md border p-3 bg-muted/20">
+                {/* Row 1: Name | Type | ±buttons */}
+                <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
+                  <Input
+                    placeholder="Contact Name"
+                    value={contactNames[index]}
+                    onChange={(e) =>
+                      updateList(setContactNames, index, e.target.value)
+                    }
+                  />
 
-                {/* Type */}
-                <select
-                  className="h-10 rounded-md border px-2 text-sm"
-                  value={contactTypes[index]}
-                  onChange={(e) =>
-                    updateContactType(
-                      index,
-                      e.target.value as "phone" | "other",
-                    )
-                  }
-                >
-                  <option value="phone">Phone</option>
-                  <option value="other">Others</option>
-                </select>
-
-                {/* Actions */}
-                <div className="flex gap-1 justify-end">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    onClick={() => {
-                      addRowAfter(setContactNames, index);
-                      addRowAfter(setContactNumbers, index);
-                      addContactTypeAfter(index);
-                    }}
+                  {/* Type selector */}
+                  <select
+                    className="h-10 rounded-md border px-2 text-sm bg-background"
+                    value={contactTypes[index]}
+                    onChange={(e) =>
+                      updateContactType(index, e.target.value as "phone" | "other")
+                    }
                   >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                    <option value="phone">Phone</option>
+                    <option value="other">Others</option>
+                  </select>
 
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    disabled={contactNames.length === 1}
-                    onClick={() => {
-                      removeRow(setContactNames, index);
-                      removeRow(setContactNumbers, index);
-                      removeContactType(index);
-                    }}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
+                  {/* ± buttons */}
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => {
+                        addRowAfter(setContactNames, index);
+                        addRowAfter(setContactNumbers, index);
+                        addContactTypeAfter(index);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      disabled={contactNames.length === 1}
+                      onClick={() => {
+                        removeRow(setContactNames, index);
+                        removeRow(setContactNumbers, index);
+                        removeContactType(index);
+                      }}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Value — full width */}
-                <div className="col-span-3">
-                  {contactTypes[index] === "phone" ? (
-                    <PhoneInput
-                      international
-                      defaultCountry="CN"
-                      countryCallingCodeEditable={false}
-                      value={contactNumbers[index]}
-                      onChange={(value) =>
-                        updateList(setContactNumbers, index, value || "")
-                      }
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="+86 XXX XXXX XXXX"
-                    />
-                  ) : (
-                    <Input
-                      placeholder="WeChat / TikTok / etc"
-                      value={contactNumbers[index]}
-                      onChange={(e) =>
-                        updateList(setContactNumbers, index, e.target.value)
-                      }
-                    />
-                  )}
-                </div>
+                {/* Row 2: Phone field or text input */}
+                {contactTypes[index] === "phone" ? (
+                  <PhoneField
+                    value={contactNumbers[index]}
+                    onChange={(val) =>
+                      updateList(setContactNumbers, index, val)
+                    }
+                    defaultCountry="CN"
+                  />
+                ) : (
+                  <Input
+                    placeholder="WeChat / TikTok / etc"
+                    value={contactNumbers[index]}
+                    onChange={(e) =>
+                      updateList(setContactNumbers, index, e.target.value)
+                    }
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -531,130 +665,19 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
           {/* Forte Products */}
           <div className="space-y-3">
             <Label>Forte Products (optional)</Label>
-
-            {forteProducts.map((item, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-[1fr_auto] gap-2 items-center"
-              >
-                <Input
-                  value={item}
-                  placeholder="Forte product"
-                  onChange={(e) =>
-                    updateList(setForteProducts, index, e.target.value)
-                  }
-                />
-
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="cursor-pointer"
-                    onClick={() => addRowAfter(setForteProducts, index)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="cursor-pointer"
-                    disabled={forteProducts.length === 1}
-                    onClick={() => removeRow(setForteProducts, index)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+            {renderListRows(forteProducts, setForteProducts, "Forte product")}
           </div>
 
           {/* Products */}
           <div className="space-y-3">
             <Label>Products (optional)</Label>
-
-            {products.map((item, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-[1fr_auto] gap-2 items-center"
-              >
-                <Input
-                  value={item}
-                  placeholder="Product"
-                  onChange={(e) =>
-                    updateList(setProducts, index, e.target.value)
-                  }
-                />
-
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="cursor-pointer"
-                    onClick={() => addRowAfter(setProducts, index)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="cursor-pointer"
-                    disabled={products.length === 1}
-                    onClick={() => removeRow(setProducts, index)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+            {renderListRows(products, setProducts, "Product")}
           </div>
 
           {/* Certificates */}
           <div className="space-y-3">
             <Label>Certificates (optional)</Label>
-
-            {certificates.map((item, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-[1fr_auto] gap-2 items-center"
-              >
-                <Input
-                  value={item}
-                  placeholder="Certificate"
-                  onChange={(e) =>
-                    updateList(setCertificates, index, e.target.value)
-                  }
-                />
-
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="cursor-pointer"
-                    onClick={() => addRowAfter(setCertificates, index)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="cursor-pointer"
-                    disabled={certificates.length === 1}
-                    onClick={() => removeRow(setCertificates, index)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+            {renderListRows(certificates, setCertificates, "Certificate")}
           </div>
         </div>
 

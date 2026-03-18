@@ -16,10 +16,19 @@ type Props = {
   onFilter: (filtered: any[]) => void;
 };
 
+/* ================================================= */
+/* CONSTANTS                                         */
+/* ================================================= */
+const NO_SUPPLIER_BRAND = "NO SUPPLIER BRAND";
+
 const getEffectiveBrandOrigin = (p: any): string => p.brandOrigin || "CHINA";
 const getEffectivePricePoint = (p: any): string => p.pricePoint || "ECONOMY";
 const getEffectiveBrandOriginLocal = (p: any): string => p.brandOrigin || "CHINA";
 const getEffectivePricePointLocal = (p: any): string => p.pricePoint || "ECONOMY";
+
+/* Returns the display label for supplier brand — falls back to NO_SUPPLIER_BRAND */
+const getEffectiveSupplierBrand = (p: any): string =>
+  p.supplier?.supplierBrand?.trim() || NO_SUPPLIER_BRAND;
 
 const stepColors: Record<string, string> = {
   "Product Usage": "bg-blue-100",
@@ -98,7 +107,11 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       if (!check("Product Class", p.productClass)) return false;
       if (!check("Price Point", getEffectivePricePoint(p))) return false;
       if (!check("Brand Origin", getEffectiveBrandOrigin(p))) return false;
-      if (!check("Supplier Brand", p.supplier?.supplierBrand)) return false;
+
+      /* ✅ Supplier Brand: use effective value so NO_SUPPLIER_BRAND matches */
+      if (filters["Supplier Brand"]?.length) {
+        if (!filters["Supplier Brand"].includes(getEffectiveSupplierBrand(p))) return false;
+      }
 
       for (const [k, vals] of Object.entries(filters) as [string, string[]][]) {
         if (!k.includes("||")) continue;
@@ -212,18 +225,31 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   const brandOrigins = uniq(products.map((p) => getEffectiveBrandOrigin(p)));
   const productClasses = uniq(products.map((p) => p.productClass));
 
-  const suppliers = uniq(
-    products
-      .filter((p) => {
-        if (filters["Product Usage"]?.length && !filters["Product Usage"].includes(p.categoryTypes?.[0]?.categoryTypeName)) return false;
-        if (filters["Product Family"]?.length && !filters["Product Family"].includes(p.productFamilies?.[0]?.productFamilyName)) return false;
-        if (filters["Product Class"]?.length && !filters["Product Class"].includes(p.productClass)) return false;
-        if (filters["Price Point"]?.length && !filters["Price Point"].includes(getEffectivePricePoint(p))) return false;
-        if (filters["Brand Origin"]?.length && !filters["Brand Origin"].includes(getEffectiveBrandOrigin(p))) return false;
-        return true;
-      })
-      .map((p) => p.supplier?.supplierBrand),
-  );
+  /* ✅ Supplier Brand list: always include NO_SUPPLIER_BRAND if any product lacks a brand */
+  const suppliers = useMemo(() => {
+    const filtered = products.filter((p) => {
+      if (filters["Product Usage"]?.length && !filters["Product Usage"].includes(p.categoryTypes?.[0]?.categoryTypeName)) return false;
+      if (filters["Product Family"]?.length && !filters["Product Family"].includes(p.productFamilies?.[0]?.productFamilyName)) return false;
+      if (filters["Product Class"]?.length && !filters["Product Class"].includes(p.productClass)) return false;
+      if (filters["Price Point"]?.length && !filters["Price Point"].includes(getEffectivePricePoint(p))) return false;
+      if (filters["Brand Origin"]?.length && !filters["Brand Origin"].includes(getEffectiveBrandOrigin(p))) return false;
+      return true;
+    });
+
+    const brands = new Set<string>();
+    filtered.forEach((p) => {
+      brands.add(getEffectiveSupplierBrand(p));
+    });
+
+    /* Sort: real brands alphabetically first, then NO SUPPLIER BRAND at end */
+    const sorted = Array.from(brands).sort((a, b) => {
+      if (a === NO_SUPPLIER_BRAND) return 1;
+      if (b === NO_SUPPLIER_BRAND) return -1;
+      return a.localeCompare(b);
+    });
+
+    return sorted;
+  }, [products, filters]);
 
   /* ================= FILTER ENGINE ================= */
   useEffect(() => {
@@ -257,6 +283,12 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       if (!check("Brand Origin", getEffectiveBrandOrigin(p))) return false;
       if (!check("Product Class", p.productClass)) return false;
       if (!check("Supplier", p.supplier?.company)) return false;
+
+      /* ✅ Supplier Brand filter: match using effective value */
+      if (filters["Supplier Brand"]?.length) {
+        const effectiveBrand = getEffectiveSupplierBrand(p);
+        if (!filters["Supplier Brand"].includes(effectiveBrand)) return false;
+      }
 
       for (const [k, vals] of Object.entries(filters) as [string, string[]][]) {
         if (!k.includes("||")) continue;
@@ -406,7 +438,15 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           {/* STEP 1 */}
           {visibleSteps.includes("Product Usage") && (
             <div ref={setStepRef("Product Usage")} className="w-full scroll-mt-4">
-              <Section title="Product Usage" items={productUsages} filters={filters} toggle={toggle} setSearch={setSearch} sourceProducts={sourceProducts} products={products} />
+              <Section
+                title="Product Usage"
+                items={productUsages}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
             </div>
           )}
 
@@ -414,7 +454,15 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           {visibleSteps.includes("Product Family") && (
             <div ref={setStepRef("Product Family")} className="w-full space-y-2 scroll-mt-4">
               <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Product Family")}>← Back</button>
-              <Section title="Product Family" items={productFamilies} filters={filters} toggle={toggle} setSearch={setSearch} sourceProducts={sourceProducts} products={products} />
+              <Section
+                title="Product Family"
+                items={productFamilies}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
             </div>
           )}
 
@@ -422,7 +470,15 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           {visibleSteps.includes("Product Class") && (
             <div ref={setStepRef("Product Class")} className="w-full space-y-2 scroll-mt-4">
               <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Product Class")}>← Back</button>
-              <Section title="Product Class" items={productClasses} filters={filters} toggle={toggle} setSearch={setSearch} sourceProducts={sourceProducts} products={products} />
+              <Section
+                title="Product Class"
+                items={productClasses}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
             </div>
           )}
 
@@ -430,7 +486,15 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           {visibleSteps.includes("Price Point") && (
             <div ref={setStepRef("Price Point")} className="w-full space-y-2 scroll-mt-4">
               <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Price Point")}>← Back</button>
-              <Section title="Price Point" items={pricePoints} filters={filters} toggle={toggle} setSearch={setSearch} sourceProducts={sourceProducts} products={products} />
+              <Section
+                title="Price Point"
+                items={pricePoints}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
             </div>
           )}
 
@@ -438,7 +502,15 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           {visibleSteps.includes("Brand Origin") && (
             <div ref={setStepRef("Brand Origin")} className="w-full space-y-2 scroll-mt-4">
               <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Brand Origin")}>← Back</button>
-              <Section title="Brand Origin" items={brandOrigins} filters={filters} toggle={toggle} setSearch={setSearch} sourceProducts={sourceProducts} products={products} />
+              <Section
+                title="Brand Origin"
+                items={brandOrigins}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+              />
             </div>
           )}
 
@@ -446,7 +518,16 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           {visibleSteps.includes("Supplier Brand") && (
             <div ref={setStepRef("Supplier Brand")} className="w-full space-y-2 scroll-mt-4">
               <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Supplier Brand")}>← Back</button>
-              <Section title="Supplier Brand" items={suppliers} filters={filters} toggle={toggle} setSearch={setSearch} sourceProducts={sourceProducts} products={products} />
+              <Section
+                title="Supplier Brand"
+                items={suppliers}
+                filters={filters}
+                toggle={toggle}
+                setSearch={setSearch}
+                sourceProducts={sourceProducts}
+                products={products}
+                noSupplierBrandLabel={NO_SUPPLIER_BRAND}
+              />
               {techSpecGroupOrder.length > 0 && !visibleSteps.includes(techSpecGroupOrder[0]) && (
                 <button
                   className="mt-2 w-full text-xs border border-pink-300 text-pink-700 bg-pink-50 hover:bg-pink-100 rounded py-1.5 transition-colors"
@@ -468,7 +549,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
             const hasValues = Array.from(groupMap.values()).some((vals) => vals.size > 0);
             if (!hasValues) return null;
 
-            // Find next non-empty group
             let nextGroupTitle: string | null = null;
             for (let i = groupIndex + 1; i < techSpecGroupOrder.length; i++) {
               const candidate = techSpecGroupOrder[i];
@@ -489,7 +569,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
                 </button>
 
                 <div className="border rounded p-3 space-y-3 bg-pink-100">
-                  {/* ✅ Group header with ℹ️ EyeDetails button */}
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-sm uppercase tracking-wide">
                       {groupTitle}
@@ -497,7 +576,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
                     <EyeDetails groupTitle={groupTitle} filters={filters} />
                   </div>
 
-                  {/* Spec sections */}
                   {Array.from(groupMap.entries()).map(([specName, vals]) => {
                     if (vals.size === 0) return null;
                     return (
@@ -516,7 +594,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
                   })}
                 </div>
 
-                {/* Next button */}
                 {nextGroupTitle && !visibleSteps.includes(nextGroupTitle) && (
                   <button
                     className="w-full text-xs border border-pink-300 text-pink-700 bg-pink-50 hover:bg-pink-100 rounded py-1.5 transition-colors"
@@ -536,7 +613,17 @@ export default function FilteringComponent({ products, onFilter }: Props) {
 }
 
 /* ================= SECTION ================= */
-function Section({ title, label, items, filters, toggle, setSearch, sourceProducts, products }: any) {
+function Section({
+  title,
+  label,
+  items,
+  filters,
+  toggle,
+  setSearch,
+  sourceProducts,
+  products,
+  noSupplierBrandLabel,
+}: any) {
   const [input, setInput] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -554,6 +641,7 @@ function Section({ title, label, items, filters, toggle, setSearch, sourceProduc
 
   const currentStepIndex = BASE_STEP_ORDER.indexOf(title);
   const isTechSpecId = title.includes("||");
+  const isSupplierBrand = title === "Supplier Brand";
 
   const baseList = products.filter((p: any) => {
     if (!isTechSpecId) {
@@ -566,7 +654,7 @@ function Section({ title, label, items, filters, toggle, setSearch, sourceProduc
         else if (step === "Product Class") value = p.productClass;
         else if (step === "Price Point") value = getEffectivePricePointLocal(p);
         else if (step === "Brand Origin") value = getEffectiveBrandOriginLocal(p);
-        else if (step === "Supplier Brand") value = p.supplier?.supplierBrand;
+        else if (step === "Supplier Brand") value = getEffectiveSupplierBrand(p);
         return filters[step].includes(value);
       });
       if (!stepMatch) return false;
@@ -578,7 +666,7 @@ function Section({ title, label, items, filters, toggle, setSearch, sourceProduc
       if (filters["Product Class"]?.length && !filters["Product Class"].includes(p.productClass)) return false;
       if (filters["Price Point"]?.length && !filters["Price Point"].includes(getEffectivePricePointLocal(p))) return false;
       if (filters["Brand Origin"]?.length && !filters["Brand Origin"].includes(getEffectiveBrandOriginLocal(p))) return false;
-      if (filters["Supplier Brand"]?.length && !filters["Supplier Brand"].includes(p.supplier?.supplierBrand)) return false;
+      if (filters["Supplier Brand"]?.length && !filters["Supplier Brand"].includes(getEffectiveSupplierBrand(p))) return false;
     }
 
     const selfGt = isTechSpecId ? title.split("||")[0] : null;
@@ -618,6 +706,10 @@ function Section({ title, label, items, filters, toggle, setSearch, sourceProduc
         });
       });
       values.forEach((v) => { if (counts[v] !== undefined) counts[v]++; });
+    } else if (isSupplierBrand) {
+      /* ✅ Count using effective supplier brand so NO SUPPLIER BRAND gets counted */
+      const value = getEffectiveSupplierBrand(p);
+      if (counts[value] !== undefined) counts[value]++;
     } else {
       let value: any;
       if (title === "Product Usage") value = p.categoryTypes?.[0]?.categoryTypeName;
@@ -625,13 +717,16 @@ function Section({ title, label, items, filters, toggle, setSearch, sourceProduc
       else if (title === "Product Class") value = p.productClass;
       else if (title === "Price Point") value = getEffectivePricePointLocal(p);
       else if (title === "Brand Origin") value = getEffectiveBrandOriginLocal(p);
-      else if (title === "Supplier Brand") value = p.supplier?.supplierBrand;
       if (counts[value] !== undefined) counts[value]++;
     }
   });
 
   const visible = items.filter((i: string) => {
     if (!input) return true;
+    /* Always show NO SUPPLIER BRAND when searching blank or matching text */
+    if (i === NO_SUPPLIER_BRAND) {
+      return NO_SUPPLIER_BRAND.toLowerCase().includes(input.toLowerCase());
+    }
     const extractNumbers = (str: string) => {
       const matches = str.match(/(\d+(\.\d+)?)/g);
       return matches ? matches.map(Number) : [];
@@ -675,6 +770,7 @@ function Section({ title, label, items, filters, toggle, setSearch, sourceProduc
     if (inputNums.length > 0) {
       let bestItem = null, bestDiff = Infinity, highestItem = null, highestValue = -Infinity;
       items.forEach((item: string) => {
+        if (item === NO_SUPPLIER_BRAND) return;
         const nums = extractNumbers(item);
         if (nums.length === 0) return;
         const compareNum = nums[0];
@@ -690,6 +786,7 @@ function Section({ title, label, items, filters, toggle, setSearch, sourceProduc
     }
     let bestMatch = null, bestScore = Infinity;
     items.forEach((item: string) => {
+      if (item === NO_SUPPLIER_BRAND) return;
       if (/\d/.test(item)) return;
       const score = levenshtein(input.toLowerCase(), item.toLowerCase());
       if (score < bestScore && score <= 3) { bestScore = score; bestMatch = item; }
@@ -735,11 +832,13 @@ function Section({ title, label, items, filters, toggle, setSearch, sourceProduc
           <CommandGroup className={showScrollable ? isCollapsed ? "max-h-[200px] overflow-y-auto" : "max-h-[240px] overflow-y-auto" : ""}>
             {visible.map((i: string) => {
               const isDisabled = (counts[i] ?? 0) === 0 && !filters[title]?.includes(i);
+              /* ✅ Style NO SUPPLIER BRAND differently — italic + muted */
+              const isNoSupplier = i === NO_SUPPLIER_BRAND;
               return (
                 <CommandItem
                   key={i}
                   onSelect={() => { if (isDisabled) return; toggle(title, i); }}
-                  className={isDisabled ? "opacity-40" : ""}
+                  className={`${isDisabled ? "opacity-40" : ""} ${isNoSupplier ? "italic text-muted-foreground" : ""}`}
                 >
                   <Check className={`mr-2 h-4 w-4 ${filters[title]?.includes(i) ? "opacity-100" : "opacity-0"}`} />
                   <div className="flex justify-between w-full">
