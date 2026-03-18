@@ -121,9 +121,10 @@ export default function Suppliers() {
     hasContacts: null,
     sortAlpha: "",
     phoneCountry: "",
+    addressCountry: "", // ← added
   });
 
-  /* 🔹 NEW: Supplier Products Modal State */
+  /* 🔹 Supplier Products Modal State */
   const [supplierProductsOpen, setSupplierProductsOpen] = useState(false);
   const [supplierProductsTarget, setSupplierProductsTarget] = useState<{
     supplierId: string;
@@ -184,7 +185,7 @@ export default function Suppliers() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  /* 🔹 NEW: Open supplier products modal */
+  /* 🔹 Open supplier products modal */
   const openSupplierProducts = (s: Supplier) => {
     setSupplierProductsTarget({
       supplierId: s.id,
@@ -214,8 +215,12 @@ export default function Suppliers() {
           s.certificates?.some((v) => v.toLowerCase().includes(keyword));
 
         const filterMatch =
-          (!filters.company || s.company.toLowerCase().includes(filters.company.toLowerCase())) &&
-          (!filters.email || s.emails?.some((e) => e.toLowerCase().includes(filters.email.toLowerCase()))) &&
+          (!filters.company ||
+            s.company.toLowerCase().includes(filters.company.toLowerCase())) &&
+          (!filters.email ||
+            s.emails?.some((e) =>
+              e.toLowerCase().includes(filters.email.toLowerCase()),
+            )) &&
           (filters.hasContacts === null ||
             (filters.hasContacts
               ? s.contacts && s.contacts.length > 0
@@ -223,10 +228,24 @@ export default function Suppliers() {
           (!filters.phoneCountry ||
             s.contacts?.some((c) => {
               try {
-                const callingCode = getCountryCallingCode(filters.phoneCountry as CountryCode);
+                const callingCode = getCountryCallingCode(
+                  filters.phoneCountry as CountryCode,
+                );
                 return c.phone?.startsWith("+" + callingCode);
-              } catch { return false; }
-            }));
+              } catch {
+                return false;
+              }
+            })) &&
+          // ← added: addressCountry filter
+          (!filters.addressCountry ||
+            s.addresses?.some((addr) =>
+              addr
+                .toLowerCase()
+                .endsWith(filters.addressCountry.toLowerCase()) ||
+              addr
+                .toLowerCase()
+                .includes(`, ${filters.addressCountry.toLowerCase()}`),
+            ));
 
         return searchMatch && filterMatch;
       })
@@ -570,7 +589,12 @@ export default function Suppliers() {
       {/* MODALS */}
       <AddSupplier open={addSupplierOpen} onOpenChange={setAddSupplierOpen} />
       <UploadSupplier open={uploadSupplierOpen} onOpenChange={setUploadSupplierOpen} />
-      <FilterSupplier open={filterOpen} onOpenChange={setFilterOpen} onApply={setFilters} />
+      <FilterSupplier
+        open={filterOpen}
+        onOpenChange={setFilterOpen}
+        onApply={setFilters}
+        suppliers={suppliers} // ← added
+      />
       {selectedSupplier && (
         <EditSupplier open={editSupplierOpen} onOpenChange={setEditSupplierOpen} supplier={selectedSupplier} />
       )}
@@ -578,7 +602,7 @@ export default function Suppliers() {
         <DeleteSupplier open={deleteSupplierOpen} onOpenChange={setDeleteSupplierOpen} supplier={selectedSupplier} />
       )}
 
-      {/* 🔹 NEW: Supplier Products Modal */}
+      {/* 🔹 Supplier Products Modal */}
       {supplierProductsTarget && (
         <SupplierProducts
           open={supplierProductsOpen}
