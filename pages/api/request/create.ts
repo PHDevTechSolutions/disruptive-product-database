@@ -69,9 +69,13 @@ export default async function handler(
       /* TECH SPECS */
       const tech =
         p?.technicalSpecifications
-          ?.map((g: any) =>
-            g.specs?.map((s: any) => `${s.specId}: ${s.value}`).join(", ")
-          )
+.map((g: any) => {
+  const specs = g.specs
+    ?.map((s: any) => `${s.specId}: ${s.value}`)
+    .join(", ");
+
+  return `${g.title}: ${specs}`;
+})
           .join(" | ") || "-";
 
       specs.push(tech);

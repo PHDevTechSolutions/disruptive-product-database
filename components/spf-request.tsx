@@ -436,7 +436,6 @@ export default function SPF({ processBy }: SPFProps) {
                       <thead>
                         <tr className="bg-gray-100">
                           <th className="border px-2 py-1 text-center">#</th>
-                          <th className="border px-2 py-1 text-center">Supplier Brand</th>
                           <th className="border px-2 py-1 text-center">Image</th>
                           <th className="border px-2 py-1 text-center">Item Description</th>
                           <th className="border px-2 py-1 text-center">Product Offer</th>
@@ -533,10 +532,6 @@ export default function SPF({ processBy }: SPFProps) {
     : "-"}
 </td>
 
-{/* SUPPLIER BRAND (FIX ALIGNMENT) */}
-<td className="border px-2 py-1 text-center align-middle">
-  -
-</td>
 
 {/* IMAGE */}
 <td className="border px-2 py-1 align-middle">
