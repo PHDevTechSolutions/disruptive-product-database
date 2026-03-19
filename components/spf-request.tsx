@@ -99,7 +99,6 @@ export default function SPF({ processBy }: SPFProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [createdSPF, setCreatedSPF] = useState<Record<string, string>>({});
 
-  // Fetch SPF requests
   const fetchRequests = useCallback(async () => {
     try {
       setError(null);
@@ -183,10 +182,6 @@ export default function SPF({ processBy }: SPFProps) {
 
   const handleSubmit = async () => {
     try {
-      /* ─────────────────────────────────────────────────────────────
-         Build a flat array where each product carries its __rowIndex.
-         create.ts will use this to group products back by item row.
-      ───────────────────────────────────────────────────────────── */
       const allProducts: any[] = [];
 
       Object.entries(productOffers).forEach(([rowIndex, rowProducts]) => {
@@ -233,7 +228,6 @@ export default function SPF({ processBy }: SPFProps) {
     }
   };
 
-  // Fetch products from Firebase
   const fetchProducts = useCallback((_customerName: string) => {
     setLoadingProducts(true);
     const q = query(collection(db, "products"), where("isActive", "==", true));
@@ -264,14 +258,6 @@ export default function SPF({ processBy }: SPFProps) {
     });
     setFilteredProducts(filtered);
   }, [searchTerm, products]);
-
-  const parseDescription = (desc: string) => {
-    if (!desc) return [];
-    return desc
-      .split(/\r?\n|\|/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-  };
 
   if (error) return <p className="text-red-500">{error}</p>;
 
@@ -328,7 +314,6 @@ export default function SPF({ processBy }: SPFProps) {
                         Create
                       </Button>
                     )}
-
                     {createdSPF[req.spf_number] === "Pending For Procurement" && (
                       <SPFRequestView spfNumber={req.spf_number} />
                     )}
@@ -361,7 +346,6 @@ export default function SPF({ processBy }: SPFProps) {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="border px-3 py-2 text-sm w-[220px]"
                 />
-
                 <Button
                   size="icon"
                   variant="outline"
@@ -370,7 +354,6 @@ export default function SPF({ processBy }: SPFProps) {
                 >
                   <Funnel size={16} />
                 </Button>
-
                 <Button
                   className="rounded-none p-6"
                   onClick={() => setOpenAddProduct(true)}
@@ -464,6 +447,8 @@ export default function SPF({ processBy }: SPFProps) {
 
                       <tbody>
                         {(formData.item_description || []).map((desc, index) => {
+                          const offers = productOffers[index] || [];
+
                           return (
                             <tr
                               key={index}
@@ -542,15 +527,15 @@ export default function SPF({ processBy }: SPFProps) {
                               }}
                             >
                               {/* ITEM NUMBER */}
-                              <td className="border px-2 py-1 font-medium text-center align-middle">
+                              <td className="border px-2 py-1 font-medium text-center align-top pt-3">
                                 {formData.spf_number
                                   ? `${formData.spf_number}-${String(index + 1).padStart(3, "0")}`
                                   : "-"}
                               </td>
 
                               {/* IMAGE */}
-                              <td className="border px-2 py-1 align-middle">
-                                <div className="flex justify-center items-center">
+                              <td className="border px-2 py-1 align-top pt-3">
+                                <div className="flex justify-center items-start">
                                   {formData.item_photo?.[index] ? (
                                     <img
                                       src={formData.item_photo[index]}
@@ -565,7 +550,7 @@ export default function SPF({ processBy }: SPFProps) {
 
                               {/* DESCRIPTION */}
                               <td
-                                className="border px-2 py-1 whitespace-pre-wrap text-center align-middle"
+                                className="border px-2 py-1 whitespace-pre-wrap text-center align-top pt-3"
                                 contentEditable
                                 suppressContentEditableWarning
                                 onBlur={(e) => {
@@ -586,130 +571,141 @@ export default function SPF({ processBy }: SPFProps) {
                                 {desc.replace(/\|/g, "\n")}
                               </td>
 
-                              {/* PRODUCT OFFER TABLE */}
-                              <td className="border px-2 py-1 text-center align-middle">
-                                {(productOffers[index] || []).length > 0 && (
-                                  <div className="border rounded mb-2 overflow-hidden">
-                                    <table className="w-full text-xs">
-                                      <thead className="bg-muted">
-                                        <tr>
-                                          <th className="border px-2 py-1 text-center w-[120px]">Supplier Brand</th>
-                                          <th className="border px-2 py-1 text-center">Image</th>
-                                          <th className="border px-2 py-1 w-[70px]">Qty</th>
-                                          <th className="border px-2 py-1 text-center">Technical Specifications</th>
-                                          <th className="border px-2 py-1 text-center">Unit Cost</th>
-                                          <th className="border px-2 py-1 text-center">
-                                            Packaging Details
-                                            <div className="text-[10px] text-muted-foreground">L x W x H</div>
-                                          </th>
-                                          <th className="border px-2 py-1 text-center">Factory Address</th>
-                                          <th className="border px-2 py-1 text-center">Port of Discharge</th>
-                                          <th className="border px-2 py-1 w-[100px]">Sub Total</th>
-                                        </tr>
-                                      </thead>
+                              {/* PRODUCT OFFER CELL — ALL options stacked & visible agad */}
+                              <td className="border px-2 py-2 align-top">
+                                {offers.length === 0 ? (
+                                  <div className="text-xs text-muted-foreground text-center py-4">
+                                    Drag a product here
+                                  </div>
+                                ) : (
+                                  <div className="space-y-3">
+                                    {offers.map((prod: any, i: number) => {
+                                      const unitCost = prod?.commercialDetails?.unitCost || "-";
+                                      const length   = prod?.commercialDetails?.packaging?.length || "-";
+                                      const width    = prod?.commercialDetails?.packaging?.width  || "-";
+                                      const height   = prod?.commercialDetails?.packaging?.height || "-";
+                                      const factory  = prod?.commercialDetails?.factoryAddress   || "-";
+                                      const port     = prod?.commercialDetails?.portOfDischarge  || "-";
 
-                                      <tbody>
-                                        {(productOffers[index] || []).map((prod: any, i: number) => {
-                                          const unitCost = prod?.commercialDetails?.unitCost || "-";
-                                          const length = prod?.commercialDetails?.packaging?.length || "-";
-                                          const width = prod?.commercialDetails?.packaging?.width || "-";
-                                          const height = prod?.commercialDetails?.packaging?.height || "-";
-                                          const factory = prod?.commercialDetails?.factoryAddress || "-";
-                                          const port = prod?.commercialDetails?.portOfDischarge || "-";
+                                      return (
+                                        <div key={i}>
+                                          {/* OPTION LABEL — only shown when 2+ products */}
+                                          {offers.length > 1 && (
+                                            <div className="mb-1">
+                                              <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                                Option {i + 1} · {prod?.supplier?.supplierBrand || "No brand"}
+                                              </span>
+                                            </div>
+                                          )}
 
-                                          return (
-                                            <tr
-                                              key={i}
-                                              draggable={!viewMode}
-                                              className={`${viewMode ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
-                                              onDragStart={(e) => {
-                                                if (viewMode) return;
-                                                e.dataTransfer.setData("text/plain", "dragging");
-                                                setDraggedProduct({
-                                                  ...prod,
-                                                  __fromRow: index,
-                                                  __fromIndex: i,
-                                                });
-                                                setShowTrash(true);
-                                              }}
-                                              onDragEnd={() => {
-                                                if (viewMode) return;
-                                                setDraggedProduct(null);
-                                                setShowTrash(false);
-                                              }}
-                                            >
-                                              <td className="border px-2 py-1 text-center align-middle">
-                                                {prod?.supplier?.supplierBrand || "-"}
-                                              </td>
-
-                                              <td className="border px-2 py-1 text-center align-middle">
-                                                {prod.mainImage?.url ? (
-                                                  <img src={prod.mainImage.url} className="w-16 h-16 object-contain mx-auto" />
-                                                ) : "-"}
-                                              </td>
-
-                                              <td className="border px-2 py-1 text-center align-middle">
-                                                <input
-                                                  type="number"
-                                                  min={0}
-                                                  className="w-full border px-1 text-xs"
-                                                  placeholder="Qty"
-                                                  value={prod.qty || ""}
-                                                  onChange={(e) => {
-                                                    let qty = Number(e.target.value);
-                                                    if (qty < 0) qty = 0;
-                                                    setProductOffers((prev) => {
-                                                      const copy = { ...prev };
-                                                      const row = [...(copy[index] || [])];
-                                                      row[i] = { ...row[i], qty };
-                                                      copy[index] = row;
-                                                      return copy;
+                                          {/* PRODUCT ROW TABLE */}
+                                          <div className="border rounded overflow-hidden">
+                                            <table className="w-full text-xs">
+                                              <thead className="bg-muted">
+                                                <tr>
+                                                  <th className="border px-2 py-1 text-center w-[120px]">Supplier Brand</th>
+                                                  <th className="border px-2 py-1 text-center">Image</th>
+                                                  <th className="border px-2 py-1 w-[70px]">Qty</th>
+                                                  <th className="border px-2 py-1 text-center">Technical Specifications</th>
+                                                  <th className="border px-2 py-1 text-center">Unit Cost</th>
+                                                  <th className="border px-2 py-1 text-center">
+                                                    Packaging Details
+                                                    <div className="text-[10px] text-muted-foreground">L x W x H</div>
+                                                  </th>
+                                                  <th className="border px-2 py-1 text-center">Factory Address</th>
+                                                  <th className="border px-2 py-1 text-center">Port of Discharge</th>
+                                                  <th className="border px-2 py-1 w-[100px]">Sub Total</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                <tr
+                                                  draggable={!viewMode}
+                                                  className={`${viewMode ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
+                                                  onDragStart={(e) => {
+                                                    if (viewMode) return;
+                                                    e.dataTransfer.setData("text/plain", "dragging");
+                                                    setDraggedProduct({
+                                                      ...prod,
+                                                      __fromRow: index,
+                                                      __fromIndex: i,
                                                     });
+                                                    setShowTrash(true);
                                                   }}
-                                                />
-                                              </td>
-
-                                              <td className="border px-2 py-1 text-center align-middle">
-                                                {prod.technicalSpecifications
-                                                  ?.map((g: any) => ({
-                                                    ...g,
-                                                    specs: g.specs?.filter((s: any) => s.value && s.value.trim() !== ""),
-                                                  }))
-                                                  .filter((g: any) => g.specs && g.specs.length > 0)
-                                                  .map((g: any, gi: number) => (
-                                                    <div key={gi} className="mb-2">
-                                                      <b>{g.title}</b>
-                                                      <div className="text-xs">
-                                                        {g.specs.map((s: any, si: number) => (
-                                                          <div key={si}>{s.specId}: {s.value}</div>
-                                                        ))}
-                                                      </div>
-                                                    </div>
-                                                  ))}
-                                              </td>
-
-                                              <td className="border px-2 py-1 text-center align-middle">{unitCost}</td>
-                                              <td className="border px-2 py-1 text-center align-middle">{length} x {width} x {height}</td>
-                                              <td className="border px-2 py-1 text-center align-middle">{factory}</td>
-                                              <td className="border px-2 py-1 text-center align-middle">{port}</td>
-
-                                              <td className="border px-2 py-1 text-center align-middle">
-                                                {(() => {
-                                                  const qty = prod.qty || 0;
-                                                  const cost = Number(prod?.commercialDetails?.unitCost || 0);
-                                                  const subtotal = qty * cost;
-                                                  return (
-                                                    <span className="text-xs font-semibold">
-                                                      ${subtotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </span>
-                                                  );
-                                                })()}
-                                              </td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
+                                                  onDragEnd={() => {
+                                                    if (viewMode) return;
+                                                    setDraggedProduct(null);
+                                                    setShowTrash(false);
+                                                  }}
+                                                >
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {prod?.supplier?.supplierBrand || "-"}
+                                                  </td>
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {prod.mainImage?.url ? (
+                                                      <img src={prod.mainImage.url} className="w-16 h-16 object-contain mx-auto" />
+                                                    ) : "-"}
+                                                  </td>
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    <input
+                                                      type="number"
+                                                      min={0}
+                                                      className="w-full border px-1 text-xs"
+                                                      placeholder="Qty"
+                                                      value={prod.qty || ""}
+                                                      onChange={(e) => {
+                                                        let qty = Number(e.target.value);
+                                                        if (qty < 0) qty = 0;
+                                                        setProductOffers((prev) => {
+                                                          const copy = { ...prev };
+                                                          const row = [...(copy[index] || [])];
+                                                          row[i] = { ...row[i], qty };
+                                                          copy[index] = row;
+                                                          return copy;
+                                                        });
+                                                      }}
+                                                    />
+                                                  </td>
+                                                  <td className="border px-2 py-1 text-left align-middle">
+                                                    {prod.technicalSpecifications
+                                                      ?.map((g: any) => ({
+                                                        ...g,
+                                                        specs: g.specs?.filter((s: any) => s.value && s.value.trim() !== ""),
+                                                      }))
+                                                      .filter((g: any) => g.specs && g.specs.length > 0)
+                                                      .map((g: any, gi: number) => (
+                                                        <div key={gi} className="mb-2">
+                                                          <b>{g.title}</b>
+                                                          <div className="text-xs">
+                                                            {g.specs.map((s: any, si: number) => (
+                                                              <div key={si}>{s.specId}: {s.value}</div>
+                                                            ))}
+                                                          </div>
+                                                        </div>
+                                                      ))}
+                                                  </td>
+                                                  <td className="border px-2 py-1 text-center align-middle">{unitCost}</td>
+                                                  <td className="border px-2 py-1 text-center align-middle">{length} x {width} x {height}</td>
+                                                  <td className="border px-2 py-1 text-center align-middle">{factory}</td>
+                                                  <td className="border px-2 py-1 text-center align-middle">{port}</td>
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {(() => {
+                                                      const qty = prod.qty || 0;
+                                                      const cost = Number(prod?.commercialDetails?.unitCost || 0);
+                                                      const subtotal = qty * cost;
+                                                      return (
+                                                        <span className="text-xs font-semibold">
+                                                          ${subtotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </span>
+                                                      );
+                                                    })()}
+                                                  </td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </td>
@@ -831,11 +827,9 @@ export default function SPF({ processBy }: SPFProps) {
               <Button variant="outline" className="rounded-none p-6" onClick={() => setOpenDialog(false)}>
                 Cancel
               </Button>
-
               <Button variant="outline" className="rounded-none p-6" onClick={() => setViewMode((prev) => !prev)}>
                 {viewMode ? "Back" : "View"}
               </Button>
-
               {viewMode && (
                 <Button className="rounded-none p-6" onClick={handleSubmit}>
                   Submit
