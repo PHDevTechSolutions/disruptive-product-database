@@ -22,7 +22,7 @@ import { doc, getDoc } from "firebase/firestore";
    ALL columns follow the same structure:
      product1,product2|ROW|product1,product2
 
-   selling_cost and proj_lead_time follow the same structure:
+   final_selling_cost and proj_lead_time follow the same structure:
      -,-|ROW|-,-
      (one "-" per product per row, filled later by procurement)
 ─────────────────────────────────────────────────────────────────── */
@@ -143,7 +143,7 @@ export default async function handler(
         subtotals.push(String(subtotal));
         supplierBrands.push(p?.supplier?.supplierBrand || "-");
 
-        /* selling_cost and proj_lead_time:
+        /* final_selling_cost and proj_lead_time:
            one "-" per product, per row — same structure as all other columns.
            Result: "-,-|ROW|-,-" (filled later by procurement team) */
         sellingCosts.push("-");
@@ -176,7 +176,7 @@ export default async function handler(
         }
       }
 
-      /* Each row's products joined by comma — same for selling_cost & proj_lead_time */
+      /* Each row's products joined by comma — same for final_selling_cost & proj_lead_time */
       rowImages.push(images.join(","));
       rowQtys.push(qtys.join(","));
       rowSpecs.push(specs.join(" || "));
@@ -244,8 +244,8 @@ export default async function handler(
           product_offer_port_of_discharge:       finalPorts,
           product_offer_subtotal:                finalSubtotals,
 
-          selling_cost:   finalSellingCosts,   // "-,-|ROW|-,-"
-          proj_lead_time: finalLeadTimes,      // "-,-|ROW|-,-"
+          final_selling_cost: finalSellingCosts,  // "-,-|ROW|-,-"
+          proj_lead_time:     finalLeadTimes,  // "-,-|ROW|-,-"
 
           status: "Pending For Procurement",
 
