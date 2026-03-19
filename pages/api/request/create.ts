@@ -4,32 +4,28 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
 /* ─────────────────────────────────────────────────────────────────
-   DELIMITER STRATEGY:
+   DELIMITER STRATEGY (all stored in Supabase columns):
 
    Within one product's tech specs:
-     "@@"  → separates spec GROUPS
+     "@@"  → separates spec GROUPS  (LAMP DETAILS vs ELECTRICAL)
      "~~"  → separates group TITLE from its spec rows
      ";;"  → separates individual SPEC ROWS within a group
 
    Between products within the same item row:
-     "|"   → pipe separator  (Option 1 | Option 2 | Option 3)
+     ","   → standard comma separator
 
    Between item ROWS:
-     ","   → comma separator (Row 1 , Row 2 , Row 3)
+     "|ROW|"  → row boundary separator
+                parsed by spf-request-view.tsx to show the right
+                products under the right item row
 
-   Final structure per column:
-     "row1opt1|row1opt2,row2opt1|row2opt2"
+   ALL columns follow the same structure:
+     product1,product2|ROW|product1,product2
 ─────────────────────────────────────────────────────────────────── */
-const ROW_SEP          = ",";
-const PRODUCT_SEP      = "|";
-const SPEC_PRODUCT_SEP = " || ";
+const ROW_SEP = "|ROW|";
 
 /* Cache supplier contacts to avoid redundant Firestore fetches */
-const supplierCache = new Map<string, {
-  company: string;
-  contactNames: string;
-  contactNumbers: string;
-}>();
+const supplierCache = new Map<string, { company: string; contactNames: string; contactNumbers: string }>();
 
 export default async function handler(
   req: NextApiRequest,
@@ -60,7 +56,7 @@ export default async function handler(
       products
         .map((p: any) => p?.supplier?.supplierId)
         .filter(Boolean)
-    )] as string[];
+    )];
 
     for (const supplierId of uniqueSupplierIds) {
       if (supplierCache.has(supplierId)) continue;
@@ -71,8 +67,8 @@ export default async function handler(
           const supplierData: any = supplierSnap.data();
           const contacts = supplierData.contacts || [];
           supplierCache.set(supplierId, {
-            company:        supplierData.company || "-",
-            contactNames:   contacts.map((c: any) => c.name).filter(Boolean).join(" | "),
+            company: supplierData.company || "-",
+            contactNames:  contacts.map((c: any) => c.name).filter(Boolean).join(" | "),
             contactNumbers: contacts.map((c: any) => c.phone).filter(Boolean).join(" | "),
           });
         }
@@ -90,39 +86,35 @@ export default async function handler(
       rowMap[idx].push(p);
     }
 
-    /* ── Build per-row arrays ── */
-    const rowImages:         string[] = [];
-    const rowQtys:           string[] = [];
-    const rowSpecs:          string[] = [];
-    const rowUnitCosts:      string[] = [];
-    const rowPackaging:      string[] = [];
-    const rowFactories:      string[] = [];
-    const rowPorts:          string[] = [];
-    const rowSubtotals:      string[] = [];
+    /* ── Build per-row arrays, then join rows with ROW_SEP ── */
+    const rowImages: string[]        = [];
+    const rowQtys: string[]          = [];
+    const rowSpecs: string[]         = [];
+    const rowUnitCosts: string[]     = [];
+    const rowPackaging: string[]     = [];
+    const rowFactories: string[]     = [];
+    const rowPorts: string[]         = [];
+    const rowSubtotals: string[]     = [];
     const rowSupplierBrands: string[] = [];
-    const rowCompanyNames:   string[] = [];
-    const rowContactNames:   string[] = [];
-    const rowContactNumbers: string[] = [];
-    const rowSellingCosts:   string[] = [];
-    const rowLeadTimes:      string[] = [];
+    const rowCompanyNames: string[]  = [];   // ← NEW: per-row per-product
+    const rowContactNames: string[]  = [];   // ← NEW: per-row per-product
+    const rowContactNumbers: string[] = [];  // ← NEW: per-row per-product
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
 
-      const images:         string[] = [];
-      const qtys:           string[] = [];
-      const specs:          string[] = [];
-      const unitCosts:      string[] = [];
-      const packaging:      string[] = [];
-      const factories:      string[] = [];
-      const ports:          string[] = [];
-      const subtotals:      string[] = [];
+      const images: string[]         = [];
+      const qtys: string[]           = [];
+      const specs: string[]          = [];
+      const unitCosts: string[]      = [];
+      const packaging: string[]      = [];
+      const factories: string[]      = [];
+      const ports: string[]          = [];
+      const subtotals: string[]      = [];
       const supplierBrands: string[] = [];
-      const companyNames:   string[] = [];
-      const contactNames:   string[] = [];
+      const companyNames: string[]   = [];
+      const contactNames: string[]   = [];
       const contactNumbers: string[] = [];
-      const sellingCosts:   string[] = [];
-      const leadTimes:      string[] = [];
 
       for (const p of rowProducts) {
         const qty      = Number(p.qty || 0);
@@ -143,18 +135,15 @@ export default async function handler(
         subtotals.push(String(subtotal));
         supplierBrands.push(p?.supplier?.supplierBrand || "-");
 
-        /* selling_cost and proj_lead_time — blank by default, filled later */
-        sellingCosts.push("-");
-        leadTimes.push("-");
-
-        /* Company / Contact — per product from cache */
+        /* ── Company / Contact — per product, from cache ── */
         const supplierId = p?.supplier?.supplierId;
         const cached = supplierId ? supplierCache.get(supplierId) : null;
-        companyNames.push(cached?.company        || p?.supplier?.company || "-");
+
+        companyNames.push(cached?.company   || p?.supplier?.company || "-");
         contactNames.push(cached?.contactNames   || "-");
         contactNumbers.push(cached?.contactNumbers || "-");
 
-        /* Tech Specs */
+        /* TECH SPECS */
         if (p?.technicalSpecifications?.length) {
           const groupedTech = p.technicalSpecifications
             .map((g: any) => {
@@ -174,40 +163,36 @@ export default async function handler(
         }
       }
 
-      /* Join products within a row by "|" */
-      rowImages.push(images.join(PRODUCT_SEP));
-      rowQtys.push(qtys.join(PRODUCT_SEP));
-      rowSpecs.push(specs.join(SPEC_PRODUCT_SEP));
-      rowUnitCosts.push(unitCosts.join(PRODUCT_SEP));
-      rowPackaging.push(packaging.join(PRODUCT_SEP));
-      rowFactories.push(factories.join(PRODUCT_SEP));
-      rowPorts.push(ports.join(PRODUCT_SEP));
-      rowSubtotals.push(subtotals.join(PRODUCT_SEP));
-      rowSupplierBrands.push(supplierBrands.join(PRODUCT_SEP));
-      rowCompanyNames.push(companyNames.join(PRODUCT_SEP));
-      rowContactNames.push(contactNames.join(PRODUCT_SEP));
-      rowContactNumbers.push(contactNumbers.join(PRODUCT_SEP));
-      rowSellingCosts.push(sellingCosts.join(PRODUCT_SEP));
-      rowLeadTimes.push(leadTimes.join(PRODUCT_SEP));
+      /* Each row's products joined by comma */
+      rowImages.push(images.join(","));
+      rowQtys.push(qtys.join(","));
+      rowSpecs.push(specs.join(" || "));
+      rowUnitCosts.push(unitCosts.join(","));
+      rowPackaging.push(packaging.join(","));
+      rowFactories.push(factories.join(","));
+      rowPorts.push(ports.join(","));
+      rowSubtotals.push(subtotals.join(","));
+      rowSupplierBrands.push(supplierBrands.join(","));
+      rowCompanyNames.push(companyNames.join(","));
+      rowContactNames.push(contactNames.join(","));
+      rowContactNumbers.push(contactNumbers.join(","));
     }
 
-    /* ── Join rows with "," ── */
-    const finalImages         = rowImages.join(ROW_SEP);
-    const finalQtys           = rowQtys.join(ROW_SEP);
-    const finalSpecs          = rowSpecs.join(ROW_SEP);
-    const finalUnitCosts      = rowUnitCosts.join(ROW_SEP);
-    const finalPackaging      = rowPackaging.join(ROW_SEP);
-    const finalFactories      = rowFactories.join(ROW_SEP);
-    const finalPorts          = rowPorts.join(ROW_SEP);
-    const finalSubtotals      = rowSubtotals.join(ROW_SEP);
-    const finalSupplierBrands = rowSupplierBrands.join(ROW_SEP);
-    const finalCompanyNames   = rowCompanyNames.join(ROW_SEP);
-    const finalContactNames   = rowContactNames.join(ROW_SEP);
-    const finalContactNumbers = rowContactNumbers.join(ROW_SEP);
-    const finalSellingCosts   = rowSellingCosts.join(ROW_SEP);
-    const finalLeadTimes      = rowLeadTimes.join(ROW_SEP);
+    /* ── Final strings stored in Supabase — all use ROW_SEP ── */
+    const finalImages          = rowImages.join(ROW_SEP);
+    const finalQtys            = rowQtys.join(ROW_SEP);
+    const finalSpecs           = rowSpecs.join(ROW_SEP);
+    const finalUnitCosts       = rowUnitCosts.join(ROW_SEP);
+    const finalPackaging       = rowPackaging.join(ROW_SEP);
+    const finalFactories       = rowFactories.join(ROW_SEP);
+    const finalPorts           = rowPorts.join(ROW_SEP);
+    const finalSubtotals       = rowSubtotals.join(ROW_SEP);
+    const finalSupplierBrands  = rowSupplierBrands.join(ROW_SEP);
+    const finalCompanyNames    = rowCompanyNames.join(ROW_SEP);    // ← NEW
+    const finalContactNames    = rowContactNames.join(ROW_SEP);    // ← NEW
+    const finalContactNumbers  = rowContactNumbers.join(ROW_SEP);  // ← NEW
 
-    /* ── Check existing SPF ── */
+    /* ── CHECK EXISTING SPF ── */
     const { data: existing, error: checkError } = await supabase
       .from("spf_creation")
       .select("id")
@@ -219,7 +204,7 @@ export default async function handler(
       return res.status(500).json(checkError);
     }
 
-    /* ── Insert SPF ── */
+    /* ── INSERT SPF ── */
     if (!existing) {
       const { error: insertError } = await supabase
         .from("spf_creation")
@@ -228,10 +213,10 @@ export default async function handler(
           referenceid,
           tsm,
 
-          company_name:   finalCompanyNames,
+          company_name:   finalCompanyNames,   // ← now per-row per-product
           supplier_brand: finalSupplierBrands,
-          contact_name:   finalContactNames,
-          contact_number: finalContactNumbers,
+          contact_name:   finalContactNames,   // ← now per-row per-product
+          contact_number: finalContactNumbers, // ← now per-row per-product
 
           product_offer_image:                   finalImages,
           product_offer_qty:                     finalQtys,
@@ -241,9 +226,6 @@ export default async function handler(
           product_offer_factory_address:         finalFactories,
           product_offer_port_of_discharge:       finalPorts,
           product_offer_subtotal:                finalSubtotals,
-
-          selling_cost:    finalSellingCosts,
-          proj_lead_time:  finalLeadTimes,
 
           status: "Pending For Procurement",
 
@@ -257,7 +239,7 @@ export default async function handler(
       }
     }
 
-    /* ── Update request status ── */
+    /* ── UPDATE REQUEST STATUS ── */
     const { error: updateError } = await supabase
       .from("spf_request")
       .update({
