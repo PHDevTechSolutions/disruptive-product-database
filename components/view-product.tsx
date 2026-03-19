@@ -11,15 +11,16 @@ import GenerateTDS from "@/components/generate-tds";
 type Props = {
   productId: string;
   referenceID: string;
+  // NEW: optional external open control
+  defaultOpen?: boolean;
+  onClose?: () => void;
 };
 
 type ProductData = {
   productName?: string;
   mainImage?: { url: string };
-
   dimensionalDrawing?: { url: string };
   illuminanceDrawing?: { url: string };
-
   supplier?: { company: string } | null;
   pricePoint?: string;
   brandOrigin?: string;
@@ -34,6 +35,7 @@ type ProductData = {
     }[];
   }[];
 };
+
 type UserData = {
   Firstname: string;
   Lastname: string;
@@ -42,47 +44,45 @@ type UserData = {
 
 const convertDriveToThumbnail = (url?: string) => {
   if (!url) return "";
-
   if (!url.includes("drive.google.com")) return url;
-
   const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-
   if (match && match[1]) {
     const fileId = match[1];
     return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
   }
-
   return url;
 };
 
-export default function ViewProduct({ productId, referenceID }: Props) {
-  const [open, setOpen] = useState(false);
-
+export default function ViewProduct({
+  productId,
+  referenceID,
+  defaultOpen = false,
+  onClose,
+}: Props) {
+  const [open, setOpen] = useState(defaultOpen);
   const [product, setProduct] = useState<ProductData | null>(null);
-
   const [user, setUser] = useState<UserData | null>(null);
-
   const [loading, setLoading] = useState(false);
 
   /* CTRL + F: OPEN TDS STATE */
   const [openTDS, setOpenTDS] = useState(false);
   const [hideEmptySpecs, setHideEmptySpecs] = useState(true);
 
+  const handleClose = () => {
+    setOpen(false);
+    setOpenTDS(false);
+    onClose?.();
+  };
+
   useEffect(() => {
     if (!open) return;
 
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        setOpenTDS(false); // also close TDS panel if open
-      }
+      if (e.key === "Escape") handleClose();
     };
 
     window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      window.removeEventListener("keydown", handleEscape);
-    };
+    return () => window.removeEventListener("keydown", handleEscape);
   }, [open]);
 
   useEffect(() => {
@@ -92,17 +92,13 @@ export default function ViewProduct({ productId, referenceID }: Props) {
       setLoading(true);
 
       const ref = doc(db, "products", productId);
-
       const snap = await getDoc(ref);
-
       if (snap.exists()) {
         setProduct(snap.data() as ProductData);
       }
 
       const res = await fetch(`/api/users?id=${referenceID}`);
-
       const userData = await res.json();
-
       setUser(userData);
 
       setLoading(false);
@@ -112,21 +108,22 @@ export default function ViewProduct({ productId, referenceID }: Props) {
   }, [open, productId, referenceID]);
 
   const supplier = product?.supplier?.company || "-";
-
   const usage = product?.categoryTypes?.[0]?.categoryTypeName || "-";
-
   const family = product?.productFamilies?.[0]?.productFamilyName || "-";
 
   return (
     <>
-      <Button
-        size="sm"
-        variant="secondary"
-        className="w-full"
-        onClick={() => setOpen(true)}
-      >
-        View
-      </Button>
+      {/* Only show trigger button when not externally controlled */}
+      {!defaultOpen && (
+        <Button
+          size="sm"
+          variant="secondary"
+          className="w-full"
+          onClick={() => setOpen(true)}
+        >
+          View
+        </Button>
+      )}
 
       {open && (
         <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-start md:items-center pt-4 md:pt-0">
@@ -157,7 +154,7 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                     Generate TDS
                   </Button>
 
-                  <Button variant="outline" onClick={() => setOpen(false)}>
+                  <Button variant="outline" onClick={handleClose}>
                     Close
                   </Button>
                 </div>
@@ -181,7 +178,6 @@ export default function ViewProduct({ productId, referenceID }: Props) {
 
                     <div className="text-sm">
                       <div className="font-semibold">Added By</div>
-
                       <div>
                         {user
                           ? `${user.Firstname || "-"} ${user.Lastname || "-"} (${user.Role || "-"})`
@@ -201,13 +197,13 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                       onChange={(e) => setHideEmptySpecs(e.target.checked)}
                       className="w-4 h-4"
                     />
-
                     <span className="text-sm">
                       {hideEmptySpecs
                         ? "Remove Empty Specifications (ON)"
                         : "Remove Empty Specifications (OFF)"}
                     </span>
                   </div>
+
                   {loading ? (
                     <p>Loading...</p>
                   ) : (
@@ -219,7 +215,6 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                               <td className="border p-2 font-semibold w-[40%]">
                                 Supplier / Company
                               </td>
-
                               <td className="border p-2">{supplier}</td>
                             </tr>
 
@@ -227,7 +222,6 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                               <td className="border p-2 font-semibold">
                                 Price Point
                               </td>
-
                               <td className="border p-2">
                                 {product?.pricePoint || "-"}
                               </td>
@@ -237,7 +231,6 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                               <td className="border p-2 font-semibold">
                                 Brand Origin
                               </td>
-
                               <td className="border p-2">
                                 {product?.brandOrigin || "-"}
                               </td>
@@ -247,7 +240,6 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                               <td className="border p-2 font-semibold">
                                 Product Class
                               </td>
-
                               <td className="border p-2">
                                 {product?.productClass || "-"}
                               </td>
@@ -257,7 +249,6 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                               <td className="border p-2 font-semibold">
                                 Product Usage
                               </td>
-
                               <td className="border p-2">{usage}</td>
                             </tr>
 
@@ -265,7 +256,6 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                               <td className="border p-2 font-semibold">
                                 Product Family
                               </td>
-
                               <td className="border p-2">{family}</td>
                             </tr>
                           </tbody>
@@ -290,17 +280,13 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                                   {group.specs
                                     .filter((spec) => {
                                       if (!hideEmptySpecs) return true;
-
                                       if (!spec.value) return false;
-
                                       const val = spec.value.trim();
-
                                       return val !== "" && val !== "-";
                                     })
                                     .map((spec, s) => {
                                       const activeFilters =
-                                        (window as any).__ACTIVE_FILTERS__ ||
-                                        [];
+                                        (window as any).__ACTIVE_FILTERS__ || [];
 
                                       let displayValue = spec.value || "-";
 
@@ -324,7 +310,6 @@ export default function ViewProduct({ productId, referenceID }: Props) {
                                           <td className="border p-2 font-semibold w-[40%]">
                                             {spec.specId || "-"}
                                           </td>
-
                                           <td className="border p-2">
                                             {displayValue}
                                           </td>

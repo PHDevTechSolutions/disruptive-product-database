@@ -21,9 +21,10 @@ type Props = {
   productId: string;
   productName: string;
   referenceID: string;
-
-  // 👇 NEW – callback para matanggal agad sa UI
   onDeleted?: (id: string) => void;
+  // NEW: optional external open control
+  defaultOpen?: boolean;
+  onClose?: () => void;
 };
 
 export default function AddProductDeleteProductItem({
@@ -31,9 +32,16 @@ export default function AddProductDeleteProductItem({
   productName,
   referenceID,
   onDeleted,
+  defaultOpen = false,
+  onClose,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [deleting, setDeleting] = useState(false);
+
+  const handleOpenChange = (val: boolean) => {
+    setOpen(val);
+    if (!val) onClose?.();
+  };
 
   const handleSoftDelete = async () => {
     try {
@@ -49,8 +57,7 @@ export default function AddProductDeleteProductItem({
 
       toast.success("Product deleted successfully");
       setOpen(false);
-
-      // 👇 INSTANT UI UPDATE
+      onClose?.();
       onDeleted?.(productId);
 
     } catch (error) {
@@ -62,13 +69,16 @@ export default function AddProductDeleteProductItem({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="destructive" className="flex-1">
-          <Trash2 className="h-4 w-4 mr-1" />
-          Delete
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {/* Only show trigger button when not externally controlled */}
+      {!defaultOpen && (
+        <DialogTrigger asChild>
+          <Button size="sm" variant="destructive" className="flex-1">
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
@@ -85,7 +95,7 @@ export default function AddProductDeleteProductItem({
         <DialogFooter className="gap-2">
           <Button
             variant="secondary"
-            onClick={() => setOpen(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={deleting}
           >
             Cancel

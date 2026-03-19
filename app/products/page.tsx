@@ -14,6 +14,7 @@ import UploadProductModal from "@/components/upload-product";
 import DownloadProduct from "@/components/download-product";
 import ViewProduct from "@/components/view-product";
 import HardDeleteProducts from "@/components/hard-delete-products";
+import { Pencil, Trash2, Eye } from "lucide-react";
 
 // ===== GOOGLE DRIVE IMAGE FIX =====
 const convertDriveToThumbnail = (url: string) => {
@@ -37,6 +38,9 @@ export default function ProductsPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [viewTarget, setViewTarget] = useState<string | null>(null);
 
   const [cardScale, setCardScale] = useState(() => {
     if (typeof window !== "undefined") {
@@ -175,46 +179,81 @@ export default function ProductsPage() {
                   {paginatedProducts.map((p) => (
                     <div
                       key={p.id}
-                      className="border rounded-xl bg-card shadow-sm hover:shadow-md flex flex-col overflow-hidden h-full"
+                      className="group border rounded-xl bg-card shadow-sm hover:shadow-md flex flex-col overflow-hidden h-full"
                     >
-                      <div className="h-[180px] bg-muted flex items-center justify-center overflow-hidden p-2">
+                      {/* Image with hover overlay */}
+                      <div className="relative h-[180px] bg-muted flex items-center justify-center overflow-hidden rounded-t-xl">
                         {p.mainImage?.url ? (
                           <img
                             src={convertDriveToThumbnail(p.mainImage.url)}
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-contain p-2 transition-all duration-300 group-hover:brightness-75"
                           />
                         ) : (
-                          <div className="flex items-center justify-center h-full text-xs">
+                          <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
                             No Image
                           </div>
                         )}
+
+                        {/* 3 icon buttons — top right corner, shown on hover */}
+                        <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+
+                          {/* View */}
+                          <div className="relative group/view flex items-center justify-end">
+                            <span className="mr-2 whitespace-nowrap text-[10px] font-medium text-white bg-black/70 rounded px-1.5 py-0.5 opacity-0 group-hover/view:opacity-100 transition-opacity duration-150 pointer-events-none">
+                              View
+                            </span>
+                            <button
+                              className="w-8 h-8 rounded-full flex items-center justify-center bg-white/90 hover:bg-white shadow-md transition-all duration-150"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewTarget(p.id);
+                              }}
+                            >
+                              <Eye className="w-4 h-4 text-gray-700" />
+                            </button>
+                          </div>
+
+                          {/* Edit */}
+                          <div className="relative group/edit flex items-center justify-end">
+                            <span className="mr-2 whitespace-nowrap text-[10px] font-medium text-white bg-black/70 rounded px-1.5 py-0.5 opacity-0 group-hover/edit:opacity-100 transition-opacity duration-150 pointer-events-none">
+                              Edit
+                            </span>
+                            <button
+                              className="w-8 h-8 rounded-full flex items-center justify-center bg-white/90 hover:bg-white shadow-md transition-all duration-150"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/edit-product?id=${p.id}`);
+                              }}
+                            >
+                              <Pencil className="w-4 h-4 text-blue-600" />
+                            </button>
+                          </div>
+
+                          {/* Delete */}
+                          <div className="relative group/delete flex items-center justify-end">
+                            <span className="mr-2 whitespace-nowrap text-[10px] font-medium text-white bg-black/70 rounded px-1.5 py-0.5 opacity-0 group-hover/delete:opacity-100 transition-opacity duration-150 pointer-events-none">
+                              Delete
+                            </span>
+                            <button
+                              className="w-8 h-8 rounded-full flex items-center justify-center bg-white/90 hover:bg-white shadow-md transition-all duration-150"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget({ id: p.id, name: p.productName });
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </button>
+                          </div>
+
+                        </div>
                       </div>
 
+                      {/* Product info */}
                       <div className="p-3 flex-1 flex flex-col">
                         <h2 className="text-sm font-semibold line-clamp-2">{p.productName}</h2>
                         <p className="text-xs font-bold text-blue-600 line-clamp-1">
                           {p.supplier?.supplierBrand || "-"}
                         </p>
-                      </div>
-
-                      <div className="p-2 border-t flex flex-wrap gap-2 mt-auto">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => router.push(`/edit-product?id=${p.id}`)}
-                        >
-                          Edit
-                        </Button>
-                        <AddProductDeleteProductItem
-                          productId={p.id}
-                          productName={p.productName}
-                          referenceID={userId ?? ""}
-                          onDeleted={(id) =>
-                            setProducts((prev) => prev.filter((prod) => prod.id !== id))
-                          }
-                        />
-                        <ViewProduct productId={p.id} referenceID={userId ?? ""} />
                       </div>
                     </div>
                   ))}
@@ -259,6 +298,33 @@ export default function ProductsPage() {
           )}
         </div>
       </div>
+
+      {/* DELETE MODAL — rendered outside grid, opens via deleteTarget state */}
+      {deleteTarget && (
+        <AddProductDeleteProductItem
+          key={`delete-${deleteTarget.id}`}
+          productId={deleteTarget.id}
+          productName={deleteTarget.name}
+          referenceID={userId ?? ""}
+          defaultOpen={true}
+          onDeleted={(id) => {
+            setProducts((prev) => prev.filter((prod) => prod.id !== id));
+            setDeleteTarget(null);
+          }}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {/* VIEW MODAL — rendered outside grid, opens via viewTarget state */}
+      {viewTarget && (
+        <ViewProduct
+          key={`view-${viewTarget}`}
+          productId={viewTarget}
+          referenceID={userId ?? ""}
+          defaultOpen={true}
+          onClose={() => setViewTarget(null)}
+        />
+      )}
     </div>
   );
 }
