@@ -3,6 +3,24 @@ import { supabase } from "@/utils/supabase";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
+/* ─────────────────────────────────────────────────────────────────
+   DELIMITER STRATEGY (all stored in Supabase columns):
+
+   Within one product's tech specs:
+     "@@"  → separates spec GROUPS  (LAMP DETAILS vs ELECTRICAL)
+     "~~"  → separates group TITLE from its spec rows
+     ";;"  → separates individual SPEC ROWS within a group
+
+   Between products within the same item row:
+     ","   → standard comma separator (existing behavior)
+
+   Between item ROWS:
+     " |ROW| "  → row boundary separator
+                  parsed by spf-request-view.tsx to show the right
+                  products under the right item row
+─────────────────────────────────────────────────────────────────── */
+const ROW_SEP = "|ROW|";
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -18,7 +36,8 @@ export default async function handler(
       spf_number,
       referenceid,
       tsm,
-      selectedProducts
+      totalItemRows,
+      selectedProducts,
     } = req.body;
 
     if (!spf_number) {
@@ -26,133 +45,131 @@ export default async function handler(
     }
 
     const products = Array.isArray(selectedProducts) ? selectedProducts : [];
+    const rowCount = typeof totalItemRows === "number" ? totalItemRows : 1;
 
-    /* PRODUCT ARRAYS */
+    /* ── Group products by their item row ── */
+    const rowMap: Record<number, any[]> = {};
+    for (let i = 0; i < rowCount; i++) rowMap[i] = [];
+    for (const p of products) {
+      const idx = typeof p.__rowIndex === "number" ? p.__rowIndex : 0;
+      if (!rowMap[idx]) rowMap[idx] = [];
+      rowMap[idx].push(p);
+    }
 
-    const images: string[] = [];
-    const qtys: string[] = [];
-    const specs: string[] = [];
-    const unitCosts: string[] = [];
-    const packaging: string[] = [];
-    const factories: string[] = [];
-    const ports: string[] = [];
-    const subtotals: string[] = [];
-
-    /* SUPPLIER ARRAYS */
+    /* ── Build per-row arrays, then join rows with ROW_SEP ── */
+    const rowImages: string[] = [];
+    const rowQtys: string[] = [];
+    const rowSpecs: string[] = [];
+    const rowUnitCosts: string[] = [];
+    const rowPackaging: string[] = [];
+    const rowFactories: string[] = [];
+    const rowPorts: string[] = [];
+    const rowSubtotals: string[] = [];
+    const rowSupplierBrands: string[] = [];
 
     const company_names: string[] = [];
-    const supplier_brands: string[] = [];
     const contact_names: string[] = [];
     const contact_numbers: string[] = [];
 
-    /* LOOP PRODUCTS */
-    for (const p of products) {
+    for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+      const rowProducts = rowMap[rowIdx] || [];
 
-      const qty = Number(p.qty || 0);
-      const unitCost = Number(p?.commercialDetails?.unitCost || 0);
+      const images: string[] = [];
+      const qtys: string[] = [];
+      const specs: string[] = [];
+      const unitCosts: string[] = [];
+      const packaging: string[] = [];
+      const factories: string[] = [];
+      const ports: string[] = [];
+      const subtotals: string[] = [];
+      const supplierBrands: string[] = [];
 
-      const length = p?.commercialDetails?.packaging?.length || "-";
-      const width = p?.commercialDetails?.packaging?.width || "-";
-      const height = p?.commercialDetails?.packaging?.height || "-";
+      for (const p of rowProducts) {
 
-      const factory = p?.commercialDetails?.factoryAddress || "-";
-      const port = p?.commercialDetails?.portOfDischarge || "-";
+        const qty = Number(p.qty || 0);
+        const unitCost = Number(p?.commercialDetails?.unitCost || 0);
+        const length = p?.commercialDetails?.packaging?.length || "-";
+        const width = p?.commercialDetails?.packaging?.width || "-";
+        const height = p?.commercialDetails?.packaging?.height || "-";
+        const factory = p?.commercialDetails?.factoryAddress || "-";
+        const port = p?.commercialDetails?.portOfDischarge || "-";
+        const subtotal = qty * unitCost;
 
-      const subtotal = qty * unitCost;
+        images.push(p?.mainImage?.url || "-");
+        qtys.push(String(qty));
+        unitCosts.push(String(unitCost));
+        packaging.push(`${length} x ${width} x ${height}`);
+        factories.push(factory);
+        ports.push(port);
+        subtotals.push(String(subtotal));
+        supplierBrands.push(p?.supplier?.supplierBrand || "-");
 
-      images.push(p?.mainImage?.url || "-");
-      qtys.push(String(qty));
-      unitCosts.push(String(unitCost));
-      packaging.push(`${length} x ${width} x ${height}`);
-      factories.push(factory);
-      ports.push(port);
-      subtotals.push(String(subtotal));
-
-      /* ─────────────────────────────────────────────────────────────
-         TECH SPECS — new format preserving group titles:
-           "TITLE~~spec1: val1 | spec2: val2@@TITLE2~~spec3: val3"
-         Groups separated by "@@", title from specs by "~~", specs by "|"
-      ───────────────────────────────────────────────────────────── */
-      if (
-        p?.technicalSpecifications &&
-        Array.isArray(p.technicalSpecifications) &&
-        p.technicalSpecifications.length > 0
-      ) {
-        const groupedTech = p.technicalSpecifications
-          .map((g: any) => {
-            const title = (g.title || "").trim();
-            const specLines = (g.specs || [])
-              .filter((s: any) => s.value && s.value.trim() !== "")
-              .map((s: any) => `${s.specId}: ${s.value}`)
-              .join(" | ");
-
-            if (!specLines) return null;
-
-            return title ? `${title}~~${specLines}` : specLines;
-          })
-          .filter(Boolean)
-          .join("@@");
-
-        specs.push(groupedTech || "-");
-      } else {
-        specs.push("-");
-      }
-
-      /* SUPPLIER DATA */
-
-      const company = p?.supplier?.company || "-";
-      const brand = p?.supplier?.supplierBrand || "-";
-
-      supplier_brands.push(brand);
-
-      if (!company_names.includes(company)) {
-        company_names.push(company);
-      }
-
-      /* CONTACTS - FETCH FROM SUPPLIER COLLECTION */
-
-      if (p?.supplier?.supplierId) {
-
-        try {
-
-          const supplierRef = doc(db, "suppliers", p.supplier.supplierId);
-          const supplierSnap = await getDoc(supplierRef);
-
-          if (supplierSnap.exists()) {
-
-            const supplierData: any = supplierSnap.data();
-            const contacts = supplierData.contacts || [];
-
-            const names = contacts
-              .map((c: any) => c.name)
-              .filter(Boolean)
-              .join(" | ");
-
-            const phones = contacts
-              .map((c: any) => c.phone)
-              .filter(Boolean)
-              .join(" | ");
-
-            if (names && !contact_names.includes(names)) {
-              contact_names.push(names);
-            }
-
-            if (phones && !contact_numbers.includes(phones)) {
-              contact_numbers.push(phones);
-            }
-
-          }
-
-        } catch (err) {
-          console.error("Supplier contact fetch error:", err);
+        /* TECH SPECS */
+        if (p?.technicalSpecifications?.length) {
+          const groupedTech = p.technicalSpecifications
+            .map((g: any) => {
+              const title = (g.title || "").trim();
+              const specLines = (g.specs || [])
+                .filter((s: any) => s.value && s.value.trim() !== "")
+                .map((s: any) => `${s.specId}: ${s.value.trim()}`)
+                .join(";;");
+              if (!specLines) return null;
+              return title ? `${title}~~${specLines}` : specLines;
+            })
+            .filter(Boolean)
+            .join("@@");
+          specs.push(groupedTech || "-");
+        } else {
+          specs.push("-");
         }
 
+        /* COMPANY NAMES (deduplicated across all rows) */
+        const company = p?.supplier?.company || "-";
+        if (!company_names.includes(company)) company_names.push(company);
+
+        /* CONTACTS */
+        if (p?.supplier?.supplierId) {
+          try {
+            const supplierRef = doc(db, "suppliers", p.supplier.supplierId);
+            const supplierSnap = await getDoc(supplierRef);
+            if (supplierSnap.exists()) {
+              const supplierData: any = supplierSnap.data();
+              const contacts = supplierData.contacts || [];
+              const names = contacts.map((c: any) => c.name).filter(Boolean).join(" | ");
+              const phones = contacts.map((c: any) => c.phone).filter(Boolean).join(" | ");
+              if (names && !contact_names.includes(names)) contact_names.push(names);
+              if (phones && !contact_numbers.includes(phones)) contact_numbers.push(phones);
+            }
+          } catch (err) {
+            console.error("Supplier contact fetch error:", err);
+          }
+        }
       }
 
+      /* Each row's products joined by comma, rows joined by ROW_SEP */
+      rowImages.push(images.join(","));
+      rowQtys.push(qtys.join(","));
+      rowSpecs.push(specs.join(" || "));
+      rowUnitCosts.push(unitCosts.join(","));
+      rowPackaging.push(packaging.join(","));
+      rowFactories.push(factories.join(","));
+      rowPorts.push(ports.join(","));
+      rowSubtotals.push(subtotals.join(","));
+      rowSupplierBrands.push(supplierBrands.join(","));
     }
 
-    /* CHECK EXISTING SPF */
+    /* ── Final strings stored in Supabase ── */
+    const finalImages = rowImages.join(ROW_SEP);
+    const finalQtys = rowQtys.join(ROW_SEP);
+    const finalSpecs = rowSpecs.join(ROW_SEP);
+    const finalUnitCosts = rowUnitCosts.join(ROW_SEP);
+    const finalPackaging = rowPackaging.join(ROW_SEP);
+    const finalFactories = rowFactories.join(ROW_SEP);
+    const finalPorts = rowPorts.join(ROW_SEP);
+    const finalSubtotals = rowSubtotals.join(ROW_SEP);
+    const finalSupplierBrands = rowSupplierBrands.join(ROW_SEP);
 
+    /* CHECK EXISTING SPF */
     const { data: existing, error: checkError } = await supabase
       .from("spf_creation")
       .select("id")
@@ -165,52 +182,46 @@ export default async function handler(
     }
 
     /* INSERT SPF */
-
     if (!existing) {
-
       const { error: insertError } = await supabase
         .from("spf_creation")
         .insert({
-
           spf_number,
           referenceid,
           tsm,
 
           company_name: company_names.join(","),
-          supplier_brand: supplier_brands.join(","),
+          supplier_brand: finalSupplierBrands,
           contact_name: contact_names.join(","),
           contact_number: contact_numbers.join(","),
 
-          product_offer_image: images.join(","),
-          product_offer_qty: qtys.join(","),
-          product_offer_technical_specification: specs.join(" || "),
-          product_offer_unit_cost: unitCosts.join(","),
-          product_offer_packaging_details: packaging.join(","),
-          product_offer_factory_address: factories.join(","),
-          product_offer_port_of_discharge: ports.join(","),
-          product_offer_subtotal: subtotals.join(","),
+          product_offer_image: finalImages,
+          product_offer_qty: finalQtys,
+          product_offer_technical_specification: finalSpecs,
+          product_offer_unit_cost: finalUnitCosts,
+          product_offer_packaging_details: finalPackaging,
+          product_offer_factory_address: finalFactories,
+          product_offer_port_of_discharge: finalPorts,
+          product_offer_subtotal: finalSubtotals,
 
           status: "Pending For Procurement",
 
           date_created: new Date().toISOString(),
-          date_updated: new Date().toISOString()
-
+          date_updated: new Date().toISOString(),
         });
 
       if (insertError) {
         console.error(insertError);
         return res.status(500).json(insertError);
       }
-
     }
 
-    /* UPDATE REQUEST */
-
+    /* UPDATE REQUEST STATUS */
     const { error: updateError } = await supabase
       .from("spf_request")
       .update({
         status: "Processed by PD",
-        date_updated: new Date().toISOString()
+        date_updated: new Date().toISOString(),
       })
       .eq("spf_number", spf_number);
 
@@ -219,19 +230,10 @@ export default async function handler(
       return res.status(500).json(updateError);
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "SPF created successfully"
-    });
+    return res.status(200).json({ success: true, message: "SPF created successfully" });
 
   } catch (err: any) {
-
     console.error(err);
-
-    return res.status(500).json({
-      message: err.message || "Server error"
-    });
-
+    return res.status(500).json({ message: err.message || "Server error" });
   }
-
 }

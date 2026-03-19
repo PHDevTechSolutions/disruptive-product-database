@@ -34,36 +34,49 @@ type SPFRequestData = {
   item_photo: string;
 };
 
-/* ─────────────────────────────────────────────
-   TECH-SPEC PARSER
-   Saved format (per product, separated by " || "):
-     "LAMP DETAILS~~CCT: 3000K, Wattage: 7W@@ELECTRICAL SPECIFICATION~~Voltage: 220V"
-   Legacy flat format (no "~~"):
-     "CCT: 3000K, Wattage: 7W | Voltage: 220V"
-───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────
+   DELIMITERS
+     |ROW|   → boundary between item rows
+     ,        → boundary between products within a row
+     ||       → boundary between products' tech spec strings
+     @@       → boundary between spec groups within one product
+     ~~       → title ↔ spec rows within a group
+     ;;       → individual spec rows within a group
+─────────────────────────────────────────────────────────────────── */
+const ROW_SEP = "|ROW|";
+
 type SpecGroup = { title: string; specs: string[] };
 
 function parseTechSpec(raw: string): SpecGroup[] {
   if (!raw || raw === "-") return [];
 
-  // New format: groups separated by "@@", title~~specs
   if (raw.includes("~~")) {
     return raw.split("@@").map((chunk) => {
-      const [title, rest] = chunk.split("~~");
-      const specs = (rest || "")
-        .split("|")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      return { title: title.trim(), specs };
+      const [titlePart, rest = ""] = chunk.split("~~");
+      const specs = rest.split(";;").map((s) => s.trim()).filter(Boolean);
+      return { title: titlePart.trim(), specs };
     });
   }
 
-  // Legacy flat format: just pipe-separated key:value pairs, no titles
-  const specs = raw
-    .split("|")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  // Legacy flat format
+  const specs = raw.split(" | ").map((s) => s.trim()).filter(Boolean);
   return specs.length ? [{ title: "", specs }] : [];
+}
+
+/* Split a stored column value into per-row arrays, then per-product within each row */
+function splitByRow(value: string | undefined): string[][] {
+  if (!value) return [];
+  return value.split(ROW_SEP).map((rowStr) =>
+    rowStr.split(",").map((v) => v.trim())
+  );
+}
+
+/* Tech specs use " || " between products within a row, and ROW_SEP between rows */
+function splitSpecsByRow(value: string | undefined): SpecGroup[][][] {
+  if (!value) return [];
+  return value.split(ROW_SEP).map((rowStr) =>
+    rowStr.split(" || ").map(parseTechSpec)
+  );
 }
 
 export default function SPFRequestView({ spfNumber }: SPFViewProps) {
@@ -82,11 +95,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
         .eq("spf_number", spfNumber)
         .maybeSingle();
 
-      if (error) {
-        console.error(error);
-        return;
-      }
-
+      if (error) { console.error(error); return; }
       setData(creation);
 
       const { data: request } = await supabase
@@ -103,9 +112,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
     }
   };
 
-  useEffect(() => {
-    if (open) fetchSPF();
-  }, [open]);
+  useEffect(() => { if (open) fetchSPF(); }, [open]);
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -114,49 +121,30 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
         .select("status")
         .eq("spf_number", spfNumber)
         .maybeSingle();
-
-      if (data) {
-        setData((prev: any) => ({ ...prev, status: data.status }));
-      }
+      if (data) setData((prev: any) => ({ ...prev, status: data.status }));
     };
     fetchStatus();
   }, [spfNumber]);
 
-  /* ── helpers ── */
-  const split = (value?: string) => {
-    if (!value) return [];
-    return value.split(",");
-  };
+  /* ── Parse all columns into per-row, per-product arrays ── */
+  const rowImages        = splitByRow(data?.product_offer_image);
+  const rowQtys          = splitByRow(data?.product_offer_qty);
+  const rowUnitCosts     = splitByRow(data?.product_offer_unit_cost);
+  const rowPackaging     = splitByRow(data?.product_offer_packaging_details);
+  const rowFactories     = splitByRow(data?.product_offer_factory_address);
+  const rowPorts         = splitByRow(data?.product_offer_port_of_discharge);
+  const rowSubtotals     = splitByRow(data?.product_offer_subtotal);
+  const rowSupplierBrands = splitByRow(data?.supplier_brand);
+  const rowSpecs         = splitSpecsByRow(data?.product_offer_technical_specification);
 
-  // Tech specs are separated by " || " (one entry per product)
-  const splitSpecs = (value?: string): SpecGroup[][] => {
-    if (!value) return [];
-    return value.split(" || ").map(parseTechSpec);
-  };
-
-  const supplierBrands = split(data?.supplier_brand);
-  const images = split(data?.product_offer_image);
-  const qtys = split(data?.product_offer_qty);
-  const unitCosts = split(data?.product_offer_unit_cost);
-  const packaging = split(data?.product_offer_packaging_details);
-  const factories = split(data?.product_offer_factory_address);
-  const ports = split(data?.product_offer_port_of_discharge);
-  const subtotals = split(data?.product_offer_subtotal);
-  const specsPerProduct = splitSpecs(
-    data?.product_offer_technical_specification
-  );
-
-  const itemDescriptions = split(requestData?.item_description);
-  const itemImages = split(requestData?.item_photo);
+  /* Item descriptions / photos are comma-separated (one per item row) */
+  const itemDescriptions = (requestData?.item_description || "").split(",").map((s) => s.trim());
+  const itemImages       = (requestData?.item_photo || "").split(",").map((s) => s.trim());
 
   return (
     <>
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          className="rounded-none p-6"
-          onClick={() => setOpen(true)}
-        >
+        <Button variant="outline" className="rounded-none p-6" onClick={() => setOpen(true)}>
           View
         </Button>
 
@@ -197,151 +185,148 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                 </thead>
 
                 <tbody>
-                  {itemDescriptions.map((desc, index) => (
-                    <tr key={index} className="align-top">
-                      {/* SPF NUMBER */}
-                      <td className="border px-3 py-2 text-center align-middle whitespace-nowrap font-medium">
-                        {spfNumber}-{String(index + 1).padStart(3, "0")}
-                      </td>
+                  {itemDescriptions.map((desc, rowIndex) => {
+                    /* Products for THIS item row only */
+                    const prodImages     = rowImages[rowIndex]         ?? [];
+                    const prodQtys       = rowQtys[rowIndex]           ?? [];
+                    const prodUnitCosts  = rowUnitCosts[rowIndex]      ?? [];
+                    const prodPackaging  = rowPackaging[rowIndex]      ?? [];
+                    const prodFactories  = rowFactories[rowIndex]      ?? [];
+                    const prodPorts      = rowPorts[rowIndex]          ?? [];
+                    const prodSubtotals  = rowSubtotals[rowIndex]      ?? [];
+                    const prodBrands     = rowSupplierBrands[rowIndex] ?? [];
+                    const prodSpecs      = rowSpecs[rowIndex]          ?? [];
 
-                      {/* ITEM IMAGE */}
-                      <td className="border px-3 py-2 text-center align-middle">
-                        {itemImages[index] ? (
-                          <img
-                            src={itemImages[index]}
-                            className="w-24 h-24 object-contain mx-auto"
-                          />
-                        ) : (
-                          <span className="text-muted-foreground text-xs">-</span>
-                        )}
-                      </td>
+                    return (
+                      <tr key={rowIndex} className="align-top">
 
-                      {/* DESCRIPTION */}
-                      <td className="border px-3 py-2 whitespace-pre-wrap align-middle text-sm leading-relaxed">
-                        {desc.replace(/\|/g, "\n")}
-                      </td>
+                        {/* SPF NUMBER */}
+                        <td className="border px-3 py-2 text-center align-middle whitespace-nowrap font-medium">
+                          {spfNumber}-{String(rowIndex + 1).padStart(3, "0")}
+                        </td>
 
-                      {/* PRODUCT OFFERS */}
-                      <td className="border px-2 py-2">
-                        <table className="w-full border text-xs">
-                          <thead>
-                            <tr className="bg-gray-50">
-                              <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                Supplier Brand
-                              </th>
-                              <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                Image
-                              </th>
-                              <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                Qty
-                              </th>
-                              <th className="border px-2 py-1 text-center min-w-[200px]">
-                                Technical Specs
-                              </th>
-                              <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                Unit Cost
-                              </th>
-                              <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                Packaging
-                              </th>
-                              <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                Factory
-                              </th>
-                              <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                Port
-                              </th>
-                              <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                Subtotal
-                              </th>
-                            </tr>
-                          </thead>
+                        {/* ITEM IMAGE */}
+                        <td className="border px-3 py-2 text-center align-middle">
+                          {itemImages[rowIndex] ? (
+                            <img src={itemImages[rowIndex]} className="w-24 h-24 object-contain mx-auto" />
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </td>
 
-                          <tbody>
-                            {images.map((img, i) => {
-                              const groups = specsPerProduct[i] ?? [];
+                        {/* DESCRIPTION */}
+                        <td className="border px-3 py-2 whitespace-pre-wrap align-middle text-sm leading-relaxed">
+                          {desc.replace(/\|/g, "\n")}
+                        </td>
 
-                              return (
-                                <tr key={i} className="align-top">
-                                  {/* SUPPLIER BRAND */}
-                                  <td className="border px-2 py-2 text-center align-middle font-medium">
-                                    {supplierBrands[i] || "-"}
-                                  </td>
-
-                                  {/* PRODUCT IMAGE */}
-                                  <td className="border px-2 py-2 text-center align-middle">
-                                    {img && img !== "-" ? (
-                                      <img
-                                        src={img}
-                                        className="w-16 h-16 object-contain mx-auto"
-                                      />
-                                    ) : (
-                                      <span className="text-muted-foreground">-</span>
-                                    )}
-                                  </td>
-
-                                  {/* QTY */}
-                                  <td className="border px-2 py-2 text-center align-middle">
-                                    {qtys[i] || "-"}
-                                  </td>
-
-                                  {/* TECHNICAL SPECS — grouped with bold titles */}
-                                  <td className="border px-2 py-2 align-top">
-                                    {groups.length === 0 ? (
-                                      <span className="text-muted-foreground">-</span>
-                                    ) : (
-                                      <div className="space-y-2">
-                                        {groups.map((group, gi) => (
-                                          <div key={gi}>
-                                            {group.title && (
-                                              <p className="font-bold text-[11px] uppercase tracking-wide text-gray-700 mb-0.5">
-                                                {group.title}
-                                              </p>
-                                            )}
-                                            <div className="space-y-0.5">
-                                              {group.specs.map((spec, si) => (
-                                                <p key={si} className="text-[11px] text-gray-600 leading-tight">
-                                                  {spec}
-                                                </p>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </td>
-
-                                  {/* UNIT COST */}
-                                  <td className="border px-2 py-2 text-center align-middle">
-                                    {unitCosts[i] || "-"}
-                                  </td>
-
-                                  {/* PACKAGING */}
-                                  <td className="border px-2 py-2 text-center align-middle">
-                                    {packaging[i] || "-"}
-                                  </td>
-
-                                  {/* FACTORY */}
-                                  <td className="border px-2 py-2 text-center align-middle">
-                                    {factories[i] || "-"}
-                                  </td>
-
-                                  {/* PORT */}
-                                  <td className="border px-2 py-2 text-center align-middle">
-                                    {ports[i] || "-"}
-                                  </td>
-
-                                  {/* SUBTOTAL */}
-                                  <td className="border px-2 py-2 text-center align-middle font-semibold">
-                                    ₱{Number(subtotals[i] || 0).toLocaleString()}
-                                  </td>
+                        {/* PRODUCT OFFERS — only this row's products */}
+                        <td className="border px-2 py-2">
+                          {prodImages.length === 0 || (prodImages.length === 1 && prodImages[0] === "") ? (
+                            <span className="text-xs text-muted-foreground">No products added</span>
+                          ) : (
+                            <table className="w-full border text-xs">
+                              <thead>
+                                <tr className="bg-gray-50">
+                                  <th className="border px-2 py-1 text-center whitespace-nowrap">Supplier Brand</th>
+                                  <th className="border px-2 py-1 text-center whitespace-nowrap">Image</th>
+                                  <th className="border px-2 py-1 text-center whitespace-nowrap">Qty</th>
+                                  <th className="border px-2 py-1 text-center min-w-[200px]">Technical Specs</th>
+                                  <th className="border px-2 py-1 text-center whitespace-nowrap">Unit Cost</th>
+                                  <th className="border px-2 py-1 text-center whitespace-nowrap">Packaging</th>
+                                  <th className="border px-2 py-1 text-center whitespace-nowrap">Factory</th>
+                                  <th className="border px-2 py-1 text-center whitespace-nowrap">Port</th>
+                                  <th className="border px-2 py-1 text-center whitespace-nowrap">Subtotal</th>
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
-                  ))}
+                              </thead>
+
+                              <tbody>
+                                {prodImages.map((img, i) => {
+                                  const groups = prodSpecs[i] ?? [];
+
+                                  return (
+                                    <tr key={i} className="align-top">
+
+                                      {/* SUPPLIER BRAND */}
+                                      <td className="border px-2 py-2 text-center align-middle font-medium">
+                                        {prodBrands[i] || "-"}
+                                      </td>
+
+                                      {/* PRODUCT IMAGE */}
+                                      <td className="border px-2 py-2 text-center align-middle">
+                                        {img && img !== "-" ? (
+                                          <img src={img} className="w-16 h-16 object-contain mx-auto" />
+                                        ) : (
+                                          <span className="text-muted-foreground">-</span>
+                                        )}
+                                      </td>
+
+                                      {/* QTY */}
+                                      <td className="border px-2 py-2 text-center align-middle">
+                                        {prodQtys[i] || "-"}
+                                      </td>
+
+                                      {/* TECHNICAL SPECS — grouped with bold titles */}
+                                      <td className="border px-2 py-2 align-top">
+                                        {groups.length === 0 ? (
+                                          <span className="text-muted-foreground">-</span>
+                                        ) : (
+                                          <div className="space-y-2">
+                                            {groups.map((group, gi) => (
+                                              <div key={gi}>
+                                                {group.title && (
+                                                  <p className="font-bold text-[11px] uppercase tracking-wide text-gray-800 mb-0.5">
+                                                    {group.title}
+                                                  </p>
+                                                )}
+                                                <div className="space-y-0.5">
+                                                  {group.specs.map((spec, si) => (
+                                                    <p key={si} className="text-[11px] text-gray-600 leading-snug">
+                                                      {spec}
+                                                    </p>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </td>
+
+                                      {/* UNIT COST */}
+                                      <td className="border px-2 py-2 text-center align-middle">
+                                        {prodUnitCosts[i] || "-"}
+                                      </td>
+
+                                      {/* PACKAGING */}
+                                      <td className="border px-2 py-2 text-center align-middle">
+                                        {prodPackaging[i] || "-"}
+                                      </td>
+
+                                      {/* FACTORY */}
+                                      <td className="border px-2 py-2 text-center align-middle">
+                                        {prodFactories[i] || "-"}
+                                      </td>
+
+                                      {/* PORT */}
+                                      <td className="border px-2 py-2 text-center align-middle">
+                                        {prodPorts[i] || "-"}
+                                      </td>
+
+                                      {/* SUBTOTAL */}
+                                      <td className="border px-2 py-2 text-center align-middle font-semibold">
+                                        ₱{Number(prodSubtotals[i] || 0).toLocaleString()}
+                                      </td>
+
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          )}
+                        </td>
+
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </Card>
