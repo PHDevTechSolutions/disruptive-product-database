@@ -36,14 +36,15 @@ type SPFRequestData = {
 
 /* ─────────────────────────────────────────────────────────────────
    DELIMITERS
-     |ROW|   → boundary between item rows
-     ,        → boundary between products within a row
-     ||       → boundary between products' tech spec strings
-     @@       → boundary between spec groups within one product
-     ~~       → title ↔ spec rows within a group
-     ;;       → individual spec rows within a group
+     ","   → boundary between item ROWS
+     "|"   → boundary between products within the same row (options)
+     " || "→ boundary between products' tech spec strings
+     "@@"  → boundary between spec groups within one product
+     "~~"  → title ↔ spec rows within a group
+     ";;"  → individual spec rows within a group
 ───────────────────────────────────────────────────────────────── */
-const ROW_SEP = "|ROW|";
+const ROW_SEP     = ",";
+const PRODUCT_SEP = "|";
 
 type SpecGroup = { title: string; specs: string[] };
 
@@ -63,13 +64,15 @@ function parseTechSpec(raw: string): SpecGroup[] {
   return specs.length ? [{ title: "", specs }] : [];
 }
 
+/* Split column into per-row, then per-product within each row */
 function splitByRow(value: string | undefined): string[][] {
   if (!value) return [];
   return value.split(ROW_SEP).map((rowStr) =>
-    rowStr.split(",").map((v) => v.trim())
+    rowStr.split(PRODUCT_SEP).map((v) => v.trim())
   );
 }
 
+/* Tech specs: rows split by ",", products within row split by " || " */
 function splitSpecsByRow(value: string | undefined): SpecGroup[][][] {
   if (!value) return [];
   return value.split(ROW_SEP).map((rowStr) =>
@@ -135,6 +138,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
   const rowSupplierBrands = splitByRow(data?.supplier_brand);
   const rowSpecs          = splitSpecsByRow(data?.product_offer_technical_specification);
 
+  /* Item descriptions/photos — pipe-separated (one per item row) */
   const itemDescriptions = (requestData?.item_description || "").split(",").map((s) => s.trim());
   const itemImages       = (requestData?.item_photo || "").split(",").map((s) => s.trim());
 
@@ -193,7 +197,8 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                     const prodBrands     = rowSupplierBrands[rowIndex] ?? [];
                     const prodSpecs      = rowSpecs[rowIndex]          ?? [];
 
-                    const hasProducts = prodImages.length > 0 && !(prodImages.length === 1 && prodImages[0] === "");
+                    const hasProducts = prodImages.length > 0 &&
+                      !(prodImages.length === 1 && prodImages[0] === "");
 
                     return (
                       <tr key={rowIndex} className="align-top">
@@ -217,14 +222,14 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                           {desc.replace(/\|/g, "\n")}
                         </td>
 
-                        {/* PRODUCT OFFERS — ALL options stacked & visible agad, no click needed */}
+                        {/* PRODUCT OFFERS — all options stacked, visible agad */}
                         <td className="border px-2 py-2 align-top">
                           {!hasProducts ? (
                             <span className="text-xs text-muted-foreground">No products added</span>
                           ) : (
                             <div className="space-y-3">
                               {prodImages.map((img, i) => {
-                                const groups = prodSpecs[i] ?? [];
+                                const groups      = prodSpecs[i] ?? [];
                                 const hasMultiple = prodImages.length > 1;
 
                                 return (
@@ -233,7 +238,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                                     {hasMultiple && (
                                       <div className="mb-1">
                                         <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                          Option {i + 1} · {prodBrands[i] || "No brand"}
+                                          Option {i + 1} · {prodBrands[i] && prodBrands[i] !== "-" ? prodBrands[i] : "No brand"}
                                         </span>
                                       </div>
                                     )}
@@ -257,12 +262,10 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                                         <tbody>
                                           <tr className="align-top">
 
-                                            {/* SUPPLIER BRAND */}
                                             <td className="border px-2 py-2 text-center align-middle font-medium">
-                                              {prodBrands[i] || "-"}
+                                              {prodBrands[i] && prodBrands[i] !== "-" ? prodBrands[i] : "-"}
                                             </td>
 
-                                            {/* PRODUCT IMAGE */}
                                             <td className="border px-2 py-2 text-center align-middle">
                                               {img && img !== "-" ? (
                                                 <img src={img} className="w-16 h-16 object-contain mx-auto" />
@@ -271,12 +274,10 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                                               )}
                                             </td>
 
-                                            {/* QTY */}
                                             <td className="border px-2 py-2 text-center align-middle">
                                               {prodQtys[i] || "-"}
                                             </td>
 
-                                            {/* TECHNICAL SPECS */}
                                             <td className="border px-2 py-2 align-top">
                                               {groups.length === 0 ? (
                                                 <span className="text-muted-foreground">-</span>
@@ -302,27 +303,22 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                                               )}
                                             </td>
 
-                                            {/* UNIT COST */}
                                             <td className="border px-2 py-2 text-center align-middle">
                                               {prodUnitCosts[i] || "-"}
                                             </td>
 
-                                            {/* PACKAGING */}
                                             <td className="border px-2 py-2 text-center align-middle">
                                               {prodPackaging[i] || "-"}
                                             </td>
 
-                                            {/* FACTORY */}
                                             <td className="border px-2 py-2 text-center align-middle">
                                               {prodFactories[i] || "-"}
                                             </td>
 
-                                            {/* PORT */}
                                             <td className="border px-2 py-2 text-center align-middle">
                                               {prodPorts[i] || "-"}
                                             </td>
 
-                                            {/* SUBTOTAL */}
                                             <td className="border px-2 py-2 text-center align-middle font-semibold">
                                               ₱{Number(prodSubtotals[i] || 0).toLocaleString()}
                                             </td>
