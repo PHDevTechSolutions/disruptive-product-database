@@ -100,7 +100,7 @@ export default function SPF({ processBy }: SPFProps) {
   const [openFilter, setOpenFilter] = useState(false);
   const [viewMode, setViewMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [createdSPF, setCreatedSPF] = useState<Record<string, boolean>>({});
+  const [createdSPF, setCreatedSPF] = useState<Record<string, string>>({});
 
   // Fetch SPF requests
   const fetchRequests = useCallback(async () => {
@@ -124,13 +124,13 @@ export default function SPF({ processBy }: SPFProps) {
       if (spfNumbers.length) {
         const { data: created } = await supabase
           .from("spf_creation")
-          .select("spf_number")
+          .select("spf_number, status")
           .in("spf_number", spfNumbers);
 
-        const map: Record<string, boolean> = {};
+        const map: Record<string, string> = {};
 
         created?.forEach((c: any) => {
-          map[c.spf_number] = true;
+          map[c.spf_number] = c.status;
         });
 
         setCreatedSPF(map);
@@ -298,18 +298,22 @@ export default function SPF({ processBy }: SPFProps) {
                 <div>{formattedDate}</div>
                 <div>
                   <div className="flex gap-2">
-                    <Button
-                      className="rounded-none p-6"
-                      variant="outline"
-                      onClick={() => handleCreateFromRow(req)}
-                    >
-                      Create
-                    </Button>
 
-                    {/* SHOW ONLY IF SPF ALREADY CREATED */}
-                    {createdSPF[req.spf_number] && (
-                      <SPFRequestView spfNumber={req.spf_number} />
-                    )}
+                      {/* SHOW CREATE IF NOT YET PENDING FOR PROCUREMENT */}
+                      {createdSPF[req.spf_number] !== "Pending For Procurement" && (
+                        <Button
+                          className="rounded-none p-6"
+                          variant="outline"
+                          onClick={() => handleCreateFromRow(req)}
+                        >
+                          Create
+                        </Button>
+                      )}
+
+                      {/* SHOW VIEW IF PENDING */}
+                      {createdSPF[req.spf_number] === "Pending For Procurement" && (
+                        <SPFRequestView spfNumber={req.spf_number} />
+                      )}
                   </div>
                 </div>
               </div>
