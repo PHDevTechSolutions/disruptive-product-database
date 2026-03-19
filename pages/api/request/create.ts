@@ -29,21 +29,21 @@ export default async function handler(
 
     /* PRODUCT ARRAYS */
 
-    const images:string[] = [];
-    const qtys:string[] = [];
-    const specs:string[] = [];
-    const unitCosts:string[] = [];
-    const packaging:string[] = [];
-    const factories:string[] = [];
-    const ports:string[] = [];
-    const subtotals:string[] = [];
+    const images: string[] = [];
+    const qtys: string[] = [];
+    const specs: string[] = [];
+    const unitCosts: string[] = [];
+    const packaging: string[] = [];
+    const factories: string[] = [];
+    const ports: string[] = [];
+    const subtotals: string[] = [];
 
     /* SUPPLIER ARRAYS */
 
-    const company_names:string[] = [];
-    const supplier_brands:string[] = [];
-    const contact_names:string[] = [];
-    const contact_numbers:string[] = [];
+    const company_names: string[] = [];
+    const supplier_brands: string[] = []; // ✅ NOW PER-PRODUCT (aligned with other arrays)
+    const contact_names: string[] = [];
+    const contact_numbers: string[] = [];
 
     /* LOOP PRODUCTS */
     for (const p of products) {
@@ -72,8 +72,8 @@ export default async function handler(
 
       const tech =
         p?.technicalSpecifications
-          ?.map((g:any) =>
-            g.specs?.map((s:any)=>`${s.specId}: ${s.value}`).join(", ")
+          ?.map((g: any) =>
+            g.specs?.map((s: any) => `${s.specId}: ${s.value}`).join(", ")
           )
           .join(" | ") || "-";
 
@@ -84,12 +84,12 @@ export default async function handler(
       const company = p?.supplier?.company || "-";
       const brand = p?.supplier?.supplierBrand || "-";
 
+      // ✅ Push per-product (aligned with images, qtys, etc.)
+      supplier_brands.push(brand);
+
+      // Company names stay deduplicated (used for header info only)
       if (!company_names.includes(company)) {
         company_names.push(company);
-      }
-
-      if (!supplier_brands.includes(brand)) {
-        supplier_brands.push(brand);
       }
 
       /* CONTACTS - FETCH FROM SUPPLIER COLLECTION */
@@ -103,16 +103,16 @@ export default async function handler(
 
           if (supplierSnap.exists()) {
 
-            const supplierData:any = supplierSnap.data();
+            const supplierData: any = supplierSnap.data();
             const contacts = supplierData.contacts || [];
 
             const names = contacts
-              .map((c:any)=>c.name)
+              .map((c: any) => c.name)
               .filter(Boolean)
               .join(" | ");
 
             const phones = contacts
-              .map((c:any)=>c.phone)
+              .map((c: any) => c.phone)
               .filter(Boolean)
               .join(" | ");
 
@@ -136,7 +136,7 @@ export default async function handler(
 
     /* CHECK EXISTING SPF */
 
-    const { data:existing, error:checkError } = await supabase
+    const { data: existing, error: checkError } = await supabase
       .from("spf_creation")
       .select("id")
       .eq("spf_number", spf_number)
@@ -151,7 +151,7 @@ export default async function handler(
 
     if (!existing) {
 
-      const { error:insertError } = await supabase
+      const { error: insertError } = await supabase
         .from("spf_creation")
         .insert({
 
@@ -160,7 +160,7 @@ export default async function handler(
           tsm,
 
           company_name: company_names.join(","),
-          supplier_brand: supplier_brands.join(","),
+          supplier_brand: supplier_brands.join(","), // ✅ Now per-product, comma-separated aligned array
           contact_name: contact_names.join(","),
           contact_number: contact_numbers.join(","),
 
@@ -189,7 +189,7 @@ export default async function handler(
 
     /* UPDATE REQUEST */
 
-    const { error:updateError } = await supabase
+    const { error: updateError } = await supabase
       .from("spf_request")
       .update({
         status: "Processed by PD",
@@ -203,11 +203,11 @@ export default async function handler(
     }
 
     return res.status(200).json({
-      success:true,
-      message:"SPF created successfully"
+      success: true,
+      message: "SPF created successfully"
     });
 
-  } catch (err:any) {
+  } catch (err: any) {
 
     console.error(err);
 

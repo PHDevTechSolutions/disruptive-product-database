@@ -19,6 +19,8 @@ type SPFData = {
   spf_number: string;
   status?: string;
 
+  supplier_brand: string; // ✅ added to type
+
   product_offer_image: string;
   product_offer_qty: string;
   product_offer_technical_specification: string;
@@ -82,26 +84,26 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
 
   useEffect(() => {
 
-  const fetchStatus = async () => {
+    const fetchStatus = async () => {
 
-    const { data } = await supabase
-      .from("spf_creation")
-      .select("status")
-      .eq("spf_number", spfNumber)
-      .maybeSingle();
+      const { data } = await supabase
+        .from("spf_creation")
+        .select("status")
+        .eq("spf_number", spfNumber)
+        .maybeSingle();
 
-    if (data) {
-      setData((prev:any) => ({
-        ...prev,
-        status: data.status
-      }));
-    }
+      if (data) {
+        setData((prev: any) => ({
+          ...prev,
+          status: data.status
+        }));
+      }
 
-  };
+    };
 
-  fetchStatus();
+    fetchStatus();
 
-}, [spfNumber]);
+  }, [spfNumber]);
 
   const split = (value?: string) => {
     if (!value) return [];
@@ -113,6 +115,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
     return value.split(" || ");
   };
 
+  const supplierBrands = split(data?.supplier_brand); // ✅ per-product supplier brands
   const images = split(data?.product_offer_image);
   const qtys = split(data?.product_offer_qty);
   const unitCosts = split(data?.product_offer_unit_cost);
@@ -127,41 +130,41 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
 
   return (
     <>
-<div className="flex items-center gap-2">
+      <div className="flex items-center gap-2">
 
-  <Button
-    variant="outline"
-    className="rounded-none p-6"
-    onClick={() => setOpen(true)}
-  >
-    View
-  </Button>
+        <Button
+          variant="outline"
+          className="rounded-none p-6"
+          onClick={() => setOpen(true)}
+        >
+          View
+        </Button>
 
-  {data?.status && (
-    <span className="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700 uppercase">
-      {data.status}
-    </span>
-  )}
+        {data?.status && (
+          <span className="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700 uppercase">
+            {data.status}
+          </span>
+        )}
 
-</div>
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-7xl max-h-[90vh] overflow-y-auto">
-<DialogHeader className="space-y-2">
+          <DialogHeader className="space-y-2">
 
-  <DialogTitle>SPF Request View</DialogTitle>
+            <DialogTitle>SPF Request View</DialogTitle>
 
-  {data?.status && (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="font-medium">Status:</span>
+            {data?.status && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium">Status:</span>
 
-      <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-700 uppercase">
-        {data.status}
-      </span>
-    </div>
-  )}
+                <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-700 uppercase">
+                  {data.status}
+                </span>
+              </div>
+            )}
 
-</DialogHeader>
+          </DialogHeader>
 
           {loading && <p className="text-sm">Loading...</p>}
 
@@ -209,6 +212,11 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                         <table className="w-full border text-xs">
                           <thead className="bg-gray-50">
                             <tr>
+                              {/* ✅ SUPPLIER BRAND — before Image */}
+                              <th className="border px-2 py-1 text-center">
+                                Supplier Brand
+                              </th>
+
                               <th className="border px-2 py-1">Image</th>
                               <th className="border px-2 py-1">Qty</th>
                               <th className="border px-2 py-1">Technical Specs</th>
@@ -223,6 +231,11 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                           <tbody>
                             {images.map((img, i) => (
                               <tr key={i}>
+
+                                {/* ✅ SUPPLIER BRAND VALUE */}
+                                <td className="border px-2 py-1 text-center align-middle">
+                                  {supplierBrands[i] || "-"}
+                                </td>
 
                                 <td className="border px-2 py-1 text-center">
                                   {img !== "-" ? (

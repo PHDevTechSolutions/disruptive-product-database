@@ -432,6 +432,7 @@ export default function SPF({ processBy }: SPFProps) {
                       <thead>
                         <tr className="bg-gray-100">
                           <th className="border px-2 py-1 text-center">#</th>
+                          <th className="border px-2 py-1 text-center">Supplier Brand</th>
                           <th className="border px-2 py-1 text-center">Image</th>
                           <th className="border px-2 py-1 text-center">Item Description</th>
                           <th className="border px-2 py-1 text-center">Product Offer</th>
@@ -521,175 +522,248 @@ export default function SPF({ processBy }: SPFProps) {
                                 setDraggedProduct(null);
                               }}
                             >
-                              {/* ITEM NUMBER */}
-                              <td className="border px-2 py-1 font-medium text-center align-middle">
-                                {formData.spf_number
-                                  ? `${formData.spf_number}-${String(index + 1).padStart(3, "0")}`
-                                  : "-"}
-                              </td>
+{/* ITEM NUMBER */}
+<td className="border px-2 py-1 font-medium text-center align-middle">
+  {formData.spf_number
+    ? `${formData.spf_number}-${String(index + 1).padStart(3, "0")}`
+    : "-"}
+</td>
 
-                              {/* IMAGE */}
-                              <td className="border px-2 py-1 align-middle">
-                                <div className="flex justify-center items-center">
-                                  {formData.item_photo?.[index] ? (
-                                    <img
-                                      src={formData.item_photo[index]}
-                                      alt={desc}
-                                      className="w-24 h-24 object-contain"
-                                    />
-                                  ) : (
-                                    "-"
-                                  )}
-                                </div>
-                              </td>
+{/* SUPPLIER BRAND (FIX ALIGNMENT) */}
+<td className="border px-2 py-1 text-center align-middle">
+  -
+</td>
 
-                              {/* DESCRIPTION */}
-                              <td
-                                className="border px-2 py-1 whitespace-pre-wrap text-center align-middle"
-                                contentEditable
-                                suppressContentEditableWarning
-                                onBlur={(e) => {
-                                  const updatedDescriptions = [
-                                    ...(formData.item_description || []),
-                                  ];
-                                  const newLines = e.currentTarget.innerText
-                                    .split("\n")
-                                    .map((l) => l.trim())
-                                    .filter(Boolean);
-                                  updatedDescriptions[index] = newLines.join(" | ");
-                                  setFormData({
-                                    ...formData,
-                                    item_description: updatedDescriptions,
-                                  });
-                                }}
-                              >
-                                {desc.replace(/\|/g, "\n")}
-                              </td>
+{/* IMAGE */}
+<td className="border px-2 py-1 align-middle">
+  <div className="flex justify-center items-center">
+    {formData.item_photo?.[index] ? (
+      <img
+        src={formData.item_photo[index]}
+        alt={desc}
+        className="w-24 h-24 object-contain"
+      />
+    ) : (
+      "-"
+    )}
+  </div>
+</td>
 
-                              {/* PRODUCT OFFER TABLE */}
-                              <td className="border px-2 py-1 text-center align-middle">
-                                {(productOffers[index] || []).length > 0 && (
-                                  <div className="border rounded mb-2 overflow-hidden">
-                                    <table className="w-full text-xs">
-                                      <thead className="bg-muted">
-                                        <tr>
-                                          <th className="border px-2 py-1 text-center">Image</th>
-                                          <th className="border px-2 py-1 w-[70px]">Qty</th>
-                                          <th className="border px-2 py-1 text-center">Technical Specifications</th>
-                                          <th className="border px-2 py-1 text-center">Unit Cost</th>
-                                          <th className="border px-2 py-1 text-center">
-                                            Packaging Details
-                                            <div className="text-[10px] text-muted-foreground">L x W x H</div>
-                                          </th>
-                                          <th className="border px-2 py-1 text-center">Factory Address</th>
-                                          <th className="border px-2 py-1 text-center">Port of Discharge</th>
-                                          <th className="border px-2 py-1 w-[100px]">Sub Total</th>
-                                        </tr>
-                                      </thead>
+{/* DESCRIPTION */}
+<td
+  className="border px-2 py-1 whitespace-pre-wrap text-center align-middle"
+  contentEditable
+  suppressContentEditableWarning
+  onBlur={(e) => {
+    const updatedDescriptions = [
+      ...(formData.item_description || []),
+    ];
+    const newLines = e.currentTarget.innerText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    updatedDescriptions[index] = newLines.join(" | ");
+    setFormData({
+      ...formData,
+      item_description: updatedDescriptions,
+    });
+  }}
+>
+  {desc.replace(/\|/g, "\n")}
+</td>
 
-                                      <tbody>
-                                        {(productOffers[index] || []).map((prod: any, i: number) => {
-                                          const unitCost = prod?.commercialDetails?.unitCost || "-";
-                                          const length = prod?.commercialDetails?.packaging?.length || "-";
-                                          const width = prod?.commercialDetails?.packaging?.width || "-";
-                                          const height = prod?.commercialDetails?.packaging?.height || "-";
-                                          const factory = prod?.commercialDetails?.factoryAddress || "-";
-                                          const port = prod?.commercialDetails?.portOfDischarge || "-";
+{/* PRODUCT OFFER TABLE */}
+<td className="border px-2 py-1 text-center align-middle">
+  {(productOffers[index] || []).length > 0 && (
+    <div className="border rounded mb-2 overflow-hidden">
+      <table className="w-full text-xs">
+        <thead className="bg-muted">
+          <tr>
+            {/* ✅ ADD SUPPLIER BRAND HERE */}
+            <th className="border px-2 py-1 text-center w-[120px]">
+              Supplier Brand
+            </th>
 
-                                          return (
-                                            <tr
-                                              key={i}
-                                              draggable={!viewMode}
-                                              className={`${viewMode ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
-                                              onDragStart={(e) => {
-                                                if (viewMode) return;
-                                                e.dataTransfer.setData("text/plain", "dragging");
-                                                setDraggedProduct({
-                                                  ...prod,
-                                                  __fromRow: index,
-                                                  __fromIndex: i,
-                                                });
-                                                setShowTrash(true);
-                                              }}
-                                              onDragEnd={() => {
-                                                if (viewMode) return;
-                                                setDraggedProduct(null);
-                                                setShowTrash(false);
-                                              }}
-                                            >
-                                              <td className="border px-2 py-1 text-center align-middle">
-                                                {prod.mainImage?.url ? (
-                                                  <img src={prod.mainImage.url} className="w-16 h-16 object-contain mx-auto" />
-                                                ) : "-"}
-                                              </td>
+            <th className="border px-2 py-1 text-center">Image</th>
+            <th className="border px-2 py-1 w-[70px]">Qty</th>
+            <th className="border px-2 py-1 text-center">
+              Technical Specifications
+            </th>
+            <th className="border px-2 py-1 text-center">Unit Cost</th>
+            <th className="border px-2 py-1 text-center">
+              Packaging Details
+              <div className="text-[10px] text-muted-foreground">
+                L x W x H
+              </div>
+            </th>
+            <th className="border px-2 py-1 text-center">
+              Factory Address
+            </th>
+            <th className="border px-2 py-1 text-center">
+              Port of Discharge
+            </th>
+            <th className="border px-2 py-1 w-[100px]">
+              Sub Total
+            </th>
+          </tr>
+        </thead>
 
-                                              <td className="border px-2 py-1 text-center align-middle">
-                                                <input
-                                                  type="number"
-                                                  min={0}
-                                                  className="w-full border px-1 text-xs"
-                                                  placeholder="Qty"
-                                                  value={prod.qty || ""}
-                                                  onChange={(e) => {
-                                                    let qty = Number(e.target.value);
-                                                    if (qty < 0) qty = 0;
-                                                    setProductOffers((prev) => {
-                                                      const copy = { ...prev };
-                                                      const row = [...(copy[index] || [])];
-                                                      row[i] = { ...row[i], qty };
-                                                      copy[index] = row;
-                                                      return copy;
-                                                    });
-                                                  }}
-                                                />
-                                              </td>
+        <tbody>
+          {(productOffers[index] || []).map((prod: any, i: number) => {
+            const unitCost =
+              prod?.commercialDetails?.unitCost || "-";
+            const length =
+              prod?.commercialDetails?.packaging?.length || "-";
+            const width =
+              prod?.commercialDetails?.packaging?.width || "-";
+            const height =
+              prod?.commercialDetails?.packaging?.height || "-";
+            const factory =
+              prod?.commercialDetails?.factoryAddress || "-";
+            const port =
+              prod?.commercialDetails?.portOfDischarge || "-";
 
-                                              <td className="border px-2 py-1 text-center align-middle">
-                                                {prod.technicalSpecifications
-                                                  ?.map((g: any) => ({
-                                                    ...g,
-                                                    specs: g.specs?.filter(
-                                                      (s: any) => s.value && s.value.trim() !== "",
-                                                    ),
-                                                  }))
-                                                  .filter((g: any) => g.specs && g.specs.length > 0)
-                                                  .map((g: any, gi: number) => (
-                                                    <div key={gi} className="mb-2">
-                                                      <b>{g.title}</b>
-                                                      <div className="text-xs">
-                                                        {g.specs.map((s: any, si: number) => (
-                                                          <div key={si}>{s.specId}: {s.value}</div>
-                                                        ))}
-                                                      </div>
-                                                    </div>
-                                                  ))}
-                                              </td>
+            return (
+              <tr
+                key={i}
+                draggable={!viewMode}
+                className={`${
+                  viewMode
+                    ? "cursor-default"
+                    : "cursor-grab active:cursor-grabbing"
+                }`}
+                onDragStart={(e) => {
+                  if (viewMode) return;
+                  e.dataTransfer.setData("text/plain", "dragging");
+                  setDraggedProduct({
+                    ...prod,
+                    __fromRow: index,
+                    __fromIndex: i,
+                  });
+                  setShowTrash(true);
+                }}
+                onDragEnd={() => {
+                  if (viewMode) return;
+                  setDraggedProduct(null);
+                  setShowTrash(false);
+                }}
+              >
+                {/* ✅ SUPPLIER BRAND */}
+                <td className="border px-2 py-1 text-center align-middle">
+                  {prod?.supplier?.supplierBrand || "-"}
+                </td>
 
-                                              <td className="border px-2 py-1 text-center align-middle">{unitCost}</td>
-                                              <td className="border px-2 py-1 text-center align-middle">{length} x {width} x {height}</td>
-                                              <td className="border px-2 py-1 text-center align-middle">{factory}</td>
-                                              <td className="border px-2 py-1 text-center align-middle">{port}</td>
+                {/* IMAGE */}
+                <td className="border px-2 py-1 text-center align-middle">
+                  {prod.mainImage?.url ? (
+                    <img
+                      src={prod.mainImage.url}
+                      className="w-16 h-16 object-contain mx-auto"
+                    />
+                  ) : (
+                    "-"
+                  )}
+                </td>
 
-                                              <td className="border px-2 py-1 text-center align-middle">
-                                                {(() => {
-                                                  const qty = prod.qty || 0;
-                                                  const unitCost = Number(prod?.commercialDetails?.unitCost || 0);
-                                                  const subtotal = qty * unitCost;
-                                                  return (
-                                                    <span className="text-xs font-semibold">
-                                                      ${subtotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </span>
-                                                  );
-                                                })()}
-                                              </td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                )}
-                              </td>
+                {/* QTY */}
+                <td className="border px-2 py-1 text-center align-middle">
+                  <input
+                    type="number"
+                    min={0}
+                    className="w-full border px-1 text-xs"
+                    placeholder="Qty"
+                    value={prod.qty || ""}
+                    onChange={(e) => {
+                      let qty = Number(e.target.value);
+                      if (qty < 0) qty = 0;
+                      setProductOffers((prev) => {
+                        const copy = { ...prev };
+                        const row = [...(copy[index] || [])];
+                        row[i] = { ...row[i], qty };
+                        copy[index] = row;
+                        return copy;
+                      });
+                    }}
+                  />
+                </td>
+
+                {/* TECH SPECS */}
+                <td className="border px-2 py-1 text-center align-middle">
+                  {prod.technicalSpecifications
+                    ?.map((g: any) => ({
+                      ...g,
+                      specs: g.specs?.filter(
+                        (s: any) =>
+                          s.value && s.value.trim() !== "",
+                      ),
+                    }))
+                    .filter(
+                      (g: any) =>
+                        g.specs && g.specs.length > 0,
+                    )
+                    .map((g: any, gi: number) => (
+                      <div key={gi} className="mb-2">
+                        <b>{g.title}</b>
+                        <div className="text-xs">
+                          {g.specs.map(
+                            (s: any, si: number) => (
+                              <div key={si}>
+                                {s.specId}: {s.value}
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </td>
+
+                {/* UNIT COST */}
+                <td className="border px-2 py-1 text-center align-middle">
+                  {unitCost}
+                </td>
+
+                {/* PACKAGING */}
+                <td className="border px-2 py-1 text-center align-middle">
+                  {length} x {width} x {height}
+                </td>
+
+                {/* FACTORY */}
+                <td className="border px-2 py-1 text-center align-middle">
+                  {factory}
+                </td>
+
+                {/* PORT */}
+                <td className="border px-2 py-1 text-center align-middle">
+                  {port}
+                </td>
+
+                {/* SUBTOTAL */}
+                <td className="border px-2 py-1 text-center align-middle">
+                  {(() => {
+                    const qty = prod.qty || 0;
+                    const unitCost = Number(
+                      prod?.commercialDetails?.unitCost || 0,
+                    );
+                    const subtotal = qty * unitCost;
+                    return (
+                      <span className="text-xs font-semibold">
+                        $
+                        {subtotal.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                    );
+                  })()}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
+</td>
                             </tr>
                           );
                         })}
