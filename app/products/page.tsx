@@ -126,7 +126,6 @@ export default function ProductsPage() {
   }, [searchTerm, filteredProducts]);
 
   return (
-    // ✅ Outer wrapper: full height, no scroll — children manage their own scroll
     <div className="h-dvh flex flex-col p-4 md:p-6 gap-4 overflow-hidden">
       <SidebarTrigger className="hidden md:flex" />
 
@@ -156,16 +155,15 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* ✅ Main content area: fixed height, no layout shift */}
+      {/* Main content area */}
       <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0 overflow-hidden">
 
-        {/* ✅ Products section: scrollable independently, never moves */}
+        {/* Products section */}
         <div className="flex-1 min-w-0 flex flex-col min-h-0">
           {loading ? (
             <p className="text-center text-muted-foreground">Loading products...</p>
           ) : (
             <>
-              {/* ✅ Grid: takes remaining space, scrolls internally */}
               <div className="flex-1 overflow-y-auto pb-4">
                 <div
                   ref={gridRef}
@@ -194,7 +192,7 @@ export default function ProductsPage() {
 
                       <div className="p-3 flex-1 flex flex-col">
                         <h2 className="text-sm font-semibold line-clamp-2">{p.productName}</h2>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
+                        <p className="text-xs font-bold text-blue-600 line-clamp-1">
                           {p.supplier?.supplierBrand || "-"}
                         </p>
                       </div>
@@ -223,7 +221,7 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              {/* ✅ Pagination pinned at bottom, never shifts */}
+              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 py-3 shrink-0 border-t">
                   <Button
@@ -251,7 +249,7 @@ export default function ProductsPage() {
           )}
         </div>
 
-        {/* ✅ Sidebar: fixed width, scrolls independently, never affects products layout */}
+        {/* Sidebar */}
         <div className="w-full md:w-[340px] shrink-0 overflow-y-auto">
           {!loading && products.length > 0 && (
             <FilteringComponentV2

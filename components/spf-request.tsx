@@ -811,9 +811,12 @@ export default function SPF({ processBy }: SPFProps) {
                           <div className="text-xs text-gray-400">No Image</div>
                         )}
                       </div>
-                      <div className="mt-2 flex-1">
-                        <p className="text-sm font-semibold line-clamp-2">{p.productName}</p>
-                      </div>
+<div className="mt-2 flex-1">
+  <p className="text-sm font-semibold line-clamp-2">{p.productName}</p>
+  <p className="text-sm font-bold text-blue-600 line-clamp-1">
+    {p.supplier?.supplierBrand || "-"}
+  </p>
+</div>
                       {/* CTRL + F: PRODUCT ACCORDION DETAILS */}
                       <Accordion type="single" collapsible className="mt-2 border rounded">
                         {/* COMMERCIAL DETAILS */}
