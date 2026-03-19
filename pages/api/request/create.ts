@@ -28,7 +28,6 @@ export default async function handler(
     const products = Array.isArray(selectedProducts) ? selectedProducts : [];
 
     /* PRODUCT ARRAYS */
-
     const images: string[] = [];
     const qtys: string[] = [];
     const specs: string[] = [];
@@ -38,12 +37,11 @@ export default async function handler(
     const ports: string[] = [];
     const subtotals: string[] = [];
 
-    /* SUPPLIER ARRAYS */
-
-    const company_names: string[] = [];
-    const supplier_brands: string[] = []; // ✅ NOW PER-PRODUCT (aligned with other arrays)
-    const contact_names: string[] = [];
-    const contact_numbers: string[] = [];
+    /* SUPPLIER ARRAYS — all per-product aligned */
+    const supplier_brands: string[] = [];
+    const company_names: string[] = [];   // ✅ now per-product
+    const contact_names: string[] = [];   // ✅ now per-product
+    const contact_numbers: string[] = []; // ✅ now per-product
 
     /* LOOP PRODUCTS */
     for (const p of products) {
@@ -69,7 +67,6 @@ export default async function handler(
       subtotals.push(String(subtotal));
 
       /* TECH SPECS */
-
       const tech =
         p?.technicalSpecifications
           ?.map((g: any) =>
@@ -80,62 +77,54 @@ export default async function handler(
       specs.push(tech);
 
       /* SUPPLIER DATA */
-
-      const company = p?.supplier?.company || "-";
       const brand = p?.supplier?.supplierBrand || "-";
+      const company = p?.supplier?.company || "-";
 
-      // ✅ Push per-product (aligned with images, qtys, etc.)
       supplier_brands.push(brand);
+      company_names.push(company); // ✅ per-product, no dedup
 
-      // Company names stay deduplicated (used for header info only)
-      if (!company_names.includes(company)) {
-        company_names.push(company);
-      }
-
-      /* CONTACTS - FETCH FROM SUPPLIER COLLECTION */
-
+      /* CONTACTS — FETCH FROM SUPPLIER COLLECTION */
       if (p?.supplier?.supplierId) {
-
         try {
-
           const supplierRef = doc(db, "suppliers", p.supplier.supplierId);
           const supplierSnap = await getDoc(supplierRef);
 
           if (supplierSnap.exists()) {
-
             const supplierData: any = supplierSnap.data();
             const contacts = supplierData.contacts || [];
 
             const names = contacts
               .map((c: any) => c.name)
               .filter(Boolean)
-              .join(" | ");
+              .join(" | ") || "-";
 
             const phones = contacts
               .map((c: any) => c.phone)
               .filter(Boolean)
-              .join(" | ");
+              .join(" | ") || "-";
 
-            if (names && !contact_names.includes(names)) {
-              contact_names.push(names);
-            }
+            contact_names.push(names);    // ✅ per-product
+            contact_numbers.push(phones); // ✅ per-product
 
-            if (phones && !contact_numbers.includes(phones)) {
-              contact_numbers.push(phones);
-            }
-
+          } else {
+            contact_names.push("-");
+            contact_numbers.push("-");
           }
 
         } catch (err) {
           console.error("Supplier contact fetch error:", err);
+          contact_names.push("-");
+          contact_numbers.push("-");
         }
 
+      } else {
+        contact_names.push("-");
+        contact_numbers.push("-");
       }
 
     }
 
     /* CHECK EXISTING SPF */
-
     const { data: existing, error: checkError } = await supabase
       .from("spf_creation")
       .select("id")
@@ -148,7 +137,6 @@ export default async function handler(
     }
 
     /* INSERT SPF */
-
     if (!existing) {
 
       const { error: insertError } = await supabase
@@ -159,10 +147,10 @@ export default async function handler(
           referenceid,
           tsm,
 
-          company_name: company_names.join(","),
-          supplier_brand: supplier_brands.join(","), // ✅ Now per-product, comma-separated aligned array
-          contact_name: contact_names.join(","),
-          contact_number: contact_numbers.join(","),
+          supplier_brand: supplier_brands.join(","),  // per-product
+          company_name: company_names.join(","),       // ✅ per-product
+          contact_name: contact_names.join(","),       // ✅ per-product
+          contact_number: contact_numbers.join(","),   // ✅ per-product
 
           product_offer_image: images.join(","),
           product_offer_qty: qtys.join(","),
@@ -188,7 +176,6 @@ export default async function handler(
     }
 
     /* UPDATE REQUEST */
-
     const { error: updateError } = await supabase
       .from("spf_request")
       .update({
