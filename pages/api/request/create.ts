@@ -20,10 +20,8 @@ import { doc, getDoc } from "firebase/firestore";
    Final structure per column:
      "row1opt1|row1opt2,row2opt1|row2opt2"
 ─────────────────────────────────────────────────────────────────── */
-const ROW_SEP     = ",";   // between item rows
-const PRODUCT_SEP = "|";   // between products within same row
-
-/* Tech specs use " || " between products — keep as-is since | is now product sep */
+const ROW_SEP          = ",";
+const PRODUCT_SEP      = "|";
 const SPEC_PRODUCT_SEP = " || ";
 
 /* Cache supplier contacts to avoid redundant Firestore fetches */
@@ -105,6 +103,8 @@ export default async function handler(
     const rowCompanyNames:   string[] = [];
     const rowContactNames:   string[] = [];
     const rowContactNumbers: string[] = [];
+    const rowSellingCosts:   string[] = [];
+    const rowLeadTimes:      string[] = [];
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
@@ -121,6 +121,8 @@ export default async function handler(
       const companyNames:   string[] = [];
       const contactNames:   string[] = [];
       const contactNumbers: string[] = [];
+      const sellingCosts:   string[] = [];
+      const leadTimes:      string[] = [];
 
       for (const p of rowProducts) {
         const qty      = Number(p.qty || 0);
@@ -140,6 +142,10 @@ export default async function handler(
         ports.push(port);
         subtotals.push(String(subtotal));
         supplierBrands.push(p?.supplier?.supplierBrand || "-");
+
+        /* selling_cost and proj_lead_time — blank by default, filled later */
+        sellingCosts.push("-");
+        leadTimes.push("-");
 
         /* Company / Contact — per product from cache */
         const supplierId = p?.supplier?.supplierId;
@@ -181,6 +187,8 @@ export default async function handler(
       rowCompanyNames.push(companyNames.join(PRODUCT_SEP));
       rowContactNames.push(contactNames.join(PRODUCT_SEP));
       rowContactNumbers.push(contactNumbers.join(PRODUCT_SEP));
+      rowSellingCosts.push(sellingCosts.join(PRODUCT_SEP));
+      rowLeadTimes.push(leadTimes.join(PRODUCT_SEP));
     }
 
     /* ── Join rows with "," ── */
@@ -196,6 +204,8 @@ export default async function handler(
     const finalCompanyNames   = rowCompanyNames.join(ROW_SEP);
     const finalContactNames   = rowContactNames.join(ROW_SEP);
     const finalContactNumbers = rowContactNumbers.join(ROW_SEP);
+    const finalSellingCosts   = rowSellingCosts.join(ROW_SEP);
+    const finalLeadTimes      = rowLeadTimes.join(ROW_SEP);
 
     /* ── Check existing SPF ── */
     const { data: existing, error: checkError } = await supabase
@@ -231,6 +241,9 @@ export default async function handler(
           product_offer_factory_address:         finalFactories,
           product_offer_port_of_discharge:       finalPorts,
           product_offer_subtotal:                finalSubtotals,
+
+          selling_cost:    finalSellingCosts,
+          proj_lead_time:  finalLeadTimes,
 
           status: "Pending For Procurement",
 
