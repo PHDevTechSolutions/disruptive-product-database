@@ -28,6 +28,7 @@ export default async function handler(
     const products = Array.isArray(selectedProducts) ? selectedProducts : [];
 
     /* PRODUCT ARRAYS */
+
     const images: string[] = [];
     const qtys: string[] = [];
     const specs: string[] = [];
@@ -37,11 +38,12 @@ export default async function handler(
     const ports: string[] = [];
     const subtotals: string[] = [];
 
-    /* SUPPLIER ARRAYS — all per-product aligned */
+    /* SUPPLIER ARRAYS */
+
+    const company_names: string[] = [];
     const supplier_brands: string[] = [];
-    const company_names: string[] = [];   // ✅ now per-product
-    const contact_names: string[] = [];   // ✅ now per-product
-    const contact_numbers: string[] = []; // ✅ now per-product
+    const contact_names: string[] = [];
+    const contact_numbers: string[] = [];
 
     /* LOOP PRODUCTS */
     for (const p of products) {
@@ -66,69 +68,91 @@ export default async function handler(
       ports.push(port);
       subtotals.push(String(subtotal));
 
-      /* TECH SPECS */
-      const tech =
-        p?.technicalSpecifications
-.map((g: any) => {
-  const specs = g.specs
-    ?.map((s: any) => `${s.specId}: ${s.value}`)
-    .join(", ");
+      /* ─────────────────────────────────────────────────────────────
+         TECH SPECS — new format preserving group titles:
+           "TITLE~~spec1: val1 | spec2: val2@@TITLE2~~spec3: val3"
+         Groups separated by "@@", title from specs by "~~", specs by "|"
+      ───────────────────────────────────────────────────────────── */
+      if (
+        p?.technicalSpecifications &&
+        Array.isArray(p.technicalSpecifications) &&
+        p.technicalSpecifications.length > 0
+      ) {
+        const groupedTech = p.technicalSpecifications
+          .map((g: any) => {
+            const title = (g.title || "").trim();
+            const specLines = (g.specs || [])
+              .filter((s: any) => s.value && s.value.trim() !== "")
+              .map((s: any) => `${s.specId}: ${s.value}`)
+              .join(" | ");
 
-  return `${g.title}: ${specs}`;
-})
-          .join(" | ") || "-";
+            if (!specLines) return null;
 
-      specs.push(tech);
+            return title ? `${title}~~${specLines}` : specLines;
+          })
+          .filter(Boolean)
+          .join("@@");
+
+        specs.push(groupedTech || "-");
+      } else {
+        specs.push("-");
+      }
 
       /* SUPPLIER DATA */
-      const brand = p?.supplier?.supplierBrand || "-";
+
       const company = p?.supplier?.company || "-";
+      const brand = p?.supplier?.supplierBrand || "-";
 
       supplier_brands.push(brand);
-      company_names.push(company); // ✅ per-product, no dedup
 
-      /* CONTACTS — FETCH FROM SUPPLIER COLLECTION */
+      if (!company_names.includes(company)) {
+        company_names.push(company);
+      }
+
+      /* CONTACTS - FETCH FROM SUPPLIER COLLECTION */
+
       if (p?.supplier?.supplierId) {
+
         try {
+
           const supplierRef = doc(db, "suppliers", p.supplier.supplierId);
           const supplierSnap = await getDoc(supplierRef);
 
           if (supplierSnap.exists()) {
+
             const supplierData: any = supplierSnap.data();
             const contacts = supplierData.contacts || [];
 
             const names = contacts
               .map((c: any) => c.name)
               .filter(Boolean)
-              .join(" | ") || "-";
+              .join(" | ");
 
             const phones = contacts
               .map((c: any) => c.phone)
               .filter(Boolean)
-              .join(" | ") || "-";
+              .join(" | ");
 
-            contact_names.push(names);    // ✅ per-product
-            contact_numbers.push(phones); // ✅ per-product
+            if (names && !contact_names.includes(names)) {
+              contact_names.push(names);
+            }
 
-          } else {
-            contact_names.push("-");
-            contact_numbers.push("-");
+            if (phones && !contact_numbers.includes(phones)) {
+              contact_numbers.push(phones);
+            }
+
           }
 
         } catch (err) {
           console.error("Supplier contact fetch error:", err);
-          contact_names.push("-");
-          contact_numbers.push("-");
         }
 
-      } else {
-        contact_names.push("-");
-        contact_numbers.push("-");
       }
 
     }
 
     /* CHECK EXISTING SPF */
+
     const { data: existing, error: checkError } = await supabase
       .from("spf_creation")
       .select("id")
@@ -141,6 +165,7 @@ export default async function handler(
     }
 
     /* INSERT SPF */
+
     if (!existing) {
 
       const { error: insertError } = await supabase
@@ -151,10 +176,10 @@ export default async function handler(
           referenceid,
           tsm,
 
-          supplier_brand: supplier_brands.join(","),  // per-product
-          company_name: company_names.join(","),       // ✅ per-product
-          contact_name: contact_names.join(","),       // ✅ per-product
-          contact_number: contact_numbers.join(","),   // ✅ per-product
+          company_name: company_names.join(","),
+          supplier_brand: supplier_brands.join(","),
+          contact_name: contact_names.join(","),
+          contact_number: contact_numbers.join(","),
 
           product_offer_image: images.join(","),
           product_offer_qty: qtys.join(","),
@@ -180,6 +205,7 @@ export default async function handler(
     }
 
     /* UPDATE REQUEST */
+
     const { error: updateError } = await supabase
       .from("spf_request")
       .update({
