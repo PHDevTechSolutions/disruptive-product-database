@@ -290,6 +290,9 @@ export default function SPF({ processBy }: SPFProps) {
                   minute: "2-digit",
                 }).format(new Date(req.date_created))
               : "-";
+
+            const spfStatus = createdSPF[req.spf_number];
+
             return (
               <div
                 key={req.id}
@@ -304,8 +307,9 @@ export default function SPF({ processBy }: SPFProps) {
                 </div>
                 <div>{formattedDate}</div>
                 <div>
-                  <div className="flex gap-2">
-                    {createdSPF[req.spf_number] !== "Pending For Procurement" && (
+                  <div className="flex gap-2 items-center">
+                    {/* Show Create button only if no spf_creation entry yet */}
+                    {!spfStatus && (
                       <Button
                         className="rounded-none p-6"
                         variant="outline"
@@ -314,7 +318,9 @@ export default function SPF({ processBy }: SPFProps) {
                         Create
                       </Button>
                     )}
-                    {createdSPF[req.spf_number] === "Pending For Procurement" && (
+
+                    {/* Show View + badge for any existing spf_creation status */}
+                    {spfStatus && (
                       <SPFRequestView spfNumber={req.spf_number} />
                     )}
                   </div>
@@ -571,7 +577,7 @@ export default function SPF({ processBy }: SPFProps) {
                                 {desc.replace(/\|/g, "\n")}
                               </td>
 
-                              {/* PRODUCT OFFER CELL — ALL options stacked & visible agad */}
+                              {/* PRODUCT OFFER CELL */}
                               <td className="border px-2 py-2 align-top">
                                 {offers.length === 0 ? (
                                   <div className="text-xs text-muted-foreground text-center py-4">
@@ -589,7 +595,6 @@ export default function SPF({ processBy }: SPFProps) {
 
                                       return (
                                         <div key={i}>
-                                          {/* OPTION LABEL — only shown when 2+ products */}
                                           {offers.length > 1 && (
                                             <div className="mb-1">
                                               <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
@@ -598,7 +603,6 @@ export default function SPF({ processBy }: SPFProps) {
                                             </div>
                                           )}
 
-                                          {/* PRODUCT ROW TABLE */}
                                           <div className="border rounded overflow-hidden">
                                             <table className="w-full text-xs">
                                               <thead className="bg-muted">

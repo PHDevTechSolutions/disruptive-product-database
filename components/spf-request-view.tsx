@@ -27,6 +27,11 @@ type SPFData = {
   product_offer_factory_address: string;
   product_offer_port_of_discharge: string;
   product_offer_subtotal: string;
+  company_name?: string;
+  contact_name?: string;
+  contact_number?: string;
+  proj_lead_time?: string;
+  final_selling_cost?: string;
 };
 
 type SPFRequestData = {
@@ -124,6 +129,8 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
     fetchStatus();
   }, [spfNumber]);
 
+  const isApproved = data?.status === "Approved by Procurement";
+
   /* ── Parse all columns into per-row, per-product arrays ── */
   const rowImages         = splitByRow(data?.product_offer_image);
   const rowQtys           = splitByRow(data?.product_offer_qty);
@@ -134,6 +141,13 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
   const rowSubtotals      = splitByRow(data?.product_offer_subtotal);
   const rowSupplierBrands = splitByRow(data?.supplier_brand);
   const rowSpecs          = splitSpecsByRow(data?.product_offer_technical_specification);
+
+  /* ── Approved-only columns ── */
+  const rowCompanyNames   = splitByRow(data?.company_name);
+  const rowContactNames   = splitByRow(data?.contact_name);
+  const rowContactNumbers = splitByRow(data?.contact_number);
+  const rowLeadTimes      = splitByRow(data?.proj_lead_time);
+  const rowSellingCosts   = splitByRow(data?.final_selling_cost);
 
   const itemDescriptions = (requestData?.item_description || "").split(",").map((s) => s.trim());
   const itemImages       = (requestData?.item_photo || "").split(",").map((s) => s.trim());
@@ -146,7 +160,11 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
         </Button>
 
         {data?.status && (
-          <span className="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700 uppercase">
+          <span className={`text-xs px-2 py-1 rounded uppercase ${
+            isApproved
+              ? "bg-green-100 text-green-700"
+              : "bg-yellow-100 text-yellow-700"
+          }`}>
             {data.status}
           </span>
         )}
@@ -160,7 +178,11 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
             {data?.status && (
               <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium">Status:</span>
-                <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-700 uppercase">
+                <span className={`px-2 py-1 text-xs rounded uppercase ${
+                  isApproved
+                    ? "bg-green-100 text-green-700"
+                    : "bg-yellow-100 text-yellow-700"
+                }`}>
                   {data.status}
                 </span>
               </div>
@@ -183,15 +205,22 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
 
                 <tbody>
                   {itemDescriptions.map((desc, rowIndex) => {
-                    const prodImages     = rowImages[rowIndex]         ?? [];
-                    const prodQtys       = rowQtys[rowIndex]           ?? [];
-                    const prodUnitCosts  = rowUnitCosts[rowIndex]      ?? [];
-                    const prodPackaging  = rowPackaging[rowIndex]      ?? [];
-                    const prodFactories  = rowFactories[rowIndex]      ?? [];
-                    const prodPorts      = rowPorts[rowIndex]          ?? [];
-                    const prodSubtotals  = rowSubtotals[rowIndex]      ?? [];
-                    const prodBrands     = rowSupplierBrands[rowIndex] ?? [];
-                    const prodSpecs      = rowSpecs[rowIndex]          ?? [];
+                    const prodImages        = rowImages[rowIndex]         ?? [];
+                    const prodQtys          = rowQtys[rowIndex]           ?? [];
+                    const prodUnitCosts     = rowUnitCosts[rowIndex]      ?? [];
+                    const prodPackaging     = rowPackaging[rowIndex]      ?? [];
+                    const prodFactories     = rowFactories[rowIndex]      ?? [];
+                    const prodPorts         = rowPorts[rowIndex]          ?? [];
+                    const prodSubtotals     = rowSubtotals[rowIndex]      ?? [];
+                    const prodBrands        = rowSupplierBrands[rowIndex] ?? [];
+                    const prodSpecs         = rowSpecs[rowIndex]          ?? [];
+
+                    /* Approved-only */
+                    const prodCompanyNames   = rowCompanyNames[rowIndex]   ?? [];
+                    const prodContactNames   = rowContactNames[rowIndex]   ?? [];
+                    const prodContactNumbers = rowContactNumbers[rowIndex] ?? [];
+                    const prodLeadTimes      = rowLeadTimes[rowIndex]      ?? [];
+                    const prodSellingCosts   = rowSellingCosts[rowIndex]   ?? [];
 
                     const hasProducts = prodImages.length > 0 && !(prodImages.length === 1 && prodImages[0] === "");
 
@@ -217,7 +246,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                           {desc.replace(/\|/g, "\n")}
                         </td>
 
-                        {/* PRODUCT OFFERS — ALL options stacked & visible agad, no click needed */}
+                        {/* PRODUCT OFFERS */}
                         <td className="border px-2 py-2 align-top">
                           {!hasProducts ? (
                             <span className="text-xs text-muted-foreground">No products added</span>
@@ -252,6 +281,16 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                                             <th className="border px-2 py-1 text-center whitespace-nowrap">Factory</th>
                                             <th className="border px-2 py-1 text-center whitespace-nowrap">Port</th>
                                             <th className="border px-2 py-1 text-center whitespace-nowrap">Subtotal</th>
+                                            {/* ── APPROVED-ONLY COLUMNS ── */}
+                                            {isApproved && (
+                                              <>
+                                                <th className="border px-2 py-1 text-center whitespace-nowrap">Company</th>
+                                                <th className="border px-2 py-1 text-center whitespace-nowrap">Contact Name</th>
+                                                <th className="border px-2 py-1 text-center whitespace-nowrap">Contact No.</th>
+                                                <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">Lead Time</th>
+                                                <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">Selling Cost</th>
+                                              </>
+                                            )}
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -326,6 +365,31 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                                             <td className="border px-2 py-2 text-center align-middle font-semibold">
                                               ₱{Number(prodSubtotals[i] || 0).toLocaleString()}
                                             </td>
+
+                                            {/* ── APPROVED-ONLY CELLS ── */}
+                                            {isApproved && (
+                                              <>
+                                                <td className="border px-2 py-2 text-center align-middle">
+                                                  {prodCompanyNames[i] || "-"}
+                                                </td>
+                                                <td className="border px-2 py-2 text-center align-middle">
+                                                  {prodContactNames[i] || "-"}
+                                                </td>
+                                                <td className="border px-2 py-2 text-center align-middle">
+                                                  {prodContactNumbers[i] || "-"}
+                                                </td>
+                                                <td className="border px-2 py-2 text-center align-middle bg-green-50">
+                                                  {prodLeadTimes[i] && prodLeadTimes[i] !== "-"
+                                                    ? prodLeadTimes[i]
+                                                    : "-"}
+                                                </td>
+                                                <td className="border px-2 py-2 text-center align-middle bg-green-50 font-semibold">
+                                                  {prodSellingCosts[i] && prodSellingCosts[i] !== "-"
+                                                    ? `₱${Number(prodSellingCosts[i]).toLocaleString()}`
+                                                    : "-"}
+                                                </td>
+                                              </>
+                                            )}
 
                                           </tr>
                                         </tbody>
