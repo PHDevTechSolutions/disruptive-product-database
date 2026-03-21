@@ -13,17 +13,14 @@ import FilteringComponentV2 from "@/components/filtering-component-v2";
 import UploadProductModal from "@/components/upload-product";
 import DownloadProduct from "@/components/download-product";
 import ViewProduct from "@/components/view-product";
-import HardDeleteProducts from "@/components/hard-delete-products";
-import { Pencil, Trash2, Eye } from "lucide-react";
+import { Pencil, Trash2, Eye, SlidersHorizontal, X, Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
-// ===== GOOGLE DRIVE IMAGE FIX =====
 const convertDriveToThumbnail = (url: string) => {
   if (!url) return url;
   if (!url.includes("drive.google.com")) return url;
   const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
   if (match && match[1]) {
-    const fileId = match[1];
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
   }
   return url;
 };
@@ -35,10 +32,9 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [viewTarget, setViewTarget] = useState<string | null>(null);
 
@@ -68,238 +64,279 @@ export default function ProductsPage() {
       const containerWidth = gridRef.current.offsetWidth;
       const cardMinWidth = 220 * cardScale;
       const columns = Math.max(1, Math.floor(containerWidth / cardMinWidth));
-      const rows = 4;
-      const calculatedItems = columns * rows;
-      setItemsPerPage(calculatedItems);
+      setItemsPerPage(columns * 4);
     };
-
     updateGridPagination();
     window.addEventListener("resize", updateGridPagination);
     return () => window.removeEventListener("resize", updateGridPagination);
   }, [cardScale]);
 
-  const increaseCardSize = () => setCardScale((prev) => Math.min(prev + 0.1, 1.6));
-  const decreaseCardSize = () => setCardScale((prev) => Math.max(prev - 0.1, 0.6));
-
   useEffect(() => {
-    if (!userId) {
-      router.push("/login");
-      return;
-    }
-
+    if (!userId) { router.push("/login"); return; }
     const q = query(collection(db, "products"), where("isActive", "==", true));
-
     const unsub = onSnapshot(q, (snap) => {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setProducts(list);
       setFilteredProducts(list);
       setLoading(false);
     });
-
     return () => unsub();
   }, [userId, router]);
 
   const searchedProducts = useMemo(() => {
     if (!searchTerm.trim()) return filteredProducts;
     const lower = searchTerm.toLowerCase();
-    return filteredProducts.filter((p) => {
-      const cat = p.categoryTypes?.[0];
-      const prod = p.productTypes?.[0];
-      return (
-        p.productName?.toLowerCase().includes(lower) ||
-        p.supplier?.supplierBrand?.toLowerCase().includes(lower) ||
-        cat?.categoryTypeName?.toLowerCase().includes(lower) ||
-        prod?.productTypeName?.toLowerCase().includes(lower)
-      );
-    });
+    return filteredProducts.filter((p) =>
+      p.productName?.toLowerCase().includes(lower) ||
+      p.supplier?.supplierBrand?.toLowerCase().includes(lower) ||
+      p.categoryTypes?.[0]?.categoryTypeName?.toLowerCase().includes(lower) ||
+      p.productTypes?.[0]?.productTypeName?.toLowerCase().includes(lower)
+    );
   }, [searchTerm, filteredProducts]);
 
   const totalPages = Math.max(1, Math.ceil(searchedProducts.length / itemsPerPage));
 
   const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return searchedProducts.slice(startIndex, startIndex + itemsPerPage);
+    const start = (currentPage - 1) * itemsPerPage;
+    return searchedProducts.slice(start, start + itemsPerPage);
   }, [searchedProducts, currentPage, itemsPerPage]);
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [totalPages, currentPage]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filteredProducts]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, filteredProducts]);
+
+  const isFiltered = filteredProducts.length !== products.length;
 
   return (
-    <div className="h-dvh flex flex-col p-4 md:p-6 gap-4 overflow-hidden">
-      <SidebarTrigger className="hidden md:flex" />
+    <div className="h-dvh flex flex-col overflow-hidden bg-gray-50">
 
-      {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between shrink-0">
-        <h1 className="text-xl md:text-2xl font-semibold">Products</h1>
-        <div className="flex flex-wrap gap-2">
-          <UploadProductModal />
-          <DownloadProduct products={products} />
-          <HardDeleteProducts />
-          <Button onClick={() => router.push("/add-product")}>+ Add Product</Button>
+      {/* ── DESKTOP HEADER ── */}
+      <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white border-b">
+        <SidebarTrigger />
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Products</h1>
+          <div className="flex gap-2">
+            <UploadProductModal />
+            <DownloadProduct products={products} />
+            <Button onClick={() => router.push("/add-product")}>+ Add Product</Button>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Input
+            placeholder="Search product..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-md"
+          />
+          <div className="flex items-center gap-2 ml-auto text-sm text-gray-500">
+            <button onClick={() => setCardScale(p => Math.max(p - 0.1, 0.6))} className="text-lg font-bold px-1">−</button>
+            <span className="w-10 text-center text-xs">{(cardScale * 100).toFixed(0)}%</span>
+            <button onClick={() => setCardScale(p => Math.min(p + 0.1, 1.6))} className="text-lg font-bold px-1">+</button>
+          </div>
         </div>
       </div>
 
-      {/* Search + Scale */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between shrink-0">
-        <Input
-          placeholder="Search product..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full md:max-w-md"
-        />
-        <div className="flex items-center gap-4">
-          <span onClick={decreaseCardSize} className="cursor-pointer text-xl font-bold">−</span>
-          <span className="text-xs w-12 text-center">{(cardScale * 100).toFixed(0)}%</span>
-          <span onClick={increaseCardSize} className="cursor-pointer text-xl font-bold">+</span>
+      {/* ── MOBILE HEADER ── */}
+      <div className="md:hidden shrink-0 bg-white border-b border-gray-100 px-4 pt-5 pb-3">
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-lg font-bold text-gray-900">Products</h1>
+          <div className="flex items-center gap-2">
+            <UploadProductModal />
+            <DownloadProduct products={products} />
+            <button
+              onClick={() => router.push("/add-product")}
+              className="h-8 w-8 rounded-full bg-gray-900 text-white flex items-center justify-center"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <Input
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 h-10 bg-gray-50 border-gray-200 rounded-xl text-sm"
+            />
+          </div>
+          <button
+            onClick={() => setMobileFilterOpen(true)}
+            className="relative h-10 w-10 rounded-xl bg-gray-900 text-white flex items-center justify-center shrink-0"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {isFiltered && (
+              <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 border-2 border-white" />
+            )}
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs text-gray-400">{searchedProducts.length} products</span>
+          <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2.5 py-1">
+            <button onClick={() => setCardScale(p => Math.max(p - 0.1, 0.6))} className="text-gray-600 font-bold text-sm">−</button>
+            <span className="text-xs text-gray-500 w-7 text-center">{(cardScale * 100).toFixed(0)}%</span>
+            <button onClick={() => setCardScale(p => Math.min(p + 0.1, 1.6))} className="text-gray-600 font-bold text-sm">+</button>
+          </div>
         </div>
       </div>
 
-      {/* Main content area */}
-      <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0 overflow-hidden">
+      {/* ── MAIN CONTENT ── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* Products section */}
-        <div className="flex-1 min-w-0 flex flex-col min-h-0">
+        {/* Grid area */}
+        <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden">
           {loading ? (
-            <p className="text-center text-muted-foreground">Loading products...</p>
+            <div className="flex-1 flex items-center justify-center">
+              <div className="h-7 w-7 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />
+            </div>
           ) : (
             <>
-              <div className="flex-1 overflow-y-auto pb-4">
-                <div
-                  ref={gridRef}
-                  className="grid gap-4 md:gap-6"
-                  style={{
-                    gridTemplateColumns: `repeat(auto-fill, minmax(${220 * cardScale}px, 1fr))`,
-                  }}
-                >
-                  {paginatedProducts.map((p) => (
-                    <div
-                      key={p.id}
-                      className="group border rounded-xl bg-card shadow-sm hover:shadow-md flex flex-col overflow-hidden h-full"
-                    >
-                      {/* Image with hover overlay */}
-                      <div className="relative h-[180px] bg-muted flex items-center justify-center overflow-hidden rounded-t-xl">
-                        {p.mainImage?.url ? (
-                          <img
-                            src={convertDriveToThumbnail(p.mainImage.url)}
-                            className="w-full h-full object-contain p-2 transition-all duration-300 group-hover:brightness-75"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
-                            No Image
+              <div className="flex-1 overflow-y-auto px-3 md:px-6 pt-3 pb-24 md:pb-4">
+                {paginatedProducts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                      <Search className="h-6 w-6 text-gray-300" />
+                    </div>
+                    <p className="text-sm font-medium text-gray-600">No products found</p>
+                    <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters</p>
+                  </div>
+                ) : (
+                  <div
+                    ref={gridRef}
+                    className="grid gap-3 md:gap-4"
+                    style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${220 * cardScale}px, 1fr))` }}
+                  >
+                    {paginatedProducts.map((p) => (
+                      <div
+                        key={p.id}
+                        className="group border border-gray-200 rounded-2xl bg-white shadow-sm hover:shadow-md flex flex-col overflow-hidden transition-shadow duration-200"
+                      >
+                        {/* Image */}
+                        <div className="relative bg-gray-50 flex items-center justify-center overflow-hidden rounded-t-2xl" style={{ height: 160 }}>
+                          {p.mainImage?.url ? (
+                            <img
+                              src={convertDriveToThumbnail(p.mainImage.url)}
+                              className="w-full h-full object-contain p-2 md:group-hover:brightness-75 transition-all duration-200"
+                            />
+                          ) : (
+                            <span className="text-xs text-gray-400">No Image</span>
+                          )}
+
+                          {/* Desktop hover actions */}
+                          <div className="absolute top-2 right-2 flex-col gap-1.5 hidden md:flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            {[
+                              { icon: <Eye className="w-3.5 h-3.5 text-gray-700" />, label: "View", action: () => setViewTarget(p.id) },
+                              { icon: <Pencil className="w-3.5 h-3.5 text-blue-600" />, label: "Edit", action: () => router.push(`/edit-product?id=${p.id}`) },
+                              { icon: <Trash2 className="w-3.5 h-3.5 text-red-500" />, label: "Delete", action: () => setDeleteTarget({ id: p.id, name: p.productName }) },
+                            ].map(({ icon, label, action }) => (
+                              <div key={label} className="relative group/btn flex items-center justify-end">
+                                <span className="mr-2 text-[10px] font-medium text-white bg-black/70 rounded px-1.5 py-0.5 opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none">
+                                  {label}
+                                </span>
+                                <button
+                                  className="w-7 h-7 rounded-full bg-white/90 hover:bg-white shadow flex items-center justify-center"
+                                  onClick={(e) => { e.stopPropagation(); action(); }}
+                                >
+                                  {icon}
+                                </button>
+                              </div>
+                            ))}
                           </div>
-                        )}
 
-                        {/* 3 icon buttons — top right corner, shown on hover */}
-                        <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-
-                          {/* View */}
-                          <div className="relative group/view flex items-center justify-end">
-                            <span className="mr-2 whitespace-nowrap text-[10px] font-medium text-white bg-black/70 rounded px-1.5 py-0.5 opacity-0 group-hover/view:opacity-100 transition-opacity duration-150 pointer-events-none">
-                              View
-                            </span>
-                            <button
-                              className="w-8 h-8 rounded-full flex items-center justify-center bg-white/90 hover:bg-white shadow-md transition-all duration-150"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setViewTarget(p.id);
-                              }}
-                            >
-                              <Eye className="w-4 h-4 text-gray-700" />
+                          {/* Mobile always-visible actions */}
+                          <div className="absolute bottom-2 right-2 flex gap-1.5 md:hidden">
+                            <button className="w-7 h-7 rounded-full bg-white/95 shadow flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setViewTarget(p.id); }}>
+                              <Eye className="w-3.5 h-3.5 text-gray-700" />
+                            </button>
+                            <button className="w-7 h-7 rounded-full bg-white/95 shadow flex items-center justify-center" onClick={(e) => { e.stopPropagation(); router.push(`/edit-product?id=${p.id}`); }}>
+                              <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                            </button>
+                            <button className="w-7 h-7 rounded-full bg-white/95 shadow flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: p.id, name: p.productName }); }}>
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
                             </button>
                           </div>
+                        </div>
 
-                          {/* Edit */}
-                          <div className="relative group/edit flex items-center justify-end">
-                            <span className="mr-2 whitespace-nowrap text-[10px] font-medium text-white bg-black/70 rounded px-1.5 py-0.5 opacity-0 group-hover/edit:opacity-100 transition-opacity duration-150 pointer-events-none">
-                              Edit
-                            </span>
-                            <button
-                              className="w-8 h-8 rounded-full flex items-center justify-center bg-white/90 hover:bg-white shadow-md transition-all duration-150"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/edit-product?id=${p.id}`);
-                              }}
-                            >
-                              <Pencil className="w-4 h-4 text-blue-600" />
-                            </button>
-                          </div>
-
-                          {/* Delete */}
-                          <div className="relative group/delete flex items-center justify-end">
-                            <span className="mr-2 whitespace-nowrap text-[10px] font-medium text-white bg-black/70 rounded px-1.5 py-0.5 opacity-0 group-hover/delete:opacity-100 transition-opacity duration-150 pointer-events-none">
-                              Delete
-                            </span>
-                            <button
-                              className="w-8 h-8 rounded-full flex items-center justify-center bg-white/90 hover:bg-white shadow-md transition-all duration-150"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteTarget({ id: p.id, name: p.productName });
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 text-red-500" />
-                            </button>
-                          </div>
-
+                        {/* Info */}
+                        <div className="p-3">
+                          <h2 className="text-sm font-semibold line-clamp-2 text-gray-900 leading-snug">{p.productName}</h2>
+                          <p className="text-xs font-medium text-blue-600 mt-0.5 line-clamp-1">{p.supplier?.supplierBrand || "—"}</p>
                         </div>
                       </div>
-
-                      {/* Product info */}
-                      <div className="p-3 flex-1 flex flex-col">
-                        <h2 className="text-sm font-semibold line-clamp-2">{p.productName}</h2>
-                        <p className="text-xs font-bold text-blue-600 line-clamp-1">
-                          {p.supplier?.supplierBrand || "-"}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 py-3 shrink-0 border-t">
-                  <Button
-                    size="sm"
-                    variant="outline"
+                <div className="flex justify-center items-center gap-3 py-3 border-t bg-white shrink-0 px-4">
+                  <button
                     disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => p - 1)}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
                   >
-                    Prev
-                  </Button>
-                  <span className="text-sm px-4">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm font-medium text-gray-600">{currentPage} / {totalPages}</span>
+                  <button
                     disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((p) => p + 1)}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
                   >
-                    Next
-                  </Button>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
               )}
             </>
           )}
         </div>
 
-        {/* Sidebar */}
-        <div className="w-full md:w-[340px] shrink-0 overflow-y-auto">
+        {/* Desktop filter sidebar */}
+        <div className="hidden md:block w-[320px] shrink-0 border-l bg-white overflow-y-auto p-4">
           {!loading && products.length > 0 && (
-            <FilteringComponentV2
-              products={products}
-              onFilter={setFilteredProducts}
-            />
+            <FilteringComponentV2 products={products} onFilter={setFilteredProducts} />
           )}
         </div>
       </div>
 
-      {/* DELETE MODAL — rendered outside grid, opens via deleteTarget state */}
+      {/* ── MOBILE FILTER BOTTOM SHEET ── */}
+      {mobileFilterOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileFilterOpen(false)} />
+          <div className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col" style={{ maxHeight: "88dvh" }}>
+            <div className="flex justify-center pt-3 shrink-0">
+              <div className="h-1 w-10 rounded-full bg-gray-200" />
+            </div>
+            <div className="flex items-center justify-between px-5 py-3 border-b shrink-0">
+              <h2 className="font-bold text-base">Filters</h2>
+              <button onClick={() => setMobileFilterOpen(false)} className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {!loading && products.length > 0 && (
+                <FilteringComponentV2 products={products} onFilter={setFilteredProducts} />
+              )}
+            </div>
+            <div className="p-4 border-t bg-white shrink-0" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
+              <button
+                onClick={() => setMobileFilterOpen(false)}
+                className="w-full h-11 rounded-2xl bg-gray-900 text-white text-sm font-semibold"
+              >
+                Show {filteredProducts.length} Product{filteredProducts.length !== 1 ? "s" : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE MODAL */}
       {deleteTarget && (
         <AddProductDeleteProductItem
           key={`delete-${deleteTarget.id}`}
@@ -307,15 +344,12 @@ export default function ProductsPage() {
           productName={deleteTarget.name}
           referenceID={userId ?? ""}
           defaultOpen={true}
-          onDeleted={(id) => {
-            setProducts((prev) => prev.filter((prod) => prod.id !== id));
-            setDeleteTarget(null);
-          }}
+          onDeleted={(id) => { setProducts(prev => prev.filter(p => p.id !== id)); setDeleteTarget(null); }}
           onClose={() => setDeleteTarget(null)}
         />
       )}
 
-      {/* VIEW MODAL — rendered outside grid, opens via viewTarget state */}
+      {/* VIEW MODAL */}
       {viewTarget && (
         <ViewProduct
           key={`view-${viewTarget}`}
