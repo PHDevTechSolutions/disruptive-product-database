@@ -4,14 +4,13 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { ChevronLeft, X } from "lucide-react";
 
-/* CTRL + F: IMPORT GENERATE TDS */
 import GenerateTDS from "@/components/generate-tds";
 
 type Props = {
   productId: string;
   referenceID: string;
-  // NEW: optional external open control
   defaultOpen?: boolean;
   onClose?: () => void;
 };
@@ -29,10 +28,7 @@ type ProductData = {
   productFamilies?: { productFamilyName: string }[];
   technicalSpecifications?: {
     title: string;
-    specs: {
-      specId: string;
-      value: string;
-    }[];
+    specs: { specId: string; value: string }[];
   }[];
 };
 
@@ -47,8 +43,7 @@ const convertDriveToThumbnail = (url?: string) => {
   if (!url.includes("drive.google.com")) return url;
   const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
   if (match && match[1]) {
-    const fileId = match[1];
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
   }
   return url;
 };
@@ -64,7 +59,7 @@ export default function ViewProduct({
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(false);
 
-  /* CTRL + F: OPEN TDS STATE */
+  /* on mobile we navigate between "details" and "tds" as two full-screen views */
   const [openTDS, setOpenTDS] = useState(false);
   const [hideEmptySpecs, setHideEmptySpecs] = useState(true);
 
@@ -76,34 +71,25 @@ export default function ViewProduct({
 
   useEffect(() => {
     if (!open) return;
-
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleClose();
     };
-
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
-
     async function fetchAll() {
       setLoading(true);
-
       const ref = doc(db, "products", productId);
       const snap = await getDoc(ref);
-      if (snap.exists()) {
-        setProduct(snap.data() as ProductData);
-      }
-
+      if (snap.exists()) setProduct(snap.data() as ProductData);
       const res = await fetch(`/api/users?id=${referenceID}`);
       const userData = await res.json();
       setUser(userData);
-
       setLoading(false);
     }
-
     fetchAll();
   }, [open, productId, referenceID]);
 
@@ -113,169 +99,147 @@ export default function ViewProduct({
 
   return (
     <>
-      {/* Only show trigger button when not externally controlled */}
       {!defaultOpen && (
-        <Button
-          size="sm"
-          variant="secondary"
-          className="w-full"
-          onClick={() => setOpen(true)}
-        >
+        <Button size="sm" variant="secondary" className="w-full" onClick={() => setOpen(true)}>
           View
         </Button>
       )}
 
       {open && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-start md:items-center pt-4 md:pt-0">
-          {/* CTRL + F: EXPAND CONTAINER */}
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-start md:items-center pt-0 md:pt-0">
+
+          {/* ── MODAL CONTAINER ── */}
           <div
-            className={`bg-white h-[calc(100svh-140px)] md:h-[90vh] rounded-xl flex flex-col md:flex-row overflow-hidden transition-all duration-300 ${
-              openTDS ? "w-full md:w-[1400px]" : "w-full md:w-[1000px]"
-            }`}
+            className={`
+              bg-white w-full h-[100dvh] md:h-[90vh] md:rounded-xl flex flex-col md:flex-row overflow-hidden
+              transition-all duration-300
+              ${openTDS ? "md:w-[1400px]" : "md:w-[1000px]"}
+            `}
           >
-            {/* CTRL + F: LEFT PANEL */}
+
+            {/* ══════════════════════════════
+                LEFT PANEL — Details
+                On mobile: hidden when TDS is open
+            ══════════════════════════════ */}
             <div
               className={`
                 flex flex-col min-h-0 border-b md:border-b-0 md:border-r
-                ${openTDS ? "md:w-1/2" : "w-full"}
+                ${openTDS
+                  ? "hidden md:flex md:w-1/2"   /* desktop: show half; mobile: hidden when TDS open */
+                  : "flex w-full md:w-full"
+                }
               `}
             >
               {/* HEADER */}
-              <div className="border-b px-6 py-4 flex justify-between items-center">
-                <h2 className="text-lg font-semibold">
+              <div className="border-b px-4 py-3 flex items-center justify-between gap-2 shrink-0">
+                <h2 className="text-sm font-semibold truncate flex-1">
                   {product?.productName || "-"}
                 </h2>
-
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                   <Button
+                    size="sm"
                     onClick={() => setOpenTDS(true)}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs px-3 rounded-lg"
                   >
                     Generate TDS
                   </Button>
-
-                  <Button variant="outline" onClick={handleClose}>
-                    Close
-                  </Button>
+                  <button
+                    onClick={handleClose}
+                    className="h-8 w-8 rounded-lg border flex items-center justify-center text-gray-500 hover:bg-gray-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
 
               {/* BODY */}
-              <div className="flex flex-col md:flex-row flex-1 overflow-auto px-4 md:px-6 py-4 gap-6">
-                {/* IMAGE */}
-                <div className="w-full md:w-[320px] shrink-0">
-                  <div className="space-y-4">
-                    <div className="w-full h-[320px] border rounded bg-white flex items-center justify-center">
-                      {product?.mainImage?.url ? (
-                        <img
-                          src={convertDriveToThumbnail(product.mainImage.url)}
-                          className="max-w-full max-h-full object-contain"
-                        />
-                      ) : (
-                        <span>-</span>
-                      )}
-                    </div>
+              <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-y-auto px-4 py-4 gap-4 pb-6">
 
-                    <div className="text-sm">
-                      <div className="font-semibold">Added By</div>
-                      <div>
-                        {user
-                          ? `${user.Firstname || "-"} ${user.Lastname || "-"} (${user.Role || "-"})`
-                          : "-"}
-                      </div>
-                    </div>
+                {/* IMAGE + added-by */}
+                <div className="w-full md:w-[280px] shrink-0 space-y-3">
+                  <div className="w-full aspect-square border rounded-xl bg-white flex items-center justify-center overflow-hidden">
+                    {product?.mainImage?.url ? (
+                      <img
+                        src={convertDriveToThumbnail(product.mainImage.url)}
+                        className="max-w-full max-h-full object-contain p-2"
+                      />
+                    ) : (
+                      <span className="text-xs text-gray-400">No image</span>
+                    )}
+                  </div>
+
+                  <div className="text-xs text-gray-500">
+                    <span className="font-semibold text-gray-700">Added by: </span>
+                    {user
+                      ? `${user.Firstname || "-"} ${user.Lastname || "-"} (${user.Role || "-"})`
+                      : "-"}
                   </div>
                 </div>
 
                 {/* DETAILS */}
-                <div className="flex-1 overflow-auto pr-2 pb-[140px] md:pb-0">
-                  {/* REMOVE EMPTY SPECIFICATIONS */}
-                  <div className="mb-4 flex items-center gap-3">
+                <div className="flex-1 min-w-0 space-y-4">
+
+                  {/* Hide empty specs toggle */}
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={hideEmptySpecs}
                       onChange={(e) => setHideEmptySpecs(e.target.checked)}
-                      className="w-4 h-4"
+                      className="w-4 h-4 accent-gray-800"
                     />
-                    <span className="text-sm">
-                      {hideEmptySpecs
-                        ? "Remove Empty Specifications (ON)"
-                        : "Remove Empty Specifications (OFF)"}
+                    <span className="text-xs text-gray-600">
+                      {hideEmptySpecs ? "Remove Empty Specifications (ON)" : "Remove Empty Specifications (OFF)"}
                     </span>
-                  </div>
+                  </label>
 
                   {loading ? (
-                    <p>Loading...</p>
+                    <div className="flex items-center justify-center py-10">
+                      <div className="h-6 w-6 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />
+                    </div>
                   ) : (
                     <>
-                      <div className="mb-6">
+                      {/* Info table */}
+                      <div className="rounded-xl border overflow-hidden text-sm">
                         <table className="w-full border-collapse">
                           <tbody>
-                            <tr className="odd:bg-[#f5f5f5]">
-                              <td className="border p-2 font-semibold w-[40%]">
-                                Supplier / Company
-                              </td>
-                              <td className="border p-2">{supplier}</td>
-                            </tr>
-
-                            <tr className="odd:bg-[#f5f5f5]">
-                              <td className="border p-2 font-semibold">
-                                Price Point
-                              </td>
-                              <td className="border p-2">
-                                {product?.pricePoint || "-"}
-                              </td>
-                            </tr>
-
-                            <tr className="odd:bg-[#f5f5f5]">
-                              <td className="border p-2 font-semibold">
-                                Brand Origin
-                              </td>
-                              <td className="border p-2">
-                                {product?.brandOrigin || "-"}
-                              </td>
-                            </tr>
-
-                            <tr className="odd:bg-[#f5f5f5]">
-                              <td className="border p-2 font-semibold">
-                                Product Class
-                              </td>
-                              <td className="border p-2">
-                                {product?.productClass || "-"}
-                              </td>
-                            </tr>
-
-                            <tr className="odd:bg-[#f5f5f5]">
-                              <td className="border p-2 font-semibold">
-                                Product Usage
-                              </td>
-                              <td className="border p-2">{usage}</td>
-                            </tr>
-
-                            <tr className="odd:bg-[#f5f5f5]">
-                              <td className="border p-2 font-semibold">
-                                Product Family
-                              </td>
-                              <td className="border p-2">{family}</td>
-                            </tr>
+                            {[
+                              ["Supplier / Company", supplier],
+                              ["Price Point", product?.pricePoint || "-"],
+                              ["Brand Origin", product?.brandOrigin || "-"],
+                              ["Product Class", product?.productClass || "-"],
+                              ["Product Usage", usage],
+                              ["Product Family", family],
+                            ].map(([label, value], idx) => (
+                              <tr key={idx} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                                <td className="border-b px-3 py-2 font-semibold text-gray-600 w-[45%] text-xs">{label}</td>
+                                <td className="border-b px-3 py-2 text-xs">{value}</td>
+                              </tr>
+                            ))}
                           </tbody>
                         </table>
                       </div>
 
+                      {/* Technical Specifications */}
                       {!product?.technicalSpecifications ? (
-                        <div className="border p-4 text-center">-</div>
+                        <div className="border rounded-xl p-4 text-center text-sm text-gray-400">
+                          No technical specifications
+                        </div>
                       ) : (
                         product.technicalSpecifications
-                          ?.filter(
-                            (group) => group.title !== "COMMERCIAL DETAILS",
-                          )
+                          ?.filter((group) => group.title !== "COMMERCIAL DETAILS")
+                          .filter((group) => {
+                            if (!hideEmptySpecs) return true;
+                            return group.specs.some((spec) => {
+                              const val = spec.value?.trim();
+                              return val && val !== "-";
+                            });
+                          })
                           .map((group, i) => (
-                            <div key={i} className="mb-4">
-                              <div className="font-semibold mb-2">
+                            <div key={i} className="rounded-xl border overflow-hidden">
+                              <div className="bg-gray-100 px-3 py-2 text-xs font-bold text-gray-700 uppercase tracking-wide">
                                 {group.title}
                               </div>
-
-                              <table className="w-full border">
+                              <table className="w-full border-collapse">
                                 <tbody>
                                   {group.specs
                                     .filter((spec) => {
@@ -285,9 +249,7 @@ export default function ViewProduct({
                                       return val !== "" && val !== "-";
                                     })
                                     .map((spec, s) => {
-                                      const activeFilters =
-                                        (window as any).__ACTIVE_FILTERS__ || [];
-
+                                      const activeFilters = (window as any).__ACTIVE_FILTERS__ || [];
                                       let displayValue = spec.value || "-";
 
                                       if (activeFilters.length && spec.value) {
@@ -295,24 +257,16 @@ export default function ViewProduct({
                                           .split("|")
                                           .map((v) => v.trim())
                                           .filter(Boolean);
-
-                                        const matched = values.filter((v) =>
-                                          activeFilters.includes(v),
-                                        );
-
-                                        if (matched.length) {
-                                          displayValue = matched.join(" | ");
-                                        }
+                                        const matched = values.filter((v) => activeFilters.includes(v));
+                                        if (matched.length) displayValue = matched.join(" | ");
                                       }
 
                                       return (
-                                        <tr key={s}>
-                                          <td className="border p-2 font-semibold w-[40%]">
+                                        <tr key={s} className={s % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                                          <td className="border-b px-3 py-1.5 font-semibold text-xs text-gray-600 w-[45%]">
                                             {spec.specId || "-"}
                                           </td>
-                                          <td className="border p-2">
-                                            {displayValue}
-                                          </td>
+                                          <td className="border-b px-3 py-1.5 text-xs">{displayValue}</td>
                                         </tr>
                                       );
                                     })}
@@ -327,9 +281,29 @@ export default function ViewProduct({
               </div>
             </div>
 
-            {/* CTRL + F: RIGHT PANEL */}
+            {/* ══════════════════════════════
+                RIGHT PANEL — Generate TDS
+                On mobile: full-screen takeover
+            ══════════════════════════════ */}
             {openTDS && (
-              <div className="flex flex-col min-h-0 md:w-1/2 border-t md:border-t-0 md:border-l">
+              <div
+                className={`
+                  flex flex-col min-h-0 
+                  fixed inset-0 z-10 md:relative md:inset-auto md:z-auto
+                  md:w-1/2 border-t md:border-t-0 md:border-l
+                `}
+              >
+                {/* Mobile-only back button row */}
+                <div className="md:hidden flex items-center gap-2 px-4 py-2 bg-white border-b shrink-0">
+                  <button
+                    onClick={() => setOpenTDS(false)}
+                    className="flex items-center gap-1 text-sm text-gray-600"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Back to details
+                  </button>
+                </div>
+
                 <GenerateTDS
                   open={openTDS}
                   onClose={() => setOpenTDS(false)}
@@ -340,6 +314,7 @@ export default function ViewProduct({
                 />
               </div>
             )}
+
           </div>
         </div>
       )}

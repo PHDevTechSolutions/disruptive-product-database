@@ -196,6 +196,28 @@ export default function ProductsPage() {
             </div>
           ) : (
             <>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-3 py-3 border-t bg-white shrink-0 px-4">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm font-medium text-gray-600">{currentPage} / {totalPages}</span>
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              
               <div className="flex-1 overflow-y-auto px-3 md:px-6 pt-3 pb-24 md:pb-4">
                 {paginatedProducts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -273,26 +295,7 @@ export default function ProductsPage() {
                 )}
               </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-3 py-3 border-t bg-white shrink-0 px-4">
-                  <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
-                    className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <span className="text-sm font-medium text-gray-600">{currentPage} / {totalPages}</span>
-                  <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
-                    className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
+
             </>
           )}
         </div>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import GenerateTDSBrand from "@/components/generate-tds-brand";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 type TechnicalSpecification = {
   title: string;
@@ -31,15 +32,14 @@ const convertDriveToThumbnail = (url: string) => {
 
   return url;
 };
+
 type Props = {
   open: boolean;
   onClose: () => void;
 
   mainImage?: { url: string };
-
   dimensionalDrawing?: { url: string };
   illuminanceDrawing?: { url: string };
-
   technicalSpecifications?: TechnicalSpecification[];
 };
 
@@ -55,12 +55,12 @@ export default function GenerateTDS({
   const [itemCode, setItemCode] = useState("");
   const [productName, setProductName] = useState("");
   const [hideEmptySpecs, setHideEmptySpecs] = useState(true);
+  const [previewCollapsed, setPreviewCollapsed] = useState(false);
 
-const [uploadedDimensionalDrawing, setUploadedDimensionalDrawing] =
-  useState<File | null>(null);
-
-const [uploadedIlluminanceLevel, setUploadedIlluminanceLevel] =
-  useState<File | null>(null);
+  const [uploadedDimensionalDrawing, setUploadedDimensionalDrawing] =
+    useState<File | null>(null);
+  const [uploadedIlluminanceLevel, setUploadedIlluminanceLevel] =
+    useState<File | null>(null);
 
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -99,161 +99,102 @@ const [uploadedIlluminanceLevel, setUploadedIlluminanceLevel] =
     if (selectedBrand === "Lumera") {
       pdf.addImage("/lumera-header.png", "PNG", 0, 0, pageWidth, headerHeight);
     }
-
     if (selectedBrand === "Ecoshift") {
-      pdf.addImage(
-        "/ecoshift-header.png",
-        "PNG",
-        0,
-        0,
-        pageWidth,
-        headerHeight,
-      );
+      pdf.addImage("/ecoshift-header.png", "PNG", 0, 0, pageWidth, headerHeight);
     }
-    /* ================= PRODUCT IMAGE ================= */
 
+    /* ================= PRODUCT IMAGE ================= */
     const boxWidth = 150 * scaleFactor;
     const boxHeight = 120 * scaleFactor;
     const imageX = pageWidth / 2 - boxWidth - 60;
     const imageY = y;
 
-    /* ===== DRAW BORDER BOX (LIKE PREVIEW) ===== */
     pdf.setDrawColor(0, 0, 0);
     pdf.setLineWidth(1.5);
     pdf.rect(imageX, imageY, boxWidth, boxHeight);
 
-    /* ===== INSERT IMAGE INSIDE BOX ===== */
     if (mainImage?.url) {
-const convertedImage = convertDriveToThumbnail(mainImage.url);
+      const convertedImage = convertDriveToThumbnail(mainImage.url);
+      const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(convertedImage)}`;
 
-const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(convertedImage)}`;
-
-const imgData = await fetch(proxyUrl)
-  .then((r) => r.blob())
-  .then(
-    (blob) =>
-      new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      }),
-  );
+      const imgData = await fetch(proxyUrl)
+        .then((r) => r.blob())
+        .then(
+          (blob) =>
+            new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            }),
+        );
 
       const img = new Image();
       img.src = imgData;
-
-      await new Promise((resolve) => {
-        img.onload = resolve;
-      });
+      await new Promise((resolve) => { img.onload = resolve; });
 
       const imgWidth = img.width;
       const imgHeight = img.height;
-
-      const padding = 10; // space inside box
-
+      const padding = 10;
       const ratio = Math.min(
         (boxWidth - padding * 2) / imgWidth,
         (boxHeight - padding * 2) / imgHeight,
       );
-
       const finalWidth = imgWidth * ratio;
       const finalHeight = imgHeight * ratio;
-
       const centeredX = imageX + (boxWidth - finalWidth) / 2;
       const centeredY = imageY + (boxHeight - finalHeight) / 2;
 
-      pdf.addImage(
-        imgData,
-        "PNG",
-        centeredX,
-        centeredY,
-        finalWidth,
-        finalHeight,
-      );
+      pdf.addImage(imgData, "PNG", centeredX, centeredY, finalWidth, finalHeight);
     }
 
-    /* ================= TITLE ================= */
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(14);
-
     /* ================= BUILD TABLE ================= */
+    const filterSpecValue = (value?: string) => {
+      if (!value) return "";
+      const activeFilters = (window as any).__ACTIVE_FILTERS__ || [];
+      const values = value.split("|").map((v) => v.trim()).filter(Boolean);
+      const uniqueValues = Array.from(new Set(values));
+      if (uniqueValues.length === 0) return "";
+      if (activeFilters.length === 0) return uniqueValues.join(" | ");
+      const filtered = uniqueValues.filter((v) => activeFilters.includes(v));
+      return filtered.length ? filtered.join(" | ") : uniqueValues.join(" | ");
+    };
 
-const filterSpecValue = (value?: string) => {
-  if (!value) return "";
-
-  const activeFilters = (window as any).__ACTIVE_FILTERS__ || [];
-
-  const values = value
-    .split("|")
-    .map((v) => v.trim())
-    .filter(Boolean);
-
-  // 🔥 remove duplicates
-  const uniqueValues = Array.from(new Set(values));
-
-  if (uniqueValues.length === 0) return "";
-
-  if (activeFilters.length === 0) {
-    return uniqueValues.join(" | ");
-  }
-
-  const filtered = uniqueValues.filter((v) => activeFilters.includes(v));
-
-  return filtered.length ? filtered.join(" | ") : uniqueValues.join(" | ");
-};
     const tableRows: any[] = [];
 
     tableRows.push([
       "Brand :",
-      {
-        content: selectedBrand.toUpperCase(),
-        styles: { fontStyle: "bold" },
-      },
+      { content: selectedBrand.toUpperCase(), styles: { fontStyle: "bold" } },
     ]);
     tableRows.push(["Item Code :", itemCode]);
 
     technicalSpecifications
       ?.filter((group) => group.title !== "COMMERCIAL DETAILS")
       .forEach((group) => {
-        // Decide which specs to render based on toggle
         const specsToRender = hideEmptySpecs
           ? group.specs.filter((spec) => {
               const hasValue =
-                spec.value &&
-                typeof spec.value === "string" &&
-                spec.value.trim() !== "";
+                spec.value && typeof spec.value === "string" && spec.value.trim() !== "";
               return hasValue;
             })
           : group.specs;
 
-        // If ON and no valid specs → remove entire group
         if (hideEmptySpecs && specsToRender.length === 0) return;
 
-        // Add group title
         tableRows.push([
           {
             content: group.title,
             colSpan: 2,
-            styles: {
-              fillColor: [210, 215, 220],
-              fontStyle: "bold",
-            },
+            styles: { fillColor: [210, 215, 220], fontStyle: "bold" },
           },
         ]);
 
-        // Add specs
-specsToRender.forEach((spec) => {
-  const filteredValue = filterSpecValue(spec.value);
-
-  tableRows.push([
-    spec.specId ? spec.specId + " :" : "",
-    filteredValue || "",
-  ]);
-});
+        specsToRender.forEach((spec) => {
+          const filteredValue = filterSpecValue(spec.value);
+          tableRows.push([spec.specId ? spec.specId + " :" : "", filteredValue || ""]);
+        });
       });
 
     /* ================= AUTO SCALE TO 1 PAGE ================= */
-
     const DRAWING_BLOCK_HEIGHT = 230;
     const FOOTER_REAL_HEIGHT = 90;
     const SAFE_MARGIN = 20;
@@ -267,7 +208,6 @@ specsToRender.forEach((spec) => {
 
     while (fontSize > 6) {
       const testPdf = new jsPDF("p", "pt", "a4");
-
       autoTable(testPdf, {
         startY: y,
         theme: "grid",
@@ -276,17 +216,12 @@ specsToRender.forEach((spec) => {
         tableWidth: 450,
         pageBreak: "avoid",
       });
-
       const finalY = (testPdf as any).lastAutoTable.finalY;
       tableHeight = finalY - y;
-
       if (tableHeight <= maxTableHeight) break;
-
-      fontSize -= 0.4; // shrink table gradually
+      fontSize -= 0.4;
       scaleFactor = fontSize / 9;
     }
-
-    /* ================= CENTER TABLE ================= */
 
     /* ================= TITLE ================= */
     pdf.setFont("helvetica", "bold");
@@ -294,56 +229,33 @@ specsToRender.forEach((spec) => {
 
     const gap = 60 * scaleFactor;
     const textColumnX = imageX + boxWidth + gap;
-    const textColumnWidth = boxWidth + 40; // adjust width of right side
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(18 * scaleFactor);
-
-    /* ================= PRODUCT NAME AUTO SHRINK + RISE UP ================= */
+    const textColumnWidth = boxWidth + 40;
 
     const title = productName || "Product Name";
-
     let titleFontSize = 24 * scaleFactor;
     let titleLines: string[] = [];
 
-    /* AUTO SHRINK UNTIL MAX 2 LINES */
     while (true) {
       pdf.setFontSize(titleFontSize);
       titleLines = pdf.splitTextToSize(title, textColumnWidth);
-
       if (titleLines.length <= 2) break;
-
       titleFontSize -= 1;
       if (titleFontSize <= 12) break;
     }
 
     pdf.setFontSize(titleFontSize);
 
-    /* DOUBLE LINE POSITION (FIXED) */
     const lineY = imageY + boxHeight - 20;
-
-    /* TEXT STARTS ABOVE THE LINE */
-    const lineHeight = 18;
     const productTitleY = lineY - titleLines.length * 14 - 4;
 
-/* DRAW TITLE + CENTERED UNDERLINE */
+    const centerX = textColumnX + textColumnWidth / 2;
+    pdf.text(titleLines, centerX, productTitleY, { maxWidth: textColumnWidth, align: "center" });
 
-const centerX = textColumnX + textColumnWidth / 2;
-
-/* DRAW TITLE */
-pdf.text(titleLines, centerX, productTitleY, {
-  maxWidth: textColumnWidth,
-  align: "center",
-});
-
-/* DRAW SINGLE CENTERED LINE */
-const underlineWidth = textColumnWidth * 1.25;
-
-const lineStartX = centerX - underlineWidth / 2;
-const lineEndX = centerX + underlineWidth / 2;
-
-pdf.setLineWidth(0.8);
-pdf.line(lineStartX, lineY, lineEndX, lineY);
+    const underlineWidth = textColumnWidth * 1.25;
+    const lineStartX = centerX - underlineWidth / 2;
+    const lineEndX = centerX + underlineWidth / 2;
+    pdf.setLineWidth(0.8);
+    pdf.line(lineStartX, lineY, lineEndX, lineY);
 
     y += 135;
     const tableWidth = 450;
@@ -355,45 +267,24 @@ pdf.line(lineStartX, lineY, lineEndX, lineY);
       pageBreak: "avoid",
       tableWidth: tableWidth,
       margin: { left: tableX },
-      styles: {
-        fontSize,
-        cellPadding: 2,
-        overflow: "linebreak",
-      },
+      styles: { fontSize, cellPadding: 2, overflow: "linebreak" },
       body: tableRows,
-      columnStyles: {
-        0: { cellWidth: 230 },
-        1: { cellWidth: 220 },
-      },
+      columnStyles: { 0: { cellWidth: 230 }, 1: { cellWidth: 220 } },
     });
 
-    /* ================= DRAWINGS (INANGAT) ================= */
-
-    /* ================= DRAWINGS (AFTER TABLE - CENTERED) ================= */
-
-    // Get end of table
+    /* ================= DRAWINGS ================= */
     const tableEndY = (pdf as any).lastAutoTable.finalY;
-
-    // Space after table (konting gap lang)
     const drawingY = tableEndY + 35 * scaleFactor;
-
-    // Total drawing container width
     const drawingWidth = 190 * scaleFactor;
     const drawingHeight = 95 * scaleFactor;
     const gapBetween = 60 * scaleFactor;
     const totalWidth = drawingWidth * 2 + gapBetween;
-
-    // Center whole drawing group
     const startX = (pageWidth - totalWidth) / 2;
 
     pdf.setFontSize(11 * scaleFactor);
     pdf.setFont("helvetica", "bold");
 
-    // Centered labels
-    pdf.text("Dimensional Drawing", startX + drawingWidth / 2, drawingY - 10, {
-      align: "center",
-    });
-
+    pdf.text("Dimensional Drawing", startX + drawingWidth / 2, drawingY - 10, { align: "center" });
     pdf.text(
       "Illuminance Level",
       startX + drawingWidth + gapBetween + drawingWidth / 2,
@@ -401,146 +292,83 @@ pdf.line(lineStartX, lineY, lineEndX, lineY);
       { align: "center" },
     );
 
-    // Draw images centered under labels
-const dimensionalSource = uploadedDimensionalDrawing || dimensionalDrawing;
+    const dimensionalSource = uploadedDimensionalDrawing || dimensionalDrawing;
+    if (dimensionalSource) {
+      let img: string;
+      if (dimensionalSource instanceof File) {
+        img = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(dimensionalSource);
+        });
+      } else {
+        const converted = convertDriveToThumbnail(dimensionalSource.url);
+        const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
+        img = await fetch(proxyUrl)
+          .then((r) => r.blob())
+          .then(
+            (blob) =>
+              new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+              }),
+          );
+      }
+      pdf.addImage(img, "PNG", startX, drawingY, drawingWidth, drawingHeight);
+    }
 
-if (dimensionalSource) {
-  let img: string;
-
-  if (dimensionalSource instanceof File) {
-    img = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(dimensionalSource);
-    });
-  } else {
-    const converted = convertDriveToThumbnail(dimensionalSource.url);
-    const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
-
-    img = await fetch(proxyUrl)
-      .then((r) => r.blob())
-      .then(
-        (blob) =>
-          new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          }),
+    const illuminanceSource = uploadedIlluminanceLevel || illuminanceDrawing;
+    if (illuminanceSource) {
+      let img2: string;
+      if (illuminanceSource instanceof File) {
+        img2 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(illuminanceSource);
+        });
+      } else {
+        const converted = convertDriveToThumbnail(illuminanceSource.url);
+        const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
+        img2 = await fetch(proxyUrl)
+          .then((r) => r.blob())
+          .then(
+            (blob) =>
+              new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+              }),
+          );
+      }
+      pdf.addImage(
+        img2,
+        "PNG",
+        startX + drawingWidth + gapBetween,
+        drawingY,
+        drawingWidth,
+        drawingHeight,
       );
-  }
-
-  pdf.addImage(img, "PNG", startX, drawingY, drawingWidth, drawingHeight);
-}
-const illuminanceSource =
-  uploadedIlluminanceLevel || illuminanceDrawing;
-
-if (illuminanceSource) {
-  let img2: string;
-
-  if (illuminanceSource instanceof File) {
-    img2 = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(illuminanceSource);
-    });
-  } else {
-    const converted = convertDriveToThumbnail(illuminanceSource.url);
-    const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
-
-    img2 = await fetch(proxyUrl)
-      .then((r) => r.blob())
-      .then(
-        (blob) =>
-          new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          }),
-      );
-  }
-
-  pdf.addImage(
-    img2,
-    "PNG",
-    startX + drawingWidth + gapBetween,
-    drawingY,
-    drawingWidth,
-    drawingHeight,
-  );
-}
+    }
 
     /* ================= FOOTER ================= */
-
-    if (selectedBrand === "Lit") {
-      const footerImg = new Image();
-      footerImg.src = "/lit-footer.png";
-
-      await new Promise((resolve) => {
-        footerImg.onload = resolve;
-      });
-
-      const imgWidth = footerImg.width;
-      const imgHeight = footerImg.height;
-
-      const ratio = pageWidth / imgWidth;
-      const finalHeight = imgHeight * ratio;
-
-      pdf.addImage(
-        "/lit-footer.png",
-        "PNG",
-        0,
-        pageHeight - finalHeight,
-        pageWidth,
-        finalHeight,
-      );
-    }
-
-    if (selectedBrand === "Lumera") {
-      const footerImg = new Image();
-      footerImg.src = "/lumera-footer.png";
-
-      await new Promise((resolve) => {
-        footerImg.onload = resolve;
-      });
-
-      const imgWidth = footerImg.width;
-      const imgHeight = footerImg.height;
-
-      const ratio = pageWidth / imgWidth;
-      const finalHeight = imgHeight * ratio;
-
-      pdf.addImage(
-        "/lumera-footer.png",
-        "PNG",
-        0,
-        pageHeight - finalHeight,
-        pageWidth,
-        finalHeight,
-      );
-    }
-
-    if (selectedBrand === "Ecoshift") {
-      const footerImg = new Image();
-      footerImg.src = "/ecoshift-footer.png";
-
-      await new Promise((resolve) => {
-        footerImg.onload = resolve;
-      });
-
-      const imgWidth = footerImg.width;
-      const imgHeight = footerImg.height;
-
-      const ratio = pageWidth / imgWidth;
-      const finalHeight = imgHeight * ratio;
-
-      pdf.addImage(
-        "/ecoshift-footer.png",
-        "PNG",
-        0,
-        pageHeight - finalHeight,
-        pageWidth,
-        finalHeight,
-      );
+    for (const brand of ["Lit", "Lumera", "Ecoshift"]) {
+      if (selectedBrand === brand) {
+        const key = brand.toLowerCase();
+        const footerImg = new Image();
+        footerImg.src = `/${key}-footer.png`;
+        await new Promise((resolve) => { footerImg.onload = resolve; });
+        const ratio = pageWidth / footerImg.width;
+        const finalHeight = footerImg.height * ratio;
+        pdf.addImage(
+          `/${key}-footer.png`,
+          "PNG",
+          0,
+          pageHeight - finalHeight,
+          pageWidth,
+          finalHeight,
+        );
+      }
     }
 
     pdf.save(`${productName || "Product"}-${itemCode || "Item"}-TDS.pdf`);
@@ -549,33 +377,35 @@ if (illuminanceSource) {
   if (!open) return null;
 
   return (
-    <div className="flex flex-col bg-white md:h-full md:relative fixed inset-0 z-50 md:inset-auto md:z-auto">
-      <div className="border-b px-6 py-4 flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Generate TDS</h2>
-        <Button variant="outline" onClick={onClose}>
-          Close
-        </Button>
+    <div className="flex flex-col bg-white fixed inset-0 z-50 md:relative md:inset-auto md:z-auto md:h-full">
+      {/* ── HEADER ── */}
+      <div className="border-b px-4 py-3 flex justify-between items-center shrink-0 bg-white">
+        <h2 className="text-base font-semibold">Generate TDS</h2>
+        <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
       </div>
 
-      <div className="p-6 flex-1 overflow-auto space-y-6 bg-gray-100">
-        {/* ================= BRAND SELECT (ALWAYS VISIBLE) ================= */}
-        <div className="space-y-3 bg-white p-4 rounded-md shadow-sm">
-          <p className="text-sm font-semibold">Select Brand</p>
+      {/* ── SCROLLABLE BODY ── */}
+      <div className="flex-1 overflow-y-auto bg-gray-100 pb-[80px] md:pb-4">
 
-          {["Lit", "Lumera", "Ecoshift"].map((brand) => (
-            <label key={brand} className="flex items-center gap-2">
-              <input
-                type="radio"
-                value={brand}
-                checked={selectedBrand === brand}
-                onChange={(e) => setSelectedBrand(e.target.value)}
-              />
-              {brand}
-            </label>
-          ))}
+        {/* BRAND SELECT */}
+        <div className="m-3 bg-white rounded-xl shadow-sm p-4 space-y-3">
+          <p className="text-sm font-semibold">Select Brand</p>
+          <div className="flex gap-4 flex-wrap">
+            {["Lit", "Lumera", "Ecoshift"].map((brand) => (
+              <label key={brand} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value={brand}
+                  checked={selectedBrand === brand}
+                  onChange={(e) => setSelectedBrand(e.target.value)}
+                  className="accent-gray-800"
+                />
+                <span className="text-sm">{brand}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
-        {/* ================= HIDE EVERYTHING UNTIL BRAND SELECTED ================= */}
         {!selectedBrand && (
           <div className="text-center text-sm text-muted-foreground py-10">
             Please select a brand first to continue.
@@ -583,130 +413,151 @@ if (illuminanceSource) {
         )}
 
         {selectedBrand && (
-          <>
+          <div className="space-y-3 px-3">
+
             {/* PRODUCT NAME */}
-            <div className="space-y-2">
+            <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
               <p className="text-sm font-semibold">Product Name</p>
               <input
                 type="text"
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
                 placeholder="Enter product name..."
-                className="w-full border rounded-md h-10 px-3 text-sm bg-white"
+                className="w-full border rounded-lg h-10 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
               />
             </div>
 
             {/* ITEM CODE */}
-            <div className="space-y-2">
+            <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
               <p className="text-sm font-semibold">Item Code</p>
               <input
                 type="text"
                 value={itemCode}
                 onChange={(e) => setItemCode(e.target.value)}
                 placeholder="Enter item code..."
-                className="w-full border rounded-md h-10 px-3 text-sm bg-white"
+                className="w-full border rounded-lg h-10 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
               />
             </div>
-{/* DIMENSIONAL DRAWING */}
-<div className="space-y-2">
-  <p className="text-sm font-semibold">Dimensional Drawing</p>
 
-  {(uploadedDimensionalDrawing || dimensionalDrawing) && (
-    <img
-      src={
-        uploadedDimensionalDrawing
-          ? URL.createObjectURL(uploadedDimensionalDrawing)
-          : convertDriveToThumbnail(dimensionalDrawing!.url)
-      }
-      className="w-[220px] h-[120px] object-contain border rounded-md"
-    />
-  )}
+            {/* DRAWINGS — side by side on mobile too */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Dimensional Drawing */}
+              <div className="bg-white rounded-xl shadow-sm p-3 space-y-2">
+                <p className="text-xs font-semibold">Dimensional Drawing</p>
+                {(uploadedDimensionalDrawing || dimensionalDrawing) && (
+                  <img
+                    src={
+                      uploadedDimensionalDrawing
+                        ? URL.createObjectURL(uploadedDimensionalDrawing)
+                        : convertDriveToThumbnail(dimensionalDrawing!.url)
+                    }
+                    className="w-full h-[80px] object-contain border rounded-lg"
+                  />
+                )}
+                <label className="flex items-center justify-center h-9 border-2 border-dashed rounded-lg cursor-pointer text-xs text-gray-400 hover:border-blue-400 transition bg-gray-50">
+                  Replace image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleDimensionalDrawingChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
 
-  <input
-    type="file"
-    accept="image/*"
-    onChange={handleDimensionalDrawingChange}
-    className="w-full border rounded-md h-10 px-3 text-sm bg-white"
-  />
-</div>
-
-{/* ILLUMINANCE LEVEL */}
-<div className="space-y-2">
-  <p className="text-sm font-semibold">Illuminance Level</p>
-
-  {(uploadedIlluminanceLevel || illuminanceDrawing) && (
-    <img
-      src={
-        uploadedIlluminanceLevel
-          ? URL.createObjectURL(uploadedIlluminanceLevel)
-          : convertDriveToThumbnail(illuminanceDrawing!.url)
-      }
-      className="w-[220px] h-[120px] object-contain border rounded-md"
-    />
-  )}
-
-  <input
-    type="file"
-    accept="image/*"
-    onChange={handleIlluminanceLevelChange}
-    className="w-full border rounded-md h-10 px-3 text-sm bg-white"
-  />
-</div>
-
-            {/* PREVIEW */}
-            <div className="flex justify-center font-bold text-base mb-3">
-              TDS PREVIEW
+              {/* Illuminance Level */}
+              <div className="bg-white rounded-xl shadow-sm p-3 space-y-2">
+                <p className="text-xs font-semibold">Illuminance Level</p>
+                {(uploadedIlluminanceLevel || illuminanceDrawing) && (
+                  <img
+                    src={
+                      uploadedIlluminanceLevel
+                        ? URL.createObjectURL(uploadedIlluminanceLevel)
+                        : convertDriveToThumbnail(illuminanceDrawing!.url)
+                    }
+                    className="w-full h-[80px] object-contain border rounded-lg"
+                  />
+                )}
+                <label className="flex items-center justify-center h-9 border-2 border-dashed rounded-lg cursor-pointer text-xs text-gray-400 hover:border-blue-400 transition bg-gray-50">
+                  Replace image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleIlluminanceLevelChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             </div>
-            {/* REMOVE EMPTY SPECIFICATIONS TOGGLE */}
-            <div className="space-y-2">
-              <p className="text-sm font-semibold">
-                Remove Empty Specifications
-              </p>
 
+            {/* HIDE EMPTY SPECS TOGGLE */}
+            <div className="bg-white rounded-xl shadow-sm p-4">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={hideEmptySpecs}
                   onChange={(e) => setHideEmptySpecs(e.target.checked)}
-                  className="w-4 h-4"
+                  className="w-4 h-4 accent-gray-800"
                 />
-                <span className="text-sm">
-                  {hideEmptySpecs
-                    ? "ON - Empty specs hidden"
-                    : "OFF - Show all specs"}
+                <span className="text-sm font-medium">
+                  {hideEmptySpecs ? "Hide empty specs (ON)" : "Show all specs (OFF)"}
                 </span>
               </label>
             </div>
 
-            <div className="flex justify-center">
-<GenerateTDSBrand
-  ref={previewRef}
-  open={true}
-  company={selectedBrand as "Lit" | "Lumera" | "Ecoshift"}
-  productName={productName}
-  itemCode={itemCode}
-  mainImage={mainImage}
-  technicalSpecifications={technicalSpecifications}
-dimensionalDrawing={uploadedDimensionalDrawing || dimensionalDrawing}
-illuminanceLevel={uploadedIlluminanceLevel || illuminanceDrawing}
-  hideEmptySpecs={hideEmptySpecs}
-/>
+            {/* PREVIEW — collapsible on mobile */}
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <button
+                onClick={() => setPreviewCollapsed((p) => !p)}
+                className="w-full flex items-center justify-between px-4 py-3 border-b"
+              >
+                <span className="text-sm font-semibold">TDS Preview</span>
+                {previewCollapsed
+                  ? <ChevronDown className="h-4 w-4 text-gray-500" />
+                  : <ChevronUp className="h-4 w-4 text-gray-500" />}
+              </button>
+
+              {!previewCollapsed && (
+                <div className="overflow-x-auto p-3">
+                  <div className="min-w-[340px]">
+                    <GenerateTDSBrand
+                      ref={previewRef}
+                      open={true}
+                      company={selectedBrand as "Lit" | "Lumera" | "Ecoshift"}
+                      productName={productName}
+                      itemCode={itemCode}
+                      mainImage={mainImage}
+                      technicalSpecifications={technicalSpecifications}
+                      dimensionalDrawing={uploadedDimensionalDrawing || dimensionalDrawing}
+                      illuminanceLevel={uploadedIlluminanceLevel || illuminanceDrawing}
+                      hideEmptySpecs={hideEmptySpecs}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          </>
+
+          </div>
         )}
       </div>
 
-      {/* FOOTER BUTTONS */}
-      <div className="border-t px-6 py-4 flex justify-end gap-2">
+      {/* ── FOOTER BUTTONS — fixed on mobile, normal on desktop ── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 md:relative md:bottom-auto md:left-auto md:right-auto border-t px-4 py-3 flex justify-end gap-2 bg-white shrink-0"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+      >
         <Button
           onClick={downloadPDF}
           disabled={!selectedBrand}
-          className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+          className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 flex-1 md:flex-none rounded-xl h-11 md:h-9"
         >
           Download PDF
         </Button>
-
-        <Button variant="secondary" onClick={onClose}>
+        <Button
+          variant="secondary"
+          onClick={onClose}
+          className="flex-1 md:flex-none rounded-xl h-11 md:h-9"
+        >
           Cancel
         </Button>
       </div>

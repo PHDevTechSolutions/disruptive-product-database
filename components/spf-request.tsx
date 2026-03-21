@@ -19,6 +19,7 @@ import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import CardDetails from "@/components/spf/dialog/card-details";
 import SPFRequestView from "@/components/spf-request-view";
+/* CTRL + F: SHADCN ACCORDION IMPORT */
 import {
   Accordion,
   AccordionItem,
@@ -47,6 +48,7 @@ type SPFRequest = {
   special_instructions?: string;
   item_description?: string[];
   item_photo?: string[];
+
   status?: string;
   date_created?: string;
   process_by?: string;
@@ -87,6 +89,7 @@ export default function SPF({ processBy }: SPFProps) {
     item_photo: [],
   });
 
+  const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
   const [productOffers, setProductOffers] = useState<Record<number, any[]>>({});
   const [draggedProduct, setDraggedProduct] = useState<any | null>(null);
   const [showTrash, setShowTrash] = useState(false);
@@ -97,8 +100,9 @@ export default function SPF({ processBy }: SPFProps) {
   const [openFilter, setOpenFilter] = useState(false);
   const [viewMode, setViewMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [createdSPF, setCreatedSPF] = useState<Record<string, string>>({});
+  const [createdSPF, setCreatedSPF] = useState<Record<string, boolean>>({});
 
+  // Fetch SPF requests
   const fetchRequests = useCallback(async () => {
     try {
       setError(null);
@@ -114,18 +118,21 @@ export default function SPF({ processBy }: SPFProps) {
 
       setRequests(mapped);
 
+      /* CHECK WHICH SPF ALREADY CREATED */
       const spfNumbers = mapped.map((r: any) => r.spf_number);
 
       if (spfNumbers.length) {
         const { data: created } = await supabase
           .from("spf_creation")
-          .select("spf_number, status")
+          .select("spf_number")
           .in("spf_number", spfNumbers);
 
-        const map: Record<string, string> = {};
+        const map: Record<string, boolean> = {};
+
         created?.forEach((c: any) => {
-          map[c.spf_number] = c.status;
+          map[c.spf_number] = true;
         });
+
         setCreatedSPF(map);
       }
     } catch (err: any) {
@@ -151,15 +158,8 @@ export default function SPF({ processBy }: SPFProps) {
     };
   }, [fetchRequests]);
 
-  const resetDialogState = () => {
-    setProductOffers({});
-    setDraggedProduct(null);
-    setShowTrash(false);
-    setViewMode(false);
-    setSearchTerm("");
-  };
-
   const handleCreateFromRow = (rowData: SPFRequest) => {
+    // Helper to normalize comma-separated strings into arrays
     const normalizeArray = (value: string | string[] | undefined) => {
       if (Array.isArray(value)) return value;
       if (typeof value === "string")
@@ -175,34 +175,20 @@ export default function SPF({ processBy }: SPFProps) {
       item_photo: normalizeArray(rowData.item_photo),
     });
 
-    resetDialogState();
     setOpenDialog(true);
     fetchProducts(rowData.customer_name || "");
   };
 
   const handleSubmit = async () => {
     try {
-      const allProducts: any[] = [];
-
-      Object.entries(productOffers).forEach(([rowIndex, rowProducts]) => {
-        (rowProducts || []).forEach((prod) => {
-          if (prod) {
-            allProducts.push({ ...prod, __rowIndex: Number(rowIndex) });
-          }
-        });
-      });
-
-      if (allProducts.length === 0) {
-        toast.error("Please add at least one product offer before submitting.");
-        return;
-      }
+      const allProducts = Object.values(productOffers).flat();
 
       const res = await fetch("/api/request/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+
         body: JSON.stringify({
           ...formData,
-          totalItemRows: (formData.item_description || []).length,
           selectedProducts: allProducts,
         }),
       });
@@ -227,8 +213,8 @@ export default function SPF({ processBy }: SPFProps) {
       toast.error("Something went wrong while creating SPF");
     }
   };
-
-  const fetchProducts = useCallback((_customerName: string) => {
+  // Fetch products from Firebase
+  const fetchProducts = useCallback((customerName: string) => {
     setLoadingProducts(true);
     const q = query(collection(db, "products"), where("isActive", "==", true));
     const unsubscribe = onSnapshot(q, (snap) => {
@@ -253,11 +239,23 @@ export default function SPF({ processBy }: SPFProps) {
     const term = searchTerm.toLowerCase();
     const filtered = products.filter((p: any) => {
       const name = p.productName?.toLowerCase() || "";
-      const commercial = JSON.stringify(p.commercialDetails || "").toLowerCase();
+      const commercial = JSON.stringify(
+        p.commercialDetails || "",
+      ).toLowerCase();
+
       return name.includes(term) || commercial.includes(term);
     });
     setFilteredProducts(filtered);
   }, [searchTerm, products]);
+
+  const parseDescription = (desc: string) => {
+    if (!desc) return [];
+    // Split by line breaks OR " | " if present
+    return desc
+      .split(/\r?\n|\|/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  };
 
   if (error) return <p className="text-red-500">{error}</p>;
 
@@ -290,9 +288,6 @@ export default function SPF({ processBy }: SPFProps) {
                   minute: "2-digit",
                 }).format(new Date(req.date_created))
               : "-";
-
-            const spfStatus = createdSPF[req.spf_number];
-
             return (
               <div
                 key={req.id}
@@ -307,20 +302,17 @@ export default function SPF({ processBy }: SPFProps) {
                 </div>
                 <div>{formattedDate}</div>
                 <div>
-                  <div className="flex gap-2 items-center">
-                    {/* Show Create button only if no spf_creation entry yet */}
-                    {!spfStatus && (
-                      <Button
-                        className="rounded-none p-6"
-                        variant="outline"
-                        onClick={() => handleCreateFromRow(req)}
-                      >
-                        Create
-                      </Button>
-                    )}
+                  <div className="flex gap-2">
+                    <Button
+                      className="rounded-none p-6"
+                      variant="outline"
+                      onClick={() => handleCreateFromRow(req)}
+                    >
+                      Create
+                    </Button>
 
-                    {/* Show View + badge for any existing spf_creation status */}
-                    {spfStatus && (
+                    {/* SHOW ONLY IF SPF ALREADY CREATED */}
+                    {createdSPF[req.spf_number] && (
                       <SPFRequestView spfNumber={req.spf_number} />
                     )}
                   </div>
@@ -331,19 +323,15 @@ export default function SPF({ processBy }: SPFProps) {
         )}
 
         {/* ---------------- Dialog ---------------- */}
-        <Dialog
-          open={openDialog}
-          onOpenChange={(val) => {
-            setOpenDialog(val);
-            if (!val) resetDialogState();
-          }}
-        >
-          <DialogContent className="sm:max-w-8xl rounded-none p-6 max-h-[90vh] flex flex-col overflow-hidden">
-            <DialogHeader className="w-full mb-4 relative shrink-0">
+        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+          <DialogContent className="sm:max-w-8xl rounded-none p-6 max-h-[90vh] overflow-hidden">
+            <DialogHeader className="w-full mb-4 relative">
+              {/* CENTER TITLE */}
               <DialogTitle className="text-center w-full">
                 Create SPF Request
               </DialogTitle>
 
+              {/* RIGHT SIDE CONTROLS */}
               <div className="absolute right-0 top-0 flex gap-2 items-center">
                 <input
                   type="text"
@@ -352,6 +340,7 @@ export default function SPF({ processBy }: SPFProps) {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="border px-3 py-2 text-sm w-[220px]"
                 />
+
                 <Button
                   size="icon"
                   variant="outline"
@@ -360,6 +349,7 @@ export default function SPF({ processBy }: SPFProps) {
                 >
                   <Funnel size={16} />
                 </Button>
+
                 <Button
                   className="rounded-none p-6"
                   onClick={() => setOpenAddProduct(true)}
@@ -368,6 +358,7 @@ export default function SPF({ processBy }: SPFProps) {
                 </Button>
               </div>
 
+              {/* CTRL + F: DRAG DELETE ZONE */}
               {showTrash && (
                 <div className="flex justify-center mt-3">
                   <div
@@ -379,9 +370,13 @@ export default function SPF({ processBy }: SPFProps) {
                       if (draggedProduct.__fromRow !== undefined) {
                         setProductOffers((prev) => {
                           const copy = { ...prev };
-                          const arr = [...(copy[draggedProduct.__fromRow] || [])];
+                          const arr = [
+                            ...(copy[draggedProduct.__fromRow] || []),
+                          ];
+
                           arr.splice(draggedProduct.__fromIndex, 1);
                           copy[draggedProduct.__fromRow] = arr;
+
                           return copy;
                         });
                       }
@@ -389,7 +384,19 @@ export default function SPF({ processBy }: SPFProps) {
                       setDraggedProduct(null);
                       setShowTrash(false);
                     }}
-                    className="flex items-center gap-2 border border-dashed border-destructive/40 text-destructive text-xs px-4 py-2 rounded-md bg-muted/40 hover:bg-destructive/10 transition-colors cursor-pointer"
+                    className="
+          flex items-center gap-2
+          border border-dashed
+          border-destructive/40
+          text-destructive
+          text-xs
+          px-4 py-2
+          rounded-md
+          bg-muted/40
+          hover:bg-destructive/10
+          transition-colors
+          cursor-pointer
+        "
                   >
                     🗑
                     <span className="font-medium">Drag here to delete</span>
@@ -398,25 +405,43 @@ export default function SPF({ processBy }: SPFProps) {
               )}
             </DialogHeader>
 
-            <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
-
-              {/* LEFT CARD */}
+            <div className="flex gap-4">
+              {/* LEFT CARD: Company Details + Table */}
               <Card
                 className={`${
                   viewMode ? "w-[100%]" : "w-[70%]"
-                } transition-all duration-500 ease-in-out p-4 flex flex-col gap-4 overflow-y-auto overscroll-contain min-h-0`}
+                } transition-all duration-500 ease-in-out p-4 flex flex-col gap-4 overflow-y-auto max-h-[70vh] overscroll-contain`}
               >
                 <div className="grid grid-cols-1 gap-4">
                   <CardDetails
                     title="Company Details"
                     fields={[
                       { label: "Customer Name", value: formData.customer_name },
-                      { label: "Contact Person", value: formData.contact_person },
-                      { label: "Contact Number", value: formData.contact_number },
-                      { label: "Registered Address", value: formData.registered_address, pre: true },
-                      { label: "Delivery Address", value: formData.delivery_address },
-                      { label: "Billing Address", value: formData.billing_address },
-                      { label: "Collection Address", value: formData.collection_address },
+                      {
+                        label: "Contact Person",
+                        value: formData.contact_person,
+                      },
+                      {
+                        label: "Contact Number",
+                        value: formData.contact_number,
+                      },
+                      {
+                        label: "Registered Address",
+                        value: formData.registered_address,
+                        pre: true,
+                      },
+                      {
+                        label: "Delivery Address",
+                        value: formData.delivery_address,
+                      },
+                      {
+                        label: "Billing Address",
+                        value: formData.billing_address,
+                      },
+                      {
+                        label: "Collection Address",
+                        value: formData.collection_address,
+                      },
                       { label: "TIN", value: formData.tin_no },
                     ]}
                   />
@@ -433,6 +458,8 @@ export default function SPF({ processBy }: SPFProps) {
                   />
                 </div>
 
+                {/* SELECTED PRODUCTS TABLE */}
+                {/* RIGHT CARD: Products Section */}
                 <div className="mb-3 border-b pb-2">
                   <h3 className="text-sm font-bold">
                     {formData.spf_number || "-"}
@@ -445,194 +472,251 @@ export default function SPF({ processBy }: SPFProps) {
                       <thead>
                         <tr className="bg-gray-100">
                           <th className="border px-2 py-1 text-center">#</th>
-                          <th className="border px-2 py-1 text-center">Image</th>
-                          <th className="border px-2 py-1 text-center">Item Description</th>
-                          <th className="border px-2 py-1 text-center">Product Offer</th>
+                          <th className="border px-2 py-1 text-center">
+                            Image
+                          </th>
+                          <th className="border px-2 py-1 text-center">
+                            Item Description
+                          </th>
+                          <th className="border px-2 py-1 text-center">
+                            Product Offer
+                          </th>
                         </tr>
                       </thead>
 
                       <tbody>
-                        {(formData.item_description || []).map((desc, index) => {
-                          const offers = productOffers[index] || [];
+                        {(formData.item_description || []).map(
+                          (desc, index) => {
+                            const lines = parseDescription(desc);
 
-                          return (
-                            <tr
-                              key={index}
-                              className="text-sm"
-                              onDragOver={(e) => e.preventDefault()}
-                              onDrop={() => {
-                                if (viewMode) return;
-                                if (!draggedProduct) return;
+                            return (
+                              <tr
+                                key={index}
+                                className="text-sm"
+                                onDragOver={(e) => e.preventDefault()}
+                                /* CTRL + F: HANDLE PRODUCT DROP INTO ROW */
+                                onDrop={() => {
+                                  if (viewMode) return;
+                                  if (!draggedProduct) return;
 
-                                setProductOffers((prev) => {
-                                  const copy = { ...prev };
+                                  setProductOffers((prev) => {
+                                    const copy = { ...prev };
 
-                                  if (draggedProduct.__fromRow !== undefined) {
-                                    const original = [
-                                      ...(copy[draggedProduct.__fromRow] || []),
-                                    ];
-                                    original.splice(draggedProduct.__fromIndex, 1);
-                                    copy[draggedProduct.__fromRow] = original;
-                                  }
+                                    if (
+                                      draggedProduct.__fromRow !== undefined
+                                    ) {
+                                      const original = [
+                                        ...(copy[draggedProduct.__fromRow] ||
+                                          []),
+                                      ];
 
-                                  const freezeSpecs = (product: any) => {
-                                    const activeFilters =
-                                      (window as any).__ACTIVE_FILTERS__ || [];
-
-                                    if (!product.technicalSpecifications)
-                                      return product;
-
-                                    const frozenSpecs =
-                                      product.technicalSpecifications.map(
-                                        (group: any) => ({
-                                          ...group,
-                                          specs: group.specs?.map((spec: any) => {
-                                            const raw = spec.value || "";
-                                            const values = raw
-                                              .split("|")
-                                              .map((v: string) => v.trim())
-                                              .filter(Boolean);
-                                            const uniqueValues = Array.from(new Set(values));
-
-                                            if (!activeFilters.length) {
-                                              return {
-                                                ...spec,
-                                                value: uniqueValues.join(" | "),
-                                              };
-                                            }
-
-                                            const filtered = uniqueValues.filter((v) =>
-                                              activeFilters.includes(v),
-                                            );
-
-                                            return {
-                                              ...spec,
-                                              value: filtered.length
-                                                ? filtered.join(" | ")
-                                                : uniqueValues.join(" | "),
-                                            };
-                                          }),
-                                        }),
+                                      original.splice(
+                                        draggedProduct.__fromIndex,
+                                        1,
                                       );
 
-                                    return {
-                                      ...product,
-                                      technicalSpecifications: frozenSpecs,
+                                      copy[draggedProduct.__fromRow] = original;
+                                    }
+
+                                    /* CTRL + F: SPF FREEZE SPECS LOGIC */
+
+                                    const freezeSpecs = (product: any) => {
+                                      const activeFilters =
+                                        (window as any).__ACTIVE_FILTERS__ ||
+                                        [];
+
+                                      if (!product.technicalSpecifications)
+                                        return product;
+
+                                      const frozenSpecs =
+                                        product.technicalSpecifications.map(
+                                          (group: any) => ({
+                                            ...group,
+                                            specs: group.specs?.map(
+                                              (spec: any) => {
+                                                const raw = spec.value || "";
+
+                                                const values = raw
+                                                  .split("|")
+                                                  .map((v: string) => v.trim())
+                                                  .filter(Boolean);
+
+                                                const uniqueValues = Array.from(
+                                                  new Set(values),
+                                                );
+
+                                                if (!activeFilters.length) {
+                                                  return {
+                                                    ...spec,
+                                                    value:
+                                                      uniqueValues.join(" | "),
+                                                  };
+                                                }
+
+                                                const filtered =
+                                                  uniqueValues.filter((v) =>
+                                                    activeFilters.includes(v),
+                                                  );
+
+                                                return {
+                                                  ...spec,
+                                                  value: filtered.length
+                                                    ? filtered.join(" | ")
+                                                    : uniqueValues.join(" | "),
+                                                };
+                                              },
+                                            ),
+                                          }),
+                                        );
+
+                                      return {
+                                        ...product,
+                                        technicalSpecifications: frozenSpecs,
+                                      };
                                     };
-                                  };
 
-                                  copy[index] = [
-                                    ...(copy[index] || []),
-                                    freezeSpecs(draggedProduct),
-                                  ];
+                                    copy[index] = [
+                                      ...(copy[index] || []),
+                                      freezeSpecs(draggedProduct),
+                                    ];
 
-                                  return copy;
-                                });
-
-                                setDraggedProduct(null);
-                              }}
-                            >
-                              {/* ITEM NUMBER */}
-                              <td className="border px-2 py-1 font-medium text-center align-top pt-3">
-                                {formData.spf_number
-                                  ? `${formData.spf_number}-${String(index + 1).padStart(3, "0")}`
-                                  : "-"}
-                              </td>
-
-                              {/* IMAGE */}
-                              <td className="border px-2 py-1 align-top pt-3">
-                                <div className="flex justify-center items-start">
-                                  {formData.item_photo?.[index] ? (
-                                    <img
-                                      src={formData.item_photo[index]}
-                                      alt={desc}
-                                      className="w-24 h-24 object-contain"
-                                    />
-                                  ) : (
-                                    "-"
-                                  )}
-                                </div>
-                              </td>
-
-                              {/* DESCRIPTION */}
-                              <td
-                                className="border px-2 py-1 whitespace-pre-wrap text-center align-top pt-3"
-                                contentEditable
-                                suppressContentEditableWarning
-                                onBlur={(e) => {
-                                  const updatedDescriptions = [
-                                    ...(formData.item_description || []),
-                                  ];
-                                  const newLines = e.currentTarget.innerText
-                                    .split("\n")
-                                    .map((l) => l.trim())
-                                    .filter(Boolean);
-                                  updatedDescriptions[index] = newLines.join(" | ");
-                                  setFormData({
-                                    ...formData,
-                                    item_description: updatedDescriptions,
+                                    return copy;
                                   });
+
+                                  setDraggedProduct(null);
                                 }}
                               >
-                                {desc.replace(/\|/g, "\n")}
-                              </td>
+                                {/* ITEM NUMBER */}
+                                <td className="border px-2 py-1 font-medium text-center align-middle">
+                                  {formData.spf_number
+                                    ? `${formData.spf_number}-${String(
+                                        index + 1,
+                                      ).padStart(3, "0")}`
+                                    : "-"}
+                                </td>
 
-                              {/* PRODUCT OFFER CELL */}
-                              <td className="border px-2 py-2 align-top">
-                                {offers.length === 0 ? (
-                                  <div className="text-xs text-muted-foreground text-center py-4">
-                                    Drag a product here
+                                {/* IMAGE */}
+                                <td className="border px-2 py-1 align-middle">
+                                  <div className="flex justify-center items-center">
+                                    {formData.item_photo?.[index] ? (
+                                      <img
+                                        src={formData.item_photo[index]}
+                                        alt={desc}
+                                        className="w-24 h-24 object-contain"
+                                      />
+                                    ) : (
+                                      "-"
+                                    )}
                                   </div>
-                                ) : (
-                                  <div className="space-y-3">
-                                    {offers.map((prod: any, i: number) => {
-                                      const unitCost = prod?.commercialDetails?.unitCost || "-";
-                                      const length   = prod?.commercialDetails?.packaging?.length || "-";
-                                      const width    = prod?.commercialDetails?.packaging?.width  || "-";
-                                      const height   = prod?.commercialDetails?.packaging?.height || "-";
-                                      const factory  = prod?.commercialDetails?.factoryAddress   || "-";
-                                      const port     = prod?.commercialDetails?.portOfDischarge  || "-";
+                                </td>
 
-                                      return (
-                                        <div key={i}>
-                                          {offers.length > 1 && (
-                                            <div className="mb-1">
-                                              <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                                Option {i + 1} · {prod?.supplier?.supplierBrand || "No brand"}
-                                              </span>
-                                            </div>
-                                          )}
+                                {/* DESCRIPTION */}
+                                <td
+                                  className="border px-2 py-1 whitespace-pre-wrap text-center align-middle"
+                                  contentEditable
+                                  suppressContentEditableWarning
+                                  onBlur={(e) => {
+                                    const updatedDescriptions = [
+                                      ...(formData.item_description || []),
+                                    ];
 
-                                          <div className="border rounded overflow-hidden">
-                                            <table className="w-full text-xs">
-                                              <thead className="bg-muted">
-                                                <tr>
-                                                  <th className="border px-2 py-1 text-center w-[120px]">Supplier Brand</th>
-                                                  <th className="border px-2 py-1 text-center">Image</th>
-                                                  <th className="border px-2 py-1 w-[70px]">Qty</th>
-                                                  <th className="border px-2 py-1 text-center">Technical Specifications</th>
-                                                  <th className="border px-2 py-1 text-center">Unit Cost</th>
-                                                  <th className="border px-2 py-1 text-center">
-                                                    Packaging Details
-                                                    <div className="text-[10px] text-muted-foreground">L x W x H</div>
-                                                  </th>
-                                                  <th className="border px-2 py-1 text-center">Factory Address</th>
-                                                  <th className="border px-2 py-1 text-center">Port of Discharge</th>
-                                                  <th className="border px-2 py-1 w-[100px]">Sub Total</th>
-                                                </tr>
-                                              </thead>
-                                              <tbody>
+                                    const newLines = e.currentTarget.innerText
+                                      .split("\n")
+                                      .map((l) => l.trim())
+                                      .filter(Boolean);
+
+                                    updatedDescriptions[index] =
+                                      newLines.join(" | ");
+
+                                    setFormData({
+                                      ...formData,
+                                      item_description: updatedDescriptions,
+                                    });
+                                  }}
+                                >
+                                  {desc.replace(/\|/g, "\n")}
+                                </td>
+
+                                {/* PRODUCT OFFER TABLE */}
+                                <td className="border px-2 py-1 text-center align-middle">
+                                  {(productOffers[index] || []).length > 0 && (
+                                    <div className="border rounded mb-2 overflow-hidden">
+                                      <table className="w-full text-xs">
+                                        <thead className="bg-muted">
+                                          <tr>
+                                            <th className="border px-2 py-1 text-center">
+                                              Image
+                                            </th>
+                                            <th className="border px-2 py-1 w-[70px]">
+                                              Qty
+                                            </th>
+                                            <th className="border px-2 py-1 text-center">
+                                              Technical Specifications
+                                            </th>
+                                            <th className="border px-2 py-1 text-center">
+                                              Unit Cost
+                                            </th>
+                                            <th className="border px-2 py-1 text-center">
+                                              Packaging Details
+                                              <div className="text-[10px] text-muted-foreground">
+                                                L x W x H
+                                              </div>
+                                            </th>
+                                            <th className="border px-2 py-1 text-center">
+                                              Factory Address
+                                            </th>
+                                            <th className="border px-2 py-1 text-center">
+                                              Port of Discharge
+                                            </th>
+                                            <th className="border px-2 py-1 w-[100px]">
+                                              Sub Total
+                                            </th>
+                                          </tr>
+                                        </thead>
+
+                                        <tbody>
+                                          {(productOffers[index] || []).map(
+                                            (prod: any, i: number) => {
+                                              const unitCost =
+                                                prod?.commercialDetails
+                                                  ?.unitCost || "-";
+
+                                              const length =
+                                                prod?.commercialDetails
+                                                  ?.packaging?.length || "-";
+                                              const width =
+                                                prod?.commercialDetails
+                                                  ?.packaging?.width || "-";
+                                              const height =
+                                                prod?.commercialDetails
+                                                  ?.packaging?.height || "-";
+
+                                              const factory =
+                                                prod?.commercialDetails
+                                                  ?.factoryAddress || "-";
+
+                                              const port =
+                                                prod?.commercialDetails
+                                                  ?.portOfDischarge || "-";
+
+                                              return (
                                                 <tr
+                                                  key={i}
                                                   draggable={!viewMode}
                                                   className={`${viewMode ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
                                                   onDragStart={(e) => {
                                                     if (viewMode) return;
-                                                    e.dataTransfer.setData("text/plain", "dragging");
+                                                    e.dataTransfer.setData(
+                                                      "text/plain",
+                                                      "dragging",
+                                                    );
+
                                                     setDraggedProduct({
                                                       ...prod,
                                                       __fromRow: index,
                                                       __fromIndex: i,
                                                     });
+
                                                     setShowTrash(true);
                                                   }}
                                                   onDragEnd={() => {
@@ -641,14 +725,19 @@ export default function SPF({ processBy }: SPFProps) {
                                                     setShowTrash(false);
                                                   }}
                                                 >
-                                                  <td className="border px-2 py-1 text-center align-middle">
-                                                    {prod?.supplier?.supplierBrand || "-"}
-                                                  </td>
+                                                  {/* IMAGE */}
                                                   <td className="border px-2 py-1 text-center align-middle">
                                                     {prod.mainImage?.url ? (
-                                                      <img src={prod.mainImage.url} className="w-16 h-16 object-contain mx-auto" />
-                                                    ) : "-"}
+                                                      <img
+                                                        src={prod.mainImage.url}
+                                                        className="w-16 h-16 object-contain mx-auto"
+                                                      />
+                                                    ) : (
+                                                      "-"
+                                                    )}
                                                   </td>
+
+                                                  {/* QTY */}
                                                   <td className="border px-2 py-1 text-center align-middle">
                                                     <input
                                                       type="number"
@@ -657,45 +746,112 @@ export default function SPF({ processBy }: SPFProps) {
                                                       placeholder="Qty"
                                                       value={prod.qty || ""}
                                                       onChange={(e) => {
-                                                        let qty = Number(e.target.value);
+                                                        let qty = Number(
+                                                          e.target.value,
+                                                        );
+
                                                         if (qty < 0) qty = 0;
-                                                        setProductOffers((prev) => {
-                                                          const copy = { ...prev };
-                                                          const row = [...(copy[index] || [])];
-                                                          row[i] = { ...row[i], qty };
-                                                          copy[index] = row;
-                                                          return copy;
-                                                        });
+
+                                                        setProductOffers(
+                                                          (prev) => {
+                                                            const copy = {
+                                                              ...prev,
+                                                            };
+                                                            const row = [
+                                                              ...(copy[index] ||
+                                                                []),
+                                                            ];
+
+                                                            row[i] = {
+                                                              ...row[i],
+                                                              qty,
+                                                            };
+
+                                                            copy[index] = row;
+                                                            return copy;
+                                                          },
+                                                        );
                                                       }}
                                                     />
                                                   </td>
-                                                  <td className="border px-2 py-1 text-left align-middle">
+
+                                                  {/* TECHNICAL SPECS */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
                                                     {prod.technicalSpecifications
                                                       ?.map((g: any) => ({
                                                         ...g,
-                                                        specs: g.specs?.filter((s: any) => s.value && s.value.trim() !== ""),
+                                                        specs: g.specs?.filter(
+                                                          (s: any) =>
+                                                            s.value &&
+                                                            s.value.trim() !==
+                                                              "",
+                                                        ),
                                                       }))
-                                                      .filter((g: any) => g.specs && g.specs.length > 0)
-                                                      .map((g: any, gi: number) => (
-                                                        <div key={gi} className="mb-2">
-                                                          <b>{g.title}</b>
-                                                          <div className="text-xs">
-                                                            {g.specs.map((s: any, si: number) => (
-                                                              <div key={si}>{s.specId}: {s.value}</div>
-                                                            ))}
+                                                      .filter(
+                                                        (g: any) =>
+                                                          g.specs &&
+                                                          g.specs.length > 0,
+                                                      )
+                                                      .map(
+                                                        (
+                                                          g: any,
+                                                          gi: number,
+                                                        ) => (
+                                                          <div
+                                                            key={gi}
+                                                            className="mb-2"
+                                                          >
+                                                            <b>{g.title}</b>
+                                                            <div className="text-xs">
+                                                              {g.specs.map(
+                                                                (
+                                                                  s: any,
+                                                                  si: number,
+                                                                ) => (
+                                                                  <div key={si}>
+                                                                    {s.specId}:{" "}
+                                                                    {s.value}
+                                                                  </div>
+                                                                ),
+                                                              )}
+                                                            </div>
                                                           </div>
-                                                        </div>
-                                                      ))}
+                                                        ),
+                                                      )}
                                                   </td>
-                                                  <td className="border px-2 py-1 text-center align-middle">{unitCost}</td>
-                                                  <td className="border px-2 py-1 text-center align-middle">{length} x {width} x {height}</td>
-                                                  <td className="border px-2 py-1 text-center align-middle">{factory}</td>
-                                                  <td className="border px-2 py-1 text-center align-middle">{port}</td>
+
+                                                  {/* UNIT COST */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {unitCost}
+                                                  </td>
+
+                                                  {/* PACKAGING */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {length} x {width} x{" "}
+                                                    {height}
+                                                  </td>
+
+                                                  {/* FACTORY */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {factory}
+                                                  </td>
+
+                                                  {/* PORT */}
+                                                  <td className="border px-2 py-1 text-center align-middle">
+                                                    {port}
+                                                  </td>
+
+                                                  {/* SUBTOTAL */}
                                                   <td className="border px-2 py-1 text-center align-middle">
                                                     {(() => {
                                                       const qty = prod.qty || 0;
-                                                      const cost = Number(prod?.commercialDetails?.unitCost || 0);
-                                                      const subtotal = qty * cost;
+                                                      const unitCost = Number(
+                                                        prod?.commercialDetails
+                                                          ?.unitCost || 0,
+                                                      );
+                                                      const subtotal =
+                                                        qty * unitCost;
+
                                                       return (
                                                         <span className="text-xs font-semibold">
                                                           ${subtotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -704,31 +860,35 @@ export default function SPF({ processBy }: SPFProps) {
                                                     })()}
                                                   </td>
                                                 </tr>
-                                              </tbody>
-                                            </table>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
+                                              );
+                                            },
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          },
+                        )}
                       </tbody>
                     </table>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No items added yet.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No items added yet.
+                    </p>
                   )}
                 </div>
               </Card>
 
-              {/* RIGHT PANEL: Products */}
+              {/* RIGHT CARD: Products Section */}
               <div
                 className={`transition-all duration-500 ease-in-out ${
-                  viewMode ? "opacity-0 w-0 overflow-hidden pointer-events-none" : "opacity-100 w-[30%]"
-                } flex-shrink-0 overflow-y-auto overscroll-contain min-h-0`}
+                  viewMode
+                    ? "opacity-0 w-0 overflow-hidden pointer-events-none"
+                    : "opacity-100 w-[30%]"
+                } max-h-[70vh] overflow-y-auto overscroll-contain`}
               >
                 <div className="columns-2 gap-3">
                   {filteredProducts.map((p) => (
@@ -737,7 +897,10 @@ export default function SPF({ processBy }: SPFProps) {
                       draggable={!viewMode}
                       onDragStart={() => {
                         if (viewMode) return;
-                        setDraggedProduct({ ...p, __fromRow: undefined });
+                        setDraggedProduct({
+                          ...p,
+                          __fromRow: undefined,
+                        });
                         setShowTrash(true);
                       }}
                       onDragEnd={() => {
@@ -749,37 +912,92 @@ export default function SPF({ processBy }: SPFProps) {
                     >
                       <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
                         {p.mainImage?.url ? (
-                          <img src={p.mainImage.url} className="w-full h-full object-contain" alt={p.productName} />
+                          <img
+                            src={p.mainImage.url}
+                            className="w-full h-full object-contain"
+                            alt={p.productName}
+                          />
                         ) : (
                           <div className="text-xs text-gray-400">No Image</div>
                         )}
                       </div>
                       <div className="mt-2 flex-1">
-                        <p className="text-sm font-semibold line-clamp-2">{p.productName}</p>
-                        <p className="text-sm font-bold text-blue-600 line-clamp-1">{p.supplier?.supplierBrand || "-"}</p>
+                        <p className="text-sm font-semibold line-clamp-2">
+                          {p.productName}
+                        </p>
                       </div>
-
-                      <Accordion type="single" collapsible className="mt-2 border rounded">
+                      {/* CTRL + F: PRODUCT ACCORDION DETAILS */}
+                      <Accordion
+                        type="single"
+                        collapsible
+                        className="mt-2 border rounded"
+                      >
+                        {/* COMMERCIAL DETAILS */}
                         <AccordionItem value="commercial">
-                          <AccordionTrigger className="px-3 text-xs">Commercial Details</AccordionTrigger>
+                          <AccordionTrigger className="px-3 text-xs">
+                            Commercial Details
+                          </AccordionTrigger>
+
                           <AccordionContent className="px-3 pb-3 text-xs space-y-2">
                             {(() => {
                               const details = p.commercialDetails;
+
                               if (!details) return <p>-</p>;
+
                               const packaging = details.packaging || {};
+
                               return (
                                 <>
-                                  {details.factoryAddress && <p><span className="font-medium">Factory:</span> {details.factoryAddress}</p>}
-                                  {details.portOfDischarge && <p><span className="font-medium">Port:</span> {details.portOfDischarge}</p>}
-                                  {details.unitCost && <p><span className="font-medium">Unit Cost:</span> {details.unitCost}</p>}
-                                  {(packaging.height || packaging.length || packaging.width || details.pcsPerCarton) && (
+                                  {details.factoryAddress && (
+                                    <p>
+                                      <span className="font-medium">
+                                        Factory:
+                                      </span>{" "}
+                                      {details.factoryAddress}
+                                    </p>
+                                  )}
+
+                                  {details.portOfDischarge && (
+                                    <p>
+                                      <span className="font-medium">Port:</span>{" "}
+                                      {details.portOfDischarge}
+                                    </p>
+                                  )}
+
+                                  {details.unitCost && (
+                                    <p>
+                                      <span className="font-medium">
+                                        Unit Cost:
+                                      </span>{" "}
+                                      {details.unitCost}
+                                    </p>
+                                  )}
+
+                                  {(packaging.height ||
+                                    packaging.length ||
+                                    packaging.width ||
+                                    details.pcsPerCarton) && (
                                     <div>
                                       <p className="font-medium">Packaging</p>
+
                                       <ul className="ml-3 list-disc">
-                                        {packaging.height && <li>Height: {packaging.height}</li>}
-                                        {packaging.length && <li>Length: {packaging.length}</li>}
-                                        {packaging.width && <li>Width: {packaging.width}</li>}
-                                        {details.pcsPerCarton && <li>PCS/Carton: {details.pcsPerCarton}</li>}
+                                        {packaging.height && (
+                                          <li>Height: {packaging.height}</li>
+                                        )}
+
+                                        {packaging.length && (
+                                          <li>Length: {packaging.length}</li>
+                                        )}
+
+                                        {packaging.width && (
+                                          <li>Width: {packaging.width}</li>
+                                        )}
+
+                                        {details.pcsPerCarton && (
+                                          <li>
+                                            PCS/Carton: {details.pcsPerCarton}
+                                          </li>
+                                        )}
                                       </ul>
                                     </div>
                                   )}
@@ -789,23 +1007,41 @@ export default function SPF({ processBy }: SPFProps) {
                           </AccordionContent>
                         </AccordionItem>
 
+                        {/* TECHNICAL SPECIFICATIONS */}
                         <AccordionItem value="technical">
-                          <AccordionTrigger className="px-3 text-xs">Technical Specifications</AccordionTrigger>
+                          <AccordionTrigger className="px-3 text-xs">
+                            Technical Specifications
+                          </AccordionTrigger>
+
                           <AccordionContent className="px-3 pb-3 text-xs space-y-2">
                             {p.technicalSpecifications?.length ? (
                               p.technicalSpecifications
-                                .filter((g: any) => g.title !== "COMMERCIAL DETAILS")
+                                .filter(
+                                  (g: any) => g.title !== "COMMERCIAL DETAILS",
+                                )
                                 .map((group: any, i: number) => (
                                   <div key={i} className="mb-3">
-                                    <p className="font-semibold">{group.title}</p>
+                                    <p className="font-semibold">
+                                      {group.title}
+                                    </p>
+
                                     <ul className="ml-3 list-disc">
-                                      {group.specs?.map((spec: any, s: number) => (
-                                        <li key={s}><span className="font-medium">{spec.specId}</span> : {spec.value || "-"}</li>
-                                      ))}
+                                      {group.specs?.map(
+                                        (spec: any, s: number) => (
+                                          <li key={s}>
+                                            <span className="font-medium">
+                                              {spec.specId}
+                                            </span>{" "}
+                                            : {spec.value || "-"}
+                                          </li>
+                                        ),
+                                      )}
                                     </ul>
                                   </div>
                                 ))
-                            ) : <p>-</p>}
+                            ) : (
+                              <p>-</p>
+                            )}
                           </AccordionContent>
                         </AccordionItem>
                       </Accordion>
@@ -813,12 +1049,13 @@ export default function SPF({ processBy }: SPFProps) {
                   ))}
                 </div>
               </div>
-
-              {/* FILTER PANEL */}
+              {/* CTRL + F: FILTER PANEL */}
               <div
                 className={`transition-all duration-500 ease-in-out ${
-                  viewMode || !openFilter ? "opacity-0 w-0 overflow-hidden pointer-events-none" : "opacity-100 w-[320px]"
-                } flex-shrink-0 overflow-y-auto overscroll-contain min-h-0 border-l pl-2`}
+                  viewMode || !openFilter
+                    ? "opacity-0 w-0 overflow-hidden pointer-events-none"
+                    : "opacity-100 w-[320px]"
+                } shrink-0 self-start sticky top-0 max-h-[calc(80vh-200px)] overflow-y-auto border-l pl-2`}
               >
                 <FilteringComponent
                   products={products}
@@ -827,13 +1064,25 @@ export default function SPF({ processBy }: SPFProps) {
               </div>
             </div>
 
-            <DialogFooter className="mt-4 flex justify-end gap-2 shrink-0">
-              <Button variant="outline" className="rounded-none p-6" onClick={() => setOpenDialog(false)}>
+            <DialogFooter className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                className="rounded-none p-6"
+                onClick={() => setOpenDialog(false)}
+              >
                 Cancel
               </Button>
-              <Button variant="outline" className="rounded-none p-6" onClick={() => setViewMode((prev) => !prev)}>
+
+              {/* CTRL + F: VIEW MODE BUTTON */}
+              <Button
+                variant="outline"
+                className="rounded-none p-6"
+                onClick={() => setViewMode((prev) => !prev)}
+              >
                 {viewMode ? "Back" : "View"}
               </Button>
+
+              {/* SHOW SUBMIT ONLY IN VIEW MODE */}
               {viewMode && (
                 <Button className="rounded-none p-6" onClick={handleSubmit}>
                   Submit
@@ -843,7 +1092,7 @@ export default function SPF({ processBy }: SPFProps) {
           </DialogContent>
         </Dialog>
 
-        {/* Add Product Dialog */}
+        {/* ---------------- Add Product Dialog ---------------- */}
         <Dialog open={openAddProduct} onOpenChange={setOpenAddProduct}>
           <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -851,7 +1100,11 @@ export default function SPF({ processBy }: SPFProps) {
             </DialogHeader>
             <AddProductComponent onClose={() => setOpenAddProduct(false)} />
             <DialogFooter>
-              <Button variant="outline" className="rounded-none" onClick={() => setOpenAddProduct(false)}>
+              <Button
+                variant="outline"
+                className="rounded-none"
+                onClick={() => setOpenAddProduct(false)}
+              >
                 Close
               </Button>
             </DialogFooter>
