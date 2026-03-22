@@ -110,11 +110,9 @@ export default function ProductsPage() {
   const isFiltered = filteredProducts.length !== products.length;
 
   return (
-    // ↓ removed bg-gray-50 — transparent so wallpaper shows through
     <div className="h-dvh flex flex-col overflow-hidden">
 
       {/* ── DESKTOP HEADER ── */}
-      {/* bg-white → bg-white/80 + backdrop-blur-md */}
       <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white/80 backdrop-blur-md border-b">
         <SidebarTrigger />
         <div className="flex items-center justify-between">
@@ -141,13 +139,15 @@ export default function ProductsPage() {
       </div>
 
       {/* ── MOBILE HEADER ── */}
-      {/* bg-white → bg-white/80 + backdrop-blur-md */}
       <div className="md:hidden shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-bold text-gray-900">Products</h1>
           <div className="flex items-center gap-2">
-            <UploadProductModal />
-            <DownloadProduct products={products} />
+            {/* Upload icon-only on mobile */}
+            <UploadProductModal iconOnly />
+            {/* Download icon-only on mobile */}
+            <DownloadProduct products={products} iconOnly />
+            {/* Add product */}
             <button
               onClick={() => router.push("/add-product")}
               className="h-8 w-8 rounded-full bg-gray-900 text-white flex items-center justify-center"
@@ -180,7 +180,6 @@ export default function ProductsPage() {
 
         <div className="flex items-center justify-between mt-2">
           <span className="text-xs text-gray-400">{searchedProducts.length} products</span>
-          {/* bg-gray-100 → bg-white/60 */}
           <div className="flex items-center gap-2 bg-white/60 rounded-lg px-2.5 py-1">
             <button onClick={() => setCardScale(p => Math.max(p - 0.1, 0.6))} className="text-gray-600 font-bold text-sm">−</button>
             <span className="text-xs text-gray-500 w-7 text-center">{(cardScale * 100).toFixed(0)}%</span>
@@ -200,7 +199,6 @@ export default function ProductsPage() {
             </div>
           ) : (
             <>
-              {/* Pagination — bg-white → bg-white/70 */}
               {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-3 py-3 border-t bg-white/70 backdrop-blur-sm shrink-0 px-4">
                   <button
@@ -224,7 +222,6 @@ export default function ProductsPage() {
               <div className="flex-1 overflow-y-auto px-3 md:px-6 pt-3 pb-24 md:pb-4">
                 {paginatedProducts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
-                    {/* bg-gray-100 → bg-white/60 */}
                     <div className="h-14 w-14 rounded-full bg-white/60 flex items-center justify-center mb-3">
                       <Search className="h-6 w-6 text-gray-300" />
                     </div>
@@ -238,12 +235,10 @@ export default function ProductsPage() {
                     style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${220 * cardScale}px, 1fr))` }}
                   >
                     {paginatedProducts.map((p) => (
-                      // bg-white → bg-white/80 + backdrop-blur-sm
                       <div
                         key={p.id}
                         className="group border border-gray-200 rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md flex flex-col overflow-hidden transition-shadow duration-200"
                       >
-                        {/* Image — bg-gray-50 → bg-white/60 */}
                         <div className="relative bg-white/60 flex items-center justify-center overflow-hidden rounded-t-2xl" style={{ height: 160 }}>
                           {p.mainImage?.url ? (
                             <img
@@ -289,7 +284,6 @@ export default function ProductsPage() {
                           </div>
                         </div>
 
-                        {/* Info */}
                         <div className="p-3">
                           <h2 className="text-sm font-semibold line-clamp-2 text-gray-900 leading-snug">{p.productName}</h2>
                           <p className="text-xs font-medium text-blue-600 mt-0.5 line-clamp-1">{p.supplier?.supplierBrand || "—"}</p>
@@ -303,7 +297,7 @@ export default function ProductsPage() {
           )}
         </div>
 
-        {/* Desktop filter sidebar — bg-white → bg-white/80 + backdrop-blur-sm */}
+        {/* Desktop filter sidebar */}
         <div className="hidden md:block w-[320px] shrink-0 border-l bg-white/80 backdrop-blur-sm overflow-y-auto p-4">
           {!loading && products.length > 0 && (
             <FilteringComponentV2 products={products} onFilter={setFilteredProducts} />
@@ -315,7 +309,6 @@ export default function ProductsPage() {
       {mobileFilterOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileFilterOpen(false)} />
-          {/* bg-white → bg-white/95 */}
           <div className="relative bg-white/95 backdrop-blur-md rounded-t-3xl shadow-2xl flex flex-col" style={{ maxHeight: "88dvh" }}>
             <div className="flex justify-center pt-3 shrink-0">
               <div className="h-1 w-10 rounded-full bg-gray-200" />

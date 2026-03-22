@@ -1,5 +1,6 @@
 "use client";
 
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Supplier = {
@@ -20,6 +21,7 @@ type Supplier = {
 
 type DownloadSupplierProps = {
   suppliers: Supplier[];
+  iconOnly?: boolean; // when true, renders a compact icon-only button (used on mobile)
 };
 
 /* ---------------- Helpers ---------------- */
@@ -44,7 +46,7 @@ const normalizePhone = (phone: string): string => {
   return trimmed;
 };
 
-export default function DownloadSupplier({ suppliers }: DownloadSupplierProps) {
+export default function DownloadSupplier({ suppliers, iconOnly = false }: DownloadSupplierProps) {
   const handleDownloadCSV = () => {
     if (suppliers.length === 0) return;
 
@@ -65,7 +67,6 @@ export default function DownloadSupplier({ suppliers }: DownloadSupplierProps) {
       const contactNames =
         s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
 
-      // ✅ Normalize every phone so +86 etc. are preserved in the export
       const contactPhones =
         s.contacts
           ?.map((c) => normalizePhone(c.phone))
@@ -98,9 +99,6 @@ export default function DownloadSupplier({ suppliers }: DownloadSupplierProps) {
     rows.forEach((row) => {
       table += `<tr>`;
       row.forEach((cell) => {
-        // ✅ Wrap cell in a <span> with mso-number-format to force Excel
-        //    to treat the value as text — prevents +86... from being
-        //    mangled into a number or formula error.
         table += `<td style="mso-number-format:'\\@'">${cell}</td>`;
       });
       table += `</tr>`;
@@ -113,17 +111,30 @@ export default function DownloadSupplier({ suppliers }: DownloadSupplierProps) {
     });
 
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement("a");
     link.href = url;
     link.download = "suppliers.xls";
     document.body.appendChild(link);
     link.click();
-
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
+  // ── Mobile icon-only button ──
+  if (iconOnly) {
+    return (
+      <button
+        onClick={handleDownloadCSV}
+        disabled={suppliers.length === 0}
+        className="h-8 w-8 rounded-full border border-gray-200 bg-white/80 flex items-center justify-center disabled:opacity-40"
+        title="Download XLS"
+      >
+        <Download className="h-4 w-4 text-gray-600" />
+      </button>
+    );
+  }
+
+  // ── Desktop full button ──
   return (
     <Button
       onClick={handleDownloadCSV}

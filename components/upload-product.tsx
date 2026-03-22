@@ -28,7 +28,9 @@ import {
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
 
-type Props = {};
+type Props = {
+  iconOnly?: boolean; // when true, renders a compact icon-only trigger button (used on mobile)
+};
 
 type CategoryType = {
   id: string;
@@ -58,87 +60,58 @@ type TemplateSpec = {
 
 const cleanExcelValue = (val: any) => {
   if (val === null || val === undefined) return "";
-
   if (typeof val === "number") return val.toString();
-
   const str = val.toString().trim();
-
   if (str === "-") return "";
-
   return str;
 };
 
 /* CTRL + F: CONVERT GOOGLE DRIVE LINK */
 const convertDriveToThumbnail = (url?: string) => {
   if (!url) return "";
-
   if (!url.includes("drive.google.com")) return url;
-
   let fileId = "";
-
   const match1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
   const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-
   if (match1 && match1[1]) fileId = match1[1];
   if (match2 && match2[1]) fileId = match2[1];
-
   if (fileId) {
     return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
   }
-
   return url;
 };
 
-export default function UploadProduct({}: Props) {
+export default function UploadProduct({ iconOnly = false }: Props) {
   const [open, setOpen] = React.useState(false);
-
   const [file, setFile] = React.useState<File | null>(null);
-
   const [uploading, setUploading] = React.useState(false);
   const [uploadProgress, setUploadProgress] = React.useState(0);
   const [totalRows, setTotalRows] = React.useState(0);
 
   /* ---------------- ELEVATOR MUSIC ---------------- */
-
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const cancelRef = React.useRef(false);
 
   /* ---------------- GENERATE REF ---------------- */
-
   const generateProductReferenceID = async () => {
     const snap = await getDocs(collection(db, "products"));
-
     const count = snap.size + 1;
-
     return `PROD-SPF-${count.toString().padStart(5, "0")}`;
   };
 
   /* ---------------- FIND CATEGORY ---------------- */
-
-  const findCategoryType = async (
-    name: string,
-  ): Promise<CategoryType | null> => {
+  const findCategoryType = async (name: string): Promise<CategoryType | null> => {
     const q = query(
       collection(db, "categoryTypes"),
       where("name", "==", name),
       where("isActive", "==", true),
     );
-
     const snap = await getDocs(q);
-
-    /* IF EXISTS */
     if (!snap.empty) {
       const docSnap = snap.docs[0];
       const data = docSnap.data() as DocumentData;
-
-      return {
-        id: docSnap.id,
-        name: data.name,
-      };
+      return { id: docSnap.id, name: data.name };
     }
-
-    /* AUTO CREATE CATEGORY TYPE */
-
     const newDoc = await addDoc(collection(db, "categoryTypes"), {
       name,
       isActive: true,
@@ -146,42 +119,23 @@ export default function UploadProduct({}: Props) {
       whatHappened: "Product Usage Added (Excel Upload)",
       date_updated: serverTimestamp(),
     });
-
-    return {
-      id: newDoc.id,
-      name,
-    };
+    return { id: newDoc.id, name };
   };
 
   /* ---------------- FIND FAMILY ---------------- */
-
-  const findProductFamily = async (
-    categoryTypeId: string,
-    name: string,
-  ): Promise<ProductFamily | null> => {
+  const findProductFamily = async (categoryTypeId: string, name: string): Promise<ProductFamily | null> => {
     const q = query(
       collection(db, "productFamilies"),
       where("categoryTypeId", "==", categoryTypeId),
       where("name", "==", name),
       where("isActive", "==", true),
     );
-
     const snap = await getDocs(q);
-
-    /* IF EXISTS */
     if (!snap.empty) {
       const docSnap = snap.docs[0];
       const data = docSnap.data() as DocumentData;
-
-      return {
-        id: docSnap.id,
-        name: data.name,
-        categoryTypeId: data.categoryTypeId,
-      };
+      return { id: docSnap.id, name: data.name, categoryTypeId: data.categoryTypeId };
     }
-
-    /* AUTO CREATE PRODUCT FAMILY */
-
     const newDoc = await addDoc(collection(db, "productFamilies"), {
       name,
       categoryTypeId,
@@ -190,32 +144,21 @@ export default function UploadProduct({}: Props) {
       whatHappened: "Product Family Added (Excel Upload)",
       date_updated: serverTimestamp(),
     });
-
-    return {
-      id: newDoc.id,
-      name,
-      categoryTypeId,
-    };
+    return { id: newDoc.id, name, categoryTypeId };
   };
 
   /* ---------------- FIND SUPPLIER ---------------- */
-
   const findSupplier = async (brand: string): Promise<Supplier | null> => {
     if (!brand) return null;
-
     const q = query(
       collection(db, "suppliers"),
       where("supplierBrand", "==", brand),
       where("isActive", "==", true),
     );
-
     const snap = await getDocs(q);
-
     if (snap.empty) return null;
-
     const doc = snap.docs[0];
     const data = doc.data();
-
     return {
       supplierId: doc.id,
       company: data.company,
@@ -224,12 +167,9 @@ export default function UploadProduct({}: Props) {
   };
 
   /* ---------------- AUTO CREATE TEMPLATE ---------------- */
-
   const createMissingTemplateSpecs = async (
     categoryTypeId: string,
-
     productFamilyId: string,
-
     excelColumns: { title: string; specId: string }[],
   ) => {
     const templateSnap = await getDocs(
@@ -240,10 +180,7 @@ export default function UploadProduct({}: Props) {
         where("isActive", "==", true),
       ),
     );
-
     const existingTitles = templateSnap.docs.map((doc) => doc.data().title);
-
-    // Use a Map to preserve Excel insertion order (Set does NOT guarantee order)
     const excelGroupsMap = new Map<string, { specId: string }[]>();
     for (const col of excelColumns) {
       if (!excelGroupsMap.has(col.title)) {
@@ -251,45 +188,33 @@ export default function UploadProduct({}: Props) {
       }
       excelGroupsMap.get(col.title)!.push({ specId: col.specId });
     }
-
-    // excelGroupsMap.keys() is in insertion order = Excel column order
     let sortOrder = 0;
     for (const [title, specs] of excelGroupsMap) {
       sortOrder++;
-
       if (!existingTitles.includes(title)) {
-        // Create new template group
         await addDoc(collection(db, "technicalSpecifications"), {
           categoryTypeId,
           productFamilyId,
           title,
           specs,
-          sortOrder, // store Excel order
+          sortOrder,
           isActive: true,
           createdAt: serverTimestamp(),
           whatHappened: "Product Added",
           date_updated: serverTimestamp(),
         });
       } else {
-        // Update sortOrder on existing doc to match current Excel
-        const existingDoc = templateSnap.docs.find(
-          (doc) => doc.data().title === title,
-        );
+        const existingDoc = templateSnap.docs.find((doc) => doc.data().title === title);
         if (existingDoc) {
-          await updateDoc(existingDoc.ref, {
-            sortOrder,
-            date_updated: serverTimestamp(),
-          });
+          await updateDoc(existingDoc.ref, { sortOrder, date_updated: serverTimestamp() });
         }
       }
     }
   };
 
   /* ---------------- FIND TEMPLATE ---------------- */
-
   const findTemplateSpecs = async (
     categoryTypeId: string,
-
     productFamilyId: string,
   ): Promise<TemplateSpec[]> => {
     const q = query(
@@ -298,25 +223,21 @@ export default function UploadProduct({}: Props) {
       where("productFamilyId", "==", productFamilyId),
       where("isActive", "==", true),
     );
-
     const snap = await getDocs(q);
-
     return snap.docs
       .map((doc) => {
         const data = doc.data() as DocumentData;
-
         return {
           id: doc.id,
           title: data.title,
           specs: data.specs || [],
-          sortOrder: data.sortOrder ?? 999, // fallback for old docs without sortOrder
+          sortOrder: data.sortOrder ?? 999,
         };
       })
-      .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999)); // sort by Excel order
+      .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999));
   };
 
   /* ---------------- SYNC EXISTING PRODUCTS ---------------- */
-
   const syncExistingProductsToTemplate = async (
     categoryTypeId: string,
     productFamilyId: string,
@@ -329,7 +250,6 @@ export default function UploadProduct({}: Props) {
         where("isActive", "==", true),
       ),
     );
-
     const templates = templateSnap.docs
       .map((doc) => ({
         id: doc.id,
@@ -338,71 +258,40 @@ export default function UploadProduct({}: Props) {
         sortOrder: doc.data().sortOrder ?? 999,
       }))
       .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999));
-
     const productSnap = await getDocs(collection(db, "products"));
-
     for (const productDoc of productSnap.docs) {
       const data = productDoc.data();
-
       const family = data.productFamilies?.[0];
-
       if (!family) continue;
-
-      if (
-        family.productFamilyId !== productFamilyId ||
-        family.productUsageId !== categoryTypeId
-      )
-        continue;
-
+      if (family.productFamilyId !== productFamilyId || family.productUsageId !== categoryTypeId) continue;
       const existingSpecs = data.technicalSpecifications || [];
-
       const mergedSpecs = templates.map((template) => {
-        const existingGroup = existingSpecs.find(
-          (g: any) => g.title === template.title,
-        );
-
+        const existingGroup = existingSpecs.find((g: any) => g.title === template.title);
         return {
           technicalSpecificationId: template.id,
-
           title: template.title,
-
           specs: template.specs.map((spec: any) => {
-            const existingRow = existingGroup?.specs?.find(
-              (r: any) => r.specId === spec.specId,
-            );
-
-            return {
-              specId: spec.specId,
-
-              value: existingRow?.value || "",
-            };
+            const existingRow = existingGroup?.specs?.find((r: any) => r.specId === spec.specId);
+            return { specId: spec.specId, value: existingRow?.value || "" };
           }),
         };
       });
-
-      await updateDoc(productDoc.ref, {
-        technicalSpecifications: mergedSpecs,
-
-        updatedAt: serverTimestamp(),
-      });
+      await updateDoc(productDoc.ref, { technicalSpecifications: mergedSpecs, updatedAt: serverTimestamp() });
     }
   };
 
   /* ---------------- UPLOAD ---------------- */
-
   const handleUpload = async () => {
     if (!file) return;
     cancelRef.current = false;
 
     try {
-      // START MUSIC IMMEDIATELY
       try {
         if (!audioRef.current) {
           audioRef.current = new Audio("/musics/elevator-music.mp3");
           audioRef.current.loop = true;
           audioRef.current.volume = 0.4;
         }
-
         audioRef.current.play();
       } catch (err) {
         console.warn("Audio blocked by browser");
@@ -410,41 +299,26 @@ export default function UploadProduct({}: Props) {
 
       setUploading(true);
       const workbook = new ExcelJS.Workbook();
-
       const buffer = await file.arrayBuffer();
-
       await workbook.xlsx.load(buffer);
 
-      /* ---------------- COUNT VALID ROWS FIRST ---------------- */
-
       let validRows = 0;
-
       for (const ws of workbook.worksheets) {
-        if (cancelRef.current) {
-          toast.message("Upload cancelled");
-          break;
-        }
+        if (cancelRef.current) { toast.message("Upload cancelled"); break; }
         let lastUsage = "";
         let lastFamily = "";
-
         for (let r = 4; r <= ws.actualRowCount; r++) {
           if (cancelRef.current) break;
           const row = ws.getRow(r);
-
           const usage = cleanExcelValue(row.getCell(1).value) || lastUsage;
           const family = cleanExcelValue(row.getCell(2).value) || lastFamily;
-
           lastUsage = usage;
           lastFamily = family;
-
           if (!usage || !family) continue;
-
           const category = await findCategoryType(usage);
           if (!category) continue;
-
           const productFamily = await findProductFamily(category.id, family);
           if (!productFamily) continue;
-
           validRows++;
         }
       }
@@ -453,94 +327,39 @@ export default function UploadProduct({}: Props) {
       setUploadProgress(0);
 
       for (const ws of workbook.worksheets) {
-        if (cancelRef.current) {
-          toast.message("Upload cancelled");
-          break;
-        }
+        if (cancelRef.current) { toast.message("Upload cancelled"); break; }
 
-        const header1Row = ws.getRow(1); // SPECID (actual header)
-        const header2Row = ws.getRow(2); // GROUP TITLE
-        const header3Row = ws.getRow(3); // SUBGROUP (Packaging Details etc)
+        const header1Row = ws.getRow(1);
+        const header2Row = ws.getRow(2);
+        const header3Row = ws.getRow(3);
 
-        /* ------------------------------------------------------------------ */
-        /* 🔧 FIX: Pre-compute ALL column indices ONCE before the row loop     */
-        /* ------------------------------------------------------------------ */
-
-        // Tech-spec columns (col ≥ 8, non-commercial)
-        const excelColumns: {
-          title: string;
-          specId: string;
-          col: number;
-        }[] = [];
-
-        // Commercial detail column indices — resolved once here
+        const excelColumns: { title: string; specId: string; col: number }[] = [];
         const commercialColMap: Record<string, number> = {
-          unitCost: -1,
-          length: -1,
-          width: -1,
-          height: -1,
-          pcsPerCarton: -1,
-          factoryAddress: -1,
-          portOfDischarge: -1,
+          unitCost: -1, length: -1, width: -1, height: -1,
+          pcsPerCarton: -1, factoryAddress: -1, portOfDischarge: -1,
         };
 
         for (let col = 1; col <= ws.columnCount; col++) {
           const specHeader = cleanExcelValue(header1Row.getCell(col).value);
           const groupHeader = cleanExcelValue(header2Row.getCell(col).value);
-          const commercialHeader = cleanExcelValue(
-            header3Row.getCell(col).value,
-          );
+          const commercialHeader = cleanExcelValue(header3Row.getCell(col).value);
 
-          // Map commercial detail headers to their column indices
-          if (commercialHeader === "Unit Cost") {
-            commercialColMap.unitCost = col;
-            continue;
-          }
-          if (commercialHeader === "Length") {
-            commercialColMap.length = col;
-            continue;
-          }
-          if (commercialHeader === "Width") {
-            commercialColMap.width = col;
-            continue;
-          }
-          if (commercialHeader === "Height") {
-            commercialColMap.height = col;
-            continue;
-          }
-          if (commercialHeader === "pcs/carton") {
-            commercialColMap.pcsPerCarton = col;
-            continue;
-          }
-          if (commercialHeader === "Factory Address") {
-            commercialColMap.factoryAddress = col;
-            continue;
-          }
-          if (commercialHeader === "Port of Discharge") {
-            commercialColMap.portOfDischarge = col;
-            continue;
-          }
+          if (commercialHeader === "Unit Cost") { commercialColMap.unitCost = col; continue; }
+          if (commercialHeader === "Length") { commercialColMap.length = col; continue; }
+          if (commercialHeader === "Width") { commercialColMap.width = col; continue; }
+          if (commercialHeader === "Height") { commercialColMap.height = col; continue; }
+          if (commercialHeader === "pcs/carton") { commercialColMap.pcsPerCarton = col; continue; }
+          if (commercialHeader === "Factory Address") { commercialColMap.factoryAddress = col; continue; }
+          if (commercialHeader === "Port of Discharge") { commercialColMap.portOfDischarge = col; continue; }
 
-          // Only process tech-spec columns starting from col 8 onward
           if (col < 10) continue;
-
-          const isCommercialColumn = groupHeader === "COMMERCIAL DETAILS";
-
-          if (isCommercialColumn) continue;
+          if (groupHeader === "COMMERCIAL DETAILS") continue;
           if (!groupHeader || !specHeader) continue;
 
-          excelColumns.push({
-            title: groupHeader,
-            specId: specHeader,
-            col,
-          });
+          excelColumns.push({ title: groupHeader, specId: specHeader, col });
         }
 
-        /* ------------------------------------------------------------------ */
-
-        /* IMPORTANT: TRACK SYNCED FAMILIES */
         const syncedFamilies = new Set<string>();
-
         let lastUsage = "";
         let lastFamily = "";
         let lastClass = "";
@@ -550,96 +369,59 @@ export default function UploadProduct({}: Props) {
         let lastImage = "";
 
         for (let r = 4; r <= ws.actualRowCount; r++) {
-          if (cancelRef.current) {
-            toast.message("Upload cancelled");
-            break;
-          }
+          if (cancelRef.current) { toast.message("Upload cancelled"); break; }
 
           const row = ws.getRow(r);
-
           let usage = cleanExcelValue(row.getCell(1).value) || lastUsage;
           let family = cleanExcelValue(row.getCell(2).value) || lastFamily;
           let productClass = cleanExcelValue(row.getCell(3).value) || lastClass;
-          let pricePoint =
-            cleanExcelValue(row.getCell(4).value) || lastPricePoint;
-          let brandOrigin =
-            cleanExcelValue(row.getCell(5).value) || lastBrandOrigin;
-          let supplierBrand =
-            cleanExcelValue(row.getCell(6).value) || lastSupplier;
+          let pricePoint = cleanExcelValue(row.getCell(4).value) || lastPricePoint;
+          let brandOrigin = cleanExcelValue(row.getCell(5).value) || lastBrandOrigin;
+          let supplierBrand = cleanExcelValue(row.getCell(6).value) || lastSupplier;
 
-          /* CTRL + F: FIX IMAGE OBJECT FROM EXCEL */
           let imageCell: any = row.getCell(7).value;
-
-          /* ===== DIMENSIONAL DRAWING ===== */
           let dimensionalCell: any = row.getCell(8).value;
           let dimensionalURL = "";
-
           if (typeof dimensionalCell === "object" && dimensionalCell !== null) {
             if (dimensionalCell.text) dimensionalURL = dimensionalCell.text;
-            else if (dimensionalCell.hyperlink)
-              dimensionalURL = dimensionalCell.hyperlink;
+            else if (dimensionalCell.hyperlink) dimensionalURL = dimensionalCell.hyperlink;
             else dimensionalURL = String(dimensionalCell);
-          } else {
-            dimensionalURL = cleanExcelValue(dimensionalCell);
-          }
-
+          } else { dimensionalURL = cleanExcelValue(dimensionalCell); }
           dimensionalURL = convertDriveToThumbnail(dimensionalURL);
 
-          /* ===== ILLUMINANCE DRAWING ===== */
           let illuminanceCell: any = row.getCell(9).value;
           let illuminanceURL = "";
-
           if (typeof illuminanceCell === "object" && illuminanceCell !== null) {
             if (illuminanceCell.text) illuminanceURL = illuminanceCell.text;
-            else if (illuminanceCell.hyperlink)
-              illuminanceURL = illuminanceCell.hyperlink;
+            else if (illuminanceCell.hyperlink) illuminanceURL = illuminanceCell.hyperlink;
             else illuminanceURL = String(illuminanceCell);
-          } else {
-            illuminanceURL = cleanExcelValue(illuminanceCell);
-          }
-
+          } else { illuminanceURL = cleanExcelValue(illuminanceCell); }
           illuminanceURL = convertDriveToThumbnail(illuminanceURL);
-          let imageURL = "";
 
+          let imageURL = "";
           if (typeof imageCell === "object" && imageCell !== null) {
             if (imageCell.text) imageURL = imageCell.text;
             else if (imageCell.hyperlink) imageURL = imageCell.hyperlink;
             else imageURL = String(imageCell);
-          } else {
-            imageURL = cleanExcelValue(imageCell);
-          }
-
+          } else { imageURL = cleanExcelValue(imageCell); }
           imageURL = imageURL || lastImage;
-
-          /* CTRL + F: FIX GOOGLE DRIVE IMAGE */
           imageURL = convertDriveToThumbnail(imageURL);
 
-          /* ---------------------------------------------------------------- */
-          /* 🔧 FIX: Read commercial details using pre-computed column indices */
-          /* ---------------------------------------------------------------- */
           const getCellVal = (colIndex: number) =>
             colIndex > 0 ? cleanExcelValue(row.getCell(colIndex).value) : "";
-
           const cleanCM = (val: string) => {
             if (!val) return "";
-
-            // remove ALL non-numeric except dot
-            const num = val.replace(/[^0-9.]/g, "");
-
-            return num;
+            return val.replace(/[^0-9.]/g, "");
           };
 
           const unitCost = getCellVal(commercialColMap.unitCost);
-
           const length = cleanCM(getCellVal(commercialColMap.length));
           const width = cleanCM(getCellVal(commercialColMap.width));
           const height = cleanCM(getCellVal(commercialColMap.height));
           const pcsPerCarton = getCellVal(commercialColMap.pcsPerCarton);
           const factoryAddress = getCellVal(commercialColMap.factoryAddress);
           const portOfDischarge = getCellVal(commercialColMap.portOfDischarge);
-          /* ---------------------------------------------------------------- */
 
-          /* SAVE LAST VALUES */
           lastUsage = usage;
           lastFamily = family;
           lastClass = productClass;
@@ -649,131 +431,72 @@ export default function UploadProduct({}: Props) {
           lastImage = imageURL;
 
           if (!usage || !family) continue;
-
-          if (!productClass && !pricePoint && !brandOrigin && !supplierBrand)
-            continue;
+          if (!productClass && !pricePoint && !brandOrigin && !supplierBrand) continue;
 
           const category = await findCategoryType(usage);
           if (!category) continue;
-
           const productFamily = await findProductFamily(category.id, family);
           if (!productFamily) continue;
-
           const supplier = await findSupplier(supplierBrand);
 
-          /* UNIQUE SYNC KEY */
           const syncKey = category.id + "_" + productFamily.id;
-
-          /* CREATE TEMPLATE + SYNC ONLY ONCE */
           if (!syncedFamilies.has(syncKey)) {
             if (cancelRef.current) break;
-            await createMissingTemplateSpecs(
-              category.id,
-              productFamily.id,
-              excelColumns,
-            );
+            await createMissingTemplateSpecs(category.id, productFamily.id, excelColumns);
             if (cancelRef.current) break;
-
             await syncExistingProductsToTemplate(category.id, productFamily.id);
-
             syncedFamilies.add(syncKey);
           }
 
-          /* GET UPDATED TEMPLATE */
-          const templateSpecs = await findTemplateSpecs(
-            category.id,
-            productFamily.id,
-          );
-
-          /* BUILD PRODUCT SPECS */
-          const productSpecs = templateSpecs.map((template) => {
-            return {
-              technicalSpecificationId: template.id,
-
-              title: template.title,
-
-              specs: template.specs.map((templateSpec) => {
-                const excelMatch = excelColumns.find(
-                  (col) =>
-                    col.title === template.title &&
-                    col.specId === templateSpec.specId,
-                );
-
-                const cellValue = excelMatch
-                  ? cleanExcelValue(row.getCell(excelMatch.col).value)
-                  : "";
-
-                return {
-                  specId: templateSpec.specId,
-                  value: cellValue,
-                };
-              }),
-            };
-          });
+          const templateSpecs = await findTemplateSpecs(category.id, productFamily.id);
+          const productSpecs = templateSpecs.map((template) => ({
+            technicalSpecificationId: template.id,
+            title: template.title,
+            specs: template.specs.map((templateSpec) => {
+              const excelMatch = excelColumns.find(
+                (col) => col.title === template.title && col.specId === templateSpec.specId,
+              );
+              const cellValue = excelMatch ? cleanExcelValue(row.getCell(excelMatch.col).value) : "";
+              return { specId: templateSpec.specId, value: cellValue };
+            }),
+          }));
 
           const referenceID = await generateProductReferenceID();
-
           if (cancelRef.current) break;
 
           await addDoc(collection(db, "products"), {
             productReferenceID: referenceID,
-
             productClass,
             pricePoint,
             brandOrigin,
-
             supplier,
-
             mainImage: imageURL ? { url: imageURL } : null,
-
-            /* ===== DIMENSIONAL DRAWING ===== */
             dimensionalDrawing: dimensionalURL ? { url: dimensionalURL } : null,
-
-            /* ===== ILLUMINANCE DRAWING ===== */
             illuminanceDrawing: illuminanceURL ? { url: illuminanceURL } : null,
-
-            categoryTypes: [
-              {
-                productUsageId: category.id,
-                categoryTypeName: category.name,
-              },
-            ],
-
-            productFamilies: [
-              {
-                productFamilyId: productFamily.id,
-                productFamilyName: productFamily.name,
-                productUsageId: category.id,
-              },
-            ],
-
+            categoryTypes: [{ productUsageId: category.id, categoryTypeName: category.name }],
+            productFamilies: [{
+              productFamilyId: productFamily.id,
+              productFamilyName: productFamily.name,
+              productUsageId: category.id,
+            }],
             technicalSpecifications: productSpecs,
-
-            /* 🔧 FIX: commercialDetails now correctly populated */
             commercialDetails: {
               unitCost: unitCost ? parseFloat(unitCost) : null,
-
               packaging: {
                 length: length ? `${parseFloat(length)} cm` : null,
                 width: width ? `${parseFloat(width)} cm` : null,
                 height: height ? `${parseFloat(height)} cm` : null,
               },
-
               pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
               factoryAddress: factoryAddress || "",
               portOfDischarge: portOfDischarge || "",
             },
-
             isActive: true,
-
             createdAt: serverTimestamp(),
-
             whatHappened: "Product Added",
-
             date_updated: serverTimestamp(),
           });
 
-          /* COUNT ONLY SUCCESSFUL UPLOAD */
           setUploadProgress((prev) => prev + 1);
         }
       }
@@ -781,14 +504,12 @@ export default function UploadProduct({}: Props) {
       audioRef.current?.pause();
       audioRef.current!.currentTime = 0;
       toast.success("Upload complete");
-
       setOpen(false);
       setFile(null);
       setUploadProgress(0);
       setTotalRows(0);
     } catch (error) {
       console.error(error);
-
       audioRef.current?.pause();
       audioRef.current!.currentTime = 0;
       toast.error("Upload failed");
@@ -800,10 +521,18 @@ export default function UploadProduct({}: Props) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Upload className="w-4 h-4 mr-2" />
-          Upload
-        </Button>
+        {iconOnly ? (
+          // ── Mobile icon-only trigger ──
+          <button className="h-8 w-8 rounded-full border border-gray-200 bg-white/80 flex items-center justify-center">
+            <Upload className="h-4 w-4 text-gray-600" />
+          </button>
+        ) : (
+          // ── Desktop full button trigger ──
+          <Button>
+            <Upload className="w-4 h-4 mr-2" />
+            Upload
+          </Button>
+        )}
       </DialogTrigger>
 
       <DialogContent>
@@ -817,40 +546,25 @@ export default function UploadProduct({}: Props) {
           onDrop={(e) => {
             e.preventDefault();
             const droppedFile = e.dataTransfer.files?.[0];
-            if (droppedFile) {
-              setFile(droppedFile);
-            }
+            if (droppedFile) setFile(droppedFile);
           }}
-          onClick={() =>
-            document.getElementById("product-upload-input")?.click()
-          }
+          onClick={() => document.getElementById("product-upload-input")?.click()}
         >
           <div className="flex flex-col items-center gap-3">
             <Upload className="w-10 h-10 text-gray-500" />
-
-            <p className="text-sm text-gray-600">
-              Drag & Drop your Excel file here
-            </p>
-
+            <p className="text-sm text-gray-600">Drag & Drop your Excel file here</p>
             <p className="text-xs text-gray-400">or click to browse</p>
-
             {file && !uploading && (
               <p className="text-sm font-medium text-green-600">{file.name}</p>
             )}
-
             {uploading && (
               <div className="flex flex-col items-center gap-2 mt-2">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-
                 <p className="text-sm font-medium">Uploading products...</p>
-
-                <p className="text-xs text-gray-500">
-                  {uploadProgress} out of {totalRows}
-                </p>
+                <p className="text-xs text-gray-500">{uploadProgress} out of {totalRows}</p>
               </div>
             )}
           </div>
-
           <input
             id="product-upload-input"
             type="file"
@@ -865,21 +579,17 @@ export default function UploadProduct({}: Props) {
             variant="outline"
             onClick={() => {
               cancelRef.current = true;
-
               if (audioRef.current) {
                 audioRef.current.pause();
                 audioRef.current.currentTime = 0;
               }
-
               setUploading(false);
               setOpen(false);
-
               toast.message("Upload cancelled");
             }}
           >
             Cancel
           </Button>
-
           <Button disabled={!file || uploading} onClick={handleUpload}>
             {uploading ? "Uploading..." : "Upload"}
           </Button>

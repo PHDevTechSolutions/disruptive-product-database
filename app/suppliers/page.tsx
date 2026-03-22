@@ -214,18 +214,21 @@ export default function Suppliers() {
       <div className="md:hidden shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-bold text-gray-900">Suppliers</h1>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1 h-8 px-2.5 text-xs" onClick={() => setUploadSupplierOpen(true)}>
-              <Upload className="h-3.5 w-3.5" />
-            </Button>
-            <DownloadSupplier suppliers={filteredSuppliers} />
-            <button
-              onClick={() => setAddSupplierOpen(true)}
-              className="h-8 w-8 rounded-full bg-gray-900 text-white flex items-center justify-center"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
+<div className="flex items-center gap-2">
+  <button
+    onClick={() => setUploadSupplierOpen(true)}
+    className="h-8 w-8 rounded-full border border-gray-200 bg-white/80 flex items-center justify-center"
+  >
+    <Upload className="h-4 w-4 text-gray-600" />
+  </button>
+  <DownloadSupplier suppliers={filteredSuppliers} iconOnly />
+  <button
+    onClick={() => setAddSupplierOpen(true)}
+    className="h-8 w-8 rounded-full bg-gray-900 text-white flex items-center justify-center"
+  >
+    <Plus className="h-4 w-4" />
+  </button>
+</div>
         </div>
 
         <div className="flex gap-2">
