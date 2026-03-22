@@ -143,11 +143,8 @@ export default function ProductsPage() {
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-bold text-gray-900">Products</h1>
           <div className="flex items-center gap-2">
-            {/* Upload icon-only on mobile */}
             <UploadProductModal iconOnly />
-            {/* Download icon-only on mobile */}
             <DownloadProduct products={products} iconOnly />
-            {/* Add product */}
             <button
               onClick={() => router.push("/add-product")}
               className="h-8 w-8 rounded-full bg-gray-900 text-white flex items-center justify-center"
@@ -189,9 +186,13 @@ export default function ProductsPage() {
       </div>
 
       {/* ── MAIN CONTENT ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      {/*
+        On mobile: relative container so the drawer can be positioned absolute within it.
+        The products grid stays fully rendered and visible behind the drawer.
+      */}
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
 
-        {/* Grid area */}
+        {/* ── PRODUCT GRID AREA ── */}
         <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden">
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
@@ -297,44 +298,82 @@ export default function ProductsPage() {
           )}
         </div>
 
-        {/* Desktop filter sidebar */}
+        {/* ── DESKTOP FILTER SIDEBAR ── */}
         <div className="hidden md:block w-[320px] shrink-0 border-l bg-white/80 backdrop-blur-sm overflow-y-auto p-4">
           {!loading && products.length > 0 && (
             <FilteringComponentV2 products={products} onFilter={setFilteredProducts} />
           )}
         </div>
-      </div>
 
-      {/* ── MOBILE FILTER BOTTOM SHEET ── */}
-      {mobileFilterOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileFilterOpen(false)} />
-          <div className="relative bg-white/95 backdrop-blur-md rounded-t-3xl shadow-2xl flex flex-col" style={{ maxHeight: "88dvh" }}>
-            <div className="flex justify-center pt-3 shrink-0">
-              <div className="h-1 w-10 rounded-full bg-gray-200" />
-            </div>
-            <div className="flex items-center justify-between px-5 py-3 border-b shrink-0">
-              <h2 className="font-bold text-base">Filters</h2>
-              <button onClick={() => setMobileFilterOpen(false)} className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {!loading && products.length > 0 && (
-                <FilteringComponentV2 products={products} onFilter={setFilteredProducts} />
+        {/* ── MOBILE FILTER — RIGHT SIDE DRAWER ── */}
+        {/*
+          Dim overlay: covers full content area, tap to close.
+          Positioned absolute so products grid remains visible behind the drawer.
+        */}
+        <div
+          className={`
+            md:hidden absolute inset-0 z-30
+            bg-black/30 backdrop-blur-[1px]
+            transition-opacity duration-300
+            ${mobileFilterOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
+          `}
+          onClick={() => setMobileFilterOpen(false)}
+        />
+
+        {/*
+          Drawer: slides in from the right.
+          w-[82%] → ~18% of products grid still visible on the left.
+          Products are still rendered and visible — user can see filtered results updating live.
+        */}
+        <div
+          className={`
+            md:hidden absolute top-0 right-0 bottom-0 z-40
+            w-[82%] flex flex-col
+            bg-white shadow-2xl
+            transition-transform duration-300 ease-in-out
+            ${mobileFilterOpen ? "translate-x-0" : "translate-x-full"}
+          `}
+        >
+          {/* Drawer header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-gray-600" />
+              <h2 className="font-bold text-sm">Filters</h2>
+              {isFiltered && (
+                <span className="text-[10px] font-semibold bg-red-500 text-white rounded-full px-1.5 py-0.5 leading-none">
+                  ON
+                </span>
               )}
             </div>
-            <div className="p-4 border-t bg-white/95 shrink-0" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
-              <button
-                onClick={() => setMobileFilterOpen(false)}
-                className="w-full h-11 rounded-2xl bg-gray-900 text-white text-sm font-semibold"
-              >
-                Show {filteredProducts.length} Product{filteredProducts.length !== 1 ? "s" : ""}
-              </button>
-            </div>
+            <button
+              onClick={() => setMobileFilterOpen(false)}
+              className="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Scrollable filter body */}
+          <div className="flex-1 overflow-y-auto">
+            {!loading && products.length > 0 && (
+              <FilteringComponentV2 products={products} onFilter={setFilteredProducts} />
+            )}
+          </div>
+
+          {/* Footer: results count + close */}
+          <div
+            className="px-3 py-3 border-t bg-white shrink-0"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+          >
+            <button
+              onClick={() => setMobileFilterOpen(false)}
+              className="w-full h-10 rounded-xl bg-gray-900 text-white text-sm font-semibold"
+            >
+              Show {filteredProducts.length} Product{filteredProducts.length !== 1 ? "s" : ""}
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* DELETE MODAL */}
       {deleteTarget && (
