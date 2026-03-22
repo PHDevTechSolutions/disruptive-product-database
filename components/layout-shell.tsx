@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { SidebarLeft } from "@/components/sidebar-left";
 import { SidebarBottom } from "@/components/sidebar-bottom";
@@ -14,25 +14,36 @@ export default function LayoutShell({
 }) {
   const { userId, loading } = useUser();
   const pathname = usePathname();
-  const prevUserId = useRef<string | null>(null);
-
-  const [showSplash, setShowSplash] = useState(false);
 
   const isLogin = pathname === "/login";
 
+  const [showSplash, setShowSplash] = useState(false);
+  const [splashChecked, setSplashChecked] = useState(false);
+
   useEffect(() => {
-    // Detect fresh login: userId just changed from null to a value
-    if (!prevUserId.current && userId) {
+    if (!userId) return;
+
+    const splashPlayed = sessionStorage.getItem("splashPlayed") === "true";
+
+    if (!splashPlayed) {
+      // Fresh login — splash hasn't played yet this session
       setShowSplash(true);
     }
-    prevUserId.current = userId;
+
+    setSplashChecked(true);
   }, [userId]);
 
-  if (loading && !isLogin) return null;
+  function handleSplashDone() {
+    sessionStorage.setItem("splashPlayed", "true");
+    setShowSplash(false);
+  }
 
-  // Play splash screen after login before showing anything
+  // Wait until we know if splash is needed before rendering anything
+  if (loading && !isLogin) return null;
+  if (userId && !splashChecked && !isLogin) return null;
+
   if (showSplash) {
-    return <SplashScreen onDone={() => setShowSplash(false)} />;
+    return <SplashScreen onDone={handleSplashDone} />;
   }
 
   return (

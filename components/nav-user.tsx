@@ -52,7 +52,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const router = useRouter();
-  const { setUserId, setSplashDone } = useUser();
+  const { setUserId } = useUser();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -87,7 +87,9 @@ export function NavUser({
       console.error("Logout failed:", err);
     } finally {
       setUserId(null);
-      setSplashDone(false); // ✅ i-reset para sa susunod na login
+
+      // Clear splash flag so it plays again on next login
+      sessionStorage.removeItem("splashPlayed");
 
       setIsLoggingOut(false);
       setIsDialogOpen(false);
@@ -136,7 +138,6 @@ export function NavUser({
                 <div className="flex items-center gap-2 px-1 py-1.5">
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage src={user.avatar} alt={user.name} />
-
                     <AvatarFallback className="rounded-lg">
                       {user.name?.charAt(0) ?? "U"}
                     </AvatarFallback>
@@ -146,7 +147,6 @@ export function NavUser({
                     <span className="truncate font-medium capitalize">
                       {user.name}
                     </span>
-
                     {user.position && (
                       <span className="truncate text-xs text-muted-foreground">
                         {user.position}
