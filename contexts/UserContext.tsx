@@ -20,7 +20,26 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [splashDone, setSplashDone] = useState(false);
+
+  // sessionStorage: persists across page refreshes within the same tab,
+  // but resets when the tab is closed (so splash shows again on fresh session)
+  const [splashDone, setSplashDoneState] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("splashDone") === "true";
+    }
+    return false;
+  });
+
+  function setSplashDone(done: boolean) {
+    if (typeof window !== "undefined") {
+      if (done) {
+        sessionStorage.setItem("splashDone", "true");
+      } else {
+        sessionStorage.removeItem("splashDone");
+      }
+    }
+    setSplashDoneState(done);
+  }
 
   useEffect(() => {
     fetch("/api/me")

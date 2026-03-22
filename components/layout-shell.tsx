@@ -13,13 +13,14 @@ export default function LayoutShell({
   const { userId, loading, splashDone } = useUser();
   const pathname = usePathname();
 
-  const isSplash = pathname === "/splash-screen";
   const isLogin = pathname === "/login";
 
-  if (loading && !isSplash && !isLogin) return null;
+  // While loading auth state, don't render anything (except on login page)
+  if (loading && !isLogin) return null;
 
   return (
     <div className="relative flex min-h-[100svh] w-full">
+      {/* Show sidebars only after splash is done and user is logged in */}
       {userId && splashDone && (
         <>
           <div className="hidden md:block">

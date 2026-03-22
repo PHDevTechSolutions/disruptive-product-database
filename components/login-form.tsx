@@ -1,31 +1,25 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 
 import { dbLogs } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<"form">) {
-  const router = useRouter();
+interface LoginFormProps extends React.ComponentProps<"form"> {
+  onLoginSuccess?: () => void;
+}
 
+export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
   const { setUserId } = useUser();
 
   const [email, setEmail] = useState("");
-
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
 
   async function logLoginActivity(userId: string, email: string) {
@@ -55,20 +49,16 @@ export function LoginForm({
     e.preventDefault();
 
     setLoading(true);
-
     setError(null);
 
     try {
       const res = await fetch("/api/login", {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           Email: email,
-
           Password: password,
         }),
       });
@@ -77,15 +67,14 @@ export function LoginForm({
 
       if (!res.ok) {
         setError(data.message || "Login failed");
-
         return;
       }
 
       setUserId(data.userId);
-
       await logLoginActivity(data.userId, email);
 
-      router.push("/splash-screen");
+      // Trigger splash screen in the parent (LoginPage)
+      onLoginSuccess?.();
     } catch {
       setError("Something went wrong.");
     } finally {
@@ -114,7 +103,6 @@ export function LoginForm({
 
         <Field>
           <FieldLabel>Email</FieldLabel>
-
           <Input
             type="email"
             required
@@ -126,7 +114,6 @@ export function LoginForm({
 
         <Field>
           <FieldLabel>Password</FieldLabel>
-
           <Input
             type="password"
             required

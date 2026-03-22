@@ -1,20 +1,32 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoginForm } from "@/components/login-form";
+import { SplashScreen } from "@/components/splash-screen";
 import { useUser } from "@/contexts/UserContext";
 import Image from "next/image";
 
 export default function LoginPage() {
   const { userId } = useUser();
   const router = useRouter();
+  const [showSplash, setShowSplash] = useState(false);
 
+  // If already logged in on page load, go straight to dashboard
   useEffect(() => {
-    if (userId) {
-      router.replace("/splash-screen");
+    if (userId && !showSplash) {
+      router.replace("/dashboard");
     }
-  }, [userId, router]);
+  }, [userId, showSplash, router]);
+
+  // Called by LoginForm after successful login
+  function handleLoginSuccess() {
+    setShowSplash(true);
+  }
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -43,7 +55,7 @@ export default function LoginPage() {
               </span>
             </div>
 
-            <LoginForm />
+            <LoginForm onLoginSuccess={handleLoginSuccess} />
 
           </div>
 
