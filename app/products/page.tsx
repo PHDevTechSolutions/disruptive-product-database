@@ -48,6 +48,7 @@ export default function ProductsPage() {
 
   const gridRef = useRef<HTMLDivElement | null>(null);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [columns, setColumns] = useState(6);
 
   useEffect(() => {
     const saved = localStorage.getItem("productCardScale");
@@ -63,8 +64,9 @@ export default function ProductsPage() {
       if (!gridRef.current) return;
       const containerWidth = gridRef.current.offsetWidth;
       const cardMinWidth = 220 * cardScale;
-      const columns = Math.max(1, Math.floor(containerWidth / cardMinWidth));
-      setItemsPerPage(columns * 4);
+      const cols = Math.max(1, Math.floor(containerWidth / cardMinWidth));
+      setColumns(cols);
+      setItemsPerPage(cols * 4); // always exactly 4 full rows
     };
     updateGridPagination();
     window.addEventListener("resize", updateGridPagination);
@@ -233,7 +235,7 @@ export default function ProductsPage() {
                   <div
                     ref={gridRef}
                     className="grid gap-3 md:gap-4"
-                    style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${220 * cardScale}px, 1fr))` }}
+                    style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
                   >
                     {paginatedProducts.map((p) => (
                       <div
