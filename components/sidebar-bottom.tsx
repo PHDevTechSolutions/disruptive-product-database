@@ -1,3 +1,4 @@
+// components/sidebar-bottom.tsx
 "use client";
 
 import * as React from "react";
@@ -52,6 +53,7 @@ export function SidebarBottom() {
       style={{ bottom: 0, paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="flex items-center justify-around px-1 h-[62px]">
+
         {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
           const active = pathname === href;
           return (
@@ -74,9 +76,9 @@ export function SidebarBottom() {
           );
         })}
 
-        {/* Avatar */}
+        {/* Avatar only — no name/label visible */}
         {user && userId && (
-          <div className="flex flex-col items-center justify-center flex-1 h-full">
+          <div className="flex items-center justify-center flex-1 h-full">
             <NavUser
               user={{
                 name: `${user.Firstname} ${user.Lastname}`.trim() || "User",
@@ -85,9 +87,11 @@ export function SidebarBottom() {
                 avatar: user.profilePicture || "/avatars/shadcn.jpg",
               }}
               userId={userId}
+              avatarOnly
             />
           </div>
         )}
+
       </div>
     </div>
   );
