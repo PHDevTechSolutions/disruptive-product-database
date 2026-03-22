@@ -52,7 +52,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const router = useRouter();
-  const { setUserId } = useUser();
+  const { setUserId, setSplashDone } = useUser();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -87,6 +87,7 @@ export function NavUser({
       console.error("Logout failed:", err);
     } finally {
       setUserId(null);
+      setSplashDone(false); // ✅ i-reset para sa susunod na login
 
       setIsLoggingOut(false);
       setIsDialogOpen(false);
@@ -162,7 +163,6 @@ export function NavUser({
                   <Link href={`/profile?id=${encodeURIComponent(userId)}`}>
                     <div className="flex items-center gap-2 cursor-pointer">
                       <BadgeCheck className="size-4" />
-
                       <span>Account</span>
                     </div>
                   </Link>
@@ -177,7 +177,6 @@ export function NavUser({
                 disabled={isLoggingOut}
               >
                 <LogOut className="size-4" />
-
                 <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -189,7 +188,6 @@ export function NavUser({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Logout</DialogTitle>
-
             <DialogDescription>
               Are you sure you want to log out?
             </DialogDescription>

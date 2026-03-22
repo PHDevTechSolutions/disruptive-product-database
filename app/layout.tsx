@@ -8,7 +8,6 @@ import { Toaster } from "sonner";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import LayoutShell from "@/components/layout-shell";
 
-/* 🔑 VIEWPORT PROTECTION */
 export const viewport = {
   width: "device-width",
   initialScale: 1,

@@ -10,17 +10,17 @@ export default function LayoutShell({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId, loading } = useUser();
+  const { userId, loading, splashDone } = useUser();
   const pathname = usePathname();
 
   const isSplash = pathname === "/splash-screen";
+  const isLogin = pathname === "/login";
 
-  // ✅ allow splash screen while loading
-  if (loading && !isSplash) return null;
+  if (loading && !isSplash && !isLogin) return null;
 
   return (
     <div className="relative flex min-h-[100svh] w-full">
-      {userId && !isSplash && (
+      {userId && splashDone && (
         <>
           <div className="hidden md:block">
             <SidebarLeft />

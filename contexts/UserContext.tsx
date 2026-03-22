@@ -11,6 +11,8 @@ type UserContextType = {
   userId: string | null;
   setUserId: (id: string | null) => void;
   loading: boolean;
+  splashDone: boolean;
+  setSplashDone: (done: boolean) => void;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -18,6 +20,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
     fetch("/api/me")
@@ -33,7 +36,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <UserContext.Provider value={{ userId, setUserId, loading }}>
+    <UserContext.Provider value={{ userId, setUserId, loading, splashDone, setSplashDone }}>
       {children}
     </UserContext.Provider>
   );
