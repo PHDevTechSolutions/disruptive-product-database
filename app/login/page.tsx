@@ -25,7 +25,7 @@ export default function LoginPage() {
   }
 
   if (showSplash) {
-    return <SplashScreen />;
+    return <SplashScreen onDone={() => router.replace("/dashboard")} />;
   }
 
   return (

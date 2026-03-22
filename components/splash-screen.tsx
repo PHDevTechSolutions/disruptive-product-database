@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 
 const slides = [
@@ -18,8 +17,11 @@ const slides = [
   "All set.",
 ];
 
-export function SplashScreen() {
-  const router = useRouter();
+interface SplashScreenProps {
+  onDone?: () => void;
+}
+
+export function SplashScreen({ onDone }: SplashScreenProps) {
   const { setSplashDone } = useUser();
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
@@ -43,8 +45,8 @@ export function SplashScreen() {
   function startClose() {
     setClosing(true);
     setTimeout(() => {
-      setSplashDone(true); // ✅ tapos na ang splash, pwede na mag-render ang sidebar
-      router.replace("/dashboard");
+      setSplashDone(true); // persist to sessionStorage first
+      onDone?.();          // then let the parent (LoginPage) handle navigation
     }, 800);
   }
 
@@ -58,7 +60,7 @@ export function SplashScreen() {
       className={`splash-clean ${closing ? "closing" : ""}`}
     >
       <Image
-        src="/disruptive-logo.png"
+        src="/images/disruptive-logo.png"
         alt="logo"
         width={140}
         height={140}

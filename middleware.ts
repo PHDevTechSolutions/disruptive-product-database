@@ -15,14 +15,13 @@ export function middleware(req: NextRequest) {
   const session = req.cookies.get("session")?.value;
 
   const isLoginPage = pathname === "/login";
-  const isSplashPage = pathname === "/splash-screen";
 
   if (!session && !isLoginPage) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
   if (session && isLoginPage) {
-    return NextResponse.redirect(new URL("/splash-screen", req.url));
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   return NextResponse.next();
