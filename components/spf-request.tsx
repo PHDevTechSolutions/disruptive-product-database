@@ -100,7 +100,23 @@ export default function SPF({ processBy }: SPFProps) {
   const [openFilter, setOpenFilter] = useState(false);
   const [viewMode, setViewMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [createdSPF, setCreatedSPF] = useState<Record<string, boolean>>({});
+  const [createdSPF, setCreatedSPF] = useState<Record<string, string>>({});
+
+  /* ── Fetch createdSPF statuses separately so it can be refreshed
+     both on request load AND on spf_creation realtime updates ── */
+  const fetchCreatedSPF = useCallback(async (spfNumbers: string[]) => {
+    if (!spfNumbers.length) return;
+    const { data: created } = await supabase
+      .from("spf_creation")
+      .select("spf_number, status")
+      .in("spf_number", spfNumbers);
+
+    const map: Record<string, string> = {};
+    created?.forEach((c: any) => {
+      map[c.spf_number] = c.status || "unknown";
+    });
+    setCreatedSPF(map);
+  }, []);
 
   // Fetch SPF requests
   const fetchRequests = useCallback(async () => {
@@ -118,28 +134,13 @@ export default function SPF({ processBy }: SPFProps) {
 
       setRequests(mapped);
 
-      /* CHECK WHICH SPF ALREADY CREATED */
       const spfNumbers = mapped.map((r: any) => r.spf_number);
-
-      if (spfNumbers.length) {
-        const { data: created } = await supabase
-          .from("spf_creation")
-          .select("spf_number")
-          .in("spf_number", spfNumbers);
-
-        const map: Record<string, boolean> = {};
-
-        created?.forEach((c: any) => {
-          map[c.spf_number] = true;
-        });
-
-        setCreatedSPF(map);
-      }
+      await fetchCreatedSPF(spfNumbers);
     } catch (err: any) {
       console.error("Fetch error:", err);
       setError(err.message || "Failed to fetch SPF requests");
     }
-  }, []);
+  }, [fetchCreatedSPF]);
 
   useEffect(() => {
     fetchRequests();
@@ -149,6 +150,13 @@ export default function SPF({ processBy }: SPFProps) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "spf_request" },
+        fetchRequests,
+      )
+      /* ALSO LISTEN TO spf_creation so status badges + button visibility
+         update in real-time without a manual refresh */
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "spf_creation" },
         fetchRequests,
       )
       .subscribe();
@@ -213,6 +221,7 @@ export default function SPF({ processBy }: SPFProps) {
       toast.error("Something went wrong while creating SPF");
     }
   };
+
   // Fetch products from Firebase
   const fetchProducts = useCallback((customerName: string) => {
     setLoadingProducts(true);
@@ -257,6 +266,12 @@ export default function SPF({ processBy }: SPFProps) {
       .filter(Boolean);
   };
 
+  /* Helper: should the Create button be hidden? */
+  const isProcurementStatus = (spfNumber: string) => {
+    const s = createdSPF[spfNumber];
+    return s === "Approved By Procurement" || s === "Pending For Procurement";
+  };
+
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
@@ -265,7 +280,8 @@ export default function SPF({ processBy }: SPFProps) {
         <CardTitle>Requests List (Real-time)</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-5 border-b pb-2 font-semibold text-sm">
+        {/* Desktop header only */}
+        <div className="hidden md:grid grid-cols-5 border-b pb-2 font-semibold text-sm">
           <div>SPF Number</div>
           <div>Customer Name</div>
           <div>Special Instructions</div>
@@ -288,35 +304,67 @@ export default function SPF({ processBy }: SPFProps) {
                   minute: "2-digit",
                 }).format(new Date(req.date_created))
               : "-";
-            return (
-              <div
-                key={req.id}
-                className="grid grid-cols-5 py-2 border-b text-sm items-center"
-              >
-                <div>{req.spf_number}</div>
-                <div>{req.customer_name}</div>
-                <div>
-                  <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase">
-                    {req.special_instructions || "-"}
-                  </span>
-                </div>
-                <div>{formattedDate}</div>
-                <div>
-                  <div className="flex gap-2">
-                    <Button
-                      className="rounded-none p-6"
-                      variant="outline"
-                      onClick={() => handleCreateFromRow(req)}
-                    >
-                      Create
-                    </Button>
 
+            return (
+              <div key={req.id} className="border-b py-3 text-sm">
+
+                {/* ── Desktop: 5-col grid ── */}
+                <div className="hidden md:grid grid-cols-5 items-center">
+                  <div>{req.spf_number}</div>
+                  <div>{req.customer_name}</div>
+                  <div>
+                    <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase">
+                      {req.special_instructions || "-"}
+                    </span>
+                  </div>
+                  <div>{formattedDate}</div>
+                  <div className="flex gap-2 flex-wrap">
+                    {/* HIDE CREATE IF ALREADY SENT TO PROCUREMENT */}
+                    {!isProcurementStatus(req.spf_number) && (
+                      <Button
+                        className="rounded-none p-6"
+                        variant="outline"
+                        onClick={() => handleCreateFromRow(req)}
+                      >
+                        Create
+                      </Button>
+                    )}
                     {/* SHOW ONLY IF SPF ALREADY CREATED */}
                     {createdSPF[req.spf_number] && (
                       <SPFRequestView spfNumber={req.spf_number} />
                     )}
                   </div>
                 </div>
+
+                {/* ── Mobile: stacked card ── */}
+                <div className="md:hidden flex flex-col gap-1 px-1">
+                  <p className="font-semibold">{req.spf_number}</p>
+                  <p className="text-muted-foreground">{req.customer_name}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100 uppercase">
+                      {req.special_instructions || "-"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{formattedDate}</span>
+                  </div>
+                  <div className="flex gap-2 mt-1 flex-wrap">
+                    {/* HIDE CREATE IF ALREADY SENT TO PROCUREMENT */}
+                    {!isProcurementStatus(req.spf_number) && (
+                      <Button
+                        size="sm"
+                        className="rounded-none"
+                        variant="outline"
+                        onClick={() => handleCreateFromRow(req)}
+                      >
+                        Create
+                      </Button>
+                    )}
+                    {/* SHOW ONLY IF SPF ALREADY CREATED */}
+                    {createdSPF[req.spf_number] && (
+                      <SPFRequestView spfNumber={req.spf_number} />
+                    )}
+                  </div>
+                </div>
+
               </div>
             );
           })
@@ -1049,6 +1097,7 @@ export default function SPF({ processBy }: SPFProps) {
                   ))}
                 </div>
               </div>
+
               {/* CTRL + F: FILTER PANEL */}
               <div
                 className={`transition-all duration-500 ease-in-out ${

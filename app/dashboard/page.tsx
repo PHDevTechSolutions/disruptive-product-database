@@ -5,16 +5,11 @@ import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { useWallpaper } from "@/contexts/WallpaperContext";
-import { useSidebar, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { collection, query, where, getCountFromServer } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { supabase } from "@/utils/supabase";
 import { ImageIcon, X, Upload, Trash2, CheckCircle2 } from "lucide-react";
-
-// Full page components
-import ProductsPage from "@/app/products/page";
-import SuppliersPage from "@/app/suppliers/page";
-import RequestsPage from "@/app/requests/page";
 
 type UserData = {
   Firstname: string;
@@ -22,14 +17,12 @@ type UserData = {
   Role: string;
 };
 
-type ActiveView = "products" | "suppliers" | "requests" | null;
-
 export default function Dashboard() {
+  const router = useRouter();
   const { userId } = useUser();
   const { wallpaper, opacity, setWallpaper, setOpacity } = useWallpaper();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState<ActiveView>(null);
   const [themeOpen, setThemeOpen] = useState(false);
 
   const [totalProducts, setTotalProducts]   = useState<number | null>(null);
@@ -78,7 +71,7 @@ export default function Dashboard() {
   }, [userId]);
 
   const metrics: {
-    key: ActiveView;
+    key: string;
     label: string;
     value: number | null;
     color: string;
@@ -88,35 +81,6 @@ export default function Dashboard() {
     { key: "requests",  label: "SPF Requests",     value: totalSPF,       color: "#BA7517" },
   ];
 
-  /* ── If a view is active render it full-screen in place ── */
-  if (activeView === "products")  return (
-    <div className="h-dvh flex flex-col overflow-hidden">
-      <BackBar label="Products"  onBack={() => setActiveView(null)} />
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <ProductsPage />
-      </div>
-    </div>
-  );
-
-  if (activeView === "suppliers") return (
-    <div className="h-dvh flex flex-col overflow-hidden">
-      <BackBar label="Suppliers" onBack={() => setActiveView(null)} />
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <SuppliersPage />
-      </div>
-    </div>
-  );
-
-  if (activeView === "requests")  return (
-    <div className="h-dvh flex flex-col overflow-hidden">
-      <BackBar label="SPF Requests" onBack={() => setActiveView(null)} />
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <RequestsPage />
-      </div>
-    </div>
-  );
-
-  /* ── Default: dashboard metrics ── */
   return (
     <div className="p-6 space-y-6">
       <SidebarTrigger className="hidden md:flex" />
@@ -135,7 +99,7 @@ export default function Dashboard() {
         {metrics.map(({ key, label, value, color }) => (
           <button
             key={key}
-            onClick={() => setActiveView(key)}
+            onClick={() => router.push(`/${key}`)}
             className="bg-white/80 backdrop-blur-md rounded-lg p-4 space-y-2 text-left hover:bg-white/90 transition-colors group border border-white/40 shadow-sm"
           >
             <div className="flex items-center gap-2">
@@ -263,21 +227,17 @@ function WallpaperModal({
           {/* Preview */}
           {preview ? (
             <div className="relative rounded-xl overflow-hidden border border-gray-200 aspect-video bg-white">
-              {/* Dimmed wallpaper layer */}
               <img
                 src={preview}
                 alt="Wallpaper preview"
                 className="absolute inset-0 w-full h-full object-cover"
                 style={{ opacity }}
               />
-              {/* White overlay to show how it'll look */}
               <div className="absolute inset-0 bg-white" style={{ opacity: 1 - opacity }} />
-              {/* Sample content overlay */}
               <div className="absolute inset-0 flex flex-col items-start justify-end p-3 gap-1.5">
                 <div className="h-2 w-24 rounded-full bg-gray-300/80" />
                 <div className="h-2 w-16 rounded-full bg-gray-200/80" />
               </div>
-              {/* Remove button */}
               <button
                 onClick={() => setPreview(null)}
                 className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"
@@ -287,7 +247,6 @@ function WallpaperModal({
               <span className="absolute top-2 left-3 text-xs text-white/90 font-medium drop-shadow">Preview</span>
             </div>
           ) : (
-            /* Drop zone */
             <div
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
@@ -325,7 +284,7 @@ function WallpaperModal({
 
           {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
 
-          {/* Opacity slider — always visible */}
+          {/* Opacity slider */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-gray-600">Opacity</label>
@@ -348,7 +307,6 @@ function WallpaperModal({
             </div>
           </div>
 
-          {/* Change image button when preview exists */}
           {preview && (
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -385,22 +343,6 @@ function WallpaperModal({
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-/* ── Small back bar rendered above the embedded page ── */
-function BackBar({ label, onBack }: { label: string; onBack: () => void }) {
-  return (
-    <div className="shrink-0 flex items-center gap-3 px-4 py-2 bg-white border-b">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-      >
-        ← Dashboard
-      </button>
-      <span className="text-muted-foreground">/</span>
-      <span className="text-sm font-semibold">{label}</span>
     </div>
   );
 }
