@@ -3,6 +3,7 @@ import { GeistSans, GeistMono } from "geist/font";
 import "./globals.css";
 
 import { UserProvider } from "@/contexts/UserContext";
+import { WallpaperProvider } from "@/contexts/WallpaperContext";
 import { Toaster } from "sonner";
 
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -36,18 +37,20 @@ export default function RootLayout({
         `}
       >
         <UserProvider>
-          <SidebarProvider>
-            <LayoutShell>{children}</LayoutShell>
-          </SidebarProvider>
+          <WallpaperProvider>
+            <SidebarProvider>
+              <LayoutShell>{children}</LayoutShell>
+            </SidebarProvider>
 
-          <Toaster
-            position="top-right"
-            closeButton
-            toastOptions={{
-              className:
-                "bg-background border border-border text-foreground shadow-lg rounded-lg",
-            }}
-          />
+            <Toaster
+              position="top-right"
+              closeButton
+              toastOptions={{
+                className:
+                  "bg-background border border-border text-foreground shadow-lg rounded-lg",
+              }}
+            />
+          </WallpaperProvider>
         </UserProvider>
       </body>
     </html>

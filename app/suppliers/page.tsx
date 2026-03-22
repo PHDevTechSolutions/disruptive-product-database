@@ -182,10 +182,11 @@ export default function Suppliers() {
   }, [itemsPerPage, totalPages]);
 
   return (
-    <div className="h-dvh flex flex-col overflow-hidden bg-gray-50">
+    // ↓ removed bg-gray-50 — transparent so wallpaper shows through
+    <div className="h-dvh flex flex-col overflow-hidden">
 
-      {/* ── DESKTOP HEADER ── */}
-      <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white border-b">
+      {/* ── DESKTOP HEADER — bg-white → bg-white/80 + backdrop-blur-md ── */}
+      <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white/80 backdrop-blur-md border-b">
         <SidebarTrigger />
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold shrink-0">Suppliers</h1>
@@ -195,7 +196,7 @@ export default function Suppliers() {
               placeholder="Search supplier..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-64 rounded-md border px-3 text-sm"
+              className="h-9 w-64 rounded-md border px-3 text-sm bg-white/70"
             />
             <Button onClick={() => setAddSupplierOpen(true)}>+ Add Supplier</Button>
             <Button variant="outline" className="gap-1" onClick={() => setUploadSupplierOpen(true)}>
@@ -209,8 +210,8 @@ export default function Suppliers() {
         </div>
       </div>
 
-      {/* ── MOBILE HEADER ── */}
-      <div className="md:hidden shrink-0 bg-white border-b border-gray-100 px-4 pt-5 pb-3">
+      {/* ── MOBILE HEADER — bg-white → bg-white/80 + backdrop-blur-md ── */}
+      <div className="md:hidden shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-bold text-gray-900">Suppliers</h1>
           <div className="flex items-center gap-2">
@@ -235,7 +236,7 @@ export default function Suppliers() {
               placeholder="Search suppliers..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-10 pl-9 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-gray-300"
+              className="w-full h-10 pl-9 pr-3 bg-white/70 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-gray-300"
             />
           </div>
           <button
@@ -249,8 +250,8 @@ export default function Suppliers() {
         <p className="text-xs text-gray-400 mt-2">{filteredSuppliers.length} supplier{filteredSuppliers.length !== 1 ? "s" : ""}</p>
       </div>
 
-      {/* ── DESKTOP PAGINATION BAR ── */}
-      <div className="hidden md:flex items-center justify-between px-6 py-2 bg-white border-b shrink-0">
+      {/* ── DESKTOP PAGINATION BAR — bg-white → bg-white/70 ── */}
+      <div className="hidden md:flex items-center justify-between px-6 py-2 bg-white/70 backdrop-blur-md border-b shrink-0">
         <span className="text-sm text-gray-500">
           Page {currentPage} of {totalPages} · {filteredSuppliers.length} suppliers
         </span>
@@ -260,10 +261,11 @@ export default function Suppliers() {
         </div>
       </div>
 
-      {/* ── DESKTOP TABLE ── */}
-      <div className="hidden md:block flex-1 min-h-0 overflow-auto bg-white">
+      {/* ── DESKTOP TABLE — bg-white → bg-white/60 ── */}
+      <div className="hidden md:block flex-1 min-h-0 overflow-auto bg-white/60 backdrop-blur-sm">
         <table className="w-full text-sm border-collapse">
-          <thead className="bg-red-50 sticky top-0 z-10">
+          {/* thead bg-red-50 → bg-red-50/80 */}
+          <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">
             <tr>
               {HEADERS.map((h, i) => (
                 <th key={h.label} className={`${COL_WIDTHS[i]} ${h.align} font-bold px-3 py-3 border-b whitespace-nowrap`}>
@@ -279,7 +281,7 @@ export default function Suppliers() {
               <tr><td colSpan={10} className="text-center py-10 text-muted-foreground">No suppliers found.</td></tr>
             ) : (
               paginatedSuppliers.map((s) => (
-                <tr key={s.id} className="border-b hover:bg-muted/40 align-middle">
+                <tr key={s.id} className="border-b hover:bg-white/60 align-middle">
                   <td className={`${COL_WIDTHS[0]} px-3 py-3`}>
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => { setSelectedSupplier(s); setEditSupplierOpen(true); }}><Pencil className="h-4 w-4" /></Button>
@@ -351,7 +353,7 @@ export default function Suppliers() {
           </div>
         ) : filteredSuppliers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+            <div className="h-14 w-14 rounded-full bg-white/60 flex items-center justify-center mb-3">
               <Search className="h-6 w-6 text-gray-300" />
             </div>
             <p className="text-sm font-medium text-gray-600">No suppliers found</p>
@@ -359,43 +361,29 @@ export default function Suppliers() {
           </div>
         ) : (
           paginatedSuppliers.map((s) => (
-            <div key={s.id} className="border border-gray-200 rounded-2xl bg-white shadow-sm p-4 space-y-3">
-
-              {/* Card header */}
+            // bg-white → bg-white/80 + backdrop-blur-sm
+            <div key={s.id} className="border border-gray-200 rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <button
-                    onClick={() => openSupplierProducts(s)}
-                    className="text-base font-bold text-blue-600 hover:underline text-left leading-tight"
-                  >
+                  <button onClick={() => openSupplierProducts(s)} className="text-base font-bold text-blue-600 hover:underline text-left leading-tight">
                     {highlightText(s.company, search)}
                   </button>
                   {s.supplierBrand && (
-                    <button
-                      onClick={() => openSupplierProducts(s)}
-                      className="block text-xs font-semibold text-blue-500 hover:underline mt-0.5"
-                    >
+                    <button onClick={() => openSupplierProducts(s)} className="block text-xs font-semibold text-blue-500 hover:underline mt-0.5">
                       {highlightText(s.supplierBrand, search)}
                     </button>
                   )}
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  <button
-                    onClick={() => { setSelectedSupplier(s); setEditSupplierOpen(true); }}
-                    className="h-8 w-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center"
-                  >
+                  <button onClick={() => { setSelectedSupplier(s); setEditSupplierOpen(true); }} className="h-8 w-8 rounded-xl border border-gray-200 bg-white/80 flex items-center justify-center">
                     <Pencil className="h-3.5 w-3.5 text-blue-600" />
                   </button>
-                  <button
-                    onClick={() => { setSelectedSupplier(s); setDeleteSupplierOpen(true); }}
-                    className="h-8 w-8 rounded-xl border border-red-100 bg-red-50 flex items-center justify-center"
-                  >
+                  <button onClick={() => { setSelectedSupplier(s); setDeleteSupplierOpen(true); }} className="h-8 w-8 rounded-xl border border-red-100 bg-red-50/80 flex items-center justify-center">
                     <Trash2 className="h-3.5 w-3.5 text-red-500" />
                   </button>
                 </div>
               </div>
 
-              {/* Card details */}
               <div className="space-y-2 text-sm">
                 {[
                   { label: "Address", items: s.addresses },
@@ -408,36 +396,29 @@ export default function Suppliers() {
                     <div key={label} className="flex gap-2">
                       <span className="text-xs font-semibold text-gray-500 w-24 shrink-0 pt-0.5">{label}</span>
                       <div className="flex flex-col gap-1 flex-1">
-                        {items.map((item, i) => (
-                          <span key={i} className="text-gray-700 text-xs">{highlightText(item, search)}</span>
-                        ))}
+                        {items.map((item, i) => <span key={i} className="text-gray-700 text-xs">{highlightText(item, search)}</span>)}
                       </div>
                     </div>
                   ) : null
                 )}
-
                 {s.website?.length ? (
                   <div className="flex gap-2">
                     <span className="text-xs font-semibold text-gray-500 w-24 shrink-0 pt-0.5">Website</span>
                     <div className="flex flex-col gap-1 flex-1">
                       {s.website.map((site, i) => (
-                        <a key={i} href={formatWebsite(site)} target="_blank" rel="noopener noreferrer"
-                          className="text-blue-600 underline text-xs break-all">
+                        <a key={i} href={formatWebsite(site)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs break-all">
                           {highlightText(site, search)}
                         </a>
                       ))}
                     </div>
                   </div>
                 ) : null}
-
                 {s.contacts?.length ? (
                   <div className="flex gap-2">
                     <span className="text-xs font-semibold text-gray-500 w-24 shrink-0 pt-0.5">Contact</span>
                     <div className="flex flex-col gap-1 flex-1">
                       {s.contacts.map((c, i) => (
-                        <span key={i} className="text-gray-700 text-xs">
-                          {highlightText(c.name, search)} · {highlightText(c.phone, search)}
-                        </span>
+                        <span key={i} className="text-gray-700 text-xs">{highlightText(c.name, search)} · {highlightText(c.phone, search)}</span>
                       ))}
                     </div>
                   </div>
@@ -448,23 +429,15 @@ export default function Suppliers() {
         )}
       </div>
 
-      {/* ── MOBILE PAGINATION ── */}
+      {/* ── MOBILE PAGINATION — bg-white → bg-white/70 ── */}
       {totalPages > 1 && (
-        <div className="md:hidden flex justify-center items-center gap-3 py-3 border-t bg-white shrink-0"
+        <div className="md:hidden flex justify-center items-center gap-3 py-3 border-t bg-white/70 backdrop-blur-sm shrink-0"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 80px)" }}>
-          <button
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage(p => p - 1)}
-            className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
-          >
+          <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40">
             <ChevronLeft className="h-4 w-4" />
           </button>
           <span className="text-sm font-medium text-gray-600">{currentPage} / {totalPages}</span>
-          <button
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage(p => p + 1)}
-            className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
-          >
+          <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40">
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>

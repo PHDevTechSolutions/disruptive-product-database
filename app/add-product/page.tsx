@@ -366,7 +366,7 @@ export default function AddProductPage() {
   );
 
   return (
-<div className="h-screen overflow-hidden bg-gray-50">
+<div className="h-screen overflow-hidden">
   <div className="h-full overflow-y-auto px-6 pb-[140px]">
 
       {/* ── MOBILE STICKY HEADER ── */}

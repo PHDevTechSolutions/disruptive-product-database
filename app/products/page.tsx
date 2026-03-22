@@ -110,10 +110,12 @@ export default function ProductsPage() {
   const isFiltered = filteredProducts.length !== products.length;
 
   return (
-    <div className="h-dvh flex flex-col overflow-hidden bg-gray-50">
+    // ↓ removed bg-gray-50 — transparent so wallpaper shows through
+    <div className="h-dvh flex flex-col overflow-hidden">
 
       {/* ── DESKTOP HEADER ── */}
-      <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white border-b">
+      {/* bg-white → bg-white/80 + backdrop-blur-md */}
+      <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white/80 backdrop-blur-md border-b">
         <SidebarTrigger />
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Products</h1>
@@ -128,7 +130,7 @@ export default function ProductsPage() {
             placeholder="Search product..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-md"
+            className="max-w-md bg-white/70"
           />
           <div className="flex items-center gap-2 ml-auto text-sm text-gray-500">
             <button onClick={() => setCardScale(p => Math.max(p - 0.1, 0.6))} className="text-lg font-bold px-1">−</button>
@@ -139,7 +141,8 @@ export default function ProductsPage() {
       </div>
 
       {/* ── MOBILE HEADER ── */}
-      <div className="md:hidden shrink-0 bg-white border-b border-gray-100 px-4 pt-5 pb-3">
+      {/* bg-white → bg-white/80 + backdrop-blur-md */}
+      <div className="md:hidden shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-bold text-gray-900">Products</h1>
           <div className="flex items-center gap-2">
@@ -161,7 +164,7 @@ export default function ProductsPage() {
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-10 bg-gray-50 border-gray-200 rounded-xl text-sm"
+              className="pl-9 h-10 bg-white/70 border-gray-200 rounded-xl text-sm"
             />
           </div>
           <button
@@ -177,7 +180,8 @@ export default function ProductsPage() {
 
         <div className="flex items-center justify-between mt-2">
           <span className="text-xs text-gray-400">{searchedProducts.length} products</span>
-          <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2.5 py-1">
+          {/* bg-gray-100 → bg-white/60 */}
+          <div className="flex items-center gap-2 bg-white/60 rounded-lg px-2.5 py-1">
             <button onClick={() => setCardScale(p => Math.max(p - 0.1, 0.6))} className="text-gray-600 font-bold text-sm">−</button>
             <span className="text-xs text-gray-500 w-7 text-center">{(cardScale * 100).toFixed(0)}%</span>
             <button onClick={() => setCardScale(p => Math.min(p + 0.1, 1.6))} className="text-gray-600 font-bold text-sm">+</button>
@@ -196,10 +200,9 @@ export default function ProductsPage() {
             </div>
           ) : (
             <>
-
-              {/* Pagination */}
+              {/* Pagination — bg-white → bg-white/70 */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-3 py-3 border-t bg-white shrink-0 px-4">
+                <div className="flex justify-center items-center gap-3 py-3 border-t bg-white/70 backdrop-blur-sm shrink-0 px-4">
                   <button
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage(p => p - 1)}
@@ -217,11 +220,12 @@ export default function ProductsPage() {
                   </button>
                 </div>
               )}
-              
+
               <div className="flex-1 overflow-y-auto px-3 md:px-6 pt-3 pb-24 md:pb-4">
                 {paginatedProducts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                    {/* bg-gray-100 → bg-white/60 */}
+                    <div className="h-14 w-14 rounded-full bg-white/60 flex items-center justify-center mb-3">
                       <Search className="h-6 w-6 text-gray-300" />
                     </div>
                     <p className="text-sm font-medium text-gray-600">No products found</p>
@@ -234,12 +238,13 @@ export default function ProductsPage() {
                     style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${220 * cardScale}px, 1fr))` }}
                   >
                     {paginatedProducts.map((p) => (
+                      // bg-white → bg-white/80 + backdrop-blur-sm
                       <div
                         key={p.id}
-                        className="group border border-gray-200 rounded-2xl bg-white shadow-sm hover:shadow-md flex flex-col overflow-hidden transition-shadow duration-200"
+                        className="group border border-gray-200 rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md flex flex-col overflow-hidden transition-shadow duration-200"
                       >
-                        {/* Image */}
-                        <div className="relative bg-gray-50 flex items-center justify-center overflow-hidden rounded-t-2xl" style={{ height: 160 }}>
+                        {/* Image — bg-gray-50 → bg-white/60 */}
+                        <div className="relative bg-white/60 flex items-center justify-center overflow-hidden rounded-t-2xl" style={{ height: 160 }}>
                           {p.mainImage?.url ? (
                             <img
                               src={convertDriveToThumbnail(p.mainImage.url)}
@@ -294,14 +299,12 @@ export default function ProductsPage() {
                   </div>
                 )}
               </div>
-
-
             </>
           )}
         </div>
 
-        {/* Desktop filter sidebar */}
-        <div className="hidden md:block w-[320px] shrink-0 border-l bg-white overflow-y-auto p-4">
+        {/* Desktop filter sidebar — bg-white → bg-white/80 + backdrop-blur-sm */}
+        <div className="hidden md:block w-[320px] shrink-0 border-l bg-white/80 backdrop-blur-sm overflow-y-auto p-4">
           {!loading && products.length > 0 && (
             <FilteringComponentV2 products={products} onFilter={setFilteredProducts} />
           )}
@@ -312,7 +315,8 @@ export default function ProductsPage() {
       {mobileFilterOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileFilterOpen(false)} />
-          <div className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col" style={{ maxHeight: "88dvh" }}>
+          {/* bg-white → bg-white/95 */}
+          <div className="relative bg-white/95 backdrop-blur-md rounded-t-3xl shadow-2xl flex flex-col" style={{ maxHeight: "88dvh" }}>
             <div className="flex justify-center pt-3 shrink-0">
               <div className="h-1 w-10 rounded-full bg-gray-200" />
             </div>
@@ -327,7 +331,7 @@ export default function ProductsPage() {
                 <FilteringComponentV2 products={products} onFilter={setFilteredProducts} />
               )}
             </div>
-            <div className="p-4 border-t bg-white shrink-0" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
+            <div className="p-4 border-t bg-white/95 shrink-0" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
               <button
                 onClick={() => setMobileFilterOpen(false)}
                 className="w-full h-11 rounded-2xl bg-gray-900 text-white text-sm font-semibold"
