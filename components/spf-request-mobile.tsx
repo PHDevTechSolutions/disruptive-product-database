@@ -55,7 +55,7 @@ interface SPFMobileProps {
 }
 
 /* ─────────────────────────────────────────────────────────────── */
-/* INLINE SPECS — plain div collapsible, zero nested buttons      */
+/* INLINE SPECS                                                    */
 /* ─────────────────────────────────────────────────────────────── */
 function InlineSpecs({ specs }: { specs: any[] }) {
   const [open, setOpen] = useState(false);
@@ -156,9 +156,7 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
   const [viewMode, setViewMode]                 = useState(false);
   const [searchTerm, setSearchTerm]             = useState("");
 
-  /* createdSPF now stores status string (same as spf-request.tsx) */
   const [createdSPF, setCreatedSPF]             = useState<Record<string, string>>({});
-  /* Gate: hide Create button until spf_creation statuses are confirmed loaded */
   const [createdSPFLoaded, setCreatedSPFLoaded] = useState(false);
 
   const [activeRowIndex, setActiveRowIndex]     = useState<number | null>(null);
@@ -193,7 +191,7 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
   const fetchRequests = useCallback(async () => {
     try {
       setError(null);
-      setCreatedSPFLoaded(false); // reset gate while re-fetching
+      setCreatedSPFLoaded(false);
       const res = await fetch("/api/request/fetch");
       if (!res.ok) throw new Error("Failed to fetch SPF requests");
       const data = await res.json();
@@ -206,7 +204,7 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
     } catch (err: any) {
       console.error("Fetch error:", err);
       setError(err.message || "Failed to fetch SPF requests");
-      setCreatedSPFLoaded(true); // unblock even on error
+      setCreatedSPFLoaded(true);
     }
   }, [fetchCreatedSPF]);
 
@@ -215,7 +213,6 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
     const channel = supabase
       .channel("spf-all-mobile")
       .on("postgres_changes", { event: "*", schema: "public", table: "spf_request" }, fetchRequests)
-      /* Also listen to spf_creation so status updates reflect immediately */
       .on("postgres_changes", { event: "*", schema: "public", table: "spf_creation" }, fetchRequests)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -225,7 +222,7 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
   /* HELPER: should Create be hidden */
   /* ─────────────────────────────── */
   const isProcurementStatus = (spfNumber: string): boolean => {
-    if (!createdSPFLoaded) return true; // hide until confirmed
+    if (!createdSPFLoaded) return true;
     const s = createdSPF[spfNumber];
     return s === "Approved By Procurement" || s === "Pending For Procurement";
   };
@@ -256,29 +253,23 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
     fetchProducts(rowData.customer_name || "");
   };
 
-  /* ─────────────────────────────────────────────────────────
-   * SUBMIT
-   * ─────────────────────────────────────────────────────────*/
+  /* ─────────────────────────────── */
+  /* SUBMIT                          */
+  /* ─────────────────────────────── */
   const handleSubmit = async () => {
     try {
       const allProducts = Object.values(productOffers).flat();
-
       const res = await fetch("/api/request/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          selectedProducts: allProducts,
-        }),
+        body: JSON.stringify({ ...formData, selectedProducts: allProducts }),
       });
-
       if (!res.ok) {
         const errText = await res.text();
         console.error("API ERROR:", errText);
         toast.error("Failed to create SPF request");
         throw new Error("Failed to create SPF request");
       }
-
       const data = await res.json();
       if (data?.success) toast.success("SPF created successfully");
       setOpenDialog(false);
@@ -319,33 +310,23 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
     );
   }, [searchTerm, products]);
 
-  /* ─────────────────────────────────────────────────────────
-   * FREEZE SPECS
-   * ─────────────────────────────────────────────────────────*/
+  /* ─────────────────────────────── */
+  /* FREEZE SPECS                    */
+  /* ─────────────────────────────── */
   const freezeSpecs = (product: any) => {
     const activeFilters = (window as any).__ACTIVE_FILTERS__ || [];
-
     if (!product.technicalSpecifications) return product;
-
     const frozenSpecs = product.technicalSpecifications.map((group: any) => ({
       ...group,
       specs: group.specs?.map((spec: any) => {
         const raw = spec.value || "";
         const values = raw.split("|").map((v: string) => v.trim()).filter(Boolean);
         const uniqueValues = Array.from(new Set(values));
-
-        if (!activeFilters.length) {
-          return { ...spec, value: uniqueValues.join(" | ") };
-        }
-
+        if (!activeFilters.length) return { ...spec, value: uniqueValues.join(" | ") };
         const filtered = uniqueValues.filter((v) => activeFilters.includes(v));
-        return {
-          ...spec,
-          value: filtered.length ? filtered.join(" | ") : uniqueValues.join(" | "),
-        };
+        return { ...spec, value: filtered.length ? filtered.join(" | ") : uniqueValues.join(" | ") };
       }),
     }));
-
     return { ...product, technicalSpecifications: frozenSpecs };
   };
 
@@ -364,16 +345,11 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
 
   const confirmAddProduct = () => {
     if (activeRowIndex === null || !pendingProduct) return;
-
     setProductOffers((prev) => {
       const copy = { ...prev };
-      copy[activeRowIndex] = [
-        ...(copy[activeRowIndex] || []),
-        freezeSpecs(pendingProduct),
-      ];
+      copy[activeRowIndex] = [...(copy[activeRowIndex] || []), freezeSpecs(pendingProduct)];
       return copy;
     });
-
     setPendingProduct(null);
     setPickerStep("list");
     toast.success("Product added!");
@@ -416,36 +392,43 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
                   }).format(new Date(req.date_created))
                 : "-";
 
+              const spfStatus = createdSPF[req.spf_number];
+              const isApproved = spfStatus === "Approved By Procurement";
+
               return (
-                <div key={req.id} className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-0.5 min-w-0">
-                      <p className="font-semibold text-sm truncate">{req.spf_number}</p>
-                      <p className="text-xs text-muted-foreground truncate">{req.customer_name}</p>
-                      <p className="text-xs text-muted-foreground">{formattedDate}</p>
-                      {req.special_instructions && (
-                        <span className="inline-block text-[10px] px-2 py-0.5 rounded bg-gray-100 uppercase">
-                          {req.special_instructions}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1 shrink-0">
-                      {/* HIDE CREATE IF ALREADY SENT TO PROCUREMENT */}
-                      {!isProcurementStatus(req.spf_number) && (
-                        <Button
-                          type="button"
-                          className="rounded-none h-9 text-xs"
-                          variant="outline"
-                          onClick={() => handleCreateFromRow(req)}
-                        >
-                          Create
-                        </Button>
-                      )}
-                      {/* SHOW VIEW ONLY IF SPF ALREADY CREATED */}
-                      {createdSPF[req.spf_number] && (
-                        <SPFRequestView spfNumber={req.spf_number} />
-                      )}
-                    </div>
+                <div key={req.id} className="p-4 space-y-2">
+                  {/* ── SPF Info ── */}
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-sm">{req.spf_number}</p>
+                    <p className="text-xs text-muted-foreground">{req.customer_name}</p>
+                    <p className="text-xs text-muted-foreground">{formattedDate}</p>
+                    {req.special_instructions && (
+                      <span className="inline-block text-[10px] px-2 py-0.5 rounded bg-gray-100 uppercase">
+                        {req.special_instructions}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* ── Actions row: buttons + status badge ── */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* HIDE CREATE IF ALREADY SENT TO PROCUREMENT */}
+                    {!isProcurementStatus(req.spf_number) && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="rounded-none h-8 text-xs px-4"
+                        variant="outline"
+                        onClick={() => handleCreateFromRow(req)}
+                      >
+                        Create
+                      </Button>
+                    )}
+
+                    {/* SHOW VIEW ONLY IF SPF ALREADY CREATED
+                        SPFRequestView already renders its own status badge */}
+                    {spfStatus && (
+                      <SPFRequestView spfNumber={req.spf_number} />
+                    )}
                   </div>
                 </div>
               );
