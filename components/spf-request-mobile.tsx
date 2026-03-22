@@ -155,11 +155,37 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
   const [openFilter, setOpenFilter]             = useState(false);
   const [viewMode, setViewMode]                 = useState(false);
   const [searchTerm, setSearchTerm]             = useState("");
-  const [createdSPF, setCreatedSPF]             = useState<Record<string, boolean>>({});
+
+  /* createdSPF now stores status string (same as spf-request.tsx) */
+  const [createdSPF, setCreatedSPF]             = useState<Record<string, string>>({});
+  /* Gate: hide Create button until spf_creation statuses are confirmed loaded */
+  const [createdSPFLoaded, setCreatedSPFLoaded] = useState(false);
+
   const [activeRowIndex, setActiveRowIndex]     = useState<number | null>(null);
   const [pickerStep, setPickerStep]             = useState<"list" | "confirm">("list");
   const [pendingProduct, setPendingProduct]     = useState<any | null>(null);
   const [activeTab, setActiveTab]               = useState<"details" | "items" | "products">("items");
+
+  /* ─────────────────────────────── */
+  /* FETCH createdSPF statuses       */
+  /* ─────────────────────────────── */
+  const fetchCreatedSPF = useCallback(async (spfNumbers: string[]) => {
+    if (!spfNumbers.length) {
+      setCreatedSPFLoaded(true);
+      return;
+    }
+    const { data: created } = await supabase
+      .from("spf_creation")
+      .select("spf_number, status")
+      .in("spf_number", spfNumbers);
+
+    const map: Record<string, string> = {};
+    created?.forEach((c: any) => {
+      map[c.spf_number] = c.status || "unknown";
+    });
+    setCreatedSPF(map);
+    setCreatedSPFLoaded(true);
+  }, []);
 
   /* ─────────────────────────────── */
   /* FETCH REQUESTS                  */
@@ -167,6 +193,7 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
   const fetchRequests = useCallback(async () => {
     try {
       setError(null);
+      setCreatedSPFLoaded(false); // reset gate while re-fetching
       const res = await fetch("/api/request/fetch");
       if (!res.ok) throw new Error("Failed to fetch SPF requests");
       const data = await res.json();
@@ -175,29 +202,33 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
         date_created: r.date_created ? new Date(r.date_created).toISOString() : null,
       }));
       setRequests(mapped);
-
-      const spfNumbers = mapped.map((r: any) => r.spf_number);
-      if (spfNumbers.length) {
-        const { data: created } = await supabase
-          .from("spf_creation").select("spf_number").in("spf_number", spfNumbers);
-        const map: Record<string, boolean> = {};
-        created?.forEach((c: any) => { map[c.spf_number] = true; });
-        setCreatedSPF(map);
-      }
+      await fetchCreatedSPF(mapped.map((r: any) => r.spf_number));
     } catch (err: any) {
       console.error("Fetch error:", err);
       setError(err.message || "Failed to fetch SPF requests");
+      setCreatedSPFLoaded(true); // unblock even on error
     }
-  }, []);
+  }, [fetchCreatedSPF]);
 
   useEffect(() => {
     fetchRequests();
     const channel = supabase
       .channel("spf-all-mobile")
       .on("postgres_changes", { event: "*", schema: "public", table: "spf_request" }, fetchRequests)
+      /* Also listen to spf_creation so status updates reflect immediately */
+      .on("postgres_changes", { event: "*", schema: "public", table: "spf_creation" }, fetchRequests)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchRequests]);
+
+  /* ─────────────────────────────── */
+  /* HELPER: should Create be hidden */
+  /* ─────────────────────────────── */
+  const isProcurementStatus = (spfNumber: string): boolean => {
+    if (!createdSPFLoaded) return true; // hide until confirmed
+    const s = createdSPF[spfNumber];
+    return s === "Approved By Procurement" || s === "Pending For Procurement";
+  };
 
   /* ─────────────────────────────── */
   /* OPEN DIALOG FROM ROW            */
@@ -226,7 +257,7 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
   };
 
   /* ─────────────────────────────────────────────────────────
-   * SUBMIT — exact same payload shape as desktop handleSubmit
+   * SUBMIT
    * ─────────────────────────────────────────────────────────*/
   const handleSubmit = async () => {
     try {
@@ -289,8 +320,7 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
   }, [searchTerm, products]);
 
   /* ─────────────────────────────────────────────────────────
-   * FREEZE SPECS — exact copy of desktop onDrop freezeSpecs.
-   * Called at confirm-time (equivalent to desktop drop-time).
+   * FREEZE SPECS
    * ─────────────────────────────────────────────────────────*/
   const freezeSpecs = (product: any) => {
     const activeFilters = (window as any).__ACTIVE_FILTERS__ || [];
@@ -332,7 +362,6 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
     setPickerStep("confirm");
   };
 
-  /* Equivalent to desktop onDrop: push freezeSpecs(product) into row */
   const confirmAddProduct = () => {
     if (activeRowIndex === null || !pendingProduct) return;
 
@@ -352,7 +381,6 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
 
   const cancelConfirm = () => { setPendingProduct(null); setPickerStep("list"); };
 
-  /* Equivalent to desktop drag-to-trash: splice out of row */
   const removeProduct = (rowIndex: number, productIndex: number) => {
     setProductOffers((prev) => {
       const copy = { ...prev };
@@ -402,14 +430,18 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
                       )}
                     </div>
                     <div className="flex flex-col gap-1 shrink-0">
-                      <Button
-                        type="button"
-                        className="rounded-none h-9 text-xs"
-                        variant="outline"
-                        onClick={() => handleCreateFromRow(req)}
-                      >
-                        Create
-                      </Button>
+                      {/* HIDE CREATE IF ALREADY SENT TO PROCUREMENT */}
+                      {!isProcurementStatus(req.spf_number) && (
+                        <Button
+                          type="button"
+                          className="rounded-none h-9 text-xs"
+                          variant="outline"
+                          onClick={() => handleCreateFromRow(req)}
+                        >
+                          Create
+                        </Button>
+                      )}
+                      {/* SHOW VIEW ONLY IF SPF ALREADY CREATED */}
                       {createdSPF[req.spf_number] && (
                         <SPFRequestView spfNumber={req.spf_number} />
                       )}
@@ -593,7 +625,7 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
                               : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
                           </div>
 
-                          {/* ── Offer cards — mirrors desktop product offer table columns ── */}
+                          {/* ── Offer cards ── */}
                           {offers.length > 0 && (
                             <div className="border-t divide-y">
                               {offers.map((prod: any, i: number) => {
@@ -611,7 +643,6 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
 
                                 return (
                                   <div key={i} className="p-3 flex gap-3 items-start">
-                                    {/* Image */}
                                     {prod.mainImage?.url ? (
                                       <img src={prod.mainImage.url} className="w-14 h-14 object-contain rounded shrink-0" alt="" />
                                     ) : (
@@ -621,7 +652,6 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
                                     )}
 
                                     <div className="flex-1 min-w-0 space-y-1">
-                                      {/* Option badge */}
                                       <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                                         Option {i + 1}
                                         {supplierBrand && ` · ${supplierBrand}`}
@@ -629,14 +659,12 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
 
                                       <p className="text-xs font-medium line-clamp-1">{prod.productName}</p>
 
-                                      {/* Supplier */}
                                       {(supplierCompany || supplierBrand) && (
                                         <p className="text-[10px] text-muted-foreground truncate">
                                           {[supplierCompany, supplierBrand].filter(Boolean).join(" · ")}
                                         </p>
                                       )}
 
-                                      {/* Qty + unit cost */}
                                       <div className="flex items-center gap-2">
                                         <span className="text-[10px] text-muted-foreground">Qty</span>
                                         <input
@@ -662,33 +690,27 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
                                         </span>
                                       </div>
 
-                                      {/* Packaging — mirrors desktop L x W x H column */}
                                       <p className="text-[10px] text-muted-foreground">
                                         Pack: {length} × {width} × {height}
                                       </p>
 
-                                      {/* Factory address */}
                                       {factory !== "-" && (
                                         <p className="text-[10px] text-muted-foreground truncate">Factory: {factory}</p>
                                       )}
 
-                                      {/* Port of discharge */}
                                       {port !== "-" && (
                                         <p className="text-[10px] text-muted-foreground truncate">Port: {port}</p>
                                       )}
 
-                                      {/* Subtotal — mirrors desktop Sub Total column */}
                                       {qty > 0 && (
                                         <p className="text-xs font-semibold text-right">
                                           ${subtotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </p>
                                       )}
 
-                                      {/* Technical specs — mirrors desktop Technical Specifications column */}
                                       <InlineSpecs specs={prod.technicalSpecifications ?? []} />
                                     </div>
 
-                                    {/* Remove — mirrors desktop drag-to-trash */}
                                     <button
                                       type="button"
                                       onClick={() => removeProduct(index, i)}
@@ -793,7 +815,6 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
 
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold line-clamp-2">{p.productName}</p>
-
                               {supplierBrand && (
                                 <p className="text-xs font-semibold text-blue-600 mt-0.5 truncate">{supplierBrand}</p>
                               )}
@@ -805,7 +826,6 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
                                   Unit cost: {p.commercialDetails.unitCost}
                                 </p>
                               )}
-
                               <InlineProductSpecs specs={p.technicalSpecifications ?? []} />
                             </div>
 
