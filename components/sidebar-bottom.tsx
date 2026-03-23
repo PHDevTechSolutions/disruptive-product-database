@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Package, Truck, History, ClipboardList } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useUser } from "@/contexts/UserContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { NavUser } from "@/components/nav-user";
 
 type UserDetails = {
@@ -21,13 +22,14 @@ const NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/products",  icon: Package,         label: "Products"  },
   { href: "/suppliers", icon: Truck,            label: "Suppliers" },
-  { href: "/requests",  icon: ClipboardList,    label: "Requests"  },
+  { href: "/requests",  icon: ClipboardList,    label: "Requests", showBadge: true },
   { href: "/history",   icon: History,          label: "History"   },
 ];
 
 export function SidebarBottom() {
   const { isMobile } = useSidebar();
   const { userId } = useUser();
+  const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const [user, setUser] = React.useState<UserDetails | null>(null);
 
@@ -54,8 +56,10 @@ export function SidebarBottom() {
     >
       <div className="flex items-center justify-around px-1 h-[62px]">
 
-        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
+        {NAV_ITEMS.map(({ href, icon: Icon, label, showBadge }) => {
           const active = pathname === href;
+          const badge  = showBadge ? unreadCount : 0;
+
           return (
             <Link
               key={href}
@@ -65,10 +69,20 @@ export function SidebarBottom() {
               {active && (
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full bg-red-500" />
               )}
-              <Icon
-                className={`h-5 w-5 transition-colors ${active ? "text-red-600" : "text-gray-400"}`}
-                strokeWidth={active ? 2.2 : 1.8}
-              />
+
+              {/* Icon wrapper with green badge */}
+              <span className="relative">
+                <Icon
+                  className={`h-5 w-5 transition-colors ${active ? "text-red-600" : "text-gray-400"}`}
+                  strokeWidth={active ? 2.2 : 1.8}
+                />
+                {badge > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-green-500 text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-white shadow-sm">
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
+              </span>
+
               <span className={`text-[10px] font-medium transition-colors ${active ? "text-red-600" : "text-gray-400"}`}>
                 {label}
               </span>

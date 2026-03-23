@@ -5,6 +5,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { useWallpaper } from "@/contexts/WallpaperContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { collection, query, where, getCountFromServer } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const router = useRouter();
   const { userId } = useUser();
   const { wallpaper, opacity, setWallpaper, setOpacity } = useWallpaper();
+  const { unreadCount } = useNotifications();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [themeOpen, setThemeOpen] = useState(false);
@@ -75,10 +77,11 @@ export default function Dashboard() {
     label: string;
     value: number | null;
     color: string;
+    badge?: number;
   }[] = [
     { key: "products",  label: "Total Products",  value: totalProducts,  color: "#378ADD" },
     { key: "suppliers", label: "Total Suppliers",  value: totalSuppliers, color: "#1D9E75" },
-    { key: "requests",  label: "SPF Requests",     value: totalSPF,       color: "#BA7517" },
+    { key: "requests",  label: "SPF Requests",     value: totalSPF,       color: "#BA7517", badge: unreadCount },
   ];
 
   return (
@@ -96,12 +99,19 @@ export default function Dashboard() {
 
       {/* Metric cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {metrics.map(({ key, label, value, color }) => (
+        {metrics.map(({ key, label, value, color, badge }) => (
           <button
             key={key}
             onClick={() => router.push(`/${key}`)}
-            className="bg-white/80 backdrop-blur-md rounded-lg p-4 space-y-2 text-left hover:bg-white/90 transition-colors group border border-white/40 shadow-sm"
+            className="relative bg-white/80 backdrop-blur-md rounded-lg p-4 space-y-2 text-left hover:bg-white/90 transition-colors group border border-white/40 shadow-sm"
           >
+            {/* Red notification badge */}
+            {badge !== undefined && badge > 0 && (
+              <span className="absolute -top-2 -right-2 z-10 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shadow-md ring-2 ring-white animate-pulse">
+                {badge > 99 ? "99+" : badge}
+              </span>
+            )}
+
             <div className="flex items-center gap-2">
               <span
                 className="inline-block w-2 h-2 rounded-full shrink-0"

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 
@@ -13,11 +14,17 @@ interface UserDetails {
 
 export default function RequestsPage() {
   const { userId } = useUser();
+  const { clearNotifications } = useNotifications();
   const [loadingUser, setLoadingUser] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetails>({
     process_by: "",
   });
+
+  /* ── Clear badge as soon as user lands on this page ── */
+  useEffect(() => {
+    clearNotifications();
+  }, [clearNotifications]);
 
   useEffect(() => {
     if (!userId) { setLoadingUser(false); return; }

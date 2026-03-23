@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { NavUser } from "@/components/nav-user";
 
 type UserDetails = {
@@ -38,6 +39,7 @@ type UserDetails = {
 export function SidebarLeft() {
   const { state, isMobile } = useSidebar();
   const { userId } = useUser();
+  const { unreadCount } = useNotifications();
   const pathname = usePathname();
 
   const [user, setUser] = React.useState<UserDetails | null>(null);
@@ -64,6 +66,14 @@ export function SidebarLeft() {
       });
   }, [userId]);
 
+  const navItems = [
+    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { href: "/products",  icon: Package,          label: "Products"  },
+    { href: "/suppliers", icon: Truck,             label: "Suppliers" },
+    { href: "/requests",  icon: ClipboardList,     label: "Requests", badge: unreadCount },
+    { href: "/history",   icon: History,           label: "History"   },
+  ];
+
   return (
     <Sidebar
       collapsible="icon"
@@ -87,147 +97,50 @@ export function SidebarLeft() {
       {/* CONTENT */}
       <SidebarContent className="px-2">
         <SidebarMenu>
+          {navItems.map(({ href, icon: Icon, label, badge }) => (
+            <SidebarMenuItem key={href}>
+              <SidebarMenuButton
+                asChild
+                data-active={pathname === href}
+                className="
+                  transition-all
+                  hover:bg-red-50
+                  hover:text-red-700
+                  hover:scale-[1.01]
+                  data-[active=true]:bg-gradient-to-r
+                  data-[active=true]:from-red-600
+                  data-[active=true]:to-red-700
+                  data-[active=true]:text-white
+                  data-[active=true]:shadow-md
+                  data-[active=true]:hover:from-red-700
+                  data-[active=true]:hover:to-red-800
+                "
+              >
+                <Link href={href} className="relative flex items-center gap-2 w-full">
+                  {/* Icon with badge overlay when collapsed */}
+                  <span className="relative shrink-0">
+                    <Icon className="h-4 w-4" />
+                    {badge !== undefined && badge > 0 && state === "collapsed" && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-green-500 text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-white">
+                        {badge > 99 ? "99+" : badge}
+                      </span>
+                    )}
+                  </span>
 
-          {/* DASHBOARD */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              data-active={pathname === "/dashboard"}
-              className="
-                transition-all
-                hover:bg-red-50
-                hover:text-red-700
-                hover:scale-[1.01]
-                data-[active=true]:bg-gradient-to-r
-                data-[active=true]:from-red-600
-                data-[active=true]:to-red-700
-                data-[active=true]:text-white
-                data-[active=true]:shadow-md
-                data-[active=true]:hover:from-red-700
-                data-[active=true]:hover:to-red-800
-              "
-            >
-              <Link href="/dashboard">
-                <LayoutDashboard />
-                {(isMobile || state === "expanded") && (
-                  <span>Dashboard</span>
-                )}
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          {/* PRODUCTS */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              data-active={pathname === "/products"}
-              className="
-                transition-all
-                hover:bg-red-50
-                hover:text-red-700
-                hover:scale-[1.01]
-                data-[active=true]:bg-gradient-to-r
-                data-[active=true]:from-red-600
-                data-[active=true]:to-red-700
-                data-[active=true]:text-white
-                data-[active=true]:shadow-md
-                data-[active=true]:hover:from-red-700
-                data-[active=true]:hover:to-red-800
-              "
-            >
-              <Link href="/products">
-                <Package />
-                {(isMobile || state === "expanded") && (
-                  <span>Products</span>
-                )}
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          {/* SUPPLIERS */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              data-active={pathname === "/suppliers"}
-              className="
-                transition-all
-                hover:bg-red-50
-                hover:text-red-700
-                hover:scale-[1.01]
-                data-[active=true]:bg-gradient-to-r
-                data-[active=true]:from-red-600
-                data-[active=true]:to-red-700
-                data-[active=true]:text-white
-                data-[active=true]:shadow-md
-                data-[active=true]:hover:from-red-700
-                data-[active=true]:hover:to-red-800
-              "
-            >
-              <Link href="/suppliers">
-                <Truck />
-                {(isMobile || state === "expanded") && (
-                  <span>Suppliers</span>
-                )}
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          {/* REQUESTS */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              data-active={pathname === "/requests"}
-              className="
-                transition-all
-                hover:bg-red-50
-                hover:text-red-700
-                hover:scale-[1.01]
-                data-[active=true]:bg-gradient-to-r
-                data-[active=true]:from-red-600
-                data-[active=true]:to-red-700
-                data-[active=true]:text-white
-                data-[active=true]:shadow-md
-                data-[active=true]:hover:from-red-700
-                data-[active=true]:hover:to-red-800
-              "
-            >
-              <Link href="/requests">
-                <ClipboardList />
-                {(isMobile || state === "expanded") && (
-                  <span>Requests</span>
-                )}
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          {/* HISTORY */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              data-active={pathname === "/history"}
-              className="
-                transition-all
-                hover:bg-red-50
-                hover:text-red-700
-                hover:scale-[1.01]
-                data-[active=true]:bg-gradient-to-r
-                data-[active=true]:from-red-600
-                data-[active=true]:to-red-700
-                data-[active=true]:text-white
-                data-[active=true]:shadow-md
-                data-[active=true]:hover:from-red-700
-                data-[active=true]:hover:to-red-800
-              "
-            >
-              <Link href="/history">
-                <History />
-                {(isMobile || state === "expanded") && (
-                  <span>History</span>
-                )}
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
+                  {(isMobile || state === "expanded") && (
+                    <>
+                      <span className="flex-1">{label}</span>
+                      {badge !== undefined && badge > 0 && (
+                        <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-green-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
+                          {badge > 99 ? "99+" : badge}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
       </SidebarContent>
 

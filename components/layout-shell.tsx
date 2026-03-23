@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useWallpaper } from "@/contexts/WallpaperContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { SidebarLeft } from "@/components/sidebar-left";
 import { SidebarBottom } from "@/components/sidebar-bottom";
 import { SplashScreen } from "@/components/splash-screen";
@@ -47,39 +48,41 @@ export default function LayoutShell({
   }
 
   return (
-    <div className="relative flex min-h-svh w-full">
-      {userId && !isLogin && (
-        <>
-          <div className="hidden md:block">
-            <SidebarLeft />
-          </div>
+    <NotificationProvider>
+      <div className="relative flex min-h-svh w-full">
+        {userId && !isLogin && (
+          <>
+            <div className="hidden md:block">
+              <SidebarLeft />
+            </div>
 
-          <div className="md:hidden">
-            <SidebarBottom />
-          </div>
-        </>
-      )}
-
-      <main className="relative flex-1 overflow-y-auto overscroll-contain pb-[calc(144px+env(safe-area-inset-bottom))] md:pb-0">
-        {/* Wallpaper layer — sits behind content, opacity-controlled */}
-        {wallpaper && (
-          <div
-            aria-hidden
-            className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-500"
-            style={{
-              backgroundImage: `url(${wallpaper})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat",
-              opacity,
-            }}
-          />
+            <div className="md:hidden">
+              <SidebarBottom />
+            </div>
+          </>
         )}
-        {/* Content sits above wallpaper */}
-        <div className="relative z-10">
-          {children}
-        </div>
-      </main>
-    </div>
+
+        <main className="relative flex-1 overflow-y-auto overscroll-contain pb-[calc(144px+env(safe-area-inset-bottom))] md:pb-0">
+          {/* Wallpaper layer — sits behind content, opacity-controlled */}
+          {wallpaper && (
+            <div
+              aria-hidden
+              className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-500"
+              style={{
+                backgroundImage: `url(${wallpaper})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+                opacity,
+              }}
+            />
+          )}
+          {/* Content sits above wallpaper */}
+          <div className="relative z-10">
+            {children}
+          </div>
+        </main>
+      </div>
+    </NotificationProvider>
   );
 }
