@@ -77,6 +77,10 @@ type AuditLog = {
   productFamilyName?: string;
   productUsageId?: string;
   productUsageName?: string;
+  mainImage?: { url?: string } | null;
+  dimensionalDrawing?: { url?: string } | null;
+  illuminanceDrawing?: { url?: string } | null;
+  technicalSpecifications?: { title: string; specs: { specId: string; value: string }[] }[];
   inserted?: number;
   reactivated?: number;
   skipped?: number;
@@ -291,6 +295,8 @@ export default function HistoryPage() {
   const [fetching, setFetching] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [imageModal, setImageModal] = useState<{ url: string; label: string } | null>(null);
+  const [specsModal, setSpecsModal] = useState<{ title: string; specs: { specId: string; value: string }[] }[] | null>(null);
   const [, setNameVersion] = useState(0);
 
   const [tabStates, setTabStates] = useState<Record<CollectionTab, TabState>>({
@@ -345,6 +351,9 @@ export default function HistoryPage() {
         pricePoint: raw.pricePoint ?? "", supplier: raw.supplier ?? null,
         productFamilyId: raw.productFamilyId ?? "", productFamilyName: raw.productFamilyName ?? "",
         productUsageId: raw.productUsageId ?? "", productUsageName: raw.productUsageName ?? "",
+        mainImage: raw.mainImage ?? null, dimensionalDrawing: raw.dimensionalDrawing ?? null,
+        illuminanceDrawing: raw.illuminanceDrawing ?? null,
+        technicalSpecifications: raw.technicalSpecifications ?? null,
         inserted: raw.inserted, reactivated: raw.reactivated, skipped: raw.skipped, overwritten: raw.overwritten,
         date_updated: raw.date_updated, createdAt: raw.createdAt, updatedAt: raw.updatedAt, _raw: raw,
       };
@@ -612,8 +621,8 @@ export default function HistoryPage() {
               tableHeaders={<>
                 <Th className="w-44">Timestamp</Th>
                 <Th>Action</Th>
-                <Th>Company Name</Th>
-                <Th>Supplier Brand</Th>
+                <Th>Company</Th>
+                <Th>Brand</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
@@ -648,6 +657,10 @@ export default function HistoryPage() {
                 <Th>Company Name</Th>
                 <Th>Supplier Brand</Th>
                 <Th>Class</Th>
+                <Th>Image</Th>
+                <Th>Dimensional</Th>
+                <Th>Illuminance</Th>
+                <Th>Tech Specs</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
@@ -658,6 +671,28 @@ export default function HistoryPage() {
                   <Td className="text-muted-foreground">{log.supplier?.company || <span className="text-gray-400 italic">No Company Name</span>}</Td>
                   <Td className="text-muted-foreground">{log.supplier?.supplierBrand || <span className="text-gray-400 italic">No Supplier Brand</span>}</Td>
                   <Td>{log.productClass ? <Badge variant="secondary" className="text-xs">{log.productClass}</Badge> : "—"}</Td>
+                  <Td className="text-xs">
+                    {log.mainImage?.url
+                      ? <button onClick={() => setImageModal({ url: log.mainImage!.url!, label: "Main Image" })} className="text-blue-600 underline hover:text-blue-800">View</button>
+                      : <span className="text-gray-400 italic">None</span>}
+                  </Td>
+                  <Td className="text-xs">
+                    {log.dimensionalDrawing?.url
+                      ? <button onClick={() => setImageModal({ url: log.dimensionalDrawing!.url!, label: "Dimensional Drawing" })} className="text-blue-600 underline hover:text-blue-800">View</button>
+                      : <span className="text-gray-400 italic">None</span>}
+                  </Td>
+                  <Td className="text-xs">
+                    {log.illuminanceDrawing?.url
+                      ? <button onClick={() => setImageModal({ url: log.illuminanceDrawing!.url!, label: "Illuminance Drawing" })} className="text-blue-600 underline hover:text-blue-800">View</button>
+                      : <span className="text-gray-400 italic">None</span>}
+                  </Td>
+                  <Td className="text-xs">
+                    {log.technicalSpecifications?.length
+                      ? <button onClick={() => setSpecsModal(log.technicalSpecifications!)} className="text-blue-600 underline hover:text-blue-800">
+                          {log.technicalSpecifications.length} group{log.technicalSpecifications.length !== 1 ? "s" : ""}
+                        </button>
+                      : <span className="text-gray-400 italic">None</span>}
+                  </Td>
                   <Td className="text-xs text-muted-foreground">{displayName(log)}</Td>
                   <Td><EyeBtn log={log} /></Td>
                 </tr>
@@ -680,7 +715,7 @@ export default function HistoryPage() {
               tableHeaders={<>
                 <Th className="w-44">Timestamp</Th>
                 <Th>Action</Th>
-                <Th>Product Family Name</Th>
+                <Th>Family Name</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
@@ -734,6 +769,65 @@ export default function HistoryPage() {
 
         </Tabs>
       </div>
+
+      {/* ── IMAGE MODAL ── */}
+      {imageModal && (
+        <Sheet open={!!imageModal} onOpenChange={() => setImageModal(null)}>
+          <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>{imageModal.label}</SheetTitle>
+              <SheetDescription>
+                <a href={imageModal.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs break-all">{imageModal.url}</a>
+              </SheetDescription>
+            </SheetHeader>
+            <Separator className="my-4" />
+            <div className="flex items-center justify-center bg-gray-50 rounded-xl p-4">
+              <img
+                src={imageModal.url}
+                alt={imageModal.label}
+                className="max-w-full max-h-[60vh] object-contain rounded-lg shadow"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* ── TECH SPECS MODAL ── */}
+      {specsModal && (
+        <Sheet open={!!specsModal} onOpenChange={() => setSpecsModal(null)}>
+          <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Technical Specifications</SheetTitle>
+              <SheetDescription>Snapshot at time of action</SheetDescription>
+            </SheetHeader>
+            <Separator className="my-4" />
+            <div className="space-y-4">
+              {specsModal.map((group, gi) => (
+                <div key={gi}>
+                  <p className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-2">{group.title}</p>
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600 border-b">Specification</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600 border-b">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.specs.map((row, ri) => (
+                        <tr key={ri} className="border-b hover:bg-gray-50">
+                          <td className="px-3 py-2 text-xs text-gray-600">{row.specId || "—"}</td>
+                          <td className="px-3 py-2 text-xs font-medium">{row.value || <span className="text-gray-400 italic">—</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
 
       <LogDetailSheet log={selectedLog} open={detailOpen} onClose={() => setDetailOpen(false)} />
     </div>

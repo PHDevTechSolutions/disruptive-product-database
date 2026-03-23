@@ -8,18 +8,6 @@
  *   auditLogs_products        — every create / edit / delete on a product
  *   auditLogs_productFamilies — every create / edit / delete on a product family
  *   auditLogs_productUsages   — every create / edit / delete on a category type
- *
- * Usage:
- *   import { logSupplierEvent, logProductEvent } from "@/lib/auditlogger";
- *
- *   await logSupplierEvent({
- *     whatHappened : "Supplier Added",
- *     supplierId   : docRef.id,
- *     company      : company,
- *     supplierBrand: supplierBrand,
- *     referenceID  : user?.ReferenceID,
- *     userId       : userId,
- *   });
  */
 
 import { db } from "@/lib/firebase";
@@ -41,17 +29,14 @@ export type SupplierEventPayload = {
   company?        : string;
   supplierBrand?  : string;
 
-  // Who did it
-  referenceID?    : string;      // user's ReferenceID
-  userId?         : string;      // Firebase Auth UID (optional)
+  referenceID?    : string;
+  userId?         : string;
 
-  // Bulk upload extras
   inserted?       : number;
   reactivated?    : number;
   skipped?        : number;
   overwritten?    : number;
 
-  // Anything extra you want to stash
   extra?          : Record<string, any>;
 };
 
@@ -60,21 +45,20 @@ export async function logSupplierEvent(payload: SupplierEventPayload): Promise<v
     await addDoc(collection(db, "auditLogs_suppliers"), {
       ...payload.extra,
       whatHappened   : payload.whatHappened,
-      supplierId     : payload.supplierId     ?? null,
+      supplierId     : payload.supplierId      ?? null,
       supplierbrandId: payload.supplierbrandId ?? payload.supplierId ?? null,
-      company        : payload.company        ?? null,
-      supplierBrand  : payload.supplierBrand  ?? null,
-      referenceID    : payload.referenceID    ?? null,
-      userId         : payload.userId         ?? null,
-      inserted       : payload.inserted       ?? null,
-      reactivated    : payload.reactivated    ?? null,
-      skipped        : payload.skipped        ?? null,
-      overwritten    : payload.overwritten    ?? null,
+      company        : payload.company         ?? null,
+      supplierBrand  : payload.supplierBrand   ?? null,
+      referenceID    : payload.referenceID     ?? null,
+      userId         : payload.userId          ?? null,
+      inserted       : payload.inserted        ?? null,
+      reactivated    : payload.reactivated     ?? null,
+      skipped        : payload.skipped         ?? null,
+      overwritten    : payload.overwritten     ?? null,
       date_updated   : serverTimestamp(),
       createdAt      : serverTimestamp(),
     });
   } catch (err) {
-    // Never crash the main flow because of logging
     console.warn("[auditLogger] Failed to log supplier event:", err);
   }
 }
@@ -99,6 +83,18 @@ export type ProductEventPayload = {
   categoryTypes?      : { productUsageId: string; categoryTypeName: string }[];
   productFamilies?    : { productFamilyId: string; productFamilyName: string }[];
 
+  // ── Media ──
+  mainImage?          : { url?: string; publicId?: string | null } | null;
+  dimensionalDrawing? : { url?: string; publicId?: string | null } | null;
+  illuminanceDrawing? : { url?: string; publicId?: string | null } | null;
+
+  // ── Technical specs snapshot ──
+  technicalSpecifications?: {
+    technicalSpecificationId?: string;
+    title: string;
+    specs: { specId: string; value: string }[];
+  }[];
+
   // Who did it
   referenceID?        : string;
   userId?             : string;
@@ -107,7 +103,6 @@ export type ProductEventPayload = {
   inserted?           : number;
   skipped?            : number;
 
-  // Anything extra
   extra?              : Record<string, any>;
 };
 
@@ -115,21 +110,25 @@ export async function logProductEvent(payload: ProductEventPayload): Promise<voi
   try {
     await addDoc(collection(db, "auditLogs_products"), {
       ...payload.extra,
-      whatHappened      : payload.whatHappened,
-      productId         : payload.productId          ?? null,
-      productReferenceID: payload.productReferenceID ?? null,
-      productClass      : payload.productClass       ?? null,
-      pricePoint        : payload.pricePoint         ?? null,
-      brandOrigin       : payload.brandOrigin        ?? null,
-      supplier          : payload.supplier           ?? null,
-      categoryTypes     : payload.categoryTypes      ?? null,
-      productFamilies   : payload.productFamilies    ?? null,
-      referenceID       : payload.referenceID        ?? null,
-      userId            : payload.userId             ?? null,
-      inserted          : payload.inserted           ?? null,
-      skipped           : payload.skipped            ?? null,
-      date_updated      : serverTimestamp(),
-      createdAt         : serverTimestamp(),
+      whatHappened           : payload.whatHappened,
+      productId              : payload.productId               ?? null,
+      productReferenceID     : payload.productReferenceID      ?? null,
+      productClass           : payload.productClass            ?? null,
+      pricePoint             : payload.pricePoint              ?? null,
+      brandOrigin            : payload.brandOrigin             ?? null,
+      supplier               : payload.supplier                ?? null,
+      categoryTypes          : payload.categoryTypes           ?? null,
+      productFamilies        : payload.productFamilies         ?? null,
+      mainImage              : payload.mainImage               ?? null,
+      dimensionalDrawing     : payload.dimensionalDrawing      ?? null,
+      illuminanceDrawing     : payload.illuminanceDrawing      ?? null,
+      technicalSpecifications: payload.technicalSpecifications ?? null,
+      referenceID            : payload.referenceID             ?? null,
+      userId                 : payload.userId                  ?? null,
+      inserted               : payload.inserted                ?? null,
+      skipped                : payload.skipped                 ?? null,
+      date_updated           : serverTimestamp(),
+      createdAt              : serverTimestamp(),
     });
   } catch (err) {
     console.warn("[auditLogger] Failed to log product event:", err);
@@ -149,11 +148,9 @@ export type ProductFamilyEventPayload = {
   productFamilyName?: string;
   productUsageId?   : string;
 
-  // Who did it
   referenceID?      : string;
   userId?           : string;
 
-  // Anything extra
   extra?            : Record<string, any>;
 };
 
@@ -187,11 +184,9 @@ export type ProductUsageEventPayload = {
   productUsageId?  : string;
   productUsageName?: string;
 
-  // Who did it
   referenceID?     : string;
   userId?          : string;
 
-  // Anything extra
   extra?           : Record<string, any>;
 };
 

@@ -361,6 +361,14 @@ export default function AddProductPage() {
         productFamilies: selectedProductFamily
           ? [{ productFamilyId: selectedProductFamily.id, productFamilyName: selectedProductFamily.name }]
           : [],
+        mainImage          : imageLink ? { url: imageLink } : null,
+        dimensionalDrawing : dimensionalLink ? { url: dimensionalLink } : null,
+        illuminanceDrawing : illuminanceLink ? { url: illuminanceLink } : null,
+        technicalSpecifications: technicalSpecs.filter(s => s.title.trim()).map(s => ({
+          technicalSpecificationId: s.id || "",
+          title: s.title,
+          specs: s.specs.filter(r => r.specId.trim()).map(r => ({ specId: r.specId.trim(), value: r.value?.trim() || "" })),
+        })),
         referenceID: user?.ReferenceID,
         userId     : userId ?? undefined,
       });

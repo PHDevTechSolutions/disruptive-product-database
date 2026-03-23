@@ -420,6 +420,14 @@ export default function UploadProduct({ iconOnly = false }: Props) {
             supplier          : supplier ?? null,
             categoryTypes     : [{ productUsageId: category.id, categoryTypeName: category.name }],
             productFamilies   : [{ productFamilyId: productFamily.id, productFamilyName: productFamily.name }],
+            mainImage          : imageURL ? { url: imageURL } : null,
+            dimensionalDrawing : dimensionalURL ? { url: dimensionalURL } : null,
+            illuminanceDrawing : illuminanceURL ? { url: illuminanceURL } : null,
+            technicalSpecifications: productSpecs.map(s => ({
+              technicalSpecificationId: s.technicalSpecificationId,
+              title: s.title,
+              specs: s.specs,
+            })),
             referenceID       : user?.ReferenceID,   // ✅ who did it
             userId            : userId ?? undefined,
             extra             : { source: "excel_upload", filename: file?.name ?? "" },
