@@ -29,7 +29,7 @@ import {
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
 import { useUser } from "@/contexts/UserContext";
-import { logProductEvent } from "@/lib/auditlogger"; // ✅ AUDIT
+import { logProductEvent, logProductUsageEvent, logProductFamilyEvent } from "@/lib/auditlogger"; // ✅ AUDIT
 
 type Props = {
   iconOnly?: boolean;
@@ -110,6 +110,15 @@ export default function UploadProduct({ iconOnly = false }: Props) {
       name, isActive: true, createdAt: serverTimestamp(),
       whatHappened: "Product Usage Added (Excel Upload)", date_updated: serverTimestamp(),
     });
+    // ✅ AUDIT — new product usage created during upload
+    await logProductUsageEvent({
+      whatHappened    : "Product Usage Added",
+      productUsageId  : newDoc.id,
+      productUsageName: name,
+      referenceID     : user?.ReferenceID,
+      userId          : userId ?? undefined,
+      extra           : { source: "excel_upload" },
+    });
     return { id: newDoc.id, name };
   };
 
@@ -124,6 +133,16 @@ export default function UploadProduct({ iconOnly = false }: Props) {
     const newDoc = await addDoc(collection(db, "productFamilies"), {
       name, categoryTypeId, isActive: true, createdAt: serverTimestamp(),
       whatHappened: "Product Family Added (Excel Upload)", date_updated: serverTimestamp(),
+    });
+    // ✅ AUDIT — new product family created during upload
+    await logProductFamilyEvent({
+      whatHappened     : "Product Family Added",
+      productFamilyId  : newDoc.id,
+      productFamilyName: name,
+      productUsageId   : categoryTypeId,
+      referenceID      : user?.ReferenceID,
+      userId           : userId ?? undefined,
+      extra            : { source: "excel_upload" },
     });
     return { id: newDoc.id, name, categoryTypeId };
   };
