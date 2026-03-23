@@ -16,13 +16,13 @@ import {
 } from "@/components/ui/dialog";
 
 import { Button } from "@/components/ui/button";
+import { logProductEvent } from "@/lib/auditlogger"; // ✅ AUDIT
 
 type Props = {
   productId: string;
   productName: string;
   referenceID: string;
   onDeleted?: (id: string) => void;
-  // NEW: optional external open control
   defaultOpen?: boolean;
   onClose?: () => void;
 };
@@ -47,19 +47,25 @@ export default function AddProductDeleteProductItem({
     try {
       setDeleting(true);
 
-      const productRef = doc(db, "products", productId);
+      await updateDoc(doc(db, "products", productId), {
+        isActive    : false,
+        deletedAt   : serverTimestamp(),
+        deletedBy   : referenceID,
+        whatHappened: "Product Deleted",
+        date_updated: serverTimestamp(),
+      });
 
-      await updateDoc(productRef, {
-        isActive: false,
-        deletedAt: serverTimestamp(),
-        deletedBy: referenceID,
+      // ✅ AUDIT LOG
+      await logProductEvent({
+        whatHappened: "Product Deleted",
+        productId,
+        referenceID,
       });
 
       toast.success("Product deleted successfully");
       setOpen(false);
       onClose?.();
       onDeleted?.(productId);
-
     } catch (error) {
       console.error(error);
       toast.error("Failed to delete product");
@@ -70,7 +76,6 @@ export default function AddProductDeleteProductItem({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      {/* Only show trigger button when not externally controlled */}
       {!defaultOpen && (
         <DialogTrigger asChild>
           <Button size="sm" variant="destructive" className="flex-1">
@@ -100,7 +105,6 @@ export default function AddProductDeleteProductItem({
           >
             Cancel
           </Button>
-
           <Button
             variant="destructive"
             onClick={handleSoftDelete}

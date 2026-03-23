@@ -47,7 +47,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
-import { logProductEvent } from "@/lib/auditlogger"; // ✅ AUDIT
+import { logProductEvent, logProductUsageEvent, logProductFamilyEvent } from "@/lib/auditlogger"; // ✅ AUDIT
 
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
@@ -230,13 +230,28 @@ export default function AddProductPage() {
 
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
-    await addDoc(collection(db, "categoryTypes"), { name: newCategoryType.trim(), isActive: true, createdAt: serverTimestamp(), whatHappened: "Product Usage Added", date_updated: serverTimestamp() });
+    const newCatRef = await addDoc(collection(db, "categoryTypes"), { name: newCategoryType.trim(), isActive: true, createdAt: serverTimestamp(), whatHappened: "Product Usage Added", date_updated: serverTimestamp() });
+    await logProductUsageEvent({
+      whatHappened    : "Product Usage Added",
+      productUsageId  : newCatRef.id,
+      productUsageName: newCategoryType.trim(),
+      referenceID     : user?.ReferenceID,
+      userId          : userId ?? undefined,
+    });
     setNewCategoryType("");
   };
 
   const handleAddProductType = async () => {
     if (!newProductType.trim() || selectedCategoryTypes.length !== 1) return;
-    await addDoc(collection(db, "productFamilies"), { name: newProductType.trim(), categoryTypeId: selectedCategoryTypes[0].id, isActive: true, createdAt: serverTimestamp(), whatHappened: "Product Family Added", date_updated: serverTimestamp() });
+    const newFamRef = await addDoc(collection(db, "productFamilies"), { name: newProductType.trim(), categoryTypeId: selectedCategoryTypes[0].id, isActive: true, createdAt: serverTimestamp(), whatHappened: "Product Family Added", date_updated: serverTimestamp() });
+    await logProductFamilyEvent({
+      whatHappened     : "Product Family Added",
+      productFamilyId  : newFamRef.id,
+      productFamilyName: newProductType.trim(),
+      productUsageId   : selectedCategoryTypes[0].id,
+      referenceID      : user?.ReferenceID,
+      userId           : userId ?? undefined,
+    });
     setNewProductType("");
   };
 

@@ -13,7 +13,6 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
-
 import { toast } from "sonner";
 
 import {
@@ -26,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { Button } from "@/components/ui/button";
+import { logProductUsageEvent } from "@/lib/auditlogger"; // ✅ AUDIT
 
 type ProductType = {
   id: string;
@@ -37,10 +37,7 @@ type Props = {
   referenceID: string;
 };
 
-export default function AddProductDeleteProductType({
-  item,
-  referenceID,
-}: Props) {
+export default function AddProductDeleteProductType({ item, referenceID }: Props) {
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -51,62 +48,54 @@ export default function AddProductDeleteProductType({
       const batch = writeBatch(db);
 
       /* ✅ STEP 1: SOFT DELETE CATEGORY TYPE */
-
       batch.update(doc(db, "categoryTypes", item.id), {
-        isActive: false,
-        deletedBy: referenceID,
-        deletedAt: serverTimestamp(),
+        isActive  : false,
+        deletedBy : referenceID,
+        deletedAt : serverTimestamp(),
       });
 
       /* ✅ STEP 2: SOFT DELETE ALL PRODUCT FAMILIES UNDER THIS CATEGORY TYPE */
-
       const familiesSnapshot = await getDocs(
         collection(db, "categoryTypes", item.id, "productFamilies"),
       );
-
       familiesSnapshot.forEach((familyDoc) => {
         batch.update(
           doc(db, "categoryTypes", item.id, "productFamilies", familyDoc.id),
-          {
-            isActive: false,
-            deletedBy: referenceID,
-            deletedAt: serverTimestamp(),
-          },
+          { isActive: false, deletedBy: referenceID, deletedAt: serverTimestamp() },
         );
       });
 
       /* ✅ STEP 3: REMOVE CATEGORY TYPE AND PRODUCT FAMILIES FROM ALL PRODUCTS */
-
       const productsSnapshot = await getDocs(collection(db, "products"));
-
       productsSnapshot.forEach((productDoc) => {
         const data = productDoc.data();
-
         const updatedCategoryTypes = (data.categoryTypes || []).filter(
           (ct: any) => ct.productUsageId !== item.id,
         );
-
         const updatedProductFamilies = (data.productFamilies || []).filter(
           (pf: any) => pf.productUsageId !== item.id,
         );
-
         batch.update(doc(db, "products", productDoc.id), {
-          categoryTypes: updatedCategoryTypes,
+          categoryTypes  : updatedCategoryTypes,
           productFamilies: updatedProductFamilies,
         });
       });
 
-      /* ✅ COMMIT EVERYTHING */
-
       await batch.commit();
 
-      toast.success("Category type and all dependent product families deleted");
+      // ✅ AUDIT LOG
+      await logProductUsageEvent({
+        whatHappened    : "Product Usage Deleted",
+        productUsageId  : item.id,
+        productUsageName: item.name,
+        referenceID,
+      });
 
+      toast.success("Product usage and all dependent product families deleted");
       setOpen(false);
     } catch (error) {
       console.error(error);
-
-      toast.error("Failed to delete category type");
+      toast.error("Failed to delete product usage");
     } finally {
       setDeleting(false);
     }
@@ -122,7 +111,7 @@ export default function AddProductDeleteProductType({
 
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Category Type</DialogTitle>
+          <DialogTitle>Delete Product Usage</DialogTitle>
         </DialogHeader>
 
         <p>
@@ -133,12 +122,7 @@ export default function AddProductDeleteProductType({
           <Button onClick={() => setOpen(false)} disabled={deleting}>
             Cancel
           </Button>
-
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={deleting}
-          >
+          <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
             {deleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>

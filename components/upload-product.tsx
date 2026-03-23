@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,10 +28,17 @@ import {
 
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
+import { useUser } from "@/contexts/UserContext";
 import { logProductEvent } from "@/lib/auditlogger"; // ✅ AUDIT
 
 type Props = {
   iconOnly?: boolean;
+};
+
+type UserDetails = {
+  Firstname: string;
+  Lastname: string;
+  ReferenceID: string;
 };
 
 type CategoryType = { id: string; name: string };
@@ -59,6 +67,9 @@ const convertDriveToThumbnail = (url?: string) => {
 };
 
 export default function UploadProduct({ iconOnly = false }: Props) {
+  const { userId } = useUser();
+  const [user, setUser] = useState<UserDetails | null>(null);
+
   const [open, setOpen] = React.useState(false);
   const [file, setFile] = React.useState<File | null>(null);
   const [uploading, setUploading] = React.useState(false);
@@ -67,6 +78,19 @@ export default function UploadProduct({ iconOnly = false }: Props) {
 
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const cancelRef = React.useRef(false);
+
+  /* ── Fetch user details for audit log ── */
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/users?id=${encodeURIComponent(userId)}`)
+      .then((r) => r.json())
+      .then((d) => setUser({
+        Firstname  : d.Firstname   ?? "",
+        Lastname   : d.Lastname    ?? "",
+        ReferenceID: d.ReferenceID ?? "",
+      }))
+      .catch(console.error);
+  }, [userId]);
 
   const generateProductReferenceID = async () => {
     const snap = await getDocs(collection(db, "products"));
@@ -366,7 +390,7 @@ export default function UploadProduct({ iconOnly = false }: Props) {
             date_updated: serverTimestamp(),
           });
 
-          // ✅ AUDIT — per product, real-time, even if upload is cancelled later
+          // ✅ AUDIT — per product, real-time with referenceID
           await logProductEvent({
             whatHappened      : "Product Added",
             productId         : newDocRef.id,
@@ -377,6 +401,8 @@ export default function UploadProduct({ iconOnly = false }: Props) {
             supplier          : supplier ?? null,
             categoryTypes     : [{ productUsageId: category.id, categoryTypeName: category.name }],
             productFamilies   : [{ productFamilyId: productFamily.id, productFamilyName: productFamily.name }],
+            referenceID       : user?.ReferenceID,   // ✅ who did it
+            userId            : userId ?? undefined,
             extra             : { source: "excel_upload", filename: file?.name ?? "" },
           });
 
@@ -388,10 +414,12 @@ export default function UploadProduct({ iconOnly = false }: Props) {
       audioRef.current?.pause();
       audioRef.current!.currentTime = 0;
 
-      // ✅ AUDIT — bulk product upload summary
+      // ✅ AUDIT — bulk summary with referenceID
       await logProductEvent({
         whatHappened: "Product Bulk Upload",
         inserted    : totalInserted,
+        referenceID : user?.ReferenceID,   // ✅ who did it
+        userId      : userId ?? undefined,
         extra       : { source: "excel_upload", filename: file?.name ?? "" },
       });
 

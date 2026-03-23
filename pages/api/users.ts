@@ -5,27 +5,43 @@ import { ObjectId } from "mongodb";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "GET") {
     const db = await connectToDatabase();
-    const userId = req.query.id as string;
+    const userId      = req.query.id          as string | undefined;
+    const referenceID = req.query.referenceID as string | undefined;
 
-    if (!userId) {
-      return res.status(400).json({ error: "User ID is required" });
-    }
-
-    try {
-      // Find the user by ID
-      const user = await db.collection("users").findOne({ _id: new ObjectId(userId) });
-
-      if (user) {
-        // Respond with all user fields except the password
-        const { password, ...userData } = user;
-        res.status(200).json(userData);
-      } else {
-        res.status(404).json({ error: "User not found" });
+    /* ── Query by MongoDB _id ── */
+    if (userId) {
+      try {
+        const user = await db.collection("users").findOne({ _id: new ObjectId(userId) });
+        if (user) {
+          const { password, ...userData } = user;
+          return res.status(200).json(userData);
+        } else {
+          return res.status(404).json({ error: "User not found" });
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        return res.status(500).json({ error: "Invalid user ID format or server error" });
       }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      res.status(500).json({ error: "Invalid user ID format or server error" });
     }
+
+    /* ── Query by ReferenceID (used by audit trail name resolution) ── */
+    if (referenceID) {
+      try {
+        const user = await db.collection("users").findOne({ ReferenceID: referenceID });
+        if (user) {
+          const { password, ...userData } = user;
+          return res.status(200).json(userData);
+        } else {
+          return res.status(404).json({ error: "User not found" });
+        }
+      } catch (error) {
+        console.error("Error fetching user by referenceID:", error);
+        return res.status(500).json({ error: "Server error" });
+      }
+    }
+
+    return res.status(400).json({ error: "User ID or ReferenceID is required" });
+
   } else {
     res.setHeader("Allow", ["GET"]);
     res.status(405).json({ error: `Method ${req.method} not allowed` });
