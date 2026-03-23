@@ -777,16 +777,25 @@ export default function HistoryPage() {
             <SheetHeader>
               <SheetTitle>{imageModal.label}</SheetTitle>
               <SheetDescription>
-                <a href={imageModal.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs break-all">{imageModal.url}</a>
+                <a href={imageModal.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs break-all">
+                  Open original ↗
+                </a>
               </SheetDescription>
             </SheetHeader>
             <Separator className="my-4" />
-            <div className="flex items-center justify-center bg-gray-50 rounded-xl p-4">
+            <div className="flex items-center justify-center bg-gray-50 rounded-xl p-4 min-h-[200px]">
               <img
-                src={imageModal.url}
+                src={`/api/gdrive-image?url=${encodeURIComponent(imageModal.url)}`}
                 alt={imageModal.label}
                 className="max-w-full max-h-[60vh] object-contain rounded-lg shadow"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                onError={(e) => {
+                  // fallback: try direct URL if proxy fails
+                  const img = e.target as HTMLImageElement;
+                  if (!img.src.includes("fallback")) {
+                    img.src = imageModal.url;
+                    img.setAttribute("data-fallback", "true");
+                  }
+                }}
               />
             </div>
           </SheetContent>
