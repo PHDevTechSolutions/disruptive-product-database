@@ -224,7 +224,7 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
   const isProcurementStatus = (spfNumber: string): boolean => {
     if (!createdSPFLoaded) return true;
     const s = createdSPF[spfNumber];
-    return s === "Approved By Procurement" || s === "Pending For Procurement";
+    return s === "Approved by Procurement" || s === "Pending For Procurement";
   };
 
   /* ─────────────────────────────── */
@@ -393,7 +393,7 @@ export default function SPFMobile({ processBy }: SPFMobileProps) {
                 : "-";
 
               const spfStatus = createdSPF[req.spf_number];
-              const isApproved = spfStatus === "Approved By Procurement";
+              const isApproved = spfStatus === "Approved by Procurement";
 
               return (
                 <div key={req.id} className="p-4 space-y-2">

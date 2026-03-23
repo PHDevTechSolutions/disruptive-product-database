@@ -2,11 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { useSidebar, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 
 import SPF from "@/components/spf-request";
-import SPFMobile from "@/components/spf-request-mobile";
 
 interface UserDetails {
   process_by: string;
@@ -14,7 +13,6 @@ interface UserDetails {
 
 export default function RequestsPage() {
   const { userId } = useUser();
-  const { isMobile } = useSidebar();
   const [loadingUser, setLoadingUser] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetails>({
@@ -52,11 +50,7 @@ export default function RequestsPage() {
       <SidebarTrigger className="hidden md:flex" />
       <h1 className="text-2xl font-bold">SPF Requests</h1>
       <Separator />
-
-      {isMobile
-        ? <SPFMobile processBy={userDetails.process_by} />
-        : <SPF processBy={userDetails.process_by} />
-      }
+      <SPF processBy={userDetails.process_by} />
     </div>
   );
 }
