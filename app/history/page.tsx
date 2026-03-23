@@ -245,10 +245,12 @@ const initTabState = (): TabState => ({
    Mobile Card
 ───────────────────────────────────────────── */
 function MobileCard({
-  log, primaryLabel, primaryValue, secondaryLabel, secondaryValue, onEye,
+  log, primaryLabel, primaryValue, secondaryLabel, secondaryValue, onEye, extraRows, mediaButtons,
 }: {
   log: AuditLog; primaryLabel: string; primaryValue?: string;
   secondaryLabel?: string; secondaryValue?: string; onEye: () => void;
+  extraRows?: { label: string; value: React.ReactNode }[];
+  mediaButtons?: React.ReactNode;
 }) {
   return (
     <div className="border border-gray-200 rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm p-4 space-y-2">
@@ -271,6 +273,19 @@ function MobileCard({
         <div className="flex items-center gap-1.5 text-xs">
           <span className="text-gray-500 shrink-0">{secondaryLabel}:</span>
           <span className="text-gray-600 truncate">{secondaryValue}</span>
+        </div>
+      )}
+
+      {extraRows?.map((row, i) => (
+        <div key={i} className="flex items-center gap-1.5 text-xs">
+          <span className="text-gray-500 shrink-0">{row.label}:</span>
+          <span className="text-gray-700">{row.value}</span>
+        </div>
+      ))}
+
+      {mediaButtons && (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {mediaButtons}
         </div>
       )}
 
@@ -621,8 +636,8 @@ export default function HistoryPage() {
               tableHeaders={<>
                 <Th className="w-44">Timestamp</Th>
                 <Th>Action</Th>
-                <Th>Company Name</Th>
-                <Th>Supplier Brand</Th>
+                <Th>Company</Th>
+                <Th>Brand</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
@@ -702,6 +717,36 @@ export default function HistoryPage() {
                   primaryLabel="Company Name" primaryValue={log.supplier?.company || "No Company Name"}
                   secondaryLabel="Supplier Brand" secondaryValue={log.supplier?.supplierBrand || "No Supplier Brand"}
                   onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
+                  extraRows={[
+                    { label: "Class", value: log.productClass
+                        ? <Badge variant="secondary" className="text-xs">{log.productClass}</Badge>
+                        : <span className="text-gray-400 italic">—</span> },
+                    { label: "Tech Specs", value: log.technicalSpecifications?.length
+                        ? <button onClick={() => setSpecsModal(log.technicalSpecifications!)} className="text-blue-600 underline">
+                            {log.technicalSpecifications.length} group{log.technicalSpecifications.length !== 1 ? "s" : ""}
+                          </button>
+                        : <span className="text-gray-400 italic">None</span> },
+                  ]}
+                  mediaButtons={<>
+                    {log.mainImage?.url && (
+                      <button onClick={() => setImageModal({ url: log.mainImage!.url!, label: "Main Image" })}
+                        className="text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 font-medium">
+                        📷 Image
+                      </button>
+                    )}
+                    {log.dimensionalDrawing?.url && (
+                      <button onClick={() => setImageModal({ url: log.dimensionalDrawing!.url!, label: "Dimensional Drawing" })}
+                        className="text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 font-medium">
+                        📐 Dimensional
+                      </button>
+                    )}
+                    {log.illuminanceDrawing?.url && (
+                      <button onClick={() => setImageModal({ url: log.illuminanceDrawing!.url!, label: "Illuminance Drawing" })}
+                        className="text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 font-medium">
+                        💡 Illuminance
+                      </button>
+                    )}
+                  </>}
                 />
               ))}</>}
             />
@@ -715,7 +760,7 @@ export default function HistoryPage() {
               tableHeaders={<>
                 <Th className="w-44">Timestamp</Th>
                 <Th>Action</Th>
-                <Th>Product Family</Th>
+                <Th>Family Name</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
@@ -745,7 +790,7 @@ export default function HistoryPage() {
               tableHeaders={<>
                 <Th className="w-44">Timestamp</Th>
                 <Th>Action</Th>
-                <Th>Product Usage</Th>
+                <Th>Product Usage Name</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
