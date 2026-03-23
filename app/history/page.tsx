@@ -612,25 +612,25 @@ export default function HistoryPage() {
               tableHeaders={<>
                 <Th className="w-44">Timestamp</Th>
                 <Th>Action</Th>
-                <Th>Company</Th>
-                <Th>Brand</Th>
+                <Th>Company Name</Th>
+                <Th>Supplier Brand</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
-              tableRows={filtered("suppliers").map((log) => (
+              tableRows={filtered("suppliers").filter((log) => log.whatHappened !== "Supplier Bulk Upload").map((log) => (
                 <tr key={log.id} className="border-b hover:bg-white/60 align-middle">
                   <Td className="text-xs text-muted-foreground whitespace-nowrap">{formatTimestamp(getDisplayTime(log))}</Td>
                   <Td><ActionBadge action={log.whatHappened} /></Td>
-                  <Td className="font-medium">{log.company || "—"}</Td>
-                  <Td className="text-muted-foreground">{log.supplierBrand || "—"}</Td>
+                  <Td className="font-medium">{log.company || <span className="text-gray-400 italic">No Company Name</span>}</Td>
+                  <Td className="text-muted-foreground">{log.supplierBrand || <span className="text-gray-400 italic">No Supplier Brand</span>}</Td>
                   <Td className="text-xs text-muted-foreground">{displayName(log)}</Td>
                   <Td><EyeBtn log={log} /></Td>
                 </tr>
               ))}
-              mobileCards={<>{filtered("suppliers").map((log) => (
+              mobileCards={<>{filtered("suppliers").filter((log) => log.whatHappened !== "Supplier Bulk Upload").map((log) => (
                 <MobileCard key={log.id} log={log}
-                  primaryLabel="Company" primaryValue={log.company || "—"}
-                  secondaryLabel="Brand" secondaryValue={log.supplierBrand || undefined}
+                  primaryLabel="Company Name" primaryValue={log.company || "No Company Name"}
+                  secondaryLabel="Supplier Brand" secondaryValue={log.supplierBrand || "No Supplier Brand"}
                   onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
                 />
               ))}</>}
@@ -645,25 +645,27 @@ export default function HistoryPage() {
               tableHeaders={<>
                 <Th className="w-44">Timestamp</Th>
                 <Th>Action</Th>
-                <Th>Supplier</Th>
+                <Th>Company Name</Th>
+                <Th>Supplier Brand</Th>
                 <Th>Class</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
-              tableRows={filtered("products").map((log) => (
+              tableRows={filtered("products").filter((log) => log.whatHappened !== "Product Bulk Upload").map((log) => (
                 <tr key={log.id} className="border-b hover:bg-white/60 align-middle">
                   <Td className="text-xs text-muted-foreground whitespace-nowrap">{formatTimestamp(getDisplayTime(log))}</Td>
                   <Td><ActionBadge action={log.whatHappened} /></Td>
-                  <Td className="text-muted-foreground">{log.supplier?.company || "—"}</Td>
+                  <Td className="text-muted-foreground">{log.supplier?.company || <span className="text-gray-400 italic">No Company Name</span>}</Td>
+                  <Td className="text-muted-foreground">{log.supplier?.supplierBrand || <span className="text-gray-400 italic">No Supplier Brand</span>}</Td>
                   <Td>{log.productClass ? <Badge variant="secondary" className="text-xs">{log.productClass}</Badge> : "—"}</Td>
                   <Td className="text-xs text-muted-foreground">{displayName(log)}</Td>
                   <Td><EyeBtn log={log} /></Td>
                 </tr>
               ))}
-              mobileCards={<>{filtered("products").map((log) => (
+              mobileCards={<>{filtered("products").filter((log) => log.whatHappened !== "Product Bulk Upload").map((log) => (
                 <MobileCard key={log.id} log={log}
-                  primaryLabel="Ref ID" primaryValue={log.productReferenceID || "—"}
-                  secondaryLabel="Supplier" secondaryValue={log.supplier?.company || undefined}
+                  primaryLabel="Company Name" primaryValue={log.supplier?.company || "No Company Name"}
+                  secondaryLabel="Supplier Brand" secondaryValue={log.supplier?.supplierBrand || "No Supplier Brand"}
                   onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
                 />
               ))}</>}
@@ -678,7 +680,7 @@ export default function HistoryPage() {
               tableHeaders={<>
                 <Th className="w-44">Timestamp</Th>
                 <Th>Action</Th>
-                <Th>Family Name</Th>
+                <Th>Product Family Name</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
