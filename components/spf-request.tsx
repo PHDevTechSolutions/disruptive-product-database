@@ -54,6 +54,7 @@ type SPFRequest = {
   date_created?: string;
   process_by?: string;
   tin_no?: string;
+  manager?: string;
 };
 
 interface SPFProps {
@@ -160,6 +161,7 @@ export default function SPF({ processBy }: SPFProps) {
     sales_person: "", start_date: "", end_date: "",
     special_instructions: "", status: "Pending",
     process_by: processBy, tin_no: "",
+    manager: "",
     item_description: [], item_photo: [],
   });
   const [productOffers, setProductOffers]       = useState<Record<number, any[]>>({});
@@ -551,6 +553,7 @@ export default function SPF({ processBy }: SPFProps) {
                           { label: "Prepared By",   value: formData.prepared_by },
                           { label: "Approved By",   value: formData.approved_by },
                           { label: "Process By",    value: formData.process_by },
+                          { label: "Manager",       value: formData.manager },
                         ]}
                       />
                     </div>
@@ -861,6 +864,7 @@ export default function SPF({ processBy }: SPFProps) {
                           { label: "Prepared By",   value: formData.prepared_by },
                           { label: "Approved By",   value: formData.approved_by },
                           { label: "Process By",    value: formData.process_by },
+                          { label: "Manager",       value: formData.manager },
                         ]}
                       />
                     </div>

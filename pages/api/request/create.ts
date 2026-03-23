@@ -44,6 +44,7 @@ export default async function handler(
       spf_number,
       referenceid,
       tsm,
+      manager,
       totalItemRows,
       selectedProducts,
     } = req.body;
@@ -206,8 +207,8 @@ export default async function handler(
     const finalCompanyNames   = rowCompanyNames.join(ROW_SEP);
     const finalContactNames   = rowContactNames.join(ROW_SEP);
     const finalContactNumbers = rowContactNumbers.join(ROW_SEP);
-    const finalSellingCosts   = rowSellingCosts.join(ROW_SEP);  // e.g. "-,-|ROW|-,-"
-    const finalLeadTimes      = rowLeadTimes.join(ROW_SEP);     // e.g. "-,-|ROW|-,-"
+    const finalSellingCosts   = rowSellingCosts.join(ROW_SEP);
+    const finalLeadTimes      = rowLeadTimes.join(ROW_SEP);
 
     /* ── CHECK EXISTING SPF ── */
     const { data: existing, error: checkError } = await supabase
@@ -229,6 +230,7 @@ export default async function handler(
           spf_number,
           referenceid,
           tsm,
+          manager,
 
           company_name:   finalCompanyNames,
           supplier_brand: finalSupplierBrands,
@@ -244,8 +246,8 @@ export default async function handler(
           product_offer_port_of_discharge:       finalPorts,
           product_offer_subtotal:                finalSubtotals,
 
-          final_selling_cost: finalSellingCosts,  // "-,-|ROW|-,-"
-          proj_lead_time:     finalLeadTimes,  // "-,-|ROW|-,-"
+          final_selling_cost: finalSellingCosts,
+          proj_lead_time:     finalLeadTimes,
 
           status: "Pending For Procurement",
 
