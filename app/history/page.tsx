@@ -16,25 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   Sheet,
   SheetContent,
@@ -43,8 +29,14 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
-  Search, RefreshCw, Eye, Building2, Package, Filter,
-  ChevronLeft, ChevronRight, Layers, Tag,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Search, RefreshCw, Eye, Building2, Package,
+  ChevronLeft, ChevronRight, Layers, Tag, Filter,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import {
@@ -64,11 +56,7 @@ import { cn } from "@/lib/utils";
 /* ─────────────────────────────────────────────
    Types
 ───────────────────────────────────────────── */
-type UserData = {
-  Firstname: string;
-  Lastname: string;
-  Role: string;
-};
+type UserData = { Firstname: string; Lastname: string; Role: string };
 
 type AuditLog = {
   id: string;
@@ -129,19 +117,10 @@ const ACTION_COLORS: Record<string, string> = {
 };
 
 const ACTION_OPTIONS: Record<CollectionTab, string[]> = {
-  suppliers: [
-    "Supplier Added", "Supplier Edited", "Supplier Deleted",
-    "Supplier Reactivated", "Supplier Bulk Upload",
-  ],
-  products: [
-    "Product Added", "Product Edited", "Product Deleted", "Product Bulk Upload",
-  ],
-  productFamilies: [
-    "Product Family Added", "Product Family Edited", "Product Family Deleted",
-  ],
-  productUsages: [
-    "Product Usage Added", "Product Usage Edited", "Product Usage Deleted",
-  ],
+  suppliers      : ["Supplier Added", "Supplier Edited", "Supplier Deleted", "Supplier Reactivated", "Supplier Bulk Upload"],
+  products       : ["Product Added", "Product Edited", "Product Deleted", "Product Bulk Upload"],
+  productFamilies: ["Product Family Added", "Product Family Edited", "Product Family Deleted"],
+  productUsages  : ["Product Usage Added", "Product Usage Edited", "Product Usage Deleted"],
 };
 
 /* ─────────────────────────────────────────────
@@ -168,7 +147,6 @@ const nameCache = new Map<string, string>();
 async function resolveNames(referenceIDs: string[]): Promise<void> {
   const unresolved = referenceIDs.filter((id) => id && !nameCache.has(id));
   if (!unresolved.length) return;
-
   await Promise.allSettled(
     unresolved.map(async (refId) => {
       try {
@@ -187,13 +165,8 @@ async function resolveNames(referenceIDs: string[]): Promise<void> {
             if (c2?.Firstname) user = c2;
           }
         }
-        nameCache.set(
-          refId,
-          user?.Firstname ? `${user.Firstname} ${user.Lastname ?? ""}`.trim() : refId,
-        );
-      } catch {
-        nameCache.set(refId, refId);
-      }
+        nameCache.set(refId, user?.Firstname ? `${user.Firstname} ${user.Lastname ?? ""}`.trim() : refId);
+      } catch { nameCache.set(refId, refId); }
     }),
   );
 }
@@ -204,8 +177,6 @@ async function resolveNames(referenceIDs: string[]): Promise<void> {
 function LogDetailSheet({ log, open, onClose }: { log: AuditLog | null; open: boolean; onClose: () => void }) {
   if (!log) return null;
   const raw = log._raw ?? {};
-  const skip = new Set(["_raw"]);
-
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
@@ -233,7 +204,7 @@ function LogDetailSheet({ log, open, onClose }: { log: AuditLog | null; open: bo
           )}
           <Separator />
           {Object.entries(raw)
-            .filter(([k]) => !skip.has(k) && k !== "whatHappened" && k !== "date_updated" && k !== "createdAt" && k !== "updatedAt")
+            .filter(([k]) => k !== "_raw" && k !== "whatHappened" && k !== "date_updated" && k !== "createdAt" && k !== "updatedAt")
             .map(([k, v]) => (
               <div key={k} className="flex gap-2">
                 <span className="font-medium w-36 shrink-0 text-muted-foreground capitalize">
@@ -270,52 +241,38 @@ const initTabState = (): TabState => ({
    Mobile Card
 ───────────────────────────────────────────── */
 function MobileCard({
-  log,
-  primaryLabel,
-  primaryValue,
-  secondaryLabel,
-  secondaryValue,
-  onEye,
+  log, primaryLabel, primaryValue, secondaryLabel, secondaryValue, onEye,
 }: {
-  log: AuditLog;
-  primaryLabel: string;
-  primaryValue?: string;
-  secondaryLabel?: string;
-  secondaryValue?: string;
-  onEye: () => void;
+  log: AuditLog; primaryLabel: string; primaryValue?: string;
+  secondaryLabel?: string; secondaryValue?: string; onEye: () => void;
 }) {
-  const displayName = log.performedByName || log.performedBy || "—";
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 space-y-2">
+    <div className="border border-gray-200 rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm p-4 space-y-2">
       <div className="flex items-start justify-between gap-2">
-        <Badge
-          variant="outline"
-          className={cn("text-xs whitespace-nowrap shrink-0", ACTION_COLORS[log.whatHappened] ?? "bg-gray-100 text-gray-700 border-gray-200")}
-        >
+        <Badge variant="outline" className={cn("text-xs whitespace-nowrap shrink-0", ACTION_COLORS[log.whatHappened] ?? "bg-gray-100 text-gray-700 border-gray-200")}>
           {log.whatHappened}
         </Badge>
-        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 -mt-0.5" onClick={onEye}>
-          <Eye className="h-3.5 w-3.5" />
-        </Button>
+        <button onClick={onEye} className="h-7 w-7 rounded-lg border border-gray-200 bg-white/80 flex items-center justify-center shrink-0">
+          <Eye className="h-3.5 w-3.5 text-gray-500" />
+        </button>
       </div>
 
       {primaryValue && (
         <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-muted-foreground shrink-0">{primaryLabel}:</span>
-          <span className="font-medium truncate">{primaryValue}</span>
+          <span className="text-gray-500 shrink-0">{primaryLabel}:</span>
+          <span className="font-semibold text-gray-800 truncate">{primaryValue}</span>
         </div>
       )}
-
       {secondaryValue && (
         <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-muted-foreground shrink-0">{secondaryLabel}:</span>
-          <span className="text-muted-foreground truncate">{secondaryValue}</span>
+          <span className="text-gray-500 shrink-0">{secondaryLabel}:</span>
+          <span className="text-gray-600 truncate">{secondaryValue}</span>
         </div>
       )}
 
-      <div className="flex items-center justify-between pt-0.5">
-        <span className="text-xs text-muted-foreground">{displayName}</span>
-        <span className="text-xs text-muted-foreground">{formatTimestamp(getDisplayTime(log))}</span>
+      <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+        <span className="text-xs text-gray-500">{log.performedByName || log.performedBy || "—"}</span>
+        <span className="text-xs text-gray-400">{formatTimestamp(getDisplayTime(log))}</span>
       </div>
     </div>
   );
@@ -337,27 +294,21 @@ export default function HistoryPage() {
   const [, setNameVersion] = useState(0);
 
   const [tabStates, setTabStates] = useState<Record<CollectionTab, TabState>>({
-    suppliers      : initTabState(),
-    products       : initTabState(),
-    productFamilies: initTabState(),
-    productUsages  : initTabState(),
+    suppliers: initTabState(), products: initTabState(),
+    productFamilies: initTabState(), productUsages: initTabState(),
   });
 
   const updateTab = (tab: CollectionTab, patch: Partial<TabState>) =>
     setTabStates((prev) => ({ ...prev, [tab]: { ...prev[tab], ...patch } }));
 
-  /* ── Fetch user ── */
   useEffect(() => {
     if (userId === null) return;
     if (!userId) { router.push("/login"); return; }
     fetch(`/api/users?id=${encodeURIComponent(userId)}`)
-      .then((r) => r.json())
-      .then((d) => setUser(d))
-      .catch(console.error)
+      .then((r) => r.json()).then((d) => setUser(d)).catch(console.error)
       .finally(() => setLoading(false));
   }, [userId, router]);
 
-  /* ── Fetch logs ── */
   const fetchLogs = useCallback(async (
     tab: CollectionTab,
     cursor: QueryDocumentSnapshot<DocumentData> | null,
@@ -372,12 +323,9 @@ export default function HistoryPage() {
       q = query(
         collection(db, colName),
         ...(actionFilter !== "all" ? [where("whatHappened", "==", actionFilter)] : []),
-        orderBy("date_updated", "desc"),
-        startAfter(cursor),
-        limit(PAGE_SIZE + 1),
+        orderBy("date_updated", "desc"), startAfter(cursor), limit(PAGE_SIZE + 1),
       );
     }
-
     const snap = await getDocs(q);
     const docs = snap.docs;
     const hasMore = docs.length > PAGE_SIZE;
@@ -388,32 +336,17 @@ export default function HistoryPage() {
       const raw = d.data() as Record<string, any>;
       const refId = raw.referenceID ?? raw.performedBy ?? raw.updatedByReferenceID ?? "";
       return {
-        id               : d.id,
-        whatHappened     : raw.whatHappened ?? "Unknown",
-        performedBy      : refId,
-        performedByName  : nameCache.get(refId) ?? "",
-        referenceID      : raw.referenceID ?? "",
-        supplierId       : raw.supplierId ?? "",
-        supplierbrandId  : raw.supplierbrandId ?? "",
-        company          : raw.company ?? "",
-        supplierBrand    : raw.supplierBrand ?? "",
-        productId        : raw.productId ?? "",
-        productReferenceID: raw.productReferenceID ?? "",
-        productClass     : raw.productClass ?? "",
-        pricePoint       : raw.pricePoint ?? "",
-        supplier         : raw.supplier ?? null,
-        productFamilyId  : raw.productFamilyId ?? "",
-        productFamilyName: raw.productFamilyName ?? "",
-        productUsageId   : raw.productUsageId ?? "",
-        productUsageName : raw.productUsageName ?? "",
-        inserted         : raw.inserted,
-        reactivated      : raw.reactivated,
-        skipped          : raw.skipped,
-        overwritten      : raw.overwritten,
-        date_updated     : raw.date_updated,
-        createdAt        : raw.createdAt,
-        updatedAt        : raw.updatedAt,
-        _raw             : raw,
+        id: d.id, whatHappened: raw.whatHappened ?? "Unknown",
+        performedBy: refId, performedByName: nameCache.get(refId) ?? "",
+        referenceID: raw.referenceID ?? "", supplierId: raw.supplierId ?? "",
+        supplierbrandId: raw.supplierbrandId ?? "", company: raw.company ?? "",
+        supplierBrand: raw.supplierBrand ?? "", productId: raw.productId ?? "",
+        productReferenceID: raw.productReferenceID ?? "", productClass: raw.productClass ?? "",
+        pricePoint: raw.pricePoint ?? "", supplier: raw.supplier ?? null,
+        productFamilyId: raw.productFamilyId ?? "", productFamilyName: raw.productFamilyName ?? "",
+        productUsageId: raw.productUsageId ?? "", productUsageName: raw.productUsageName ?? "",
+        inserted: raw.inserted, reactivated: raw.reactivated, skipped: raw.skipped, overwritten: raw.overwritten,
+        date_updated: raw.date_updated, createdAt: raw.createdAt, updatedAt: raw.updatedAt, _raw: raw,
       };
     });
 
@@ -422,7 +355,6 @@ export default function HistoryPage() {
     logs.forEach((log) => {
       if (log.performedBy) log.performedByName = nameCache.get(log.performedBy) ?? log.performedBy;
     });
-
     return { logs, lastDoc, hasMore };
   }, []);
 
@@ -451,72 +383,6 @@ export default function HistoryPage() {
     } finally { setFetching(false); }
   };
 
-  /* ── Shared sub-components ── */
-  const ActionBadge = ({ action }: { action: string }) => (
-    <Badge variant="outline" className={cn("text-xs whitespace-nowrap", ACTION_COLORS[action] ?? "bg-gray-100 text-gray-700 border-gray-200")}>
-      {action}
-    </Badge>
-  );
-
-  const displayName = (log: AuditLog) => log.performedByName || log.performedBy || "—";
-
-  const EyeButton = ({ log }: { log: AuditLog }) => (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setSelectedLog(log); setDetailOpen(true); }}>
-            <Eye className="h-3.5 w-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>View details</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-
-  const PaginationBar = ({ tab }: { tab: CollectionTab }) => {
-    const s = tabStates[tab];
-    return (
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>Page {s.page}</span>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" disabled={s.page === 1 || fetching}
-            onClick={() => { updateTab(tab, { cursor: null, page: 1 }); loadTab(tab, s.actionFilter); }}>
-            <ChevronLeft className="h-3.5 w-3.5 mr-1" /> First
-          </Button>
-          <Button size="sm" variant="outline" disabled={!s.hasMore || fetching} onClick={() => loadNextPage(tab)}>
-            Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
-  const FilterBar = ({ tab, searchPlaceholder }: { tab: CollectionTab; searchPlaceholder: string }) => {
-    const s = tabStates[tab];
-    return (
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input value={s.search} onChange={(e) => updateTab(tab, { search: e.target.value })} placeholder={searchPlaceholder} className="pl-9 h-9" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-          <Select value={s.actionFilter} onValueChange={(v) => updateTab(tab, { actionFilter: v })}>
-            <SelectTrigger className="h-9 w-48">
-              <SelectValue placeholder="All actions" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Actions</SelectItem>
-              {ACTION_OPTIONS[tab].map((a) => (
-                <SelectItem key={a} value={a}>{a}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    );
-  };
-
   const filtered = (tab: CollectionTab): AuditLog[] => {
     const { logs, search } = tabStates[tab];
     const q = search.toLowerCase();
@@ -527,7 +393,6 @@ export default function HistoryPage() {
       l.performedBy?.toLowerCase().includes(q) ||
       l.company?.toLowerCase().includes(q) ||
       l.supplierBrand?.toLowerCase().includes(q) ||
-      l.supplierId?.toLowerCase().includes(q) ||
       l.productReferenceID?.toLowerCase().includes(q) ||
       l.supplier?.company?.toLowerCase().includes(q) ||
       l.productClass?.toLowerCase().includes(q) ||
@@ -536,22 +401,169 @@ export default function HistoryPage() {
     );
   };
 
+  const ActionBadge = ({ action }: { action: string }) => (
+    <Badge variant="outline" className={cn("text-xs whitespace-nowrap", ACTION_COLORS[action] ?? "bg-gray-100 text-gray-700 border-gray-200")}>
+      {action}
+    </Badge>
+  );
+
+  const displayName = (log: AuditLog) => log.performedByName || log.performedBy || "—";
+
+  const EyeBtn = ({ log }: { log: AuditLog }) => (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button size="icon" variant="ghost" className="h-7 w-7"
+            onClick={() => { setSelectedLog(log); setDetailOpen(true); }}>
+            <Eye className="h-3.5 w-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>View details</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
+  /* ── Reusable tab layout: toolbar + table/cards + pagination ── */
+  const TabLayout = ({
+    tab,
+    searchPlaceholder,
+    mobileCards,
+    tableHeaders,
+    tableRows,
+  }: {
+    tab: CollectionTab;
+    searchPlaceholder: string;
+    mobileCards: React.ReactNode;
+    tableHeaders: React.ReactNode;
+    tableRows: React.ReactNode;
+  }) => {
+    const s = tabStates[tab];
+    const count = filtered(tab).length;
+    return (
+      <div className="h-dvh flex flex-col overflow-hidden -mx-4 md:-mx-6 -mt-4 md:-mt-6">
+
+        {/* ── Toolbar ── */}
+        <div className="shrink-0 bg-white/80 backdrop-blur-md border-b px-4 md:px-6 pt-4 pb-3 space-y-3">
+          {/* search + filter row */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder={searchPlaceholder}
+                value={s.search}
+                onChange={(e) => updateTab(tab, { search: e.target.value })}
+                className="w-full h-9 pl-9 pr-3 bg-white/70 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-gray-300"
+              />
+            </div>
+            <Select value={s.actionFilter} onValueChange={(v) => updateTab(tab, { actionFilter: v })}>
+              <SelectTrigger className="h-9 w-44 bg-white/70">
+                <SelectValue placeholder="All actions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Actions</SelectItem>
+                {ACTION_OPTIONS[tab].map((a) => (
+                  <SelectItem key={a} value={a}>{a}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* pagination info */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">
+              Page {s.page} · {count} record{count !== 1 ? "s" : ""} on page
+            </span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={s.page === 1 || fetching}
+                onClick={() => { updateTab(tab, { cursor: null, page: 1 }); loadTab(tab, s.actionFilter); }}>
+                <ChevronLeft className="h-3.5 w-3.5 mr-1" /> First
+              </Button>
+              <Button size="sm" variant="outline" disabled={!s.hasMore || fetching}
+                onClick={() => loadNextPage(tab)}>
+                Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Desktop table — thead sticky inside this scroll container ── */}
+        <div className="hidden md:block flex-1 min-h-0 overflow-auto bg-white/60 backdrop-blur-sm">
+          <table className="w-full text-sm border-collapse">
+            <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">
+              <tr>{tableHeaders}</tr>
+            </thead>
+            <tbody>
+              {fetching ? (
+                <tr><td colSpan={99} className="text-center py-10 text-muted-foreground">Loading…</td></tr>
+              ) : filtered(tab).length === 0 ? (
+                <tr><td colSpan={99} className="text-center py-10 text-muted-foreground">No audit logs found.</td></tr>
+              ) : tableRows}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── Mobile cards ── */}
+        <div className="md:hidden flex-1 overflow-y-auto px-3 pt-3 pb-28 space-y-3 min-h-0">
+          {fetching ? (
+            <div className="flex justify-center py-16">
+              <div className="h-7 w-7 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />
+            </div>
+          ) : filtered(tab).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Search className="h-8 w-8 text-gray-300 mb-3" />
+              <p className="text-sm font-medium text-gray-600">No audit logs found</p>
+            </div>
+          ) : mobileCards}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) return null;
 
-  return (
-    <div className="h-screen overflow-hidden">
-      <div className="h-full overflow-y-auto">
+  /* ── th helper ── */
+  const Th = ({ children, className }: { children?: React.ReactNode; className?: string }) => (
+    <th className={cn("text-left font-bold px-3 py-3 border-b whitespace-nowrap text-sm", className)}>
+      {children}
+    </th>
+  );
 
-        {/* ── HEADER ── */}
-        <div className="sticky top-0 z-10 bg-background border-b px-4 md:px-6 py-4 flex items-center gap-4">
-          <SidebarTrigger />
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold">Audit Trail</h1>
-            <p className="text-xs text-muted-foreground truncate">
+  /* ── td helper ── */
+  const Td = ({ children, className }: { children?: React.ReactNode; className?: string }) => (
+    <td className={cn("px-3 py-3 border-b align-middle", className)}>{children}</td>
+  );
+
+  return (
+    <div className="h-dvh flex flex-col overflow-hidden">
+
+      {/* ── DESKTOP HEADER ── */}
+      <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white/80 backdrop-blur-md border-b">
+        <SidebarTrigger />
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold shrink-0">Audit Trail</h1>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">
               Welcome, {user?.Firstname} {user?.Lastname}
-              <span className="ml-1 text-muted-foreground/70">({user?.Role})</span>
-            </p>
+              <span className="ml-1 text-gray-400">({user?.Role})</span>
+            </span>
+            <Button size="sm" variant="outline" disabled={fetching}
+              onClick={() => {
+                (["suppliers", "products", "productFamilies", "productUsages"] as CollectionTab[]).forEach((t) =>
+                  updateTab(t, { actionFilter: "all" }),
+                );
+              }}
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", fetching && "animate-spin")} />
+              Refresh
+            </Button>
           </div>
+        </div>
+      </div>
+
+      {/* ── MOBILE HEADER ── */}
+      <div className="md:hidden shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 pt-5 pb-3">
+        <div className="flex items-center justify-between mb-1">
+          <h1 className="text-lg font-bold text-gray-900">Audit Trail</h1>
           <Button size="sm" variant="outline" disabled={fetching}
             onClick={() => {
               (["suppliers", "products", "productFamilies", "productUsages"] as CollectionTab[]).forEach((t) =>
@@ -559,283 +571,166 @@ export default function HistoryPage() {
               );
             }}
           >
-            <RefreshCw className={cn("h-3.5 w-3.5 md:mr-1.5", fetching && "animate-spin")} />
-            <span className="hidden md:inline">Refresh</span>
+            <RefreshCw className={cn("h-3.5 w-3.5", fetching && "animate-spin")} />
           </Button>
         </div>
+        <p className="text-xs text-gray-400">
+          {user?.Firstname} {user?.Lastname} · {user?.Role}
+        </p>
+      </div>
 
-        {/* ── CONTENT ── */}
-        <div className="p-4 md:p-6">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as CollectionTab)}>
+      {/* ── TABS ── */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as CollectionTab)} className="h-full flex flex-col">
 
-            {/* Scrollable tab list on mobile */}
-            <div className="overflow-x-auto pb-1 mb-4 md:mb-6">
-              <TabsList className="w-max md:w-auto">
-                <TabsTrigger value="suppliers" className="flex items-center gap-1.5 text-xs md:text-sm">
-                  <Building2 className="h-3.5 w-3.5" />
-                  <span>Suppliers</span>
+          {/* Tab triggers — scrollable on mobile */}
+          <div className="overflow-x-auto shrink-0 bg-white/70 backdrop-blur-sm border-b px-4 md:px-6">
+            <TabsList className="w-max md:w-auto h-10 bg-transparent gap-0 rounded-none p-0">
+              {([
+                { value: "suppliers",       label: "Suppliers",        icon: Building2 },
+                { value: "products",        label: "Products",         icon: Package   },
+                { value: "productFamilies", label: "Product Families", icon: Layers    },
+                { value: "productUsages",   label: "Product Usage",    icon: Tag       },
+              ] as { value: CollectionTab; label: string; icon: React.ElementType }[]).map(({ value, label, icon: Icon }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="h-10 px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-gray-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs md:text-sm whitespace-nowrap flex items-center gap-1.5"
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
                 </TabsTrigger>
-                <TabsTrigger value="products" className="flex items-center gap-1.5 text-xs md:text-sm">
-                  <Package className="h-3.5 w-3.5" />
-                  <span>Products</span>
-                </TabsTrigger>
-                <TabsTrigger value="productFamilies" className="flex items-center gap-1.5 text-xs md:text-sm">
-                  <Layers className="h-3.5 w-3.5" />
-                  <span className="whitespace-nowrap">Product Families</span>
-                </TabsTrigger>
-                <TabsTrigger value="productUsages" className="flex items-center gap-1.5 text-xs md:text-sm">
-                  <Tag className="h-3.5 w-3.5" />
-                  <span className="whitespace-nowrap">Product Usage</span>
-                </TabsTrigger>
-              </TabsList>
-            </div>
+              ))}
+            </TabsList>
+          </div>
 
-            {/* ════ SUPPLIERS ════ */}
-            <TabsContent value="suppliers">
-              <div className="space-y-4">
-                <FilterBar tab="suppliers" searchPlaceholder="Search company, brand, name…" />
+          {/* ════ SUPPLIERS ════ */}
+          <TabsContent value="suppliers" className="flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6">
+            <TabLayout
+              tab="suppliers"
+              searchPlaceholder="Search company, brand, name…"
+              tableHeaders={<>
+                <Th className="w-44">Timestamp</Th>
+                <Th>Action</Th>
+                <Th>Company</Th>
+                <Th>Brand</Th>
+                <Th>Performed By</Th>
+                <Th className="w-10"></Th>
+              </>}
+              tableRows={filtered("suppliers").map((log) => (
+                <tr key={log.id} className="border-b hover:bg-white/60 align-middle">
+                  <Td className="text-xs text-muted-foreground whitespace-nowrap">{formatTimestamp(getDisplayTime(log))}</Td>
+                  <Td><ActionBadge action={log.whatHappened} /></Td>
+                  <Td className="font-medium">{log.company || "—"}</Td>
+                  <Td className="text-muted-foreground">{log.supplierBrand || "—"}</Td>
+                  <Td className="text-xs text-muted-foreground">{displayName(log)}</Td>
+                  <Td><EyeBtn log={log} /></Td>
+                </tr>
+              ))}
+              mobileCards={<>{filtered("suppliers").map((log) => (
+                <MobileCard key={log.id} log={log}
+                  primaryLabel="Company" primaryValue={log.company || "—"}
+                  secondaryLabel="Brand" secondaryValue={log.supplierBrand || undefined}
+                  onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
+                />
+              ))}</>}
+            />
+          </TabsContent>
 
-                {/* Mobile cards */}
-                <div className="flex flex-col gap-3 md:hidden">
-                  {fetching ? (
-                    <p className="text-center text-sm text-muted-foreground py-8">Loading…</p>
-                  ) : filtered("suppliers").length === 0 ? (
-                    <p className="text-center text-sm text-muted-foreground py-8">No audit logs found.</p>
-                  ) : filtered("suppliers").map((log) => (
-                    <MobileCard
-                      key={log.id}
-                      log={log}
-                      primaryLabel="Company"
-                      primaryValue={log.company || "—"}
-                      secondaryLabel="Brand"
-                      secondaryValue={log.supplierBrand || undefined}
-                      onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
-                    />
-                  ))}
-                </div>
+          {/* ════ PRODUCTS ════ */}
+          <TabsContent value="products" className="flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6">
+            <TabLayout
+              tab="products"
+              searchPlaceholder="Search ref ID, supplier, name…"
+              tableHeaders={<>
+                <Th className="w-44">Timestamp</Th>
+                <Th>Action</Th>
+                <Th>Supplier</Th>
+                <Th>Class</Th>
+                <Th>Performed By</Th>
+                <Th className="w-10"></Th>
+              </>}
+              tableRows={filtered("products").map((log) => (
+                <tr key={log.id} className="border-b hover:bg-white/60 align-middle">
+                  <Td className="text-xs text-muted-foreground whitespace-nowrap">{formatTimestamp(getDisplayTime(log))}</Td>
+                  <Td><ActionBadge action={log.whatHappened} /></Td>
+                  <Td className="text-muted-foreground">{log.supplier?.company || "—"}</Td>
+                  <Td>{log.productClass ? <Badge variant="secondary" className="text-xs">{log.productClass}</Badge> : "—"}</Td>
+                  <Td className="text-xs text-muted-foreground">{displayName(log)}</Td>
+                  <Td><EyeBtn log={log} /></Td>
+                </tr>
+              ))}
+              mobileCards={<>{filtered("products").map((log) => (
+                <MobileCard key={log.id} log={log}
+                  primaryLabel="Ref ID" primaryValue={log.productReferenceID || "—"}
+                  secondaryLabel="Supplier" secondaryValue={log.supplier?.company || undefined}
+                  onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
+                />
+              ))}</>}
+            />
+          </TabsContent>
 
-                {/* Desktop table with sticky header */}
-                <div className="hidden md:block rounded-md border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader className="sticky top-0 z-10 bg-gray-100">
-                        <TableRow className="border-b">
-                          <TableHead className="text-xs w-44">Timestamp</TableHead>
-                          <TableHead className="text-xs">Action</TableHead>
-                          <TableHead className="text-xs">Company</TableHead>
-                          <TableHead className="text-xs">Brand</TableHead>
-                          <TableHead className="text-xs">Performed By</TableHead>
-                          <TableHead className="text-xs w-10"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {fetching ? (
-                          <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground text-sm">Loading…</TableCell></TableRow>
-                        ) : filtered("suppliers").length === 0 ? (
-                          <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground text-sm">No audit logs found.</TableCell></TableRow>
-                        ) : filtered("suppliers").map((log) => (
-                          <TableRow key={log.id} className="bg-white hover:bg-gray-50 transition-colors">
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatTimestamp(getDisplayTime(log))}</TableCell>
-                            <TableCell><ActionBadge action={log.whatHappened} /></TableCell>
-                            <TableCell className="font-medium text-sm">{log.company || "—"}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{log.supplierBrand || "—"}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{displayName(log)}</TableCell>
-                            <TableCell><EyeButton log={log} /></TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
+          {/* ════ PRODUCT FAMILIES ════ */}
+          <TabsContent value="productFamilies" className="flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6">
+            <TabLayout
+              tab="productFamilies"
+              searchPlaceholder="Search family name…"
+              tableHeaders={<>
+                <Th className="w-44">Timestamp</Th>
+                <Th>Action</Th>
+                <Th>Family Name</Th>
+                <Th>Performed By</Th>
+                <Th className="w-10"></Th>
+              </>}
+              tableRows={filtered("productFamilies").map((log) => (
+                <tr key={log.id} className="border-b hover:bg-white/60 align-middle">
+                  <Td className="text-xs text-muted-foreground whitespace-nowrap">{formatTimestamp(getDisplayTime(log))}</Td>
+                  <Td><ActionBadge action={log.whatHappened} /></Td>
+                  <Td className="font-medium">{log.productFamilyName || "—"}</Td>
+                  <Td className="text-xs text-muted-foreground">{displayName(log)}</Td>
+                  <Td><EyeBtn log={log} /></Td>
+                </tr>
+              ))}
+              mobileCards={<>{filtered("productFamilies").map((log) => (
+                <MobileCard key={log.id} log={log}
+                  primaryLabel="Family" primaryValue={log.productFamilyName || "—"}
+                  onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
+                />
+              ))}</>}
+            />
+          </TabsContent>
 
-                <PaginationBar tab="suppliers" />
-              </div>
-            </TabsContent>
+          {/* ════ PRODUCT USAGE ════ */}
+          <TabsContent value="productUsages" className="flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6">
+            <TabLayout
+              tab="productUsages"
+              searchPlaceholder="Search product usage name…"
+              tableHeaders={<>
+                <Th className="w-44">Timestamp</Th>
+                <Th>Action</Th>
+                <Th>Product Usage Name</Th>
+                <Th>Performed By</Th>
+                <Th className="w-10"></Th>
+              </>}
+              tableRows={filtered("productUsages").map((log) => (
+                <tr key={log.id} className="border-b hover:bg-white/60 align-middle">
+                  <Td className="text-xs text-muted-foreground whitespace-nowrap">{formatTimestamp(getDisplayTime(log))}</Td>
+                  <Td><ActionBadge action={log.whatHappened} /></Td>
+                  <Td className="font-medium">{log.productUsageName || "—"}</Td>
+                  <Td className="text-xs text-muted-foreground">{displayName(log)}</Td>
+                  <Td><EyeBtn log={log} /></Td>
+                </tr>
+              ))}
+              mobileCards={<>{filtered("productUsages").map((log) => (
+                <MobileCard key={log.id} log={log}
+                  primaryLabel="Usage" primaryValue={log.productUsageName || "—"}
+                  onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
+                />
+              ))}</>}
+            />
+          </TabsContent>
 
-            {/* ════ PRODUCTS ════ */}
-            <TabsContent value="products">
-              <div className="space-y-4">
-                <FilterBar tab="products" searchPlaceholder="Search ref ID, company, name…" />
-
-                {/* Mobile cards */}
-                <div className="flex flex-col gap-3 md:hidden">
-                  {fetching ? (
-                    <p className="text-center text-sm text-muted-foreground py-8">Loading…</p>
-                  ) : filtered("products").length === 0 ? (
-                    <p className="text-center text-sm text-muted-foreground py-8">No audit logs found.</p>
-                  ) : filtered("products").map((log) => (
-                    <MobileCard
-                      key={log.id}
-                      log={log}
-                      primaryLabel="Ref ID"
-                      primaryValue={log.productReferenceID || "—"}
-                      secondaryLabel="Supplier"
-                      secondaryValue={log.supplier?.company || undefined}
-                      onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
-                    />
-                  ))}
-                </div>
-
-                {/* Desktop table */}
-                <div className="hidden md:block rounded-md border overflow-hidden bg-white">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader className="sticky top-0 z-10 bg-gray-50">
-                        <TableRow className="border-b">
-                          <TableHead className="text-xs w-44">Timestamp</TableHead>
-                          <TableHead className="text-xs">Action</TableHead>
-                          <TableHead className="text-xs">Ref ID</TableHead>
-                          <TableHead className="text-xs">Supplier</TableHead>
-                          <TableHead className="text-xs">Class</TableHead>
-                          <TableHead className="text-xs">Performed By</TableHead>
-                          <TableHead className="text-xs w-10"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {fetching ? (
-                          <TableRow><TableCell colSpan={7} className="text-center py-10 text-muted-foreground text-sm">Loading…</TableCell></TableRow>
-                        ) : filtered("products").length === 0 ? (
-                          <TableRow><TableCell colSpan={7} className="text-center py-10 text-muted-foreground text-sm">No audit logs found.</TableCell></TableRow>
-                        ) : filtered("products").map((log) => (
-                          <TableRow key={log.id} className="hover:bg-muted/30 transition-colors">
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatTimestamp(getDisplayTime(log))}</TableCell>
-                            <TableCell><ActionBadge action={log.whatHappened} /></TableCell>
-                            <TableCell className="font-medium text-xs font-mono">{log.productReferenceID || "—"}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{log.supplier?.company || "—"}</TableCell>
-                            <TableCell className="text-xs">
-                              {log.productClass && <Badge variant="secondary" className="text-xs">{log.productClass}</Badge>}
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{displayName(log)}</TableCell>
-                            <TableCell><EyeButton log={log} /></TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                <PaginationBar tab="products" />
-              </div>
-            </TabsContent>
-
-            {/* ════ PRODUCT FAMILIES ════ */}
-            <TabsContent value="productFamilies">
-              <div className="space-y-4">
-                <FilterBar tab="productFamilies" searchPlaceholder="Search family name…" />
-
-                {/* Mobile cards */}
-                <div className="flex flex-col gap-3 md:hidden">
-                  {fetching ? (
-                    <p className="text-center text-sm text-muted-foreground py-8">Loading…</p>
-                  ) : filtered("productFamilies").length === 0 ? (
-                    <p className="text-center text-sm text-muted-foreground py-8">No audit logs found.</p>
-                  ) : filtered("productFamilies").map((log) => (
-                    <MobileCard
-                      key={log.id}
-                      log={log}
-                      primaryLabel="Family"
-                      primaryValue={log.productFamilyName || "—"}
-                      onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
-                    />
-                  ))}
-                </div>
-
-                {/* Desktop table */}
-                <div className="hidden md:block rounded-md border overflow-hidden bg-white">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader className="sticky top-0 z-10 bg-gray-50">
-                        <TableRow className="border-b">
-                          <TableHead className="text-xs w-44">Timestamp</TableHead>
-                          <TableHead className="text-xs">Action</TableHead>
-                          <TableHead className="text-xs">Family Name</TableHead>
-                          <TableHead className="text-xs">Performed By</TableHead>
-                          <TableHead className="text-xs w-10"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {fetching ? (
-                          <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground text-sm">Loading…</TableCell></TableRow>
-                        ) : filtered("productFamilies").length === 0 ? (
-                          <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground text-sm">No audit logs found.</TableCell></TableRow>
-                        ) : filtered("productFamilies").map((log) => (
-                          <TableRow key={log.id} className="hover:bg-muted/30 transition-colors">
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatTimestamp(getDisplayTime(log))}</TableCell>
-                            <TableCell><ActionBadge action={log.whatHappened} /></TableCell>
-                            <TableCell className="font-medium text-sm">{log.productFamilyName || "—"}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{displayName(log)}</TableCell>
-                            <TableCell><EyeButton log={log} /></TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                <PaginationBar tab="productFamilies" />
-              </div>
-            </TabsContent>
-
-            {/* ════ PRODUCT USAGE ════ */}
-            <TabsContent value="productUsages">
-              <div className="space-y-4">
-                <FilterBar tab="productUsages" searchPlaceholder="Search product usage name…" />
-
-                {/* Mobile cards */}
-                <div className="flex flex-col gap-3 md:hidden">
-                  {fetching ? (
-                    <p className="text-center text-sm text-muted-foreground py-8">Loading…</p>
-                  ) : filtered("productUsages").length === 0 ? (
-                    <p className="text-center text-sm text-muted-foreground py-8">No audit logs found.</p>
-                  ) : filtered("productUsages").map((log) => (
-                    <MobileCard
-                      key={log.id}
-                      log={log}
-                      primaryLabel="Usage"
-                      primaryValue={log.productUsageName || "—"}
-                      onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
-                    />
-                  ))}
-                </div>
-
-                {/* Desktop table */}
-                <div className="hidden md:block rounded-md border overflow-hidden bg-white">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader className="sticky top-0 z-10 bg-gray-50">
-                        <TableRow className="border-b">
-                          <TableHead className="text-xs w-44">Timestamp</TableHead>
-                          <TableHead className="text-xs">Action</TableHead>
-                          <TableHead className="text-xs">Product Usage Name</TableHead>
-                          <TableHead className="text-xs">Performed By</TableHead>
-                          <TableHead className="text-xs w-10"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {fetching ? (
-                          <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground text-sm">Loading…</TableCell></TableRow>
-                        ) : filtered("productUsages").length === 0 ? (
-                          <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground text-sm">No audit logs found.</TableCell></TableRow>
-                        ) : filtered("productUsages").map((log) => (
-                          <TableRow key={log.id} className="hover:bg-muted/30 transition-colors">
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatTimestamp(getDisplayTime(log))}</TableCell>
-                            <TableCell><ActionBadge action={log.whatHappened} /></TableCell>
-                            <TableCell className="font-medium text-sm">{log.productUsageName || "—"}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{displayName(log)}</TableCell>
-                            <TableCell><EyeButton log={log} /></TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                <PaginationBar tab="productUsages" />
-              </div>
-            </TabsContent>
-
-          </Tabs>
-        </div>
+        </Tabs>
       </div>
 
       <LogDetailSheet log={selectedLog} open={detailOpen} onClose={() => setDetailOpen(false)} />
