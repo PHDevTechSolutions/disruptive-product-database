@@ -288,15 +288,23 @@ export default function SPF({ processBy }: SPFProps) {
   };
 
   /* ─────────────────────────────── */
-  /* SUBMIT                          */
+  /* SUBMIT — FIXED                  */
   /* ─────────────────────────────── */
   const handleSubmit = async () => {
     try {
-      const allProducts = Object.values(productOffers).flat();
+      // Tag each product with its row index before flattening
+      const allProducts = Object.entries(productOffers).flatMap(([rowIndex, prods]) =>
+        prods.map((p) => ({ ...p, __rowIndex: Number(rowIndex) }))
+      );
+
       const res = await fetch("/api/request/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, selectedProducts: allProducts }),
+        body: JSON.stringify({
+          ...formData,
+          selectedProducts: allProducts,
+          totalItemRows: formData.item_description?.length ?? 1,
+        }),
       });
       if (!res.ok) {
         const errText = await res.text();
