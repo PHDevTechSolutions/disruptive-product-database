@@ -621,8 +621,8 @@ export default function HistoryPage() {
               tableHeaders={<>
                 <Th className="w-44">Timestamp</Th>
                 <Th>Action</Th>
-                <Th>Company</Th>
-                <Th>Brand</Th>
+                <Th>Company Name</Th>
+                <Th>Supplier Brand</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
@@ -715,7 +715,7 @@ export default function HistoryPage() {
               tableHeaders={<>
                 <Th className="w-44">Timestamp</Th>
                 <Th>Action</Th>
-                <Th>Family Name</Th>
+                <Th>Product Family</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
@@ -745,7 +745,7 @@ export default function HistoryPage() {
               tableHeaders={<>
                 <Th className="w-44">Timestamp</Th>
                 <Th>Action</Th>
-                <Th>Product Usage Name</Th>
+                <Th>Product Usage</Th>
                 <Th>Performed By</Th>
                 <Th className="w-10"></Th>
               </>}
