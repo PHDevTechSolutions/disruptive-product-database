@@ -1,5 +1,8 @@
 "use client";
 
+// MERGED: sidebar-bottom behavior is now handled here via isMobile detection.
+// Delete components/sidebar-bottom.tsx — it is no longer needed.
+
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -36,6 +39,14 @@ type UserDetails = {
   profilePicture: string;
 };
 
+const NAV_ITEMS = [
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard"  },
+  { href: "/products",  icon: Package,          label: "Products"   },
+  { href: "/suppliers", icon: Truck,             label: "Suppliers"  },
+  { href: "/requests",  icon: ClipboardList,     label: "Requests", showBadge: true },
+  { href: "/history",   icon: History,           label: "History"    },
+];
+
 export function SidebarLeft() {
   const { state, isMobile } = useSidebar();
   const { userId } = useUser();
@@ -46,7 +57,6 @@ export function SidebarLeft() {
 
   React.useEffect(() => {
     if (!userId) return;
-
     fetch(`/api/users?id=${encodeURIComponent(userId)}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch user");
@@ -54,26 +64,84 @@ export function SidebarLeft() {
       })
       .then((data) => {
         setUser({
-          Firstname: data.Firstname ?? "",
-          Lastname: data.Lastname ?? "",
-          Role: data.Role ?? "",
-          Email: data.Email ?? "",
+          Firstname:      data.Firstname      ?? "",
+          Lastname:       data.Lastname       ?? "",
+          Role:           data.Role           ?? "",
+          Email:          data.Email          ?? "",
           profilePicture: data.profilePicture ?? "",
         });
       })
-      .catch((err) => {
-        console.error("Sidebar user fetch error:", err);
-      });
+      .catch((err) => console.error("Sidebar user fetch error:", err));
   }, [userId]);
 
-  const navItems = [
-    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { href: "/products",  icon: Package,          label: "Products"  },
-    { href: "/suppliers", icon: Truck,             label: "Suppliers" },
-    { href: "/requests",  icon: ClipboardList,     label: "Requests", badge: unreadCount },
-    { href: "/history",   icon: History,           label: "History"   },
-  ];
+  /* ─────────────────────────────────────────────
+     MOBILE — bottom nav bar
+  ───────────────────────────────────────────── */
+  if (isMobile) {
+    return (
+      <div
+        className="fixed left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-[0_-1px_12px_rgba(0,0,0,0.06)]"
+        style={{ bottom: 0, paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="flex items-center justify-around px-1 h-[62px]">
+          {NAV_ITEMS.map(({ href, icon: Icon, label, showBadge }) => {
+            const active = pathname === href;
+            const badge  = showBadge ? unreadCount : 0;
 
+            return (
+              <Link
+                key={href}
+                href={href}
+                className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full relative"
+              >
+                {/* Active indicator top line */}
+                {active && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full bg-red-500" />
+                )}
+
+                {/* Icon + green badge */}
+                <span className="relative">
+                  <Icon
+                    className={`h-5 w-5 transition-colors ${active ? "text-red-600" : "text-gray-400"}`}
+                    strokeWidth={active ? 2.2 : 1.8}
+                  />
+                  {badge > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-green-500 text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-white shadow-sm">
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
+                </span>
+
+                <span className={`text-[10px] font-medium transition-colors ${active ? "text-red-600" : "text-gray-400"}`}>
+                  {label}
+                </span>
+              </Link>
+            );
+          })}
+
+          {/* Avatar only — no label */}
+          {user && userId && (
+            <div className="flex items-center justify-center flex-1 h-full">
+              <NavUser
+                user={{
+                  name:     `${user.Firstname} ${user.Lastname}`.trim() || "User",
+                  position: user.Role,
+                  email:    user.Email,
+                  avatar:   user.profilePicture || "/avatars/shadcn.jpg",
+                }}
+                userId={userId}
+                avatarOnly
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────────────────────────────
+     DESKTOP — left sidebar (collapsible icon)
+  ───────────────────────────────────────────── */
   return (
     <Sidebar
       collapsible="icon"
@@ -97,50 +165,55 @@ export function SidebarLeft() {
       {/* CONTENT */}
       <SidebarContent className="px-2">
         <SidebarMenu>
-          {navItems.map(({ href, icon: Icon, label, badge }) => (
-            <SidebarMenuItem key={href}>
-              <SidebarMenuButton
-                asChild
-                data-active={pathname === href}
-                className="
-                  transition-all
-                  hover:bg-red-50
-                  hover:text-red-700
-                  hover:scale-[1.01]
-                  data-[active=true]:bg-gradient-to-r
-                  data-[active=true]:from-red-600
-                  data-[active=true]:to-red-700
-                  data-[active=true]:text-white
-                  data-[active=true]:shadow-md
-                  data-[active=true]:hover:from-red-700
-                  data-[active=true]:hover:to-red-800
-                "
-              >
-                <Link href={href} className="relative flex items-center gap-2 w-full">
-                  {/* Icon with badge overlay when collapsed */}
-                  <span className="relative shrink-0">
-                    <Icon className="h-4 w-4" />
-                    {badge !== undefined && badge > 0 && state === "collapsed" && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-green-500 text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-white">
-                        {badge > 99 ? "99+" : badge}
-                      </span>
-                    )}
-                  </span>
+          {NAV_ITEMS.map(({ href, icon: Icon, label, showBadge }) => {
+            const badge = showBadge ? unreadCount : 0;
 
-                  {(isMobile || state === "expanded") && (
-                    <>
-                      <span className="flex-1">{label}</span>
-                      {badge !== undefined && badge > 0 && (
-                        <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-green-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
+            return (
+              <SidebarMenuItem key={href}>
+                <SidebarMenuButton
+                  asChild
+                  data-active={pathname === href}
+                  className="
+                    transition-all
+                    hover:bg-red-50
+                    hover:text-red-700
+                    hover:scale-[1.01]
+                    data-[active=true]:bg-gradient-to-r
+                    data-[active=true]:from-red-600
+                    data-[active=true]:to-red-700
+                    data-[active=true]:text-white
+                    data-[active=true]:shadow-md
+                    data-[active=true]:hover:from-red-700
+                    data-[active=true]:hover:to-red-800
+                  "
+                >
+                  <Link href={href} className="relative flex items-center gap-2 w-full">
+                    {/* Icon + badge overlay when collapsed */}
+                    <span className="relative shrink-0">
+                      <Icon className="h-4 w-4" />
+                      {badge > 0 && state === "collapsed" && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-green-500 text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-white">
                           {badge > 99 ? "99+" : badge}
                         </span>
                       )}
-                    </>
-                  )}
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+                    </span>
+
+                    {/* Label + badge when expanded */}
+                    {state === "expanded" && (
+                      <>
+                        <span className="flex-1">{label}</span>
+                        {badge > 0 && (
+                          <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-green-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
+                            {badge > 99 ? "99+" : badge}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
         </SidebarMenu>
       </SidebarContent>
 
@@ -162,12 +235,10 @@ export function SidebarLeft() {
           >
             <NavUser
               user={{
-                name:
-                  `${user.Firstname} ${user.Lastname}`.trim() ||
-                  "Unknown User",
+                name:     `${user.Firstname} ${user.Lastname}`.trim() || "Unknown User",
                 position: user.Role,
-                email: user.Email,
-                avatar: user.profilePicture || "/avatars/shadcn.jpg",
+                email:    user.Email,
+                avatar:   user.profilePicture || "/avatars/shadcn.jpg",
               }}
               userId={userId}
             />

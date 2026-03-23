@@ -1,11 +1,12 @@
 "use client";
 
+// sidebar-bottom.tsx is deleted — SidebarLeft now handles both mobile and desktop.
+
 import { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useWallpaper } from "@/contexts/WallpaperContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { SidebarLeft } from "@/components/sidebar-left";
-import { SidebarBottom } from "@/components/sidebar-bottom";
 import { SplashScreen } from "@/components/splash-screen";
 import { usePathname } from "next/navigation";
 
@@ -50,17 +51,8 @@ export default function LayoutShell({
   return (
     <NotificationProvider>
       <div className="relative flex min-h-svh w-full">
-        {userId && !isLogin && (
-          <>
-            <div className="hidden md:block">
-              <SidebarLeft />
-            </div>
-
-            <div className="md:hidden">
-              <SidebarBottom />
-            </div>
-          </>
-        )}
+        {/* SidebarLeft handles both desktop (left sidebar) and mobile (bottom nav) */}
+        {userId && !isLogin && <SidebarLeft />}
 
         <main className="relative flex-1 overflow-y-auto overscroll-contain pb-[calc(144px+env(safe-area-inset-bottom))] md:pb-0">
           {/* Wallpaper layer — sits behind content, opacity-controlled */}
