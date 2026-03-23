@@ -47,6 +47,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { logProductEvent } from "@/lib/auditlogger"; // ✅ AUDIT
 
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
@@ -142,7 +143,6 @@ export default function EditProductPage() {
   const dragIndex = useRef<number | null>(null);
   const dragRow = useRef<{ specIndex: number; rowIndex: number } | null>(null);
 
-  /* ---------------- Fetch User ---------------- */
   useEffect(() => {
     if (!userId) { router.push("/login"); return; }
     fetch(`/api/users?id=${encodeURIComponent(userId)}`)
@@ -151,7 +151,6 @@ export default function EditProductPage() {
       .finally(() => setLoading(false));
   }, [userId, router]);
 
-  /* ---------------- Fetch Suppliers ---------------- */
   useEffect(() => {
     const q = query(collection(db, "suppliers"), where("isActive", "==", true));
     return onSnapshot(q, snap => {
@@ -160,18 +159,15 @@ export default function EditProductPage() {
     });
   }, []);
 
-  /* ---------------- Load Product Data ---------------- */
   useEffect(() => {
     if (!productId) return;
     const ref = doc(db, "products", productId);
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) { toast.error("Product not found"); router.push("/products"); return; }
       const data: any = snap.data();
-
       setPricePoint(data.pricePoint || "");
       setBrandOrigin(data.brandOrigin || "");
       setProductClass(data.productClass || "");
-
       if (data.commercialDetails) {
         setUnitCost(data.commercialDetails.unitCost?.toString() || "");
         setPackLength(data.commercialDetails.packaging?.length?.toString() || "");
@@ -181,7 +177,6 @@ export default function EditProductPage() {
         setFactoryAddress(data.commercialDetails.factoryAddress || "");
         setPortOfDischarge(data.commercialDetails.portOfDischarge || "");
       }
-
       if (data.supplier) {
         const supplierObj = { supplierId: data.supplier.supplierId, company: data.supplier.company, supplierBrand: data.supplier.supplierBrand || "" };
         setSelectedSupplier(supplierObj);
@@ -192,11 +187,9 @@ export default function EditProductPage() {
         setPricePoint(data.pricePoint || "Economy");
         setBrandOrigin(data.brandOrigin || "China");
       }
-
       if (data.mainImage?.url) { setImageLink(data.mainImage.url); setPreview(convertDriveToThumbnail(data.mainImage.url)); }
       if (data.dimensionalDrawing?.url) { setDimensionalLink(data.dimensionalDrawing.url); setDimensionalPreview(convertDriveToThumbnail(data.dimensionalDrawing.url)); }
       if (data.illuminanceDrawing?.url) { setIlluminanceLink(data.illuminanceDrawing.url); setIlluminancePreview(convertDriveToThumbnail(data.illuminanceDrawing.url)); }
-
       if (Array.isArray(data.categoryTypes)) {
         setSelectedCategoryTypes(data.categoryTypes.map((c: any) => ({ id: c.productUsageId, name: c.categoryTypeName })));
       }
@@ -215,26 +208,22 @@ export default function EditProductPage() {
     return () => unsub();
   }, [productId]);
 
-  /* ---------------- Fetch Brands ---------------- */
   useEffect(() => {
     const q = query(collection(db, "brands"), where("isActive", "==", true));
     return onSnapshot(q, snap => setBrands(snap.docs.map(d => ({ id: d.id, name: d.data().name as string })).sort((a, b) => a.name.localeCompare(b.name))));
   }, []);
 
-  /* ---------------- Fetch Category Types ---------------- */
   useEffect(() => {
     const q = query(collection(db, "categoryTypes"), where("isActive", "==", true));
     return onSnapshot(q, snap => setCategoryTypes(snap.docs.map(d => ({ id: d.id, name: d.data().name }))));
   }, []);
 
-  /* ---------------- Fetch Product Families ---------------- */
   useEffect(() => {
     if (selectedCategoryTypes.length === 0) { setProductFamilies([]); return; }
     const q = query(collection(db, "productFamilies"), where("categoryTypeId", "==", selectedCategoryTypes[0].id), where("isActive", "==", true));
     return onSnapshot(q, snap => setProductFamilies(snap.docs.map(d => ({ id: d.id, name: d.data().name, productUsageId: d.data().categoryTypeId }))));
   }, [selectedCategoryTypes]);
 
-  /* ---------------- Tech Spec Handlers ---------------- */
   const addTechnicalSpec = () => setTechnicalSpecs(p => [...p, { id: "", title: "", specs: [emptySpecRow()] }]);
   const removeTechnicalSpec = (i: number) => setTechnicalSpecs(p => p.length > 1 ? p.filter((_, idx) => idx !== i) : p);
   const updateTitle = (i: number, v: string) => setTechnicalSpecs(p => p.map((x, idx) => idx === i ? { ...x, title: v } : x));
@@ -246,7 +235,6 @@ export default function EditProductPage() {
     setTechnicalSpecs(copy);
   };
 
-  /* ---------------- Drag Handlers ---------------- */
   const handleDragStart = (i: number) => { dragIndex.current = i; };
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
   const handleDrop = (di: number) => {
@@ -269,7 +257,6 @@ export default function EditProductPage() {
     setTechnicalSpecs(copy);
   };
 
-  /* ---------------- Image Handlers ---------------- */
   const handleImageChange = (file: File | null) => {
     if (!file) return;
     setMainImage(file); setImageLink("");
@@ -289,7 +276,6 @@ export default function EditProductPage() {
     setIlluminancePreview(URL.createObjectURL(file));
   };
 
-  /* ---------------- Category / Family Handlers ---------------- */
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
     await addDoc(collection(db, "categoryTypes"), { name: newCategoryType.trim(), isActive: true, createdAt: serverTimestamp(), whatHappened: "Product Usage Added", date_updated: serverTimestamp() });
@@ -312,7 +298,6 @@ export default function EditProductPage() {
     setTechnicalSpecs(loaded);
   };
 
-  /* ---------------- Sync Helpers ---------------- */
   const syncTemplateChangesToFamily = async () => {
     if (!selectedProductFamily || selectedCategoryTypes.length !== 1) return;
     const categoryTypeId = selectedCategoryTypes[0].id;
@@ -320,12 +305,10 @@ export default function EditProductPage() {
     const snap = await getDocs(query(collection(db, "technicalSpecifications"), where("categoryTypeId", "==", categoryTypeId), where("productFamilyId", "==", productFamilyId)));
     const batch = writeBatch(db);
     const updatedSpecs = [...technicalSpecs];
-
     snap.forEach(docSnap => {
       const exists = updatedSpecs.find(s => s.id === docSnap.id);
       if (!exists) batch.delete(docSnap.ref);
     });
-
     for (let i = 0; i < updatedSpecs.length; i++) {
       const spec = updatedSpecs[i];
       if (!spec.title.trim()) continue;
@@ -369,7 +352,6 @@ export default function EditProductPage() {
     }
   };
 
-  /* ---------------- Upload Helpers ---------------- */
   const uploadToCloudinary = async (file: File) => {
     const fd = new FormData(); fd.append("file", file);
     const res = await fetch("/api/upload-product", { method: "POST", body: fd });
@@ -437,6 +419,26 @@ export default function EditProductPage() {
         await uploadProductMedia(productId!);
       }
 
+      // ✅ AUDIT LOG
+      await logProductEvent({
+        whatHappened      : "Product Edited",
+        productId         : productId!,
+        productClass,
+        pricePoint        : noSupplier ? "ECONOMY" : pricePoint,
+        brandOrigin       : noSupplier ? "CHINA" : brandOrigin,
+        supplier          : noSupplier ? null : {
+          supplierId   : selectedSupplier!.supplierId,
+          company      : selectedSupplier!.company,
+          supplierBrand: selectedSupplierBrand?.supplierBrand || "",
+        },
+        categoryTypes : selectedCategoryTypes.map(c => ({ productUsageId: c.id, categoryTypeName: c.name })),
+        productFamilies: selectedProductFamily
+          ? [{ productFamilyId: selectedProductFamily.id, productFamilyName: selectedProductFamily.name }]
+          : [],
+        referenceID: user?.ReferenceID,
+        userId     : userId ?? undefined,
+      });
+
       toast.success("Product saved successfully");
       router.push("/products");
     } catch (err) {
@@ -445,13 +447,11 @@ export default function EditProductPage() {
     } finally { setSaving(false); }
   };
 
-  /* ---------------- Memos ---------------- */
   const filteredCategoryTypes = React.useMemo(() => categoryTypes.filter(i => i.name.toLowerCase().includes(categoryTypeSearch.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name)), [categoryTypes, categoryTypeSearch]);
   const filteredProductFamilies = React.useMemo(() => productFamilies.filter(i => selectedCategoryTypes.map(c => c.id).includes(i.productUsageId) && i.name.toLowerCase().includes(productFamilySearch.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name)), [productFamilies, productFamilySearch, selectedCategoryTypes]);
 
   if (loading) return null;
 
-  /* ---------------- Sub-component ---------------- */
   const ImageUploadCard = ({ label, file, previewUrl, link, onFile, onLink }: { label: string; file: File | null; previewUrl: string | null; link: string; onFile: (f: File | null) => void; onLink: (l: string, p: string) => void }) => (
     <Card>
       <CardHeader><CardTitle className="text-center text-xs font-bold uppercase tracking-wide">{label}</CardTitle></CardHeader>
@@ -481,7 +481,6 @@ export default function EditProductPage() {
 <div className="h-screen overflow-hidden">
   <div className="h-full overflow-y-auto px-6 pb-[140px]">
 
-      {/* ── MOBILE STICKY HEADER ── */}
       <div className="md:hidden sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
         <div className="flex items-center justify-between px-4 h-14">
           <button onClick={() => router.push("/products")} className="flex items-center gap-1 text-gray-600">
@@ -495,7 +494,6 @@ export default function EditProductPage() {
         </div>
       </div>
 
-      {/* ── DESKTOP HEADER ── */}
       <div className="hidden md:block p-6 pb-0">
         <SidebarTrigger />
         <h1 className="text-2xl font-bold mt-4">
@@ -505,15 +503,10 @@ export default function EditProductPage() {
         <Separator className="mt-4" />
       </div>
 
-      {/* ── CONTENT ── */}
       <div className="p-4 md:p-6 pb-28 md:pb-10 space-y-4 md:space-y-6">
-
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 md:gap-6">
 
-          {/* ── LEFT COLUMN ── */}
           <div className="space-y-4">
-
-            {/* IMAGES */}
             <Card>
               <CardHeader><CardTitle className="text-sm text-center">PRODUCT IMAGES</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -534,42 +527,21 @@ export default function EditProductPage() {
                   <Label className="text-xs text-gray-500">Or paste image link</Label>
                   <Input placeholder="https://..." value={imageLink} onChange={e => { const orig = e.target.value; setImageLink(orig); setMainImage(null); setPreview(convertDriveToThumbnail(orig)); }} />
                 </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <ImageUploadCard
-                    label="Dimensional Drawing"
-                    file={dimensionalDrawing}
-                    previewUrl={dimensionalPreview}
-                    link={dimensionalLink}
-                    onFile={handleDimensionalChange}
-                    onLink={(orig, conv) => { setDimensionalLink(orig); setDimensionalDrawing(null); setDimensionalPreview(conv); }}
-                  />
-                  <ImageUploadCard
-                    label="Illuminance Drawing"
-                    file={illuminanceDrawing}
-                    previewUrl={illuminancePreview}
-                    link={illuminanceLink}
-                    onFile={handleIlluminanceChange}
-                    onLink={(orig, conv) => { setIlluminanceLink(orig); setIlluminanceDrawing(null); setIlluminancePreview(conv); }}
-                  />
+                  <ImageUploadCard label="Dimensional Drawing" file={dimensionalDrawing} previewUrl={dimensionalPreview} link={dimensionalLink} onFile={handleDimensionalChange} onLink={(orig, conv) => { setDimensionalLink(orig); setDimensionalDrawing(null); setDimensionalPreview(conv); }} />
+                  <ImageUploadCard label="Illuminance Drawing" file={illuminanceDrawing} previewUrl={illuminancePreview} link={illuminanceLink} onFile={handleIlluminanceChange} onLink={(orig, conv) => { setIlluminanceLink(orig); setIlluminanceDrawing(null); setIlluminancePreview(conv); }} />
                 </div>
               </CardContent>
             </Card>
 
-            {/* SUPPLIER + FIELDS */}
             <Card>
               <CardHeader><CardTitle className="text-sm">Supplier & Classification</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-                  <input type="checkbox" checked={noSupplier} onChange={e => {
-                    setNoSupplier(e.target.checked);
-                    if (e.target.checked) { setSelectedSupplier(null); setSelectedSupplierBrand(null); setPricePoint("ECONOMY"); setBrandOrigin("CHINA"); }
-                  }} className="rounded" />
+                  <input type="checkbox" checked={noSupplier} onChange={e => { setNoSupplier(e.target.checked); if (e.target.checked) { setSelectedSupplier(null); setSelectedSupplierBrand(null); setPricePoint("ECONOMY"); setBrandOrigin("CHINA"); } }} className="rounded" />
                   No supplier for this product
                 </label>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Supplier */}
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-500">Supplier / Company</Label>
                     <Popover>
@@ -595,8 +567,6 @@ export default function EditProductPage() {
                       </PopoverContent>
                     </Popover>
                   </div>
-
-                  {/* Brand */}
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-500">Supplier Brand</Label>
                     <Popover>
@@ -622,8 +592,6 @@ export default function EditProductPage() {
                       </PopoverContent>
                     </Popover>
                   </div>
-
-                  {/* Price Point */}
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-500">Price Point</Label>
                     <Popover>
@@ -646,8 +614,6 @@ export default function EditProductPage() {
                       </PopoverContent>
                     </Popover>
                   </div>
-
-                  {/* Brand Origin */}
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-500">Brand Origin</Label>
                     <Popover>
@@ -670,8 +636,6 @@ export default function EditProductPage() {
                       </PopoverContent>
                     </Popover>
                   </div>
-
-                  {/* Product Class */}
                   <div className="space-y-1 sm:col-span-2">
                     <Label className="text-xs text-gray-500">Product Class</Label>
                     <Popover>
@@ -698,7 +662,6 @@ export default function EditProductPage() {
               </CardContent>
             </Card>
 
-            {/* COMMERCIAL DETAILS */}
             <Card>
               <CardHeader><CardTitle className="text-sm text-center">COMMERCIAL DETAILS</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -729,13 +692,11 @@ export default function EditProductPage() {
               </CardContent>
             </Card>
 
-            {/* TECHNICAL SPECS */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="font-semibold">Technical Specifications</Label>
                 <Button size="sm" variant="outline" onClick={addTechnicalSpec} className="h-8 text-xs rounded-xl">+ Add Group</Button>
               </div>
-
               <div className="max-h-[600px] overflow-y-auto pr-1 space-y-3">
                 {technicalSpecs.map((item, index) => (
                   <Card key={index} draggable onDragStart={() => handleDragStart(index)} onDragOver={handleDragOver} onDrop={() => handleDrop(index)} className="border-2 border-blue-200 bg-blue-50 cursor-move">
@@ -743,22 +704,14 @@ export default function EditProductPage() {
                       <div className="space-y-1">
                         <Label className="text-[10px] font-bold uppercase text-orange-600 tracking-widest block text-center">Group Title</Label>
                         <div className="flex gap-2">
-                          <Input
-                            className="border-orange-300 bg-white text-sm"
-                            placeholder="e.g. ELECTRICAL"
-                            value={item.title}
-                            onChange={e => updateTitle(index, e.target.value.toUpperCase())}
-                          />
+                          <Input className="border-orange-300 bg-white text-sm" placeholder="e.g. ELECTRICAL" value={item.title} onChange={e => updateTitle(index, e.target.value.toUpperCase())} />
                           {item.id && classificationType && selectedProductFamily && selectedCategoryTypes.length === 1 ? (
                             <AddProductDeleteTechnicalSpecification classificationId={classificationType.id} productUsageId={selectedCategoryTypes[0].id} productFamilyId={selectedProductFamily.id} technicalSpecificationId={item.id} title={item.title} referenceID={user?.ReferenceID || ""} />
                           ) : (
-                            <Button size="icon" variant="outline" className="border-orange-400 text-orange-600 shrink-0" disabled={technicalSpecs.length === 1} onClick={() => removeTechnicalSpec(index)}>
-                              <Minus className="h-4 w-4" />
-                            </Button>
+                            <Button size="icon" variant="outline" className="border-orange-400 text-orange-600 shrink-0" disabled={technicalSpecs.length === 1} onClick={() => removeTechnicalSpec(index)}><Minus className="h-4 w-4" /></Button>
                           )}
                         </div>
                       </div>
-
                       {item.specs.map((row, rIndex) => (
                         <div key={rIndex} draggable onDragStart={() => handleRowDragStart(index, rIndex)} onDragOver={e => e.preventDefault()} onDrop={() => handleRowDrop(index, rIndex)} className="border-2 border-orange-200 rounded-xl p-3 bg-orange-50 space-y-2 cursor-move">
                           <div className="grid grid-cols-2 gap-2">
@@ -772,12 +725,8 @@ export default function EditProductPage() {
                             </div>
                           </div>
                           <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" className="border-blue-400 text-blue-700 h-7 px-2.5 text-xs" onClick={() => addSpecRow(index)}>
-                              <Plus className="h-3 w-3 mr-1" /> Row
-                            </Button>
-                            <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 h-7 px-2.5 text-xs" disabled={item.specs.length === 1} onClick={() => removeSpecRow(index, rIndex)}>
-                              <Minus className="h-3 w-3 mr-1" /> Remove
-                            </Button>
+                            <Button size="sm" variant="outline" className="border-blue-400 text-blue-700 h-7 px-2.5 text-xs" onClick={() => addSpecRow(index)}><Plus className="h-3 w-3 mr-1" /> Row</Button>
+                            <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 h-7 px-2.5 text-xs" disabled={item.specs.length === 1} onClick={() => removeSpecRow(index, rIndex)}><Minus className="h-3 w-3 mr-1" /> Remove</Button>
                           </div>
                         </div>
                       ))}
@@ -788,9 +737,7 @@ export default function EditProductPage() {
             </div>
           </div>
 
-          {/* ── RIGHT COLUMN ── */}
           <div className="space-y-4 lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto lg:pb-6">
-            {/* PRODUCT USAGE */}
             <Card>
               <CardHeader><CardTitle className="text-sm text-center">SELECT PRODUCT USAGE</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -816,8 +763,6 @@ export default function EditProductPage() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* PRODUCT FAMILY */}
             <Card>
               <CardHeader><CardTitle className="text-sm text-center">SELECT PRODUCT FAMILY</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -846,19 +791,13 @@ export default function EditProductPage() {
           </div>
         </div>
 
-        {/* ── DESKTOP SAVE BUTTONS ── */}
         <div className="hidden md:flex gap-3 pt-2">
           <Button variant="secondary" onClick={() => router.push("/products")}>Cancel</Button>
           <Button onClick={handleSaveProduct} disabled={saving}>{saving ? "Saving..." : "Save Product"}</Button>
         </div>
-
-        {/* ── MOBILE BOTTOM SAVE BAR ── */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 px-4 py-3 flex gap-3"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 px-4 py-3 flex gap-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}>
           <Button variant="outline" className="flex-1 rounded-2xl h-11" onClick={() => router.push("/products")}>Cancel</Button>
-          <Button className="flex-1 rounded-2xl h-11 bg-gray-900 text-white" onClick={handleSaveProduct} disabled={saving}>
-            {saving ? "Saving..." : "Save Product"}
-          </Button>
+          <Button className="flex-1 rounded-2xl h-11 bg-gray-900 text-white" onClick={handleSaveProduct} disabled={saving}>{saving ? "Saving..." : "Save Product"}</Button>
         </div>
       </div>
     </div>

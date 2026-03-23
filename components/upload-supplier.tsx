@@ -31,6 +31,8 @@ import UploadSupplierWarning, {
   SupplierConflict,
 } from "@/components/upload-supplier-warning";
 
+import { logSupplierEvent } from "@/lib/auditlogger"; // ✅ AUDIT
+
 /* ---------------- Types ---------------- */
 type UserDetails = {
   ReferenceID: string;
@@ -55,114 +57,26 @@ type ExcelRow = {
 };
 
 /* ---------------- Phone Helpers ---------------- */
-
-/**
- * Country-code prefix map (longest-match first so +852 beats +85).
- * Extend as needed.
- */
 const COUNTRY_DIAL_CODES: Record<string, string> = {
-  // Asia
-  "86":  "CN", // China
-  "852": "HK", // Hong Kong
-  "853": "MO", // Macau
-  "886": "TW", // Taiwan
-  "81":  "JP", // Japan
-  "82":  "KR", // South Korea
-  "84":  "VN", // Vietnam
-  "66":  "TH", // Thailand
-  "60":  "MY", // Malaysia
-  "65":  "SG", // Singapore
-  "63":  "PH", // Philippines
-  "62":  "ID", // Indonesia
-  "91":  "IN", // India
-  "92":  "PK", // Pakistan
-  "880": "BD", // Bangladesh
-  "94":  "LK", // Sri Lanka
-  "95":  "MM", // Myanmar
-  "855": "KH", // Cambodia
-  "856": "LA", // Laos
-  "673": "BN", // Brunei
-  "977": "NP", // Nepal
-  "975": "BT", // Bhutan
-  // Middle East
-  "971": "AE", // UAE
-  "966": "SA", // Saudi Arabia
-  "974": "QA", // Qatar
-  "965": "KW", // Kuwait
-  "968": "OM", // Oman
-  "973": "BH", // Bahrain
-  "962": "JO", // Jordan
-  "961": "LB", // Lebanon
-  "972": "IL", // Israel
-  "90":  "TR", // Turkey
-  // Europe
-  "44":  "GB", // UK
-  "49":  "DE", // Germany
-  "33":  "FR", // France
-  "39":  "IT", // Italy
-  "34":  "ES", // Spain
-  "31":  "NL", // Netherlands
-  "32":  "BE", // Belgium
-  "41":  "CH", // Switzerland
-  "43":  "AT", // Austria
-  "48":  "PL", // Poland
-  "7":   "RU", // Russia
-  "380": "UA", // Ukraine
-  "30":  "GR", // Greece
-  "351": "PT", // Portugal
-  "46":  "SE", // Sweden
-  "47":  "NO", // Norway
-  "45":  "DK", // Denmark
-  "358": "FI", // Finland
-  "420": "CZ", // Czech Republic
-  "36":  "HU", // Hungary
-  "40":  "RO", // Romania
-  "359": "BG", // Bulgaria
-  "385": "HR", // Croatia
-  "381": "RS", // Serbia
-  "386": "SI", // Slovenia
-  "421": "SK", // Slovakia
-  // Americas
-  "1":   "US", // USA / Canada
-  "52":  "MX", // Mexico
-  "55":  "BR", // Brazil
-  "54":  "AR", // Argentina
-  "56":  "CL", // Chile
-  "57":  "CO", // Colombia
-  "51":  "PE", // Peru
-  "58":  "VE", // Venezuela
-  "593": "EC", // Ecuador
-  "591": "BO", // Bolivia
-  "595": "PY", // Paraguay
-  "598": "UY", // Uruguay
-  // Africa
-  "27":  "ZA", // South Africa
-  "234": "NG", // Nigeria
-  "254": "KE", // Kenya
-  "233": "GH", // Ghana
-  "212": "MA", // Morocco
-  "213": "DZ", // Algeria
-  "216": "TN", // Tunisia
-  "20":  "EG", // Egypt
-  "251": "ET", // Ethiopia
-  "255": "TZ", // Tanzania
-  "256": "UG", // Uganda
-  // Oceania
-  "61":  "AU", // Australia
-  "64":  "NZ", // New Zealand
+  "86": "CN", "852": "HK", "853": "MO", "886": "TW", "81": "JP",
+  "82": "KR", "84": "VN", "66": "TH", "60": "MY", "65": "SG",
+  "63": "PH", "62": "ID", "91": "IN", "92": "PK", "880": "BD",
+  "94": "LK", "95": "MM", "855": "KH", "856": "LA", "673": "BN",
+  "977": "NP", "975": "BT", "971": "AE", "966": "SA", "974": "QA",
+  "965": "KW", "968": "OM", "973": "BH", "962": "JO", "961": "LB",
+  "972": "IL", "90": "TR", "44": "GB", "49": "DE", "33": "FR",
+  "39": "IT", "34": "ES", "31": "NL", "32": "BE", "41": "CH",
+  "43": "AT", "48": "PL", "7": "RU", "380": "UA", "30": "GR",
+  "351": "PT", "46": "SE", "47": "NO", "45": "DK", "358": "FI",
+  "420": "CZ", "36": "HU", "40": "RO", "359": "BG", "385": "HR",
+  "381": "RS", "386": "SI", "421": "SK", "1": "US", "52": "MX",
+  "55": "BR", "54": "AR", "56": "CL", "57": "CO", "51": "PE",
+  "58": "VE", "593": "EC", "591": "BO", "595": "PY", "598": "UY",
+  "27": "ZA", "234": "NG", "254": "KE", "233": "GH", "212": "MA",
+  "213": "DZ", "216": "TN", "20": "EG", "251": "ET", "255": "TZ",
+  "256": "UG", "61": "AU", "64": "NZ",
 };
 
-/**
- * Given a raw phone string from Excel, returns:
- *   { normalized: "+86XXXXXXXXXX", country: "CN", isPhone: true }
- * or
- *   { normalized: "WeChat: john", country: null, isPhone: false }
- *
- * Rules:
- *  1. If starts with "+" → it's a phone, find country from dial code map.
- *  2. If all digits (possibly with spaces/dashes) → treat as phone, prepend "+".
- *  3. Otherwise → non-phone (WeChat, TikTok, etc.).
- */
 const parsePhone = (
   raw: string,
 ): { normalized: string; country: string | null; isPhone: boolean } => {
@@ -170,74 +84,38 @@ const parsePhone = (
   if (!trimmed) return { normalized: trimmed, country: null, isPhone: false };
 
   let digits = "";
-
   if (trimmed.startsWith("+")) {
-    // Strip the + and any formatting chars
     digits = trimmed.slice(1).replace(/[\s\-().]/g, "");
   } else if (/^[\d\s\-().]+$/.test(trimmed)) {
-    // Pure numeric string — treat as phone, no + yet
     digits = trimmed.replace(/[\s\-().]/g, "");
   } else {
-    // Non-numeric → others (WeChat, TikTok, etc.)
     return { normalized: trimmed, country: null, isPhone: false };
   }
 
-  // Find country by longest matching prefix (3 digits first, then 2, then 1)
   let country: string | null = null;
   for (const len of [3, 2, 1]) {
     const prefix = digits.slice(0, len);
-    if (COUNTRY_DIAL_CODES[prefix]) {
-      country = COUNTRY_DIAL_CODES[prefix];
-      break;
-    }
+    if (COUNTRY_DIAL_CODES[prefix]) { country = COUNTRY_DIAL_CODES[prefix]; break; }
   }
 
-  return {
-    normalized: `+${digits}`,
-    country,
-    isPhone: true,
-  };
+  return { normalized: `+${digits}`, country, isPhone: true };
 };
 
 /* ---------------- General Helpers ---------------- */
 const safeSplit = (value: any): string[] => {
-  if (Array.isArray(value))
-    return value
-      .map(String)
-      .map((v) => v.trim())
-      .filter(Boolean);
-
-  if (typeof value === "string")
-    return value
-      .split("|")
-      .map((v) => v.trim())
-      .filter(Boolean);
-
+  if (Array.isArray(value)) return value.map(String).map((v) => v.trim()).filter(Boolean);
+  if (typeof value === "string") return value.split("|").map((v) => v.trim()).filter(Boolean);
   if (value == null) return [];
-
-  return String(value)
-    .split("|")
-    .map((v) => v.trim())
-    .filter(Boolean);
+  return String(value).split("|").map((v) => v.trim()).filter(Boolean);
 };
 
-const normalizeJoin = (arr?: string[]) =>
-  arr && arr.length ? arr.join(" | ") : "";
-
+const normalizeJoin = (arr?: string[]) => arr && arr.length ? arr.join(" | ") : "";
 const normalizeContacts = (arr?: { name: string; phone: string }[]) =>
   arr && arr.length ? arr.map((c) => `${c.name}|${c.phone}`).join(" | ") : "";
 
-/**
- * Parse pipe-separated phone strings from Excel into normalized contacts.
- * Each phone is auto-detected as phone/other and normalized accordingly.
- */
-const parseContacts = (
-  rawNames: string,
-  rawPhones: string,
-): { name: string; phone: string }[] => {
+const parseContacts = (rawNames: string, rawPhones: string): { name: string; phone: string }[] => {
   const names = safeSplit(rawNames);
   const phones = safeSplit(rawPhones);
-
   return names.map((name, i) => {
     const rawPhone = phones[i] || "";
     const { normalized } = parsePhone(rawPhone);
@@ -251,72 +129,37 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
   const [user, setUser] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(false);
-
   const [rows, setRows] = useState<ExcelRow[]>([]);
   const [dragActive, setDragActive] = useState(false);
-
-  /* ⚠️ Duplicate warning */
   const [conflicts, setConflicts] = useState<SupplierConflict[]>([]);
   const [warningOpen, setWarningOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  /* ---------------- Fetch user ---------------- */
   useEffect(() => {
     if (!userId) return;
-
     fetch(`/api/users?id=${encodeURIComponent(userId)}`)
       .then((res) => res.json())
-      .then((data) => {
-        setUser({ ReferenceID: data.ReferenceID });
-      })
-      .catch(() => {
-        toast.error("Failed to load user");
-      });
+      .then((data) => setUser({ ReferenceID: data.ReferenceID }))
+      .catch(() => toast.error("Failed to load user"));
   }, [userId]);
 
-  /* ---------------- Read Excel ---------------- */
   const readExcel = async (file: File) => {
     try {
       if (!file) return;
-
-      if (file.size === 0) {
-        toast.error("File is empty");
-        return;
-      }
+      if (file.size === 0) { toast.error("File is empty"); return; }
 
       const arrayBuffer = await file.arrayBuffer();
-
-      const workbook = XLSX.read(arrayBuffer, {
-        type: "array",
-        cellDates: true,
-        raw: false,
-      });
-
+      const workbook = XLSX.read(arrayBuffer, { type: "array", cellDates: true, raw: false });
       const sheetName = workbook.SheetNames[0];
-
-      if (!sheetName) {
-        toast.error("Excel has no sheets");
-        return;
-      }
+      if (!sheetName) { toast.error("Excel has no sheets"); return; }
 
       const sheet = workbook.Sheets[sheetName];
-
-      const json = XLSX.utils.sheet_to_json(sheet, {
-        defval: "",
-      }) as ExcelRow[];
-
-      if (!json.length) {
-        toast.error("Excel file is empty");
-        return;
-      }
+      const json = XLSX.utils.sheet_to_json(sheet, { defval: "" }) as ExcelRow[];
+      if (!json.length) { toast.error("Excel file is empty"); return; }
 
       setRows(json);
-
-      toast.success("Excel loaded", {
-        description: `${json.length} rows detected`,
-      });
-
+      toast.success("Excel loaded", { description: `${json.length} rows detected` });
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error(error);
@@ -324,19 +167,12 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     }
   };
 
-  /* ---------------- Drag & Drop ---------------- */
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
-
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
-
-    if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
-      toast.error("Invalid file type. Only Excel or CSV allowed.");
-      return;
-    }
-
+    if (!file.name.match(/\.(xlsx|xls|csv)$/)) { toast.error("Invalid file type. Only Excel or CSV allowed."); return; }
     readExcel(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -344,142 +180,103 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
-      toast.error("Invalid file type. Only Excel or CSV allowed.");
-      return;
-    }
-
+    if (!file.name.match(/\.(xlsx|xls|csv)$/)) { toast.error("Invalid file type. Only Excel or CSV allowed."); return; }
     readExcel(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  /* ---------------- Confirm Upload ---------------- */
   const handleConfirmUpload = async () => {
-    if (!rows.length) {
-      toast.error("No data to upload");
-      return;
-    }
-
-    if (!user?.ReferenceID) {
-      toast.error("User reference not loaded");
-      return;
-    }
+    if (!rows.length) { toast.error("No data to upload"); return; }
+    if (!user?.ReferenceID) { toast.error("User reference not loaded"); return; }
 
     try {
       setLoading(true);
 
       const snap = await getDocs(collection(db, "suppliers"));
-
-      const supplierMap = new Map<
-        string,
-        { id: string; isActive: boolean; data: any }
-      >();
-
+      const supplierMap = new Map<string, { id: string; isActive: boolean; data: any }>();
       snap.docs.forEach((d) => {
         const data = d.data();
         if (!data.company) return;
-
-        supplierMap.set(data.company.toLowerCase(), {
-          id: d.id,
-          isActive: data.isActive !== false,
-          data,
-        });
+        supplierMap.set(data.company.toLowerCase(), { id: d.id, isActive: data.isActive !== false, data });
       });
 
       let inserted = 0;
       let skipped = 0;
       let reactivated = 0;
-
       const detectedConflicts: SupplierConflict[] = [];
 
       for (const row of rows) {
         const company = String(
-          row["Company Name"] ??
-            (row as any)["Company"] ??
-            (row as any)["company name"] ??
-            (row as any)["company"] ??
-            "",
+          row["Company Name"] ?? (row as any)["Company"] ?? (row as any)["company name"] ?? (row as any)["company"] ?? "",
         ).trim();
 
-        if (!company) {
-          skipped++;
-          continue;
-        }
+        if (!company) { skipped++; continue; }
 
         const key = company.toLowerCase();
         const existing = supplierMap.get(key);
-
-        // ✅ Parse contacts with auto phone detection
-        const incomingContacts = parseContacts(
-          String(row["Contact Name(s)"] ?? ""),
-          String(row["Phone Number(s)"] ?? ""),
-        );
+        const incomingContacts = parseContacts(String(row["Contact Name(s)"] ?? ""), String(row["Phone Number(s)"] ?? ""));
 
         // 🔴 EXISTING & ACTIVE → check for differences
         if (existing?.isActive) {
           const existingData = existing.data;
-
           const incomingData = {
-            supplierBrand: String(row["Supplier Brand"] ?? "").trim(),
-            addresses: safeSplit(row.Addresses),
-            emails: safeSplit(row.Emails),
-            website: row.Website || "",
-            contacts: incomingContacts,
-            forteProducts: safeSplit(row["Forte Product(s)"]),
-            products: safeSplit(row["Product(s)"]),
-            certificates: safeSplit(row["Certificate(s)"]),
+            supplierBrand : String(row["Supplier Brand"] ?? "").trim(),
+            addresses     : safeSplit(row.Addresses),
+            emails        : safeSplit(row.Emails),
+            website       : row.Website || "",
+            contacts      : incomingContacts,
+            forteProducts : safeSplit(row["Forte Product(s)"]),
+            products      : safeSplit(row["Product(s)"]),
+            certificates  : safeSplit(row["Certificate(s)"]),
           };
 
           const isDifferent =
             (existingData.supplierBrand || "") !== incomingData.supplierBrand ||
-            normalizeJoin(existingData.addresses) !==
-              normalizeJoin(incomingData.addresses) ||
-            normalizeJoin(existingData.emails) !==
-              normalizeJoin(incomingData.emails) ||
+            normalizeJoin(existingData.addresses) !== normalizeJoin(incomingData.addresses) ||
+            normalizeJoin(existingData.emails) !== normalizeJoin(incomingData.emails) ||
             (existingData.website || "") !== incomingData.website ||
-            normalizeContacts(existingData.contacts) !==
-              normalizeContacts(incomingData.contacts) ||
-            normalizeJoin(existingData.forteProducts) !==
-              normalizeJoin(incomingData.forteProducts) ||
-            normalizeJoin(existingData.products) !==
-              normalizeJoin(incomingData.products) ||
-            normalizeJoin(existingData.certificates) !==
-              normalizeJoin(incomingData.certificates);
+            normalizeContacts(existingData.contacts) !== normalizeContacts(incomingData.contacts) ||
+            normalizeJoin(existingData.forteProducts) !== normalizeJoin(incomingData.forteProducts) ||
+            normalizeJoin(existingData.products) !== normalizeJoin(incomingData.products) ||
+            normalizeJoin(existingData.certificates) !== normalizeJoin(incomingData.certificates);
 
           if (isDifferent) {
-            detectedConflicts.push({
-              supplierId: existing.id,
-              company,
-              existing: existingData,
-              incoming: incomingData,
-            });
+            detectedConflicts.push({ supplierId: existing.id, company, existing: existingData, incoming: incomingData });
           } else {
             skipped++;
           }
-
           continue;
         }
 
-        // 🔁 EXISTING BUT INACTIVE → REACTIVATE & UPDATE
+        // 🔁 EXISTING BUT INACTIVE → REACTIVATE
         if (existing) {
           const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
-
           await updateDoc(doc(db, "suppliers", existing.id), {
-            whatHappened: "Supplier Added",
-            date_updated: serverTimestamp(),
-            supplierId: existing.id,
+            whatHappened  : "Supplier Added",
+            date_updated  : serverTimestamp(),
+            supplierId    : existing.id,
             supplierBrand,
             supplierbrandId: existing.id,
-            addresses: safeSplit(row.Addresses),
-            emails: safeSplit(row.Emails),
-            website: row.Website || "",
-            contacts: incomingContacts, // ✅ normalized phones
-            forteProducts: safeSplit(row["Forte Product(s)"]),
-            products: safeSplit(row["Product(s)"]),
-            certificates: safeSplit(row["Certificate(s)"]),
-            isActive: true,
-            updatedAt: serverTimestamp(),
+            addresses     : safeSplit(row.Addresses),
+            emails        : safeSplit(row.Emails),
+            website       : row.Website || "",
+            contacts      : incomingContacts,
+            forteProducts : safeSplit(row["Forte Product(s)"]),
+            products      : safeSplit(row["Product(s)"]),
+            certificates  : safeSplit(row["Certificate(s)"]),
+            isActive      : true,
+            updatedAt     : serverTimestamp(),
+          });
+
+          // ✅ AUDIT — reactivated
+          await logSupplierEvent({
+            whatHappened  : "Supplier Reactivated",
+            supplierId    : existing.id,
+            company,
+            supplierBrand,
+            referenceID   : user.ReferenceID,
+            userId        : userId ?? undefined,
+            extra         : { source: "excel_upload" },
           });
 
           supplierMap.set(key, { ...existing, isActive: true });
@@ -489,28 +286,38 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
         // 🟢 NEW SUPPLIER → INSERT
         const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
-
         const docRef = await addDoc(collection(db, "suppliers"), {
           company,
           supplierBrand,
-          addresses: safeSplit(row.Addresses),
-          emails: safeSplit(row.Emails),
-          website: row.Website || "",
-          contacts: incomingContacts, // ✅ normalized phones
-          forteProducts: safeSplit(row["Forte Product(s)"]),
-          products: safeSplit(row["Product(s)"]),
-          certificates: safeSplit(row["Certificate(s)"]),
-          createdBy: userId,
-          referenceID: user.ReferenceID,
-          isActive: true,
-          createdAt: serverTimestamp(),
+          addresses     : safeSplit(row.Addresses),
+          emails        : safeSplit(row.Emails),
+          website       : row.Website || "",
+          contacts      : incomingContacts,
+          forteProducts : safeSplit(row["Forte Product(s)"]),
+          products      : safeSplit(row["Product(s)"]),
+          certificates  : safeSplit(row["Certificate(s)"]),
+          createdBy     : userId,
+          referenceID   : user.ReferenceID,
+          isActive      : true,
+          createdAt     : serverTimestamp(),
         });
 
         await updateDoc(doc(db, "suppliers", docRef.id), {
-          supplierId: docRef.id,
+          supplierId    : docRef.id,
           supplierbrandId: docRef.id,
-          whatHappened: "Supplier Added",
-          date_updated: serverTimestamp(),
+          whatHappened  : "Supplier Added",
+          date_updated  : serverTimestamp(),
+        });
+
+        // ✅ AUDIT — new supplier
+        await logSupplierEvent({
+          whatHappened  : "Supplier Added",
+          supplierId    : docRef.id,
+          company,
+          supplierBrand,
+          referenceID   : user.ReferenceID,
+          userId        : userId ?? undefined,
+          extra         : { source: "excel_upload" },
         });
 
         supplierMap.set(key, { id: "new", isActive: true, data: {} });
@@ -532,6 +339,17 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         toast.success("Upload completed", {
           description: `Inserted: ${inserted}, Reactivated: ${reactivated}, Skipped: ${skipped}`,
         });
+
+        // ✅ AUDIT — bulk upload summary
+        await logSupplierEvent({
+          whatHappened : "Supplier Bulk Upload",
+          referenceID  : user.ReferenceID,
+          userId       : userId ?? undefined,
+          inserted,
+          reactivated,
+          skipped,
+          extra        : { source: "excel_upload" },
+        });
       }
 
       setRows([]);
@@ -544,7 +362,6 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     }
   };
 
-  /* ---------------- UI ---------------- */
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -557,26 +374,15 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
           <div
             onClick={() => fileInputRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragActive(true);
-            }}
+            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
             onDragLeave={() => setDragActive(false)}
             onDrop={handleDrop}
             className={`border-2 border-dashed rounded-md p-6 text-center text-sm cursor-pointer
             ${dragActive ? "border-primary bg-muted/40" : "border-muted"}`}
           >
             Click or drag & drop Excel file here
-            <div className="text-xs text-muted-foreground mt-1">
-              (.xlsx, .xls, .csv)
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
+            <div className="text-xs text-muted-foreground mt-1">(.xlsx, .xls, .csv)</div>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} />
           </div>
 
           {rows.length > 0 && (
@@ -598,13 +404,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
                 </thead>
                 <tbody>
                   {rows.map((row, i) => {
-                    // ✅ Preview normalized phones in the table too
-                    const previewPhones = safeSplit(
-                      String(row["Phone Number(s)"] ?? ""),
-                    )
+                    const previewPhones = safeSplit(String(row["Phone Number(s)"] ?? ""))
                       .map((p) => parsePhone(p).normalized)
                       .join(" | ");
-
                     return (
                       <tr key={i}>
                         <td className="p-2">{row["Company Name"] || "-"}</td>
@@ -612,13 +414,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
                         <td className="p-2">{row.Addresses || "-"}</td>
                         <td className="p-2">{row.Emails || "-"}</td>
                         <td className="p-2">{row.Website || "-"}</td>
-                        <td className="p-2">
-                          {row["Contact Name(s)"] || "-"}
-                        </td>
+                        <td className="p-2">{row["Contact Name(s)"] || "-"}</td>
                         <td className="p-2">{previewPhones || "-"}</td>
-                        <td className="p-2">
-                          {row["Forte Product(s)"] || "-"}
-                        </td>
+                        <td className="p-2">{row["Forte Product(s)"] || "-"}</td>
                         <td className="p-2">{row["Product(s)"] || "-"}</td>
                         <td className="p-2">{row["Certificate(s)"] || "-"}</td>
                       </tr>
@@ -630,21 +428,10 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           )}
 
           <DialogFooter className="gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setRows([]);
-                onOpenChange(false);
-              }}
-              disabled={loading}
-            >
+            <Button variant="secondary" onClick={() => { setRows([]); onOpenChange(false); }} disabled={loading}>
               Cancel
             </Button>
-
-            <Button
-              onClick={handleConfirmUpload}
-              disabled={loading || rows.length === 0}
-            >
+            <Button onClick={handleConfirmUpload} disabled={loading || rows.length === 0}>
               {loading ? "Uploading..." : "Go / Confirm Upload"}
             </Button>
           </DialogFooter>
@@ -654,30 +441,47 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           open={warningOpen}
           conflicts={conflicts}
           performedByReferenceID={user?.ReferenceID}
-          onCancel={() => {
-            setConflicts([]);
-            setWarningOpen(false);
-          }}
+          onCancel={() => { setConflicts([]); setWarningOpen(false); }}
           onProceed={async () => {
             setWarningOpen(false);
             setLoading(true);
 
             for (const c of conflicts) {
               await updateDoc(doc(db, "suppliers", c.supplierId), {
-                supplierBrand: c.incoming.supplierBrand,
-                supplierbrandId: c.supplierId,
-                addresses: c.incoming.addresses,
-                emails: c.incoming.emails,
-                website: c.incoming.website,
-                contacts: c.incoming.contacts, // ✅ already normalized
-                forteProducts: c.incoming.forteProducts,
-                products: c.incoming.products,
-                certificates: c.incoming.certificates,
-                updatedAt: serverTimestamp(),
-                updatedBy: userId,
+                supplierBrand       : c.incoming.supplierBrand,
+                supplierbrandId     : c.supplierId,
+                addresses           : c.incoming.addresses,
+                emails              : c.incoming.emails,
+                website             : c.incoming.website,
+                contacts            : c.incoming.contacts,
+                forteProducts       : c.incoming.forteProducts,
+                products            : c.incoming.products,
+                certificates        : c.incoming.certificates,
+                updatedAt           : serverTimestamp(),
+                updatedBy           : userId,
                 updatedByReferenceID: user?.ReferenceID,
               });
+
+              // ✅ AUDIT — per-supplier overwrite
+              await logSupplierEvent({
+                whatHappened  : "Supplier Edited",
+                supplierId    : c.supplierId,
+                company       : c.company,
+                supplierBrand : c.incoming.supplierBrand,
+                referenceID   : user?.ReferenceID,
+                userId        : userId ?? undefined,
+                extra         : { source: "excel_upload_conflict_overwrite" },
+              });
             }
+
+            // ✅ AUDIT — bulk overwrite summary
+            await logSupplierEvent({
+              whatHappened : "Supplier Bulk Upload",
+              referenceID  : user?.ReferenceID,
+              userId       : userId ?? undefined,
+              overwritten  : conflicts.length,
+              extra        : { source: "excel_upload_conflict_resolved" },
+            });
 
             toast.success("Suppliers updated", {
               description: `${conflicts.length} supplier(s) overwritten`,

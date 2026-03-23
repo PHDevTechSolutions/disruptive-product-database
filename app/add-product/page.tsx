@@ -47,6 +47,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { logProductEvent } from "@/lib/auditlogger"; // ✅ AUDIT
 
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
@@ -327,6 +328,28 @@ export default function AddProductPage() {
       });
 
       if (mainImage) await uploadProductMedia(productRef.id);
+
+      // ✅ AUDIT LOG
+      await logProductEvent({
+        whatHappened      : "Product Added",
+        productId         : productRef.id,
+        productReferenceID: newProductReferenceID,
+        productClass,
+        pricePoint        : noSupplier ? "ECONOMY" : pricePoint,
+        brandOrigin       : noSupplier ? "CHINA" : brandOrigin,
+        supplier          : noSupplier ? null : {
+          supplierId   : selectedSupplier!.supplierId,
+          company      : selectedSupplier!.company,
+          supplierBrand: selectedSupplierBrand?.supplierBrand || "",
+        },
+        categoryTypes : selectedCategoryTypes.map(c => ({ productUsageId: c.id, categoryTypeName: c.name })),
+        productFamilies: selectedProductFamily
+          ? [{ productFamilyId: selectedProductFamily.id, productFamilyName: selectedProductFamily.name }]
+          : [],
+        referenceID: user?.ReferenceID,
+        userId     : userId ?? undefined,
+      });
+
       toast.success("Product saved successfully");
       router.push("/products");
     } catch (err) {
@@ -405,7 +428,6 @@ export default function AddProductPage() {
             <Card>
               <CardHeader><CardTitle className="text-sm text-center">PRODUCT IMAGES</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                {/* Main image */}
                 <label
                   className="flex flex-col items-center justify-center border-2 border-dashed rounded-xl h-52 cursor-pointer hover:border-blue-400 transition bg-gray-50"
                   onDragOver={e => e.preventDefault()}
@@ -423,24 +445,9 @@ export default function AddProductPage() {
                   <Label className="text-xs text-gray-500">Or paste image link</Label>
                   <Input placeholder="https://..." value={imageLink} onChange={e => { const orig = e.target.value; setImageLink(orig); setMainImage(null); setPreview(convertDriveToThumbnail(orig)); }} />
                 </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <ImageUploadCard
-                    label="Dimensional Drawing"
-                    file={dimensionalDrawing}
-                    previewUrl={dimensionalPreview}
-                    link={dimensionalLink}
-                    onFile={handleDimensionalChange}
-                    onLink={(orig, conv) => { setDimensionalLink(orig); setDimensionalDrawing(null); setDimensionalPreview(conv); }}
-                  />
-                  <ImageUploadCard
-                    label="Illuminance Drawing"
-                    file={illuminanceDrawing}
-                    previewUrl={illuminancePreview}
-                    link={illuminanceLink}
-                    onFile={handleIlluminanceChange}
-                    onLink={(orig, conv) => { setIlluminanceLink(orig); setIlluminanceDrawing(null); setIlluminancePreview(conv); }}
-                  />
+                  <ImageUploadCard label="Dimensional Drawing" file={dimensionalDrawing} previewUrl={dimensionalPreview} link={dimensionalLink} onFile={handleDimensionalChange} onLink={(orig, conv) => { setDimensionalLink(orig); setDimensionalDrawing(null); setDimensionalPreview(conv); }} />
+                  <ImageUploadCard label="Illuminance Drawing" file={illuminanceDrawing} previewUrl={illuminancePreview} link={illuminanceLink} onFile={handleIlluminanceChange} onLink={(orig, conv) => { setIlluminanceLink(orig); setIlluminanceDrawing(null); setIlluminancePreview(conv); }} />
                 </div>
               </CardContent>
             </Card>
@@ -450,15 +457,10 @@ export default function AddProductPage() {
               <CardHeader><CardTitle className="text-sm">Supplier & Classification</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-                  <input type="checkbox" checked={noSupplier} onChange={e => {
-                    setNoSupplier(e.target.checked);
-                    if (e.target.checked) { setSelectedSupplier(null); setSelectedSupplierBrand(null); setPricePoint("ECONOMY"); setBrandOrigin("CHINA"); }
-                  }} className="rounded" />
+                  <input type="checkbox" checked={noSupplier} onChange={e => { setNoSupplier(e.target.checked); if (e.target.checked) { setSelectedSupplier(null); setSelectedSupplierBrand(null); setPricePoint("ECONOMY"); setBrandOrigin("CHINA"); } }} className="rounded" />
                   No supplier for this product
                 </label>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Supplier */}
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-500">Supplier / Company</Label>
                     <Popover>
@@ -484,8 +486,6 @@ export default function AddProductPage() {
                       </PopoverContent>
                     </Popover>
                   </div>
-
-                  {/* Brand */}
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-500">Supplier Brand</Label>
                     <Popover>
@@ -511,8 +511,6 @@ export default function AddProductPage() {
                       </PopoverContent>
                     </Popover>
                   </div>
-
-                  {/* Price Point */}
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-500">Price Point</Label>
                     <Popover>
@@ -535,8 +533,6 @@ export default function AddProductPage() {
                       </PopoverContent>
                     </Popover>
                   </div>
-
-                  {/* Brand Origin */}
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-500">Brand Origin</Label>
                     <Popover>
@@ -559,8 +555,6 @@ export default function AddProductPage() {
                       </PopoverContent>
                     </Popover>
                   </div>
-
-                  {/* Product Class */}
                   <div className="space-y-1 sm:col-span-2">
                     <Label className="text-xs text-gray-500">Product Class</Label>
                     <Popover>
@@ -624,32 +618,21 @@ export default function AddProductPage() {
                 <Label className="font-semibold">Technical Specifications</Label>
                 <Button size="sm" variant="outline" onClick={addTechnicalSpec} className="h-8 text-xs rounded-xl">+ Add Group</Button>
               </div>
-
               <div className="max-h-[600px] overflow-y-auto pr-1 space-y-3">
                 {technicalSpecs.map((item, index) => (
                   <Card key={index} draggable onDragStart={() => handleDragStart(index)} onDragOver={handleDragOver} onDrop={() => handleDrop(index)} className="border-2 border-blue-200 bg-blue-50 cursor-move">
                     <CardContent className="p-3 space-y-3">
-                      {/* Title row */}
                       <div className="space-y-1">
                         <Label className="text-[10px] font-bold uppercase text-orange-600 tracking-widest block text-center">Group Title</Label>
                         <div className="flex gap-2">
-                          <Input
-                            className="border-orange-300 bg-white text-sm"
-                            placeholder="e.g. ELECTRICAL"
-                            value={item.title}
-                            onChange={e => updateTitle(index, e.target.value.toUpperCase())}
-                          />
+                          <Input className="border-orange-300 bg-white text-sm" placeholder="e.g. ELECTRICAL" value={item.title} onChange={e => updateTitle(index, e.target.value.toUpperCase())} />
                           {item.id && classificationType && selectedProductFamily && selectedCategoryTypes.length === 1 ? (
                             <AddProductDeleteTechnicalSpecification classificationId={classificationType.id} productUsageId={selectedCategoryTypes[0].id} productFamilyId={selectedProductFamily.id} technicalSpecificationId={item.id} title={item.title} referenceID={user?.ReferenceID || ""} />
                           ) : (
-                            <Button size="icon" variant="outline" className="border-orange-400 text-orange-600 shrink-0" disabled={technicalSpecs.length === 1} onClick={() => removeTechnicalSpec(index)}>
-                              <Minus className="h-4 w-4" />
-                            </Button>
+                            <Button size="icon" variant="outline" className="border-orange-400 text-orange-600 shrink-0" disabled={technicalSpecs.length === 1} onClick={() => removeTechnicalSpec(index)}><Minus className="h-4 w-4" /></Button>
                           )}
                         </div>
                       </div>
-
-                      {/* Spec rows */}
                       {item.specs.map((row, rIndex) => (
                         <div key={rIndex} draggable onDragStart={() => handleRowDragStart(index, rIndex)} onDragOver={e => e.preventDefault()} onDrop={() => handleRowDrop(index, rIndex)} className="border-2 border-orange-200 rounded-xl p-3 bg-orange-50 space-y-2 cursor-move">
                           <div className="grid grid-cols-2 gap-2">
@@ -663,12 +646,8 @@ export default function AddProductPage() {
                             </div>
                           </div>
                           <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" className="border-blue-400 text-blue-700 h-7 px-2.5 text-xs" onClick={() => addSpecRow(index)}>
-                              <Plus className="h-3 w-3 mr-1" /> Row
-                            </Button>
-                            <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 h-7 px-2.5 text-xs" disabled={item.specs.length === 1} onClick={() => removeSpecRow(index, rIndex)}>
-                              <Minus className="h-3 w-3 mr-1" /> Remove
-                            </Button>
+                            <Button size="sm" variant="outline" className="border-blue-400 text-blue-700 h-7 px-2.5 text-xs" onClick={() => addSpecRow(index)}><Plus className="h-3 w-3 mr-1" /> Row</Button>
+                            <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 h-7 px-2.5 text-xs" disabled={item.specs.length === 1} onClick={() => removeSpecRow(index, rIndex)}><Minus className="h-3 w-3 mr-1" /> Remove</Button>
                           </div>
                         </div>
                       ))}
@@ -681,7 +660,6 @@ export default function AddProductPage() {
 
           {/* ── RIGHT COLUMN ── */}
           <div className="space-y-4 lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto lg:pb-6">
-            {/* PRODUCT USAGE */}
             <Card>
               <CardHeader><CardTitle className="text-sm text-center">SELECT PRODUCT USAGE</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -707,8 +685,6 @@ export default function AddProductPage() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* PRODUCT FAMILY */}
             <Card>
               <CardHeader><CardTitle className="text-sm text-center">SELECT PRODUCT FAMILY</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -737,19 +713,13 @@ export default function AddProductPage() {
           </div>
         </div>
 
-        {/* ── DESKTOP SAVE BUTTONS ── */}
         <div className="hidden md:flex gap-3 pt-2">
           <Button variant="secondary" onClick={() => router.push("/products")}>Cancel</Button>
           <Button onClick={handleSaveProduct} disabled={saving}>{saving ? "Saving..." : "Save Product"}</Button>
         </div>
-
-        {/* ── MOBILE BOTTOM SAVE BAR ── */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 px-4 py-3 flex gap-3"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 px-4 py-3 flex gap-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}>
           <Button variant="outline" className="flex-1 rounded-2xl h-11" onClick={() => router.push("/products")}>Cancel</Button>
-          <Button className="flex-1 rounded-2xl h-11 bg-gray-900 text-white" onClick={handleSaveProduct} disabled={saving}>
-            {saving ? "Saving..." : "Save Product"}
-          </Button>
+          <Button className="flex-1 rounded-2xl h-11 bg-gray-900 text-white" onClick={handleSaveProduct} disabled={saving}>{saving ? "Saving..." : "Save Product"}</Button>
         </div>
       </div>
     </div>

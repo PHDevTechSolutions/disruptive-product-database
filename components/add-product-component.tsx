@@ -45,6 +45,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { logProductEvent } from "@/lib/auditlogger"; // ✅ AUDIT
 
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
@@ -175,7 +176,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
     return onSnapshot(q, snap => setProductFamilies(snap.docs.map(d => ({ id: d.id, name: d.data().name, productUsageId: d.data().categoryTypeId }))));
   }, [selectedCategoryTypes]);
 
-  /* ---------------- Tech Spec Handlers ---------------- */
   const addTechnicalSpec = () => setTechnicalSpecs(p => [...p, { id: "", title: "", specs: [emptySpecRow()] }]);
   const removeTechnicalSpec = (i: number) => setTechnicalSpecs(p => p.length > 1 ? p.filter((_, idx) => idx !== i) : p);
   const updateTitle = (i: number, v: string) => setTechnicalSpecs(p => p.map((x, idx) => idx === i ? { ...x, title: v } : x));
@@ -187,7 +187,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
     setTechnicalSpecs(copy);
   };
 
-  /* ---------------- Drag Handlers ---------------- */
   const handleDragStart = (i: number) => { dragIndex.current = i; };
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
   const handleDrop = (di: number) => {
@@ -210,7 +209,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
     setTechnicalSpecs(copy);
   };
 
-  /* ---------------- Image Handlers ---------------- */
   const handleImageChange = (file: File | null) => {
     if (!file) return;
     setMainImage(file); setImageLink("");
@@ -230,7 +228,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
     setIlluminancePreview(URL.createObjectURL(file));
   };
 
-  /* ---------------- Category / Family Handlers ---------------- */
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
     await addDoc(collection(db, "categoryTypes"), { name: newCategoryType.trim(), isActive: true, createdAt: serverTimestamp(), whatHappened: "Product Usage Added", date_updated: serverTimestamp() });
@@ -253,7 +250,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
     setTechnicalSpecs(loaded);
   };
 
-  /* ---------------- Sync + Upload Helpers ---------------- */
   const syncSpecsToProductType = async () => {
     if (!selectedProductFamily || selectedCategoryTypes.length !== 1) return;
     const { id: categoryTypeId } = selectedCategoryTypes[0];
@@ -376,6 +372,27 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
 
       if (mainImage) await uploadProductMedia(productRef.id);
 
+      // ✅ AUDIT LOG
+      await logProductEvent({
+        whatHappened      : "Product Added",
+        productId         : productRef.id,
+        productReferenceID: newProductReferenceID,
+        productClass,
+        pricePoint        : noSupplier ? "ECONOMY" : pricePoint,
+        brandOrigin       : noSupplier ? "CHINA" : brandOrigin,
+        supplier          : noSupplier ? null : {
+          supplierId   : selectedSupplier!.supplierId,
+          company      : selectedSupplier!.company,
+          supplierBrand: selectedSupplierBrand?.supplierBrand || "",
+        },
+        categoryTypes : selectedCategoryTypes.map(c => ({ productUsageId: c.id, categoryTypeName: c.name })),
+        productFamilies: selectedProductFamily
+          ? [{ productFamilyId: selectedProductFamily.id, productFamilyName: selectedProductFamily.name }]
+          : [],
+        referenceID: user?.ReferenceID,
+        userId     : userId ?? undefined,
+      });
+
       toast.success("Product saved successfully");
       if (onClose) onClose();
     } catch (err) {
@@ -384,13 +401,11 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
     } finally { setSaving(false); }
   };
 
-  /* ---------------- Memos ---------------- */
   const filteredCategoryTypes = React.useMemo(() => categoryTypes.filter(i => i.name.toLowerCase().includes(categoryTypeSearch.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name)), [categoryTypes, categoryTypeSearch]);
   const filteredProductFamilies = React.useMemo(() => productFamilies.filter(i => selectedCategoryTypes.map(c => c.id).includes(i.productUsageId) && i.name.toLowerCase().includes(productFamilySearch.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name)), [productFamilies, productFamilySearch, selectedCategoryTypes]);
 
   if (loading) return null;
 
-  /* ---------------- Sub-component ---------------- */
   const ImageUploadCard = ({ label, file, previewUrl, link, onFile, onLink }: { label: string; file: File | null; previewUrl: string | null; link: string; onFile: (f: File | null) => void; onLink: (l: string, p: string) => void }) => (
     <Card>
       <CardHeader><CardTitle className="text-center text-xs font-bold uppercase tracking-wide">{label}</CardTitle></CardHeader>
@@ -422,10 +437,7 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 md:gap-6">
 
-        {/* ── LEFT COLUMN ── */}
         <div className="space-y-4">
-
-          {/* IMAGES */}
           <Card>
             <CardHeader><CardTitle className="text-sm text-center">PRODUCT IMAGES</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -446,42 +458,21 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
                 <Label className="text-xs text-gray-500">Or paste image link</Label>
                 <Input placeholder="https://..." value={imageLink} onChange={e => { const orig = e.target.value; setImageLink(orig); setMainImage(null); setPreview(convertDriveToThumbnail(orig)); }} />
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <ImageUploadCard
-                  label="Dimensional Drawing"
-                  file={dimensionalDrawing}
-                  previewUrl={dimensionalPreview}
-                  link={dimensionalLink}
-                  onFile={handleDimensionalChange}
-                  onLink={(orig, conv) => { setDimensionalLink(orig); setDimensionalDrawing(null); setDimensionalPreview(conv); }}
-                />
-                <ImageUploadCard
-                  label="Illuminance Drawing"
-                  file={illuminanceDrawing}
-                  previewUrl={illuminancePreview}
-                  link={illuminanceLink}
-                  onFile={handleIlluminanceChange}
-                  onLink={(orig, conv) => { setIlluminanceLink(orig); setIlluminanceDrawing(null); setIlluminancePreview(conv); }}
-                />
+                <ImageUploadCard label="Dimensional Drawing" file={dimensionalDrawing} previewUrl={dimensionalPreview} link={dimensionalLink} onFile={handleDimensionalChange} onLink={(orig, conv) => { setDimensionalLink(orig); setDimensionalDrawing(null); setDimensionalPreview(conv); }} />
+                <ImageUploadCard label="Illuminance Drawing" file={illuminanceDrawing} previewUrl={illuminancePreview} link={illuminanceLink} onFile={handleIlluminanceChange} onLink={(orig, conv) => { setIlluminanceLink(orig); setIlluminanceDrawing(null); setIlluminancePreview(conv); }} />
               </div>
             </CardContent>
           </Card>
 
-          {/* SUPPLIER + FIELDS */}
           <Card>
             <CardHeader><CardTitle className="text-sm">Supplier & Classification</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-                <input type="checkbox" checked={noSupplier} onChange={e => {
-                  setNoSupplier(e.target.checked);
-                  if (e.target.checked) { setSelectedSupplier(null); setSelectedSupplierBrand(null); setPricePoint("ECONOMY"); setBrandOrigin("CHINA"); }
-                }} className="rounded" />
+                <input type="checkbox" checked={noSupplier} onChange={e => { setNoSupplier(e.target.checked); if (e.target.checked) { setSelectedSupplier(null); setSelectedSupplierBrand(null); setPricePoint("ECONOMY"); setBrandOrigin("CHINA"); } }} className="rounded" />
                 No supplier for this product
               </label>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Supplier */}
                 <div className="space-y-1">
                   <Label className="text-xs text-gray-500">Supplier / Company</Label>
                   <Popover>
@@ -507,8 +498,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
                     </PopoverContent>
                   </Popover>
                 </div>
-
-                {/* Brand */}
                 <div className="space-y-1">
                   <Label className="text-xs text-gray-500">Supplier Brand</Label>
                   <Popover>
@@ -534,8 +523,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
                     </PopoverContent>
                   </Popover>
                 </div>
-
-                {/* Price Point */}
                 <div className="space-y-1">
                   <Label className="text-xs text-gray-500">Price Point</Label>
                   <Popover>
@@ -558,8 +545,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
                     </PopoverContent>
                   </Popover>
                 </div>
-
-                {/* Brand Origin */}
                 <div className="space-y-1">
                   <Label className="text-xs text-gray-500">Brand Origin</Label>
                   <Popover>
@@ -582,8 +567,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
                     </PopoverContent>
                   </Popover>
                 </div>
-
-                {/* Product Class */}
                 <div className="space-y-1 sm:col-span-2">
                   <Label className="text-xs text-gray-500">Product Class</Label>
                   <Popover>
@@ -610,7 +593,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
             </CardContent>
           </Card>
 
-          {/* COMMERCIAL DETAILS */}
           <Card>
             <CardHeader><CardTitle className="text-sm text-center">COMMERCIAL DETAILS</CardTitle></CardHeader>
             <CardContent className="space-y-3">
@@ -641,13 +623,11 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
             </CardContent>
           </Card>
 
-          {/* TECHNICAL SPECS */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="font-semibold">Technical Specifications</Label>
               <Button size="sm" variant="outline" onClick={addTechnicalSpec} className="h-8 text-xs rounded-xl">+ Add Group</Button>
             </div>
-
             <div className="max-h-[600px] overflow-y-auto pr-1 space-y-3">
               {technicalSpecs.map((item, index) => (
                 <Card key={index} draggable onDragStart={() => handleDragStart(index)} onDragOver={handleDragOver} onDrop={() => handleDrop(index)} className="border-2 border-blue-200 bg-blue-50 cursor-move">
@@ -655,22 +635,14 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
                     <div className="space-y-1">
                       <Label className="text-[10px] font-bold uppercase text-orange-600 tracking-widest block text-center">Group Title</Label>
                       <div className="flex gap-2">
-                        <Input
-                          className="border-orange-300 bg-white text-sm"
-                          placeholder="e.g. ELECTRICAL"
-                          value={item.title}
-                          onChange={e => updateTitle(index, e.target.value.toUpperCase())}
-                        />
+                        <Input className="border-orange-300 bg-white text-sm" placeholder="e.g. ELECTRICAL" value={item.title} onChange={e => updateTitle(index, e.target.value.toUpperCase())} />
                         {item.id && classificationType && selectedProductFamily && selectedCategoryTypes.length === 1 ? (
                           <AddProductDeleteTechnicalSpecification classificationId={classificationType.id} productUsageId={selectedCategoryTypes[0].id} productFamilyId={selectedProductFamily.id} technicalSpecificationId={item.id} title={item.title} referenceID={user?.ReferenceID || ""} />
                         ) : (
-                          <Button size="icon" variant="outline" className="border-orange-400 text-orange-600 shrink-0" disabled={technicalSpecs.length === 1} onClick={() => removeTechnicalSpec(index)}>
-                            <Minus className="h-4 w-4" />
-                          </Button>
+                          <Button size="icon" variant="outline" className="border-orange-400 text-orange-600 shrink-0" disabled={technicalSpecs.length === 1} onClick={() => removeTechnicalSpec(index)}><Minus className="h-4 w-4" /></Button>
                         )}
                       </div>
                     </div>
-
                     {item.specs.map((row, rIndex) => (
                       <div key={rIndex} draggable onDragStart={() => handleRowDragStart(index, rIndex)} onDragOver={e => e.preventDefault()} onDrop={() => handleRowDrop(index, rIndex)} className="border-2 border-orange-200 rounded-xl p-3 bg-orange-50 space-y-2 cursor-move">
                         <div className="grid grid-cols-2 gap-2">
@@ -684,12 +656,8 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
                           </div>
                         </div>
                         <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="outline" className="border-blue-400 text-blue-700 h-7 px-2.5 text-xs" onClick={() => addSpecRow(index)}>
-                            <Plus className="h-3 w-3 mr-1" /> Row
-                          </Button>
-                          <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 h-7 px-2.5 text-xs" disabled={item.specs.length === 1} onClick={() => removeSpecRow(index, rIndex)}>
-                            <Minus className="h-3 w-3 mr-1" /> Remove
-                          </Button>
+                          <Button size="sm" variant="outline" className="border-blue-400 text-blue-700 h-7 px-2.5 text-xs" onClick={() => addSpecRow(index)}><Plus className="h-3 w-3 mr-1" /> Row</Button>
+                          <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 h-7 px-2.5 text-xs" disabled={item.specs.length === 1} onClick={() => removeSpecRow(index, rIndex)}><Minus className="h-3 w-3 mr-1" /> Remove</Button>
                         </div>
                       </div>
                     ))}
@@ -700,9 +668,7 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN ── */}
         <div className="space-y-4 lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto lg:pb-6">
-          {/* PRODUCT USAGE */}
           <Card>
             <CardHeader><CardTitle className="text-sm text-center">SELECT PRODUCT USAGE</CardTitle></CardHeader>
             <CardContent className="space-y-3">
@@ -728,8 +694,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
               </div>
             </CardContent>
           </Card>
-
-          {/* PRODUCT FAMILY */}
           <Card>
             <CardHeader><CardTitle className="text-sm text-center">SELECT PRODUCT FAMILY</CardTitle></CardHeader>
             <CardContent className="space-y-3">
@@ -758,7 +722,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
         </div>
       </div>
 
-      {/* SAVE BUTTON */}
       <div className="flex gap-3 pt-2">
         <Button onClick={handleSaveProduct} disabled={saving} className="rounded-xl h-11 px-6">
           {saving ? "Saving..." : "Save Product"}

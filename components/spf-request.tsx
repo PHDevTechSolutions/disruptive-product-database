@@ -237,7 +237,7 @@ export default function SPF({ processBy }: SPFProps) {
   const isProcurementStatus = (spfNumber: string): boolean => {
     if (!createdSPFLoaded) return true;
     const s = createdSPF[spfNumber];
-    return s === "Approved by Procurement" || s === "Pending For Procurement";
+    return s === "Approved By Procurement" || s === "Pending For Procurement";
   };
 
   const freezeSpecs = (product: any) => {
