@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { supabase } from "@/utils/supabase";
-import { Funnel, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Funnel, Plus, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import FilteringComponent from "@/components/filtering-component-v2";
 import AddProductComponent from "@/components/add-product-component";
@@ -50,6 +50,7 @@ type SPFRequest = {
   special_instructions?: string;
   item_description?: string[];
   item_photo?: string[];
+  item_code?: string;
   status?: string;
   date_created?: string;
   process_by?: string;
@@ -142,6 +143,54 @@ function InlineProductSpecs({ specs }: { specs: any[] }) {
 }
 
 /* ─────────────────────────────────────────────────────────────── */
+/* PAGINATION CONTROLS                                             */
+/* ─────────────────────────────────────────────────────────────── */
+function PaginationControls({
+  page,
+  totalPages,
+  total,
+  pageSize,
+  onPage,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  pageSize: number;
+  onPage: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  const from = (page - 1) * pageSize + 1;
+  const to   = Math.min(page * pageSize, total);
+
+  return (
+    <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+      <span>{from}–{to} of {total}</span>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline" size="icon"
+          className="h-8 w-8 rounded-none"
+          disabled={page <= 1}
+          onClick={() => onPage(page - 1)}
+        >
+          <ChevronLeft size={14} />
+        </Button>
+        <span className="px-2 text-xs font-medium">
+          {page} / {totalPages}
+        </span>
+        <Button
+          variant="outline" size="icon"
+          className="h-8 w-8 rounded-none"
+          disabled={page >= totalPages}
+          onClick={() => onPage(page + 1)}
+        >
+          <ChevronRight size={14} />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
 /* MAIN COMPONENT                                                  */
 /* ─────────────────────────────────────────────────────────────── */
 export default function SPF({ processBy }: SPFProps) {
@@ -161,7 +210,7 @@ export default function SPF({ processBy }: SPFProps) {
     sales_person: "", start_date: "", end_date: "",
     special_instructions: "", status: "Pending",
     process_by: processBy, tin_no: "",
-    manager: "",
+    manager: "", item_code: "",
     item_description: [], item_photo: [],
   });
   const [productOffers, setProductOffers]       = useState<Record<number, any[]>>({});
@@ -172,8 +221,29 @@ export default function SPF({ processBy }: SPFProps) {
   const [openFilter, setOpenFilter]             = useState(false);
   const [viewMode, setViewMode]                 = useState(false);
   const [searchTerm, setSearchTerm]             = useState("");
+  const filteredRequests = useMemo(() => {
+  const term = searchTerm.toLowerCase().trim();
+
+  return requests.filter((r) =>
+    !term ||
+    (r.spf_number || "").toLowerCase().includes(term) ||
+    (r.customer_name || "").toLowerCase().includes(term) ||
+    (r.item_code || "").toLowerCase().includes(term)
+  );
+}, [requests, searchTerm]);
   const [createdSPF, setCreatedSPF]             = useState<Record<string, string>>({});
   const [createdSPFLoaded, setCreatedSPFLoaded] = useState(false);
+
+  /* ── Pagination state ── */
+  const [currentPage, setCurrentPage]   = useState(1);
+  const [totalPages, setTotalPages]     = useState(1);
+  const [totalCount, setTotalCount]     = useState(0);
+  const [pageSize, setPageSize]         = useState(20);
+  const paginatedRequests = useMemo(() => {
+  const start = (currentPage - 1) * pageSize;
+  return filteredRequests.slice(start, start + pageSize);
+}, [filteredRequests, currentPage, pageSize]);
+  const [loadingPage, setLoadingPage]   = useState(false);
 
   /* ── Desktop-only state ── */
   const [draggedProduct, setDraggedProduct] = useState<any | null>(null);
@@ -201,34 +271,58 @@ export default function SPF({ processBy }: SPFProps) {
   }, []);
 
   /* ─────────────────────────────── */
-  /* FETCH REQUESTS                  */
+  /* FETCH REQUESTS (paginated)      */
   /* ─────────────────────────────── */
   const fetchRequests = useCallback(async () => {
     try {
       setError(null);
       setCreatedSPFLoaded(false);
-      const res = await fetch("/api/request/fetch");
-      if (!res.ok) throw new Error("Failed to fetch SPF requests");
-      const data = await res.json();
-      const mapped = data.requests.map((r: any) => ({
+      setLoadingPage(true);
+
+      let allData: any[] = [];
+      let page = 1;
+
+      while (true) {
+        const res = await fetch(`/api/request/fetch?page=${page}`);
+        if (!res.ok) throw new Error("Failed to fetch SPF requests");
+
+        const data = await res.json();
+        allData = [...allData, ...data.requests];
+
+        if (page >= data.totalPages) break;
+        page++;
+      }
+
+      const mapped = allData.map((r: any) => ({
         ...r,
-        date_created: r.date_created ? new Date(r.date_created).toISOString() : null,
+        date_created: r.date_created
+          ? new Date(r.date_created).toISOString()
+          : null,
       }));
+
       setRequests(mapped);
+
+      // ✅ IMPORTANT: total now based on full data
+      setTotalCount(mapped.length);
+      setTotalPages(Math.max(1, Math.ceil(mapped.length / pageSize)));
+
       await fetchCreatedSPF(mapped.map((r: any) => r.spf_number));
+
     } catch (err: any) {
       console.error("Fetch error:", err);
       setError(err.message || "Failed to fetch SPF requests");
       setCreatedSPFLoaded(true);
+    } finally {
+      setLoadingPage(false);
     }
-  }, [fetchCreatedSPF]);
+  }, [fetchCreatedSPF, pageSize]);
 
   useEffect(() => {
     fetchRequests();
     const channel = supabase
       .channel("spf-all")
-      .on("postgres_changes", { event: "*", schema: "public", table: "spf_request" }, fetchRequests)
-      .on("postgres_changes", { event: "*", schema: "public", table: "spf_creation" }, fetchRequests)
+      .on("postgres_changes", { event: "*", schema: "public", table: "spf_request" }, () => fetchRequests())
+      .on("postgres_changes", { event: "*", schema: "public", table: "spf_creation" }, () => fetchRequests())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchRequests]);
@@ -248,11 +342,11 @@ export default function SPF({ processBy }: SPFProps) {
     const frozenSpecs = product.technicalSpecifications.map((group: any) => ({
       ...group,
       specs: group.specs?.map((spec: any) => {
-        const raw = spec.value || "";
-        const values = raw.split("|").map((v: string) => v.trim()).filter(Boolean);
+        const raw         = spec.value || "";
+        const values      = raw.split("|").map((v: string) => v.trim()).filter(Boolean);
         const uniqueValues = Array.from(new Set(values)) as string[];
         if (!activeFilters.length) return { ...spec, value: uniqueValues.join(" | ") };
-        const filtered = uniqueValues.filter((v) => activeFilters.includes(v));
+        const filtered    = uniqueValues.filter((v) => activeFilters.includes(v));
         return { ...spec, value: filtered.length ? filtered.join(" | ") : uniqueValues.join(" | ") };
       }),
     }));
@@ -274,6 +368,7 @@ export default function SPF({ processBy }: SPFProps) {
       process_by: processBy,
       item_description: normalizeArray(rowData.item_description),
       item_photo: normalizeArray(rowData.item_photo),
+      item_code: rowData.item_code ?? "",
     });
     setProductOffers({});
     setViewMode(false);
@@ -288,11 +383,10 @@ export default function SPF({ processBy }: SPFProps) {
   };
 
   /* ─────────────────────────────── */
-  /* SUBMIT — FIXED                  */
+  /* SUBMIT                          */
   /* ─────────────────────────────── */
   const handleSubmit = async () => {
     try {
-      // Tag each product with its row index before flattening
       const allProducts = Object.entries(productOffers).flatMap(([rowIndex, prods]) =>
         prods.map((p) => ({ ...p, __rowIndex: Number(rowIndex) }))
       );
@@ -352,6 +446,11 @@ export default function SPF({ processBy }: SPFProps) {
     );
   }, [searchTerm, products]);
 
+// ✅ FIXED: reset page when searching
+useEffect(() => {
+  setCurrentPage(1);
+}, [searchTerm]);
+
   /* ─────────────────────────────── */
   /* MOBILE: tap-to-add              */
   /* ─────────────────────────────── */
@@ -382,7 +481,7 @@ export default function SPF({ processBy }: SPFProps) {
   const removeProduct = (rowIndex: number, productIndex: number) => {
     setProductOffers((prev) => {
       const copy = { ...prev };
-      const arr = [...(copy[rowIndex] || [])];
+      const arr  = [...(copy[rowIndex] || [])];
       arr.splice(productIndex, 1);
       copy[rowIndex] = arr;
       return copy;
@@ -396,24 +495,41 @@ export default function SPF({ processBy }: SPFProps) {
   /* ════════════════════════════════════════════════════════════ */
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="space-y-3">
         <CardTitle>Requests List (Real-time)</CardTitle>
+
+        <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
+          <input
+            type="text"
+            placeholder="Search SPF, customer, item code..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border px-3 py-2 text-sm rounded w-full md:w-[300px]"
+          />
+
+          <span className="text-xs text-muted-foreground">
+            {filteredRequests.length} results
+          </span>
+        </div>
       </CardHeader>
 
       <CardContent>
         {/* ── Desktop table header ── */}
-        <div className="hidden md:grid grid-cols-5 border-b pb-2 font-semibold text-sm">
+        <div className="hidden md:grid grid-cols-6 border-b pb-2 font-semibold text-sm">
           <div>SPF Number</div>
           <div>Customer Name</div>
+          <div>Item Code</div>
           <div>Special Instructions</div>
           <div>Date Created</div>
           <div>Action</div>
         </div>
 
-        {requests.length === 0 ? (
+        {loadingPage ? (
+          <p className="text-sm text-muted-foreground mt-4">Loading...</p>
+        ) : filteredRequests.length === 0 ? (
           <p className="text-sm text-muted-foreground mt-4">No SPF requests yet.</p>
         ) : (
-          requests.map((req) => {
+          paginatedRequests.map((req) => {
             const formattedDate = req.date_created
               ? new Intl.DateTimeFormat("en-US", {
                   year: "numeric", month: "short", day: "2-digit",
@@ -425,9 +541,12 @@ export default function SPF({ processBy }: SPFProps) {
             return (
               <div key={req.id} className="border-b py-3 text-sm">
                 {/* ── Desktop row ── */}
-                <div className="hidden md:grid grid-cols-5 items-center">
+                <div className="hidden md:grid grid-cols-6 items-center">
                   <div>{req.spf_number}</div>
                   <div>{req.customer_name}</div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">{req.item_code || "-"}</span>
+                  </div>
                   <div>
                     <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase">
                       {req.special_instructions || "-"}
@@ -445,28 +564,58 @@ export default function SPF({ processBy }: SPFProps) {
                 </div>
 
                 {/* ── Mobile row ── */}
-                <div className="md:hidden flex flex-col gap-1 px-1">
-                  <p className="font-semibold">{req.spf_number}</p>
-                  <p className="text-muted-foreground">{req.customer_name}</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100 uppercase">
-                      {req.special_instructions || "-"}
+                <div className="md:hidden border rounded-lg p-3 space-y-2 shadow-sm bg-background">
+                  <div className="flex justify-between items-start">
+                    <p className="font-semibold text-sm">{req.spf_number}</p>
+                    <span className="text-[10px] text-muted-foreground">
+                      {formattedDate}
                     </span>
-                    <span className="text-xs text-muted-foreground">{formattedDate}</span>
                   </div>
-                  <div className="flex gap-2 mt-1 flex-wrap">
+
+                  <p className="text-sm">{req.customer_name}</p>
+
+                  {req.item_code && (
+                    <p className="text-xs text-muted-foreground">
+                      Code: {req.item_code}
+                    </p>
+                  )}
+
+                  <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase w-fit">
+                    {req.special_instructions || "-"}
+                  </span>
+
+                  <div className="flex gap-2 pt-1 flex-wrap">
                     {!isProcurementStatus(req.spf_number) && (
-                      <Button size="sm" className="rounded-none" variant="outline" onClick={() => handleCreateFromRow(req)}>
+                      <Button
+                        size="sm"
+                        className="rounded-none flex-1"
+                        variant="outline"
+                        onClick={() => handleCreateFromRow(req)}
+                      >
                         Create
                       </Button>
                     )}
-                    {spfStatus && <SPFRequestView spfNumber={req.spf_number} />}
+
+                    {spfStatus && (
+                      <div className="flex-1">
+                        <SPFRequestView spfNumber={req.spf_number} />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             );
           })
         )}
+
+        {/* ── Pagination ── */}
+        <PaginationControls
+          page={currentPage}
+          totalPages={totalPages}
+          total={filteredRequests.length}
+          pageSize={pageSize}
+          onPage={(p) => setCurrentPage(p)}
+        />
 
         {/* ══════════════════════════════════════════════════════════ */}
         {/* SINGLE DIALOG — layout switches on isMobile               */}
@@ -555,6 +704,7 @@ export default function SPF({ processBy }: SPFProps) {
                       <CardDetails
                         title="SPF Details"
                         fields={[
+                          { label: "Item Code",     value: formData.item_code },
                           { label: "Payment Terms", value: formData.payment_terms },
                           { label: "Warranty",      value: formData.warranty },
                           { label: "Delivery Date", value: formData.delivery_date },
@@ -661,8 +811,8 @@ export default function SPF({ processBy }: SPFProps) {
                                                 if (qty < 0) qty = 0;
                                                 setProductOffers((prev) => {
                                                   const copy = { ...prev };
-                                                  const row = [...(copy[index] || [])];
-                                                  row[i] = { ...row[i], qty };
+                                                  const row  = [...(copy[index] || [])];
+                                                  row[i]     = { ...row[i], qty };
                                                   copy[index] = row;
                                                   return copy;
                                                 });
@@ -829,7 +979,7 @@ export default function SPF({ processBy }: SPFProps) {
                           if (draggedProduct.__fromRow !== undefined) {
                             setProductOffers((prev) => {
                               const copy = { ...prev };
-                              const arr = [...(copy[draggedProduct.__fromRow] || [])];
+                              const arr  = [...(copy[draggedProduct.__fromRow] || [])];
                               arr.splice(draggedProduct.__fromIndex, 1);
                               copy[draggedProduct.__fromRow] = arr;
                               return copy;
@@ -866,6 +1016,7 @@ export default function SPF({ processBy }: SPFProps) {
                       <CardDetails
                         title="SPF Details"
                         fields={[
+                          { label: "Item Code",     value: formData.item_code },
                           { label: "Payment Terms", value: formData.payment_terms },
                           { label: "Warranty",      value: formData.warranty },
                           { label: "Delivery Date", value: formData.delivery_date },
@@ -994,8 +1145,8 @@ export default function SPF({ processBy }: SPFProps) {
                                                       if (qty < 0) qty = 0;
                                                       setProductOffers((prev) => {
                                                         const copy = { ...prev };
-                                                        const row = [...(copy[index] || [])];
-                                                        row[i] = { ...row[i], qty };
+                                                        const row  = [...(copy[index] || [])];
+                                                        row[i]     = { ...row[i], qty };
                                                         copy[index] = row;
                                                         return copy;
                                                       });
@@ -1023,7 +1174,7 @@ export default function SPF({ processBy }: SPFProps) {
                                                 <td className="border px-2 py-1 text-center align-middle">{port}</td>
                                                 <td className="border px-2 py-1 text-center align-middle">
                                                   {(() => {
-                                                    const qty = prod.qty || 0;
+                                                    const qty  = prod.qty || 0;
                                                     const cost = Number(prod?.commercialDetails?.unitCost || 0);
                                                     return (
                                                       <span className="text-xs font-semibold">
@@ -1084,22 +1235,22 @@ export default function SPF({ processBy }: SPFProps) {
                               <AccordionTrigger className="px-3 text-xs">Commercial Details</AccordionTrigger>
                               <AccordionContent className="px-3 pb-3 text-xs space-y-2">
                                 {(() => {
-                                  const details = p.commercialDetails;
+                                  const details   = p.commercialDetails;
                                   if (!details) return <p>-</p>;
                                   const packaging = details.packaging || {};
                                   return (
                                     <>
-                                      {details.factoryAddress && <p><span className="font-medium">Factory:</span> {details.factoryAddress}</p>}
+                                      {details.factoryAddress  && <p><span className="font-medium">Factory:</span> {details.factoryAddress}</p>}
                                       {details.portOfDischarge && <p><span className="font-medium">Port:</span> {details.portOfDischarge}</p>}
-                                      {details.unitCost && <p><span className="font-medium">Unit Cost:</span> {details.unitCost}</p>}
+                                      {details.unitCost        && <p><span className="font-medium">Unit Cost:</span> {details.unitCost}</p>}
                                       {(packaging.height || packaging.length || packaging.width || details.pcsPerCarton) && (
                                         <div>
                                           <p className="font-medium">Packaging</p>
                                           <ul className="ml-3 list-disc">
-                                            {packaging.height && <li>Height: {packaging.height}</li>}
-                                            {packaging.length && <li>Length: {packaging.length}</li>}
-                                            {packaging.width && <li>Width: {packaging.width}</li>}
-                                            {details.pcsPerCarton && <li>PCS/Carton: {details.pcsPerCarton}</li>}
+                                            {packaging.height      && <li>Height: {packaging.height}</li>}
+                                            {packaging.length      && <li>Length: {packaging.length}</li>}
+                                            {packaging.width       && <li>Width: {packaging.width}</li>}
+                                            {details.pcsPerCarton  && <li>PCS/Carton: {details.pcsPerCarton}</li>}
                                           </ul>
                                         </div>
                                       )}

@@ -16,8 +16,7 @@ import { doc, getDoc } from "firebase/firestore";
 
    Between item ROWS:
      "|ROW|"  → row boundary separator
-                parsed by spf-request-view.tsx to show the right
-                products under the right item row
+                parsed by spf-request-view.tsx
 
    ALL columns follow the same structure:
      product1,product2|ROW|product1,product2
@@ -29,7 +28,10 @@ import { doc, getDoc } from "firebase/firestore";
 const ROW_SEP = "|ROW|";
 
 /* Cache supplier contacts to avoid redundant Firestore fetches */
-const supplierCache = new Map<string, { company: string; contactNames: string; contactNumbers: string }>();
+const supplierCache = new Map<
+  string,
+  { company: string; contactNames: string; contactNumbers: string }
+>();
 
 export default async function handler(
   req: NextApiRequest,
@@ -45,6 +47,7 @@ export default async function handler(
       referenceid,
       tsm,
       manager,
+      item_code,
       totalItemRows,
       selectedProducts,
     } = req.body;
@@ -57,23 +60,25 @@ export default async function handler(
     const rowCount = typeof totalItemRows === "number" ? totalItemRows : 1;
 
     /* ── Pre-fetch all unique supplier contacts ── */
-    const uniqueSupplierIds = [...new Set(
-      products
-        .map((p: any) => p?.supplier?.supplierId)
-        .filter(Boolean)
-    )];
+    const uniqueSupplierIds = [
+      ...new Set(
+        products
+          .map((p: any) => p?.supplier?.supplierId)
+          .filter(Boolean)
+      ),
+    ];
 
     for (const supplierId of uniqueSupplierIds) {
       if (supplierCache.has(supplierId)) continue;
       try {
-        const supplierRef = doc(db, "suppliers", supplierId);
+        const supplierRef  = doc(db, "suppliers", supplierId);
         const supplierSnap = await getDoc(supplierRef);
         if (supplierSnap.exists()) {
           const supplierData: any = supplierSnap.data();
-          const contacts = supplierData.contacts || [];
+          const contacts          = supplierData.contacts || [];
           supplierCache.set(supplierId, {
-            company: supplierData.company || "-",
-            contactNames:  contacts.map((c: any) => c.name).filter(Boolean).join(" | "),
+            company:        supplierData.company || "-",
+            contactNames:   contacts.map((c: any) => c.name).filter(Boolean).join(" | "),
             contactNumbers: contacts.map((c: any) => c.phone).filter(Boolean).join(" | "),
           });
         }
@@ -131,8 +136,8 @@ export default async function handler(
         const length   = p?.commercialDetails?.packaging?.length || "-";
         const width    = p?.commercialDetails?.packaging?.width  || "-";
         const height   = p?.commercialDetails?.packaging?.height || "-";
-        const factory  = p?.commercialDetails?.factoryAddress   || "-";
-        const port     = p?.commercialDetails?.portOfDischarge  || "-";
+        const factory  = p?.commercialDetails?.factoryAddress    || "-";
+        const port     = p?.commercialDetails?.portOfDischarge   || "-";
         const subtotal = qty * unitCost;
 
         images.push(p?.mainImage?.url || "-");
@@ -145,23 +150,22 @@ export default async function handler(
         supplierBrands.push(p?.supplier?.supplierBrand || "-");
 
         /* final_selling_cost and proj_lead_time:
-           one "-" per product, per row — same structure as all other columns.
-           Result: "-,-|ROW|-,-" (filled later by procurement team) */
+           one "-" per product — filled later by procurement team */
         sellingCosts.push("-");
         leadTimes.push("-");
 
         /* Company / Contact — per product, from cache */
         const supplierId = p?.supplier?.supplierId;
-        const cached = supplierId ? supplierCache.get(supplierId) : null;
-        companyNames.push(cached?.company        || p?.supplier?.company || "-");
-        contactNames.push(cached?.contactNames   || "-");
+        const cached     = supplierId ? supplierCache.get(supplierId) : null;
+        companyNames.push(cached?.company         || p?.supplier?.company || "-");
+        contactNames.push(cached?.contactNames    || "-");
         contactNumbers.push(cached?.contactNumbers || "-");
 
         /* TECH SPECS */
         if (p?.technicalSpecifications?.length) {
           const groupedTech = p.technicalSpecifications
             .map((g: any) => {
-              const title = (g.title || "").trim();
+              const title     = (g.title || "").trim();
               const specLines = (g.specs || [])
                 .filter((s: any) => s.value && s.value.trim() !== "")
                 .map((s: any) => `${s.specId}: ${s.value.trim()}`)
@@ -177,7 +181,6 @@ export default async function handler(
         }
       }
 
-      /* Each row's products joined by comma — same for final_selling_cost & proj_lead_time */
       rowImages.push(images.join(","));
       rowQtys.push(qtys.join(","));
       rowSpecs.push(specs.join(" || "));
@@ -194,7 +197,7 @@ export default async function handler(
       rowLeadTimes.push(leadTimes.join(","));
     }
 
-    /* ── Final strings stored in Supabase — all use ROW_SEP ── */
+    /* ── Final strings stored in Supabase ── */
     const finalImages         = rowImages.join(ROW_SEP);
     const finalQtys           = rowQtys.join(ROW_SEP);
     const finalSpecs          = rowSpecs.join(ROW_SEP);
@@ -231,6 +234,7 @@ export default async function handler(
           referenceid,
           tsm,
           manager,
+          item_code: item_code ?? null,
 
           company_name:   finalCompanyNames,
           supplier_brand: finalSupplierBrands,
@@ -265,7 +269,7 @@ export default async function handler(
     const { error: updateError } = await supabase
       .from("spf_request")
       .update({
-        status: "Processed by PD",
+        status:       "Processed by PD",
         date_updated: new Date().toISOString(),
       })
       .eq("spf_number", spf_number);
@@ -275,8 +279,9 @@ export default async function handler(
       return res.status(500).json(updateError);
     }
 
-    return res.status(200).json({ success: true, message: "SPF created successfully" });
-
+    return res
+      .status(200)
+      .json({ success: true, message: "SPF created successfully" });
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ message: err.message || "Server error" });

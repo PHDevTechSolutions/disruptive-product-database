@@ -18,6 +18,7 @@ type SPFViewProps = {
 type SPFData = {
   spf_number: string;
   status?: string;
+  item_code?: string;
   supplier_brand: string;
   product_offer_image: string;
   product_offer_qty: string;
@@ -37,6 +38,7 @@ type SPFData = {
 type SPFRequestData = {
   item_description: string;
   item_photo: string;
+  item_code?: string;
 };
 
 /* ─────────────────────────────────────────────────────────────────
@@ -83,10 +85,10 @@ function splitSpecsByRow(value: string | undefined): SpecGroup[][][] {
 }
 
 export default function SPFRequestView({ spfNumber }: SPFViewProps) {
-  const [open, setOpen] = useState(false);
-  const [data, setData] = useState<SPFData | null>(null);
+  const [open, setOpen]               = useState(false);
+  const [data, setData]               = useState<SPFData | null>(null);
   const [requestData, setRequestData] = useState<SPFRequestData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]         = useState(false);
 
   const fetchSPF = async () => {
     try {
@@ -103,7 +105,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
 
       const { data: request } = await supabase
         .from("spf_request")
-        .select("item_description,item_photo")
+        .select("item_description,item_photo,item_code")
         .eq("spf_number", spfNumber)
         .maybeSingle();
 
@@ -151,6 +153,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
 
   const itemDescriptions = (requestData?.item_description || "").split(",").map((s) => s.trim());
   const itemImages       = (requestData?.item_photo || "").split(",").map((s) => s.trim());
+  const itemCode         = requestData?.item_code || data?.item_code || null;
 
   return (
     <>
@@ -175,18 +178,26 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
           <DialogHeader className="space-y-2">
             <DialogTitle>SPF Request View</DialogTitle>
 
-            {data?.status && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="font-medium">Status:</span>
-                <span className={`px-2 py-1 text-xs rounded uppercase ${
-                  isApproved
-                    ? "bg-green-100 text-green-700"
-                    : "bg-yellow-100 text-yellow-700"
-                }`}>
-                  {data.status}
-                </span>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              {data?.status && (
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Status:</span>
+                  <span className={`px-2 py-1 text-xs rounded uppercase ${
+                    isApproved
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}>
+                    {data.status}
+                  </span>
+                </div>
+              )}
+              {itemCode && (
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Item Code:</span>
+                  <span className="text-xs px-2 py-1 rounded bg-gray-100 font-mono">{itemCode}</span>
+                </div>
+              )}
+            </div>
           </DialogHeader>
 
           {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
@@ -253,7 +264,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                           ) : (
                             <div className="space-y-3">
                               {prodImages.map((img, i) => {
-                                const groups = prodSpecs[i] ?? [];
+                                const groups      = prodSpecs[i] ?? [];
                                 const hasMultiple = prodImages.length > 1;
 
                                 return (
