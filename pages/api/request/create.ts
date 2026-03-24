@@ -21,6 +21,10 @@ import { doc, getDoc } from "firebase/firestore";
    ALL columns follow the same structure:
      product1,product2|ROW|product1,product2
 
+   item_code column structure (NEW):
+     Row 0 codes joined by "," → "SPF-XXX-001-OPT-1,SPF-XXX-001-OPT-2"
+     Rows joined by "|ROW|"    → "SPF-XXX-001-OPT-1,SPF-XXX-001-OPT-2|ROW|SPF-XXX-002-OPT-1"
+
    final_selling_cost and proj_lead_time follow the same structure:
      -,-|ROW|-,-
      (one "-" per product per row, filled later by procurement)
@@ -112,6 +116,9 @@ export default async function handler(
     const rowSellingCosts: string[]   = [];
     const rowLeadTimes: string[]      = [];
 
+    /* ── NEW: per-row item codes ── */
+    const rowItemCodes: string[]      = [];
+
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
 
@@ -130,7 +137,22 @@ export default async function handler(
       const sellingCosts: string[]   = [];
       const leadTimes: string[]      = [];
 
-      for (const p of rowProducts) {
+      /* ── NEW: item codes for this row ──
+         Base row code = spf_number + "-" + zero-padded (rowIdx+1)
+         e.g. SPF-DSI-26-004-001 for rowIdx=0
+         Each option appends -OPT-N
+      ── */
+      const itemCodes: string[]      = [];
+
+      // The row base is the spf_number with a zero-padded row suffix
+      // e.g. if spf_number = "SPF-DSI-26-004"  → "SPF-DSI-26-004-001"
+      // if spf_number already includes the row suffix (e.g. "SPF-DSI-26-004-001")
+      // we strip and rebuild so the pattern is always consistent.
+      const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
+
+      for (let optIdx = 0; optIdx < rowProducts.length; optIdx++) {
+        const p = rowProducts[optIdx];
+
         const qty      = Number(p.qty || 0);
         const unitCost = Number(p?.commercialDetails?.unitCost || 0);
         const length   = p?.commercialDetails?.packaging?.length || "-";
@@ -153,6 +175,9 @@ export default async function handler(
            one "-" per product — filled later by procurement team */
         sellingCosts.push("-");
         leadTimes.push("-");
+
+        /* ── Generate option item code ── */
+        itemCodes.push(`${rowBase}-OPT-${optIdx + 1}`);
 
         /* Company / Contact — per product, from cache */
         const supplierId = p?.supplier?.supplierId;
@@ -181,6 +206,11 @@ export default async function handler(
         }
       }
 
+      /* If a row has no products yet, push an empty placeholder */
+      if (rowProducts.length === 0) {
+        itemCodes.push("-");
+      }
+
       rowImages.push(images.join(","));
       rowQtys.push(qtys.join(","));
       rowSpecs.push(specs.join(" || "));
@@ -195,6 +225,9 @@ export default async function handler(
       rowContactNumbers.push(contactNumbers.join(","));
       rowSellingCosts.push(sellingCosts.join(","));
       rowLeadTimes.push(leadTimes.join(","));
+
+      /* ── Commit item codes for this row ── */
+      rowItemCodes.push(itemCodes.join(","));
     }
 
     /* ── Final strings stored in Supabase ── */
@@ -212,6 +245,14 @@ export default async function handler(
     const finalContactNumbers = rowContactNumbers.join(ROW_SEP);
     const finalSellingCosts   = rowSellingCosts.join(ROW_SEP);
     const finalLeadTimes      = rowLeadTimes.join(ROW_SEP);
+
+    /* ── NEW: final item_code string ──
+       Format: "SPF-XXX-001-OPT-1,SPF-XXX-001-OPT-2|ROW|SPF-XXX-002-OPT-1"
+       Falls back to the original item_code field if no products were added at all.
+    ── */
+    const finalItemCode = rowItemCodes.some((r) => r !== "-" && r !== "")
+      ? rowItemCodes.join(ROW_SEP)
+      : (item_code ?? null);
 
     /* ── CHECK EXISTING SPF ── */
     const { data: existing, error: checkError } = await supabase
@@ -234,7 +275,9 @@ export default async function handler(
           referenceid,
           tsm,
           manager,
-          item_code: item_code ?? null,
+
+          /* ── item_code now carries the full OPT-coded string ── */
+          item_code: finalItemCode,
 
           company_name:   finalCompanyNames,
           supplier_brand: finalSupplierBrands,

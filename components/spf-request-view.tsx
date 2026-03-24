@@ -185,9 +185,15 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
   const rowLeadTimes      = splitByRow(data?.proj_lead_time);
   const rowSellingCosts   = splitByRow(data?.final_selling_cost);
 
+  /* ── NEW: parse item_code from spf_creation using same |ROW| + comma structure ──
+     e.g. "SPF-001-OPT-1,SPF-001-OPT-2|ROW|SPF-002-OPT-1"
+     → rowItemCodes[0] = ["SPF-001-OPT-1", "SPF-001-OPT-2"]
+     → rowItemCodes[1] = ["SPF-002-OPT-1"]
+  ── */
+  const rowItemCodes = splitByRow(data?.item_code);
+
   const itemDescriptions = (requestData?.item_description || "").split(",").map((s) => s.trim());
   const itemImages       = (requestData?.item_photo || "").split(",").map((s) => s.trim());
-  const itemCode         = requestData?.item_code || data?.item_code || null;
 
   /* ────────────────────────────────────────────────────────────────
      MOBILE CARD RENDERER
@@ -195,20 +201,22 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
   const renderMobile = () => (
     <div className="space-y-4 pb-4">
       {itemDescriptions.map((desc, rowIndex) => {
-        const prodImages        = rowImages[rowIndex]         ?? [];
-        const prodQtys          = rowQtys[rowIndex]           ?? [];
-        const prodUnitCosts     = rowUnitCosts[rowIndex]      ?? [];
-        const prodPackaging     = rowPackaging[rowIndex]      ?? [];
-        const prodFactories     = rowFactories[rowIndex]      ?? [];
-        const prodPorts         = rowPorts[rowIndex]          ?? [];
-        const prodSubtotals     = rowSubtotals[rowIndex]      ?? [];
-        const prodBrands        = rowSupplierBrands[rowIndex] ?? [];
-        const prodSpecs         = rowSpecs[rowIndex]          ?? [];
-        const prodCompanyNames  = rowCompanyNames[rowIndex]   ?? [];
-        const prodContactNames  = rowContactNames[rowIndex]   ?? [];
+        const prodImages         = rowImages[rowIndex]         ?? [];
+        const prodQtys           = rowQtys[rowIndex]           ?? [];
+        const prodUnitCosts      = rowUnitCosts[rowIndex]      ?? [];
+        const prodPackaging      = rowPackaging[rowIndex]      ?? [];
+        const prodFactories      = rowFactories[rowIndex]      ?? [];
+        const prodPorts          = rowPorts[rowIndex]          ?? [];
+        const prodSubtotals      = rowSubtotals[rowIndex]      ?? [];
+        const prodBrands         = rowSupplierBrands[rowIndex] ?? [];
+        const prodSpecs          = rowSpecs[rowIndex]          ?? [];
+        const prodCompanyNames   = rowCompanyNames[rowIndex]   ?? [];
+        const prodContactNames   = rowContactNames[rowIndex]   ?? [];
         const prodContactNumbers = rowContactNumbers[rowIndex] ?? [];
-        const prodLeadTimes     = rowLeadTimes[rowIndex]      ?? [];
-        const prodSellingCosts  = rowSellingCosts[rowIndex]   ?? [];
+        const prodLeadTimes      = rowLeadTimes[rowIndex]      ?? [];
+        const prodSellingCosts   = rowSellingCosts[rowIndex]   ?? [];
+        /* ── per-option item codes for this row ── */
+        const prodItemCodes      = rowItemCodes[rowIndex]      ?? [];
 
         const hasProducts = prodImages.length > 0 && !(prodImages.length === 1 && prodImages[0] === "");
 
@@ -237,14 +245,26 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
             ) : (
               <div className="divide-y">
                 {prodImages.map((img, i) => {
-                  const groups = prodSpecs[i] ?? [];
+                  const groups        = prodSpecs[i] ?? [];
+                  /* item code for this specific option — index-aligned */
+                  const optItemCode   = prodItemCodes[i] && prodItemCodes[i] !== "-"
+                    ? prodItemCodes[i]
+                    : null;
+
                   return (
                     <div key={i} className="px-3 py-3 space-y-2">
-                      {/* Option badge */}
-                      <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                        Option {i + 1}
-                        {prodBrands[i] && prodBrands[i] !== "-" ? ` · ${prodBrands[i]}` : ""}
-                      </span>
+                      {/* Option badge + item code */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                          Option {i + 1}
+                          {prodBrands[i] && prodBrands[i] !== "-" ? ` · ${prodBrands[i]}` : ""}
+                        </span>
+                        {optItemCode && (
+                          <span className="inline-flex items-center text-[10px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                            {optItemCode}
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex gap-3 items-start">
                         {/* Product image */}
@@ -342,7 +362,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
   );
 
   /* ────────────────────────────────────────────────────────────────
-     DESKTOP TABLE RENDERER (unchanged)
+     DESKTOP TABLE RENDERER
   ──────────────────────────────────────────────────────────────── */
   const renderDesktop = () => (
     <Card className="p-4 overflow-x-auto">
@@ -358,20 +378,22 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
 
         <tbody>
           {itemDescriptions.map((desc, rowIndex) => {
-            const prodImages        = rowImages[rowIndex]         ?? [];
-            const prodQtys          = rowQtys[rowIndex]           ?? [];
-            const prodUnitCosts     = rowUnitCosts[rowIndex]      ?? [];
-            const prodPackaging     = rowPackaging[rowIndex]      ?? [];
-            const prodFactories     = rowFactories[rowIndex]      ?? [];
-            const prodPorts         = rowPorts[rowIndex]          ?? [];
-            const prodSubtotals     = rowSubtotals[rowIndex]      ?? [];
-            const prodBrands        = rowSupplierBrands[rowIndex] ?? [];
-            const prodSpecs         = rowSpecs[rowIndex]          ?? [];
-            const prodCompanyNames  = rowCompanyNames[rowIndex]   ?? [];
-            const prodContactNames  = rowContactNames[rowIndex]   ?? [];
+            const prodImages         = rowImages[rowIndex]         ?? [];
+            const prodQtys           = rowQtys[rowIndex]           ?? [];
+            const prodUnitCosts      = rowUnitCosts[rowIndex]      ?? [];
+            const prodPackaging      = rowPackaging[rowIndex]      ?? [];
+            const prodFactories      = rowFactories[rowIndex]      ?? [];
+            const prodPorts          = rowPorts[rowIndex]          ?? [];
+            const prodSubtotals      = rowSubtotals[rowIndex]      ?? [];
+            const prodBrands         = rowSupplierBrands[rowIndex] ?? [];
+            const prodSpecs          = rowSpecs[rowIndex]          ?? [];
+            const prodCompanyNames   = rowCompanyNames[rowIndex]   ?? [];
+            const prodContactNames   = rowContactNames[rowIndex]   ?? [];
             const prodContactNumbers = rowContactNumbers[rowIndex] ?? [];
-            const prodLeadTimes     = rowLeadTimes[rowIndex]      ?? [];
-            const prodSellingCosts  = rowSellingCosts[rowIndex]   ?? [];
+            const prodLeadTimes      = rowLeadTimes[rowIndex]      ?? [];
+            const prodSellingCosts   = rowSellingCosts[rowIndex]   ?? [];
+            /* ── per-option item codes for this row ── */
+            const prodItemCodes      = rowItemCodes[rowIndex]      ?? [];
 
             const hasProducts = prodImages.length > 0 && !(prodImages.length === 1 && prodImages[0] === "");
 
@@ -396,15 +418,27 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                   ) : (
                     <div className="space-y-3">
                       {prodImages.map((img, i) => {
-                        const groups = prodSpecs[i] ?? [];
+                        const groups      = prodSpecs[i] ?? [];
+                        /* item code for this specific option — index-aligned */
+                        const optItemCode = prodItemCodes[i] && prodItemCodes[i] !== "-"
+                          ? prodItemCodes[i]
+                          : null;
+
                         return (
                           <div key={i}>
-                            <div className="mb-1">
+                            {/* Option badge + item code pill */}
+                            <div className="mb-1 flex flex-wrap items-center gap-2">
                               <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                                 Option {i + 1}
                                 {prodBrands[i] && ` · ${prodBrands[i]}`}
                               </span>
+                              {optItemCode && (
+                                <span className="inline-flex items-center text-[11px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                                  {optItemCode}
+                                </span>
+                              )}
                             </div>
+
                             <div className="border rounded overflow-hidden">
                               <table className="w-full border text-xs">
                                 <thead>
@@ -541,12 +575,6 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                   }`}>
                     {data.status}
                   </span>
-                </div>
-              )}
-              {itemCode && (
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-xs">Item Code:</span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-gray-100 font-mono">{itemCode}</span>
                 </div>
               )}
             </div>
