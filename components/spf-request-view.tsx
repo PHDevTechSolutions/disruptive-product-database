@@ -129,7 +129,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
     fetchStatus();
   }, [spfNumber]);
 
-  const isApproved = data?.status === "Approved by Procurement";
+  const isApproved = data?.status === "Approved By Procurement";
 
   /* ── Parse all columns into per-row, per-product arrays ── */
   const rowImages         = splitByRow(data?.product_offer_image);
