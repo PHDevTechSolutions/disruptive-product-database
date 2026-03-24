@@ -71,6 +71,15 @@ type SPFRequest = {
 };
 
 /* ─────────────────────────────────────────────────────────────── */
+/* STATUS LABEL MAPPING                                            */
+/* ─────────────────────────────────────────────────────────────── */
+function getStatusLabel(status: string | undefined): string {
+  if (status === "Pending For Procurement") return "For Procurement Costing";
+  if (status === "Approved By Procurement") return "Ready For Quotation";
+  return status ?? "";
+}
+
+/* ─────────────────────────────────────────────────────────────── */
 /* HOOK: useIsMobile                                               */
 /* ─────────────────────────────────────────────────────────────── */
 function useIsMobile(breakpoint = 768) {
@@ -741,9 +750,11 @@ export default function RequestsPage() {
                             Create
                           </Button>
                         )}
-                        {spfStatus && (
-                          <SPFRequestView spfNumber={req.spf_number} />
-                        )}
+                          {spfStatus && (
+                            <div className="flex items-center gap-2">
+                              <SPFRequestView spfNumber={req.spf_number} />
+                            </div>
+                          )}
                       </div>
                     </td>
                   </tr>
@@ -802,6 +813,15 @@ export default function RequestsPage() {
                 <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase w-fit inline-block">
                   {req.special_instructions || "-"}
                 </span>
+                {spfStatus && (
+                  <span className={`text-xs px-2 py-1 rounded uppercase w-fit inline-block ${
+                    spfStatus === "Approved By Procurement"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}>
+                    {getStatusLabel(spfStatus)}
+                  </span>
+                )}
                 <div className="flex gap-2 pt-1 flex-wrap">
                   {!isProcurementStatus(req.spf_number) && (
                     <Button
@@ -1104,7 +1124,6 @@ export default function RequestsPage() {
                                         </div>
                                       )}
                                       <div className="flex-1 min-w-0 space-y-1">
-                                        {/* Option badge — always shown */}
                                         <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                                           Option {i + 1}
                                           {supplierBrand &&
@@ -1677,18 +1696,14 @@ export default function RequestsPage() {
                                                     setShowTrash(false);
                                                   }}
                                                 >
-                                                  {/* OPTION badge — always shown */}
                                                   <td className="border px-2 py-1 text-center align-middle">
                                                     <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
                                                       Option {i + 1}
                                                     </span>
                                                   </td>
-
-                                                  {/* SUPPLIER BRAND */}
                                                   <td className="border px-2 py-1 text-center align-middle font-medium">
                                                     {supplierBrand}
                                                   </td>
-
                                                   <td className="border px-2 py-1 text-center align-middle">
                                                     {prod.mainImage?.url ? (
                                                       <img

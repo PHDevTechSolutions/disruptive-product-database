@@ -46,6 +46,15 @@ const ROW_SEP = "|ROW|";
 
 type SpecGroup = { title: string; specs: string[] };
 
+/* ─────────────────────────────────────────────────────────────── */
+/* STATUS LABEL MAPPING                                            */
+/* ─────────────────────────────────────────────────────────────── */
+function getStatusLabel(status: string | undefined): string {
+  if (status === "Pending For Procurement") return "For Procurement Costing";
+  if (status === "Approved By Procurement") return "Ready For Quotation";
+  return status ?? "";
+}
+
 function parseTechSpec(raw: string): SpecGroup[] {
   if (!raw || raw === "-") return [];
 
@@ -185,11 +194,6 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
   const rowLeadTimes      = splitByRow(data?.proj_lead_time);
   const rowSellingCosts   = splitByRow(data?.final_selling_cost);
 
-  /* ── NEW: parse item_code from spf_creation using same |ROW| + comma structure ──
-     e.g. "SPF-001-OPT-1,SPF-001-OPT-2|ROW|SPF-002-OPT-1"
-     → rowItemCodes[0] = ["SPF-001-OPT-1", "SPF-001-OPT-2"]
-     → rowItemCodes[1] = ["SPF-002-OPT-1"]
-  ── */
   const rowItemCodes = splitByRow(data?.item_code);
 
   const itemDescriptions = (requestData?.item_description || "").split(",").map((s) => s.trim());
@@ -215,7 +219,6 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
         const prodContactNumbers = rowContactNumbers[rowIndex] ?? [];
         const prodLeadTimes      = rowLeadTimes[rowIndex]      ?? [];
         const prodSellingCosts   = rowSellingCosts[rowIndex]   ?? [];
-        /* ── per-option item codes for this row ── */
         const prodItemCodes      = rowItemCodes[rowIndex]      ?? [];
 
         const hasProducts = prodImages.length > 0 && !(prodImages.length === 1 && prodImages[0] === "");
@@ -245,9 +248,8 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
             ) : (
               <div className="divide-y">
                 {prodImages.map((img, i) => {
-                  const groups        = prodSpecs[i] ?? [];
-                  /* item code for this specific option — index-aligned */
-                  const optItemCode   = prodItemCodes[i] && prodItemCodes[i] !== "-"
+                  const groups      = prodSpecs[i] ?? [];
+                  const optItemCode = prodItemCodes[i] && prodItemCodes[i] !== "-"
                     ? prodItemCodes[i]
                     : null;
 
@@ -392,7 +394,6 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
             const prodContactNumbers = rowContactNumbers[rowIndex] ?? [];
             const prodLeadTimes      = rowLeadTimes[rowIndex]      ?? [];
             const prodSellingCosts   = rowSellingCosts[rowIndex]   ?? [];
-            /* ── per-option item codes for this row ── */
             const prodItemCodes      = rowItemCodes[rowIndex]      ?? [];
 
             const hasProducts = prodImages.length > 0 && !(prodImages.length === 1 && prodImages[0] === "");
@@ -419,7 +420,6 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                     <div className="space-y-3">
                       {prodImages.map((img, i) => {
                         const groups      = prodSpecs[i] ?? [];
-                        /* item code for this specific option — index-aligned */
                         const optItemCode = prodItemCodes[i] && prodItemCodes[i] !== "-"
                           ? prodItemCodes[i]
                           : null;
@@ -547,7 +547,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
               ? "bg-green-100 text-green-700"
               : "bg-yellow-100 text-yellow-700"
           }`}>
-            {data.status}
+            {getStatusLabel(data.status)}
           </span>
         )}
       </div>
@@ -573,7 +573,7 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
                       ? "bg-green-100 text-green-700"
                       : "bg-yellow-100 text-yellow-700"
                   }`}>
-                    {data.status}
+                    {getStatusLabel(data.status)}
                   </span>
                 </div>
               )}
@@ -596,6 +596,6 @@ export default function SPFRequestView({ spfNumber }: SPFViewProps) {
           </div>
         </DialogContent>
       </Dialog>
-    </>//
+    </>
   );
 }
