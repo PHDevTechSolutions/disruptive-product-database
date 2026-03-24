@@ -237,7 +237,7 @@ const filteredRequests = useMemo(() => {
   const [currentPage, setCurrentPage]   = useState(1);
   const [totalPages, setTotalPages]     = useState(1);
   const [totalCount, setTotalCount]     = useState(0);
-  const [pageSize, setPageSize]         = useState(5);
+  const [pageSize, setPageSize]         = useState(20);
   const paginatedRequests = useMemo(() => {
   const start = (currentPage - 1) * pageSize;
   return filteredRequests.slice(start, start + pageSize);
