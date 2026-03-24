@@ -1087,8 +1087,6 @@ export default function RequestsPage() {
                                     "";
                                   const supplierCompany =
                                     prod?.supplier?.company || "";
-                                  const hasMultiple = offers.length > 1;
-
                                   return (
                                     <div
                                       key={i}
@@ -1106,14 +1104,12 @@ export default function RequestsPage() {
                                         </div>
                                       )}
                                       <div className="flex-1 min-w-0 space-y-1">
-                                        {/* Option badge — only when multiple */}
-                                        {hasMultiple && (
-                                          <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                            Option {i + 1}
-                                            {supplierBrand &&
-                                              ` · ${supplierBrand}`}
-                                          </span>
-                                        )}
+                                        {/* Option badge — always shown */}
+                                        <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                          Option {i + 1}
+                                          {supplierBrand &&
+                                            ` · ${supplierBrand}`}
+                                        </span>
                                         <p className="text-xs font-medium line-clamp-1">
                                           {prod.productName}
                                         </p>
@@ -1652,9 +1648,6 @@ export default function RequestsPage() {
                                                 prod?.supplier
                                                   ?.supplierBrandName ||
                                                 "-";
-                                              const hasMultiple =
-                                                (productOffers[index] || [])
-                                                  .length > 1;
 
                                               return (
                                                 <tr
@@ -1684,17 +1677,11 @@ export default function RequestsPage() {
                                                     setShowTrash(false);
                                                   }}
                                                 >
-                                                  {/* OPTION badge */}
+                                                  {/* OPTION badge — always shown */}
                                                   <td className="border px-2 py-1 text-center align-middle">
-                                                    {hasMultiple ? (
-                                                      <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
-                                                        Option {i + 1}
-                                                      </span>
-                                                    ) : (
-                                                      <span className="text-xs text-muted-foreground">
-                                                        —
-                                                      </span>
-                                                    )}
+                                                    <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                                                      Option {i + 1}
+                                                    </span>
                                                   </td>
 
                                                   {/* SUPPLIER BRAND */}
