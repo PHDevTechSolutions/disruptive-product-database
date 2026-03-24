@@ -221,14 +221,13 @@ export default function SPF({ processBy }: SPFProps) {
   const [openFilter, setOpenFilter]             = useState(false);
   const [viewMode, setViewMode]                 = useState(false);
   const [searchTerm, setSearchTerm]             = useState("");
-  const filteredRequests = useMemo(() => {
+const filteredRequests = useMemo(() => {
   const term = searchTerm.toLowerCase().trim();
 
   return requests.filter((r) =>
     !term ||
     (r.spf_number || "").toLowerCase().includes(term) ||
-    (r.customer_name || "").toLowerCase().includes(term) ||
-    (r.item_code || "").toLowerCase().includes(term)
+    (r.customer_name || "").toLowerCase().includes(term)
   );
 }, [requests, searchTerm]);
   const [createdSPF, setCreatedSPF]             = useState<Record<string, string>>({});
@@ -238,7 +237,7 @@ export default function SPF({ processBy }: SPFProps) {
   const [currentPage, setCurrentPage]   = useState(1);
   const [totalPages, setTotalPages]     = useState(1);
   const [totalCount, setTotalCount]     = useState(0);
-  const [pageSize, setPageSize]         = useState(20);
+  const [pageSize, setPageSize]         = useState(5);
   const paginatedRequests = useMemo(() => {
   const start = (currentPage - 1) * pageSize;
   return filteredRequests.slice(start, start + pageSize);
@@ -316,6 +315,9 @@ export default function SPF({ processBy }: SPFProps) {
       setLoadingPage(false);
     }
   }, [fetchCreatedSPF, pageSize]);
+    useEffect(() => {
+      setTotalPages(Math.max(1, Math.ceil(filteredRequests.length / pageSize)));
+    }, [filteredRequests, pageSize]);
 
   useEffect(() => {
     fetchRequests();
@@ -515,10 +517,9 @@ useEffect(() => {
 
       <CardContent>
         {/* ── Desktop table header ── */}
-        <div className="hidden md:grid grid-cols-6 border-b pb-2 font-semibold text-sm">
+        <div className="hidden md:grid grid-cols-5 border-b pb-2 font-semibold text-sm">
           <div>SPF Number</div>
           <div>Customer Name</div>
-          <div>Item Code</div>
           <div>Special Instructions</div>
           <div>Date Created</div>
           <div>Action</div>
@@ -529,7 +530,7 @@ useEffect(() => {
         ) : filteredRequests.length === 0 ? (
           <p className="text-sm text-muted-foreground mt-4">No SPF requests yet.</p>
         ) : (
-          paginatedRequests.map((req) => {
+          paginatedRequests.map((req: SPFRequest) => {
             const formattedDate = req.date_created
               ? new Intl.DateTimeFormat("en-US", {
                   year: "numeric", month: "short", day: "2-digit",
@@ -541,12 +542,9 @@ useEffect(() => {
             return (
               <div key={req.id} className="border-b py-3 text-sm">
                 {/* ── Desktop row ── */}
-                <div className="hidden md:grid grid-cols-6 items-center">
+                <div className="hidden md:grid grid-cols-5 items-center">
                   <div>{req.spf_number}</div>
                   <div>{req.customer_name}</div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">{req.item_code || "-"}</span>
-                  </div>
                   <div>
                     <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase">
                       {req.special_instructions || "-"}
@@ -573,12 +571,6 @@ useEffect(() => {
                   </div>
 
                   <p className="text-sm">{req.customer_name}</p>
-
-                  {req.item_code && (
-                    <p className="text-xs text-muted-foreground">
-                      Code: {req.item_code}
-                    </p>
-                  )}
 
                   <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase w-fit">
                     {req.special_instructions || "-"}
