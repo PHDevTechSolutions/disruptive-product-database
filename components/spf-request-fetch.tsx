@@ -34,6 +34,8 @@ type SPFData = {
   contact_number?: string;
   proj_lead_time?: string;
   final_selling_cost?: string;
+  final_unit_cost?: string;
+  final_subtotal?: string;
 };
 
 type SPFRequestData = {
@@ -188,11 +190,13 @@ export default function SPFRequestFetch({ spfNumber }: SPFViewProps) {
   const rowSupplierBrands = splitByRow(data?.supplier_brand);
   const rowSpecs          = splitSpecsByRow(data?.product_offer_technical_specification);
 
-  const rowCompanyNames   = splitByRow(data?.company_name);
-  const rowContactNames   = splitByRow(data?.contact_name);
-  const rowContactNumbers = splitByRow(data?.contact_number);
-  const rowLeadTimes      = splitByRow(data?.proj_lead_time);
-  const rowSellingCosts   = splitByRow(data?.final_selling_cost);
+  const rowCompanyNames     = splitByRow(data?.company_name);
+  const rowContactNames     = splitByRow(data?.contact_name);
+  const rowContactNumbers   = splitByRow(data?.contact_number);
+  const rowLeadTimes        = splitByRow(data?.proj_lead_time);
+  const rowSellingCosts     = splitByRow(data?.final_selling_cost);
+  const rowFinalUnitCosts   = splitByRow(data?.final_unit_cost);   // ✅ NEW
+  const rowFinalSubtotals   = splitByRow(data?.final_subtotal);    // ✅ NEW
 
   const rowItemCodes = splitByRow(data?.item_code);
 
@@ -214,12 +218,14 @@ export default function SPFRequestFetch({ spfNumber }: SPFViewProps) {
         const prodSubtotals      = rowSubtotals[rowIndex]      ?? [];
         const prodBrands         = rowSupplierBrands[rowIndex] ?? [];
         const prodSpecs          = rowSpecs[rowIndex]          ?? [];
-        const prodCompanyNames   = rowCompanyNames[rowIndex]   ?? [];
-        const prodContactNames   = rowContactNames[rowIndex]   ?? [];
-        const prodContactNumbers = rowContactNumbers[rowIndex] ?? [];
-        const prodLeadTimes      = rowLeadTimes[rowIndex]      ?? [];
-        const prodSellingCosts   = rowSellingCosts[rowIndex]   ?? [];
-        const prodItemCodes      = rowItemCodes[rowIndex]      ?? [];
+        const prodCompanyNames     = rowCompanyNames[rowIndex]   ?? [];
+        const prodContactNames     = rowContactNames[rowIndex]   ?? [];
+        const prodContactNumbers   = rowContactNumbers[rowIndex] ?? [];
+        const prodLeadTimes        = rowLeadTimes[rowIndex]      ?? [];
+        const prodSellingCosts     = rowSellingCosts[rowIndex]   ?? [];
+        const prodFinalUnitCosts   = rowFinalUnitCosts[rowIndex] ?? []; 
+        const prodFinalSubtotals   = rowFinalSubtotals[rowIndex] ?? [];  
+        const prodItemCodes        = rowItemCodes[rowIndex]      ?? [];
 
         const hasProducts = prodImages.length > 0 && !(prodImages.length === 1 && prodImages[0] === "");
 
@@ -349,6 +355,24 @@ export default function SPFRequestFetch({ spfNumber }: SPFViewProps) {
                                   : "-"}
                               </span>
                             </div>
+
+                            <div>
+                              <span className="text-gray-400 block">Final Unit Cost</span>
+                              <span className="font-semibold text-green-700">
+                                {prodFinalUnitCosts[i] && prodFinalUnitCosts[i] !== "-"
+                                  ? `₱${Number(prodFinalUnitCosts[i]).toLocaleString()}`
+                                  : "-"}
+                              </span>
+                            </div>
+
+                            <div>
+                              <span className="text-gray-400 block">Final Subtotal</span>
+                              <span className="font-semibold text-green-700">
+                                {prodFinalSubtotals[i] && prodFinalSubtotals[i] !== "-"
+                                  ? `₱${Number(prodFinalSubtotals[i]).toLocaleString()}`
+                                  : "-"}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -394,6 +418,8 @@ export default function SPFRequestFetch({ spfNumber }: SPFViewProps) {
             const prodContactNumbers = rowContactNumbers[rowIndex] ?? [];
             const prodLeadTimes      = rowLeadTimes[rowIndex]      ?? [];
             const prodSellingCosts   = rowSellingCosts[rowIndex]   ?? [];
+            const prodFinalUnitCosts = rowFinalUnitCosts[rowIndex] ?? [];
+            const prodFinalSubtotals = rowFinalSubtotals[rowIndex] ?? [];
             const prodItemCodes      = rowItemCodes[rowIndex]      ?? [];
 
             const hasProducts = prodImages.length > 0 && !(prodImages.length === 1 && prodImages[0] === "");
@@ -459,6 +485,8 @@ export default function SPFRequestFetch({ spfNumber }: SPFViewProps) {
                                         <th className="border px-2 py-1 text-center whitespace-nowrap">Contact No.</th>
                                         <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">Lead Time</th>
                                         <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">Selling Cost</th>
+                                        <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">Final Unit Cost</th>
+                                        <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">Final Subtotal</th>
                                       </>
                                     )}
                                   </tr>
@@ -509,11 +537,23 @@ export default function SPFRequestFetch({ spfNumber }: SPFViewProps) {
                                         <td className="border px-2 py-2 text-center align-middle bg-green-50">
                                           {prodLeadTimes[i] && prodLeadTimes[i] !== "-" ? prodLeadTimes[i] : "-"}
                                         </td>
-                                        <td className="border px-2 py-2 text-center align-middle bg-green-50 font-semibold">
-                                          {prodSellingCosts[i] && prodSellingCosts[i] !== "-"
-                                            ? `₱${Number(prodSellingCosts[i]).toLocaleString()}`
-                                            : "-"}
-                                        </td>
+                                          <td className="border px-2 py-2 text-center align-middle bg-green-50 text-green-700 font-semibold">
+                                            {prodSellingCosts[i] && prodSellingCosts[i] !== "-"
+                                              ? `₱${Number(prodSellingCosts[i]).toLocaleString()}`
+                                              : "-"}
+                                          </td>
+
+                                          <td className="border px-2 py-2 text-center align-middle bg-green-50 text-green-700 font-semibold">
+                                            {prodFinalUnitCosts[i] && prodFinalUnitCosts[i] !== "-"
+                                              ? `₱${Number(prodFinalUnitCosts[i]).toLocaleString()}`
+                                              : "-"}
+                                          </td>
+
+                                          <td className="border px-2 py-2 text-center align-middle bg-green-50 text-green-700 font-semibold">
+                                            {prodFinalSubtotals[i] && prodFinalSubtotals[i] !== "-"
+                                              ? `₱${Number(prodFinalSubtotals[i]).toLocaleString()}`
+                                              : "-"}
+                                          </td>
                                       </>
                                     )}
                                   </tr>

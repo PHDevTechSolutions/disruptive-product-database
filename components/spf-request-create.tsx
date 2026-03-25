@@ -315,7 +315,10 @@ export default function SPFRequestCreate({
     if (activeRowIndex === null || !pendingProduct) return;
     setProductOffers((prev) => {
       const copy = { ...prev };
-      copy[activeRowIndex] = [...(copy[activeRowIndex] || []), freezeSpecs(pendingProduct)];
+            copy[activeRowIndex] = [
+        ...(copy[activeRowIndex] || []),
+        { ...freezeSpecs(pendingProduct), qty: 1 }
+      ];
       return copy;
     });
     setPendingProduct(null);
@@ -330,6 +333,15 @@ export default function SPFRequestCreate({
 
   /* ── Submit ── */
   const handleSubmit = async () => {
+      // ✅ VALIDATION: check if every row has at least 1 product
+  const totalRows = formData.item_description?.length || 0;
+
+  for (let i = 0; i < totalRows; i++) {
+    if (!productOffers[i] || productOffers[i].length === 0) {
+      toast.error(`Item row ${i + 1} has no product selected`);
+      return; // ❌ STOP submit
+    }
+  }
     try {
       const allProducts = Object.entries(productOffers).flatMap(([rowIndex, prods]) =>
         prods.map((p) => ({ ...p, __rowIndex: Number(rowIndex) }))
@@ -524,7 +536,7 @@ export default function SPFRequestCreate({
                       <div className="border-t divide-y">
                         {offers.map((prod: any, i: number) => {
                           const unitCost      = prod?.commercialDetails?.unitCost || "-";
-                          const qty           = prod.qty || 0;
+                          const qty           = prod.qty ?? 1;
                           const cost          = Number(prod?.commercialDetails?.unitCost || 0);
                           const subtotal      = qty * cost;
                           const length        = prod?.commercialDetails?.packaging?.length || "-";
@@ -556,13 +568,13 @@ export default function SPFRequestCreate({
                                   <span className="text-[10px] text-muted-foreground">Qty</span>
                                   <input
                                     type="number"
-                                    min={0}
+                                    min={1}
                                     className="border rounded px-2 py-0.5 text-xs w-16"
                                     placeholder="0"
-                                    value={prod.qty || ""}
+                                    value={prod.qty || 1}
                                     onChange={(e) => {
                                       let qty = Number(e.target.value);
-                                      if (qty < 0) qty = 0;
+                                      if (qty < 1) qty = 1;
                                       setProductOffers((prev) => {
                                         const copy = { ...prev };
                                         const row  = [...(copy[index] || [])];
@@ -709,9 +721,17 @@ export default function SPFRequestCreate({
           {viewMode ? "Edit" : "Preview"}
         </Button>
         {viewMode && (
-          <Button type="button" className="flex-1 rounded" onClick={handleSubmit}>
-            Submit
-          </Button>
+        <Button
+          type="button"
+          className="flex-1 rounded"
+          onClick={handleSubmit}
+          disabled={
+            (formData.item_description?.length || 0) === 0 ||
+            formData.item_description?.some((_, i) => !productOffers[i] || productOffers[i].length === 0)
+          }
+        >
+          Submit
+        </Button>
         )}
       </DialogFooter>
     </>
@@ -828,7 +848,10 @@ export default function SPFRequestCreate({
                             original.splice(draggedProduct.__fromIndex, 1);
                             copy[draggedProduct.__fromRow] = original;
                           }
-                          copy[index] = [...(copy[index] || []), freezeSpecs(draggedProduct)];
+                          copy[index] = [
+                            ...(copy[index] || []),
+                            { ...freezeSpecs(draggedProduct), qty: 1 }
+                          ];
                           return copy;
                         });
                         setDraggedProduct(null);
@@ -919,13 +942,13 @@ export default function SPFRequestCreate({
                                       <td className="border px-2 py-1 text-center align-middle">
                                         <input
                                           type="number"
-                                          min={0}
+                                          min={1}
                                           className="w-full border px-1 text-xs"
                                           placeholder="Qty"
-                                          value={prod.qty || ""}
+                                          value={prod.qty ?? 1}
                                           onChange={(e) => {
                                             let qty = Number(e.target.value);
-                                            if (qty < 0) qty = 0;
+                                            if (qty < 1) qty = 1;
                                             setProductOffers((prev) => {
                                               const copy = { ...prev };
                                               const row  = [...(copy[index] || [])];
@@ -957,7 +980,7 @@ export default function SPFRequestCreate({
                                       <td className="border px-2 py-1 text-center align-middle">{port}</td>
                                       <td className="border px-2 py-1 text-center align-middle">
                                         {(() => {
-                                          const qty  = prod.qty || 0;
+                                          const qty  = prod.qty ?? 1;
                                           const cost = Number(prod?.commercialDetails?.unitCost || 0);
                                           return (
                                             <span className="text-xs font-semibold">
@@ -1092,7 +1115,16 @@ export default function SPFRequestCreate({
           {viewMode ? "Back" : "View"}
         </Button>
         {viewMode && (
-          <Button className="rounded-none p-6" onClick={handleSubmit}>Submit</Button>
+          <Button
+            className="rounded-none p-6"
+            onClick={handleSubmit}
+            disabled={
+              (formData.item_description?.length || 0) === 0 ||
+              formData.item_description?.some((_, i) => !productOffers[i] || productOffers[i].length === 0)
+            }
+          >
+            Submit
+          </Button>
         )}
       </DialogFooter>
     </>
