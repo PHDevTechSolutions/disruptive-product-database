@@ -200,10 +200,10 @@ export default function SPFRequestFetch({ spfNumber }: SPFViewProps) {
 
   const rowItemCodes = splitByRow(data?.item_code);
 
-const itemDescriptions: string[] = (requestData?.item_description || "")
-  .split(",")
-  .map((s) => s.trim());
-  const itemImages       = (requestData?.item_photo || "").split(",").map((s) => s.trim());
+  const itemDescriptions: string[] = (requestData?.item_description || "")
+    .split(",")
+    .map((s) => s.trim());
+    const itemImages       = (requestData?.item_photo || "").split(",").map((s) => s.trim());
 
   /* ────────────────────────────────────────────────────────────────
      MOBILE CARD RENDERER
