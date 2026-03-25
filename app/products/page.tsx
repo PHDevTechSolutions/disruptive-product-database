@@ -62,15 +62,50 @@ export default function ProductsPage() {
   useEffect(() => {
     const updateGridPagination = () => {
       if (!gridRef.current) return;
+
       const containerWidth = gridRef.current.offsetWidth;
+
+      // 🔥 FIX: fallback kung 0 width (common after navigation)
+      if (!containerWidth) return;
+
       const cardMinWidth = 220 * cardScale;
       const cols = Math.max(1, Math.floor(containerWidth / cardMinWidth));
+
       setColumns(cols);
-      setItemsPerPage(cols * 4); // always exactly 4 full rows
+      setItemsPerPage(cols * 4);
     };
-    updateGridPagination();
-    window.addEventListener("resize", updateGridPagination);
-    return () => window.removeEventListener("resize", updateGridPagination);
+
+  // 🔥 run immediately
+  updateGridPagination();
+
+  // 🔥 run AGAIN after render (important)
+  const timeout = setTimeout(updateGridPagination, 50);
+
+  window.addEventListener("resize", updateGridPagination);
+
+  return () => {
+    window.removeEventListener("resize", updateGridPagination);
+    clearTimeout(timeout);
+  };
+}, [cardScale]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (!gridRef.current) return;
+
+      const containerWidth = gridRef.current.offsetWidth;
+      if (!containerWidth) return;
+
+      const cardMinWidth = 220 * cardScale;
+      const cols = Math.max(1, Math.floor(containerWidth / cardMinWidth));
+
+      setColumns(cols);
+      setItemsPerPage(cols * 4);
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => window.removeEventListener("focus", handleFocus);
   }, [cardScale]);
 
   useEffect(() => {
@@ -192,7 +227,7 @@ export default function ProductsPage() {
         On mobile: relative container so the drawer can be positioned absolute within it.
         The products grid stays fully rendered and visible behind the drawer.
       */}
-      <div className="flex flex-1 min-h-0 overflow-hidden relative">
+      <div className="flex flex-1 min-h-0 w-full overflow-hidden relative">
 
         {/* ── PRODUCT GRID AREA ── */}
         <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden">
@@ -234,7 +269,7 @@ export default function ProductsPage() {
                 ) : (
                   <div
                     ref={gridRef}
-                    className="grid gap-3 md:gap-4"
+                    className="grid gap-3 md:gap-4 w-full"
                     style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
                   >
                     {paginatedProducts.map((p) => (
