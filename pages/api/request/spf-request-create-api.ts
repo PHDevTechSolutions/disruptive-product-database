@@ -241,6 +241,7 @@ export default async function handler(
     const finalContactNumbers = rowContactNumbers.join(ROW_SEP);
     const finalSellingCosts   = rowSellingCosts.join(ROW_SEP);
     const finalLeadTimes      = rowLeadTimes.join(ROW_SEP);
+    
 
     /* ── NEW: final item_code string ──
        Format: "SPF-XXX-001-OPT-1,SPF-XXX-001-OPT-2|ROW|SPF-XXX-002-OPT-1"
