@@ -229,7 +229,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
   const [data, setData]               = useState<SPFData | null>(null);
   const [requestData, setRequestData] = useState<SPFRequestData | null>(null);
   const [loading, setLoading]         = useState(false);
-  const [currentVersion, setCurrentVersion] = useState<number | null>(null);
+  const [currentVersionLabel, setCurrentVersionLabel] = useState<string | null>(null);
   const [isMobile, setIsMobile]       = useState(false);
 
   /* ── Edit mode state (mirrors spf-request-create) ── */
@@ -311,18 +311,20 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
 
       setRequestData(request);
 
-      // Fetch current version
+      // Fetch current version info (number + label)
       const { data: versionData } = await supabase
         .from("spf_creation_history")
-        .select("version_number")
+        .select("version_number,version_label")
         .eq("spf_number", spfNumber)
         .order("version_number", { ascending: false })
         .limit(1);
 
       if (versionData && versionData.length > 0) {
-        setCurrentVersion(versionData[0].version_number);
+        setCurrentVersionLabel(
+          versionData[0].version_label || `${spfNumber}_v${versionData[0].version_number}`
+        );
       } else {
-        setCurrentVersion(null);
+        setCurrentVersionLabel(null);
       }
     } catch (err) {
       console.error(err);
@@ -1556,9 +1558,9 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <DialogTitle>SPF Request View</DialogTitle>
-                {currentVersion && (
+                {currentVersionLabel && (
                   <Badge variant="secondary" className="text-xs">
-                    v{currentVersion}
+                    {currentVersionLabel}
                   </Badge>
                 )}
               </div>
