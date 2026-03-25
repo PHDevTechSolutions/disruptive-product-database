@@ -9,24 +9,24 @@ export default async function handler(
 ) {
   const { from, to, page, search } = req.query;
 
-  const fromDate = typeof from === "string" ? from : undefined;
-  const toDate   = typeof to === "string" ? to : undefined;
-  const pageNum  = typeof page === "string" ? Math.max(1, parseInt(page, 10)) : 1;
+  const fromDate   = typeof from   === "string" ? from   : undefined;
+  const toDate     = typeof to     === "string" ? to     : undefined;
+  const pageNum    = typeof page   === "string" ? Math.max(1, parseInt(page, 10)) : 1;
   const searchTerm = typeof search === "string" ? search.trim() : "";
 
   try {
     let query = supabase
       .from("spf_request")
-      .select("*", { count: "exact" }) // 🔥 important for pagination
+      .select("*", { count: "exact" })
       .order("date_created", { ascending: false })
-      .order("id", { ascending: false });
+      .order("id",           { ascending: false });
 
     // 📅 DATE FILTER
     if (fromDate && toDate) {
       query = query.gte("date_created", fromDate).lte("date_created", toDate);
     }
 
-    // 🔍 SEARCH FILTER (FIXED)
+    // 🔍 SEARCH FILTER
     if (searchTerm) {
       const s = `%${searchTerm}%`;
       query = query.or(
@@ -47,26 +47,24 @@ export default async function handler(
 
     const safeData = (data || []).map((r: any) => ({
       ...r,
-      id: r.id?.toString() ?? null,
-      date_created: r.date_created
-        ? new Date(r.date_created).toISOString()
-        : null,
+      id:                   r.id?.toString() ?? null,
+      date_created:         r.date_created ? new Date(r.date_created).toISOString() : null,
       special_instructions: r.special_instructions ?? null,
-      clientName: r.clientName ?? null,
-      spf_number: r.spf_number ?? null,
-      item_code: r.item_code ?? null,
+      clientName:           r.clientName ?? null,
+      spf_number:           r.spf_number ?? null,
+      item_code:            r.item_code ?? null,
     }));
 
-    const total = count || 0;
+    const total      = count || 0;
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-    const safePage = Math.min(pageNum, totalPages);
+    const safePage   = Math.min(pageNum, totalPages);
 
     return res.status(200).json({
       requests: safeData,
       total,
-      page: safePage,
+      page:      safePage,
       totalPages,
-      pageSize: PAGE_SIZE,
+      pageSize:  PAGE_SIZE,
     });
 
   } catch (err: any) {

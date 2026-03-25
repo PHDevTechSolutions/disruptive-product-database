@@ -144,10 +144,6 @@ export default async function handler(
       ── */
       const itemCodes: string[]      = [];
 
-      // The row base is the spf_number with a zero-padded row suffix
-      // e.g. if spf_number = "SPF-DSI-26-004"  → "SPF-DSI-26-004-001"
-      // if spf_number already includes the row suffix (e.g. "SPF-DSI-26-004-001")
-      // we strip and rebuild so the pattern is always consistent.
       const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
 
       for (let optIdx = 0; optIdx < rowProducts.length; optIdx++) {

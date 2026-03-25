@@ -120,7 +120,7 @@ function MobileSpecsBlock({ groups }: { groups: SpecGroup[] }) {
   );
 }
 
-export default function SPFRequestView({ spfNumber }: SPFViewProps) {
+export default function SPFRequestFetch({ spfNumber }: SPFViewProps) {
   const [open, setOpen]               = useState(false);
   const [data, setData]               = useState<SPFData | null>(null);
   const [requestData, setRequestData] = useState<SPFRequestData | null>(null);
