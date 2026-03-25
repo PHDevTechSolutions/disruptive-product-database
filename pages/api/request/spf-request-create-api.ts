@@ -54,6 +54,8 @@ export default async function handler(
       item_code,
       totalItemRows,
       selectedProducts,
+      spf_creation_start_time,
+      spf_creation_end_time,
     } = req.body;
 
     if (!spf_number) {
@@ -260,7 +262,7 @@ export default async function handler(
     /* ── CHECK EXISTING SPF ── */
     const { data: existing, error: checkError } = await supabase
       .from("spf_creation")
-      .select("id")
+      .select("id, spf_creation_start_time, spf_creation_end_time")
       .eq("spf_number", spf_number)
       .maybeSingle();
 
@@ -302,6 +304,9 @@ export default async function handler(
 
           status: "Pending For Procurement",
 
+          spf_creation_start_time: spf_creation_start_time ?? null,
+          spf_creation_end_time:   spf_creation_end_time ?? null,
+
           date_created: new Date().toISOString(),
           date_updated: new Date().toISOString(),
         });
@@ -340,12 +345,25 @@ export default async function handler(
           final_selling_cost: finalSellingCosts,
 
           item_code: finalItemCode,
+
+          spf_creation_start_time: spf_creation_start_time ?? null,
+          spf_creation_end_time:   spf_creation_end_time ?? null,
         });
 
       if (historyError) {
         console.error("History insert error:", historyError);
         // Don't fail the whole request for history error
       }
+    } else {
+      /* If record already exists, update timestamp in main record */
+      await supabase
+        .from("spf_creation")
+        .update({
+          spf_creation_start_time: spf_creation_start_time ?? existing?.spf_creation_start_time ?? null,
+          spf_creation_end_time:   spf_creation_end_time   ?? existing?.spf_creation_end_time   ?? null,
+          date_updated: new Date().toISOString(),
+        })
+        .eq("spf_number", spf_number);
     }
 
     /* ── UPDATE REQUEST STATUS ── */

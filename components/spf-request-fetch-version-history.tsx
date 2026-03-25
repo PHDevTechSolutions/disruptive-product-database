@@ -23,6 +23,8 @@ type VersionRecord = {
   created_at: string;
   edited_by?: string;
   status?: string;
+  spf_creation_start_time?: string;
+  spf_creation_end_time?: string;
 
   supplier_brand?: string;
   product_offer_image?: string;
@@ -468,6 +470,31 @@ export default function SPFRequestFetchVersionHistory({
                                 <Clock size={10} />
                                 {formatDateTime(v.created_at)}
                               </span>
+                              {v.spf_creation_start_time && (
+                                <span className="flex items-center gap-1 truncate">
+                                  <span className="font-medium">Start:</span> {formatDateTime(v.spf_creation_start_time)}
+                                </span>
+                              )}
+                              {v.spf_creation_end_time && (
+                                <span className="flex items-center gap-1 truncate">
+                                  <span className="font-medium">End:</span> {formatDateTime(v.spf_creation_end_time)}
+                                </span>
+                              )}
+                              {v.spf_creation_start_time && v.spf_creation_end_time && (
+                                <span className="flex items-center gap-1 truncate">
+                                  <span className="font-medium">Dur:</span>
+                                  {(() => {
+                                    const start = new Date(v.spf_creation_start_time).getTime();
+                                    const end = new Date(v.spf_creation_end_time).getTime();
+                                    const diff = Math.max(0, Math.floor((end - start) / 1000));
+                                    const hrs = Math.floor(diff / 3600);
+                                    const mins = Math.floor((diff % 3600) / 60);
+                                    const secs = diff % 60;
+                                    const z = (n: number) => String(n).padStart(2, "0");
+                                    return `${hrs > 0 ? `${z(hrs)}:` : ""}${z(mins)}:${z(secs)}`;
+                                  })()}
+                                </span>
+                              )}
                               {v.edited_by && (
                                 <span className="flex items-center gap-1 truncate">
                                   <User size={10} />

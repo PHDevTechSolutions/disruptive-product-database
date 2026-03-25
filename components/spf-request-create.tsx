@@ -29,6 +29,7 @@ import AddProductComponent from "@/components/add-product-component";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import CardDetails from "@/components/spf/dialog/card-details";
+import SPFTimer from "@/components/spf-timer";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* TYPES                                                           */
@@ -201,6 +202,11 @@ export default function SPFRequestCreate({
   const [openAddProduct, setOpenAddProduct] = useState(false);
   const [openFilter, setOpenFilter]         = useState(false);
 
+  /* ── Timer state ── */
+  const [spfCreationStartTime, setSpfCreationStartTime] = useState<string | null>(null);
+  const [spfCreationEndTime, setSpfCreationEndTime]     = useState<string | null>(null);
+  const [timerActive, setTimerActive]                   = useState(false);
+
   /* ── Desktop drag ── */
   const [draggedProduct, setDraggedProduct] = useState<any | null>(null);
   const [showTrash, setShowTrash]           = useState(false);
@@ -236,6 +242,12 @@ export default function SPFRequestCreate({
     setPendingProduct(null);
     setActiveTab("items");
     setProductSearch("");
+
+    const start = new Date().toISOString();
+    setSpfCreationStartTime(start);
+    setSpfCreationEndTime(null);
+    setTimerActive(true);
+
     fetchProducts(rowData.customer_name || "");
   }, [open, rowData, processBy]);
 
@@ -342,6 +354,11 @@ export default function SPFRequestCreate({
       return; // ❌ STOP submit
     }
   }
+
+  const end = new Date().toISOString();
+  setSpfCreationEndTime(end);
+  setTimerActive(false);
+
     try {
       const allProducts = Object.entries(productOffers).flatMap(([rowIndex, prods]) =>
         prods.map((p) => ({ ...p, __rowIndex: Number(rowIndex) }))
@@ -352,8 +369,10 @@ export default function SPFRequestCreate({
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           ...formData,
-          selectedProducts: allProducts,
-          totalItemRows:    formData.item_description?.length ?? 1,
+          selectedProducts:          allProducts,
+          totalItemRows:            formData.item_description?.length ?? 1,
+          spf_creation_start_time:  spfCreationStartTime,
+          spf_creation_end_time:    end,
         }),
       });
 
@@ -711,31 +730,43 @@ export default function SPFRequestCreate({
         )}
       </div>
 
-      <DialogFooter className="px-4 py-3 border-t shrink-0 flex-row gap-2">
-        <Button type="button" variant="outline" className="flex-1 rounded" onClick={() => onOpenChange(false)}>
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="flex-1 rounded"
-          onClick={() => { setViewMode((p) => !p); if (!viewMode) setActiveTab("items"); }}
-        >
-          {viewMode ? "Edit" : "Preview"}
-        </Button>
-        {viewMode && (
-        <Button
-          type="button"
-          className="flex-1 rounded"
-          onClick={handleSubmit}
-          disabled={
-            (formData.item_description?.length || 0) === 0 ||
-            formData.item_description?.some((_, i) => !productOffers[i] || productOffers[i].length === 0)
-          }
-        >
-          Submit
-        </Button>
-        )}
+      <DialogFooter className="px-4 py-3 border-t shrink-0 flex-col gap-2">
+        <div className="w-full mb-2">
+          <SPFTimer
+            isActive={timerActive}
+            startTime={spfCreationStartTime}
+            label="Create SPF Timer"
+            onStart={(v) => setSpfCreationStartTime(v)}
+            onStop={(v) => setSpfCreationEndTime(v)}
+            onTick={() => {}}
+          />
+        </div>
+        <div className="w-full flex gap-2">
+          <Button type="button" variant="outline" className="flex-1 rounded" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 rounded"
+            onClick={() => { setViewMode((p) => !p); if (!viewMode) setActiveTab("items"); }}
+          >
+            {viewMode ? "Edit" : "Preview"}
+          </Button>
+          {viewMode && (
+            <Button
+              type="button"
+              className="flex-1 rounded"
+              onClick={handleSubmit}
+              disabled={
+                (formData.item_description?.length || 0) === 0 ||
+                formData.item_description?.some((_, i) => !productOffers[i] || productOffers[i].length === 0)
+              }
+            >
+              Submit
+            </Button>
+          )}
+        </div>
       </DialogFooter>
     </>
   );
@@ -1115,23 +1146,35 @@ export default function SPFRequestCreate({
         </div>
       </div>
 
-      <DialogFooter className="mt-4 flex justify-end gap-2">
-        <Button variant="outline" className="rounded-none p-6" onClick={() => onOpenChange(false)}>Cancel</Button>
-        <Button variant="outline" className="rounded-none p-6" onClick={() => setViewMode((prev) => !prev)}>
-          {viewMode ? "Back" : "View"}
-        </Button>
-        {viewMode && (
-          <Button
-            className="rounded-none p-6"
-            onClick={handleSubmit}
-            disabled={
-              (formData.item_description?.length || 0) === 0 ||
-              formData.item_description?.some((_, i) => !productOffers[i] || productOffers[i].length === 0)
-            }
-          >
-            Submit
+      <DialogFooter className="mt-4 flex flex-col gap-3">
+        <div className="w-full">
+          <SPFTimer
+            isActive={timerActive}
+            startTime={spfCreationStartTime}
+            label="Create SPF Timer"
+            onStart={(v) => setSpfCreationStartTime(v)}
+            onStop={(v) => setSpfCreationEndTime(v)}
+            onTick={() => {}}
+          />
+        </div>
+        <div className="w-full flex justify-end gap-2">
+          <Button variant="outline" className="rounded-none p-6" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" className="rounded-none p-6" onClick={() => setViewMode((prev) => !prev)}>
+            {viewMode ? "Back" : "View"}
           </Button>
-        )}
+          {viewMode && (
+            <Button
+              className="rounded-none p-6"
+              onClick={handleSubmit}
+              disabled={
+                (formData.item_description?.length || 0) === 0 ||
+                formData.item_description?.some((_, i) => !productOffers[i] || productOffers[i].length === 0)
+              }
+            >
+              Submit
+            </Button>
+          )}
+        </div>
       </DialogFooter>
     </>
   );

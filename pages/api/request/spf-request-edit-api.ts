@@ -29,6 +29,8 @@ export default async function handler(
       totalItemRows,
       selectedProducts,
       edited_by,
+      spf_creation_start_time,
+      spf_creation_end_time,
     } = req.body;
 
     if (!spf_number) {
@@ -133,12 +135,20 @@ export default async function handler(
         const qty = Number(p.qty || 0);
         const unitCost = Number(p?.commercialDetails?.unitCost || 0);
         const pcsPerCarton = p?.commercialDetails?.pcsPerCarton || "-";
+        const length = p?.commercialDetails?.packaging?.length || "-";
+        const width = p?.commercialDetails?.packaging?.width || "-";
+        const height = p?.commercialDetails?.packaging?.height || "-";
+        const factory = p?.commercialDetails?.factoryAddress || "-";
+        const port = p?.commercialDetails?.portOfDischarge || "-";
         const subtotal = qty * unitCost;
 
         images.push(p?.mainImage?.url || "-");
         qtys.push(String(qty));
         unitCosts.push(String(unitCost));
         pcsPerCartons.push(String(pcsPerCarton));
+        packaging.push(`${length} x ${width} x ${height}`);
+        factories.push(factory);
+        ports.push(port);
         subtotals.push(String(subtotal));
 
         supplierBrands.push(p?.supplier?.supplierBrand || "-");
@@ -153,10 +163,24 @@ export default async function handler(
         contactNames.push(cached?.contactNames || "-");
         contactNumbers.push(cached?.contactNumbers || "-");
 
-        specs.push("-"); // keep same logic or your existing one
-        packaging.push("-");
-        factories.push("-");
-        ports.push("-");
+        // capture the same technical spec serialization used by create API
+        if (p?.technicalSpecifications?.length) {
+          const groupedTech = p.technicalSpecifications
+            .map((g: any) => {
+              const title = (g.title || "").trim();
+              const specLines = (g.specs || [])
+                .filter((s: any) => s.value && s.value.trim() !== "")
+                .map((s: any) => `${s.specId}: ${s.value.trim()}`)
+                .join(";;");
+              if (!specLines) return null;
+              return title ? `${title}~~${specLines}` : specLines;
+            })
+            .filter(Boolean)
+            .join("@@");
+          specs.push(groupedTech || "-");
+        } else {
+          specs.push("-");
+        }
       }
 
       rowImages.push(images.join(","));
@@ -222,6 +246,9 @@ export default async function handler(
       final_selling_cost: finalSellingCosts,
 
       item_code: finalItemCode,
+
+      spf_creation_start_time: spf_creation_start_time ?? null,
+      spf_creation_end_time:   spf_creation_end_time   ?? null,
     });
 
     /* ── UPDATE MAIN TABLE ── */
@@ -248,6 +275,8 @@ export default async function handler(
         proj_lead_time: finalLeadTimes,
 
         status: "Pending For Procurement",
+        spf_creation_start_time: spf_creation_start_time ?? null,
+        spf_creation_end_time:   spf_creation_end_time   ?? null,
         date_updated: new Date().toISOString(),
       })
       .eq("spf_number", spf_number);

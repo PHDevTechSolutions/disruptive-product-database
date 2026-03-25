@@ -32,6 +32,7 @@ import { db } from "@/lib/firebase";
 import FilteringComponent from "@/components/filtering-component-v2";
 import AddProductComponent from "@/components/add-product-component";
 import CardDetails from "@/components/spf/dialog/card-details";
+import SPFTimer from "@/components/spf-timer";
 import SPFRequestFetchVersionHistory from "./spf-request-fetch-version-history";
 
 /* ─────────────────────────────────────────────────────────────── */
@@ -236,6 +237,11 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
   const [editMode, setEditMode]               = useState(false);
   const [viewMode, setViewMode]               = useState(false); // preview within edit
   const [productOffers, setProductOffers]     = useState<Record<number, any[]>>({});
+
+  /* ── Timer state for edit duration tracking ── */
+  const [spfEditStartTime, setSpfEditStartTime] = useState<string | null>(null);
+  const [spfEditEndTime, setSpfEditEndTime]     = useState<string | null>(null);
+  const [timerActive, setTimerActive]           = useState(false);
   const [products, setProducts]               = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -433,6 +439,11 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
     setPickerStep("list");
     setPendingProduct(null);
     setProductSearch("");
+
+    const start = new Date().toISOString();
+    setSpfEditStartTime(start);
+    setSpfEditEndTime(null);
+    setTimerActive(true);
   };
 
   /* ── Helpers (edit mode) ── */
@@ -508,18 +519,24 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
         prods.map((p) => ({ ...p, __rowIndex: Number(rowIndex) }))
       );
 
+      const end = new Date().toISOString();
+      setSpfEditEndTime(end);
+      setTimerActive(false);
+
       const res = await fetch("/api/request/spf-request-edit-api", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          spf_number:       spfNumber,
-          referenceid:      data?.referenceid,
-          tsm:              data?.tsm,
-          manager:          data?.manager,
-          item_code:        data?.item_code,
-          totalItemRows:    totalRows,
-          selectedProducts: allProducts,
-          edited_by:        processBy ?? null,
+          spf_number:               spfNumber,
+          referenceid:              data?.referenceid,
+          tsm:                      data?.tsm,
+          manager:                  data?.manager,
+          item_code:                data?.item_code,
+          totalItemRows:            totalRows,
+          selectedProducts:         allProducts,
+          edited_by:                processBy ?? null,
+          spf_creation_start_time:  spfEditStartTime,
+          spf_creation_end_time:    end,
         }),
       });
 
@@ -876,12 +893,23 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
         )}
       </div>
 
-      <DialogFooter className="px-4 py-3 border-t shrink-0 flex-row gap-2">
-        <Button type="button" variant="outline" className="flex-1 rounded" onClick={() => { setEditMode(false); setViewMode(false); }}>
-          Cancel
-        </Button>
-        <Button
-          type="button"
+      <DialogFooter className="px-4 py-3 border-t shrink-0 flex-col gap-2">
+        <div className="w-full mb-2">
+          <SPFTimer
+            isActive={timerActive}
+            startTime={spfEditStartTime}
+            label="Edit SPF Timer"
+            onStart={(v) => setSpfEditStartTime(v)}
+            onStop={(v) => setSpfEditEndTime(v)}
+            onTick={() => {}}
+          />
+        </div>
+        <div className="w-full flex gap-2">
+          <Button type="button" variant="outline" className="flex-1 rounded" onClick={() => { setEditMode(false); setViewMode(false); setTimerActive(false); }}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
           variant="outline"
           className="flex-1 rounded"
           onClick={() => { setViewMode((p) => !p); if (!viewMode) setActiveTab("items"); }}
@@ -901,6 +929,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
             Save
           </Button>
         )}
+      </div>
       </DialogFooter>
     </>
   );
@@ -1223,23 +1252,35 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
         </div>
       </div>
 
-      <DialogFooter className="mt-4 flex justify-end gap-2">
-        <Button variant="outline" className="rounded-none p-6" onClick={() => { setEditMode(false); setViewMode(false); }}>Cancel</Button>
-        <Button variant="outline" className="rounded-none p-6" onClick={() => setViewMode((prev) => !prev)}>
-          {viewMode ? "Back" : "Preview"}
-        </Button>
-        {viewMode && (
-          <Button
-            className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
-            onClick={handleSubmitEdit}
-            disabled={
-              itemDescriptions.length === 0 ||
-              itemDescriptions.some((_, i) => !productOffers[i] || productOffers[i].length === 0)
-            }
-          >
-            Save Changes
+      <DialogFooter className="mt-4 flex flex-col gap-2">
+        <div className="w-full">
+          <SPFTimer
+            isActive={timerActive}
+            startTime={spfEditStartTime}
+            label="Edit SPF Timer"
+            onStart={(v) => setSpfEditStartTime(v)}
+            onStop={(v) => setSpfEditEndTime(v)}
+            onTick={() => {}}
+          />
+        </div>
+        <div className="w-full flex justify-end gap-2">
+          <Button variant="outline" className="rounded-none p-6" onClick={() => { setEditMode(false); setViewMode(false); setTimerActive(false); }}>Cancel</Button>
+          <Button variant="outline" className="rounded-none p-6" onClick={() => setViewMode((prev) => !prev)}>
+            {viewMode ? "Back" : "Preview"}
           </Button>
-        )}
+          {viewMode && (
+            <Button
+              className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
+              onClick={handleSubmitEdit}
+              disabled={
+                itemDescriptions.length === 0 ||
+                itemDescriptions.some((_, i) => !productOffers[i] || productOffers[i].length === 0)
+              }
+            >
+              Save Changes
+            </Button>
+          )}
+        </div>
       </DialogFooter>
     </>
   );
@@ -1544,7 +1585,13 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
       {/* ── Main view dialog ── */}
       <Dialog
         open={open && !editMode}
-        onOpenChange={(o) => { if (!o) { setOpen(false); setEditMode(false); } else setOpen(true); }}
+        onOpenChange={(o) => {
+          if (!o) {
+            setOpen(false);
+            setEditMode(false);
+            setTimerActive(false);
+          } else setOpen(true);
+        }}
       >
         <DialogContent
           className={
@@ -1621,7 +1668,13 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
       {/* ── Edit dialog (For Revision) ── */}
       <Dialog
         open={open && editMode}
-        onOpenChange={(o) => { if (!o) { setOpen(false); setEditMode(false); } else setOpen(true); }}
+        onOpenChange={(o) => {
+          if (!o) {
+            setOpen(false);
+            setEditMode(false);
+            setTimerActive(false);
+          } else setOpen(true);
+        }}
       >
         <DialogContent
           className={
