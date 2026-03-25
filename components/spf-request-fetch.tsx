@@ -16,6 +16,7 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/utils/supabase";
 import {
   ChevronDown,
@@ -228,6 +229,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
   const [data, setData]               = useState<SPFData | null>(null);
   const [requestData, setRequestData] = useState<SPFRequestData | null>(null);
   const [loading, setLoading]         = useState(false);
+  const [currentVersion, setCurrentVersion] = useState<number | null>(null);
   const [isMobile, setIsMobile]       = useState(false);
 
   /* ── Edit mode state (mirrors spf-request-create) ── */
@@ -308,6 +310,20 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
         .maybeSingle();
 
       setRequestData(request);
+
+      // Fetch current version
+      const { data: versionData } = await supabase
+        .from("spf_creation_history")
+        .select("version_number")
+        .eq("spf_number", spfNumber)
+        .order("version_number", { ascending: false })
+        .limit(1);
+
+      if (versionData && versionData.length > 0) {
+        setCurrentVersion(versionData[0].version_number);
+      } else {
+        setCurrentVersion(null);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -1538,7 +1554,14 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
           {/* Header */}
           <DialogHeader className={isMobile ? "px-4 pt-4 pb-3 border-b shrink-0" : "space-y-2"}>
             <div className="flex items-center justify-between gap-2">
-              <DialogTitle>SPF Request View</DialogTitle>
+              <div className="flex items-center gap-2">
+                <DialogTitle>SPF Request View</DialogTitle>
+                {currentVersion && (
+                  <Badge variant="secondary" className="text-xs">
+                    v{currentVersion}
+                  </Badge>
+                )}
+              </div>
               {/* Version history button */}
               <SPFRequestFetchVersionHistory spfNumber={spfNumber} isMobile={isMobile} />
             </div>

@@ -310,6 +310,42 @@ export default async function handler(
         console.error(insertError);
         return res.status(500).json(insertError);
       }
+
+      /* ── INSERT VERSION HISTORY FOR V1 ── */
+      const { error: historyError } = await supabase
+        .from("spf_creation_history")
+        .insert({
+          spf_number,
+          version_number: 1,
+          version_label: `${spf_number}_v1`,
+          created_at: new Date().toISOString(),
+          edited_by: null, // First creation has no editor
+
+          supplier_brand: finalSupplierBrands,
+          product_offer_image: finalImages,
+          product_offer_qty: finalQtys,
+          product_offer_technical_specification: finalSpecs,
+          product_offer_unit_cost: finalUnitCosts,
+          product_offer_pcs_per_carton: finalPcsPerCarton,
+          product_offer_packaging_details: finalPackaging,
+          product_offer_factory_address: finalFactories,
+          product_offer_port_of_discharge: finalPorts,
+          product_offer_subtotal: finalSubtotals,
+
+          company_name: finalCompanyNames,
+          contact_name: finalContactNames,
+          contact_number: finalContactNumbers,
+
+          proj_lead_time: finalLeadTimes,
+          final_selling_cost: finalSellingCosts,
+
+          item_code: finalItemCode,
+        });
+
+      if (historyError) {
+        console.error("History insert error:", historyError);
+        // Don't fail the whole request for history error
+      }
     }
 
     /* ── UPDATE REQUEST STATUS ── */
