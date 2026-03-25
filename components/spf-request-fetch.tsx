@@ -1597,7 +1597,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
           className={
             isMobile
               ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-              : "sm:max-w-7xl max-h-[90vh] overflow-y-auto rounded-none"
+              : "w-[95vw] max-w-[1200px] xl:max-w-[95vw] max-h-[90vh] overflow-y-auto rounded-none"
           }
         >
           {/* Header */}
@@ -1680,7 +1680,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
           className={
             isMobile
               ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-              : "sm:max-w-8xl rounded-none p-6 max-h-[90vh] overflow-hidden flex flex-col"
+              : "w-[95vw] max-w-[1200px] xl:max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-6 rounded-none"
           }
         >
           {isMobile ? renderEditMobile() : renderEditDesktop()}
@@ -1693,7 +1693,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
           className={
             isMobile
               ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-              : "sm:max-w-[1200px] max-h-[90vh] overflow-y-auto"
+              : "w-[95vw] max-w-[1200px] xl:max-w-[95vw] max-h-[90vh] overflow-y-auto rounded-none"
           }
         >
           <DialogHeader className={isMobile ? "px-4 pt-4 pb-2 border-b shrink-0" : ""}>

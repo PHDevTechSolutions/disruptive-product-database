@@ -137,6 +137,28 @@ function SpecsBlock({ groups }: { groups: SpecGroup[] }) {
   );
 }
 
+function renderHistoryTechnicalSpecs(groups: SpecGroup[]) {
+  if (!groups || groups.length === 0) {
+    return <span className="text-[10px] text-muted-foreground">-</span>;
+  }
+  return (
+    <div className="space-y-1 text-[10px] text-gray-700">
+      {groups.map((group, gi) => (
+        <div key={gi}>
+          {group.title && (
+            <div className="font-semibold text-gray-800">{group.title}</div>
+          )}
+          {group.specs.map((spec, si) => (
+            <div key={si} className="leading-tight">
+              {spec}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ─────────────────────────────────────────────────────────────── */
 /* VERSION DETAIL VIEW                                             */
 /* ─────────────────────────────────────────────────────────────── */
@@ -259,8 +281,8 @@ function VersionDetail({
                   })}
                 </div>
               ) : (
-                <div className="overflow-x-auto px-3 py-2">
-                  <table className="w-full border text-xs">
+                <div className="overflow-x-auto px-4 py-3 min-w-[1400px]">
+                  <table className="w-full border text-sm">
                     <thead>
                       <tr className="bg-gray-50">
                         <th className="border px-2 py-1 text-center">Supplier Brand</th>
@@ -286,9 +308,6 @@ function VersionDetail({
                       {prodImages.map((img, i) => {
                         const groups      = prodSpecs[i] ?? [];
                         const optItemCode = prodItemCodes[i] && prodItemCodes[i] !== "-" ? prodItemCodes[i] : null;
-                        const specsText = groups.length === 0 ? "-" : groups
-                          .map((g) => (g.title ? `${g.title}: ${g.specs.join(", ")}` : g.specs.join(", ")))
-                          .join("; ");
 
                         return (
                           <tr key={i} className="align-top">
@@ -301,7 +320,9 @@ function VersionDetail({
                               )}
                             </td>
                             <td className="border px-2 py-1 text-center">{prodQtys[i] || "-"}</td>
-                            <td className="border px-2 py-1 align-top text-[11px]">{specsText}</td>
+                            <td className="border px-2 py-1 align-top text-[11px]">
+                              {renderHistoryTechnicalSpecs(groups)}
+                            </td>
                             <td className="border px-2 py-1 text-center">{prodUnitCosts[i] || "-"}</td>
                             <td className="border px-2 py-1 text-center">{prodPcsPerCartons[i] || "-"}</td>
                             <td className="border px-2 py-1 text-center">{prodPackaging[i] || "-"}</td>
@@ -415,7 +436,7 @@ export default function SPFRequestFetchVersionHistory({
           className={
             isMobile
               ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-              : "sm:max-w-3xl max-h-[90vh] overflow-y-auto rounded-none"
+              : "w-[95vw] max-w-[1200px] xl:max-w-[95vw] max-h-[90vh] overflow-y-auto rounded-none"
           }
         >
           <DialogHeader className={isMobile ? "px-4 pt-4 pb-3 border-b shrink-0" : ""}>
