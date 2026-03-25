@@ -200,7 +200,9 @@ export default function SPFRequestFetch({ spfNumber }: SPFViewProps) {
 
   const rowItemCodes = splitByRow(data?.item_code);
 
-  const itemDescriptions = (requestData?.item_description || "").split(",").map((s) => s.trim());
+const itemDescriptions: string[] = (requestData?.item_description || "")
+  .split(",")
+  .map((s) => s.trim());
   const itemImages       = (requestData?.item_photo || "").split(",").map((s) => s.trim());
 
   /* ────────────────────────────────────────────────────────────────
@@ -208,7 +210,7 @@ export default function SPFRequestFetch({ spfNumber }: SPFViewProps) {
   ──────────────────────────────────────────────────────────────── */
   const renderMobile = () => (
     <div className="space-y-4 pb-4">
-      {itemDescriptions.map((desc, rowIndex) => {
+      {itemDescriptions.map((desc: string, rowIndex: number) => {
         const prodImages         = rowImages[rowIndex]         ?? [];
         const prodQtys           = rowQtys[rowIndex]           ?? [];
         const prodUnitCosts      = rowUnitCosts[rowIndex]      ?? [];
