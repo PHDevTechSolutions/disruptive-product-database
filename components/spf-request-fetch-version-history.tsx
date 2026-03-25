@@ -142,34 +142,53 @@ function VersionDetail({
   record,
   itemDescriptions,
   itemImages,
+  isMobile,
 }: {
   record: VersionRecord;
   itemDescriptions: string[];
   itemImages: string[];
+  isMobile?: boolean;
 }) {
-  const rowImages         = splitByRow(record.product_offer_image);
-  const rowQtys           = splitByRow(record.product_offer_qty);
-  const rowUnitCosts      = splitByRow(record.product_offer_unit_cost);
-  const rowPcsPerCartons  = splitByRow(record.product_offer_pcs_per_carton);
-  const rowPackaging      = splitByRow(record.product_offer_packaging_details);
-  const rowFactories      = splitByRow(record.product_offer_factory_address);
-  const rowPorts          = splitByRow(record.product_offer_port_of_discharge);
-  const rowSubtotals      = splitByRow(record.product_offer_subtotal);
-  const rowSupplierBrands = splitByRow(record.supplier_brand);
-  const rowSpecs          = splitSpecsByRow(record.product_offer_technical_specification);
-  const rowItemCodes      = splitByRow(record.item_code);
+  const rowImages          = splitByRow(record.product_offer_image);
+  const rowQtys            = splitByRow(record.product_offer_qty);
+  const rowUnitCosts       = splitByRow(record.product_offer_unit_cost);
+  const rowPcsPerCartons   = splitByRow(record.product_offer_pcs_per_carton);
+  const rowPackaging       = splitByRow(record.product_offer_packaging_details);
+  const rowFactories       = splitByRow(record.product_offer_factory_address);
+  const rowPorts           = splitByRow(record.product_offer_port_of_discharge);
+  const rowSubtotals       = splitByRow(record.product_offer_subtotal);
+  const rowSupplierBrands  = splitByRow(record.supplier_brand);
+  const rowSpecs           = splitSpecsByRow(record.product_offer_technical_specification);
+  const rowCompanyNames    = splitByRow(record.company_name);
+  const rowContactNames    = splitByRow(record.contact_name);
+  const rowContactNumbers  = splitByRow(record.contact_number);
+  const rowLeadTimes       = splitByRow(record.proj_lead_time);
+  const rowSellingCosts    = splitByRow(record.final_selling_cost);
+  const rowFinalUnitCosts  = splitByRow(record.final_unit_cost);
+  const rowFinalSubtotals  = splitByRow(record.final_subtotal);
+  const rowItemCodes       = splitByRow(record.item_code);
 
   return (
     <div className="space-y-3 mt-2">
       {itemDescriptions.map((desc, rowIndex) => {
-        const prodImages    = rowImages[rowIndex]         ?? [];
-        const prodQtys      = rowQtys[rowIndex]           ?? [];
-        const prodUnitCosts = rowUnitCosts[rowIndex]      ?? [];
-        const prodPcsPerCartons = rowPcsPerCartons[rowIndex] ?? [];
-        const prodSubtotals = rowSubtotals[rowIndex]      ?? [];
-        const prodBrands    = rowSupplierBrands[rowIndex] ?? [];
-        const prodSpecs     = rowSpecs[rowIndex]          ?? [];
-        const prodItemCodes = rowItemCodes[rowIndex]      ?? [];
+        const prodImages       = rowImages[rowIndex]         ?? [];
+        const prodQtys         = rowQtys[rowIndex]           ?? [];
+        const prodUnitCosts    = rowUnitCosts[rowIndex]      ?? [];
+        const prodPcsPerCartons= rowPcsPerCartons[rowIndex] ?? [];
+        const prodPackaging    = rowPackaging[rowIndex]      ?? [];
+        const prodFactories    = rowFactories[rowIndex]      ?? [];
+        const prodPorts        = rowPorts[rowIndex]          ?? [];
+        const prodSubtotals    = rowSubtotals[rowIndex]      ?? [];
+        const prodBrands       = rowSupplierBrands[rowIndex] ?? [];
+        const prodSpecs        = rowSpecs[rowIndex]          ?? [];
+        const prodCompanyNames = rowCompanyNames[rowIndex]   ?? [];
+        const prodContactNames = rowContactNames[rowIndex]   ?? [];
+        const prodContactNumbers = rowContactNumbers[rowIndex] ?? [];
+        const prodLeadTimes     = rowLeadTimes[rowIndex]      ?? [];
+        const prodSellingCosts  = rowSellingCosts[rowIndex]   ?? [];
+        const prodFinalUnitCosts= rowFinalUnitCosts[rowIndex] ?? [];
+        const prodFinalSubtotals= rowFinalSubtotals[rowIndex] ?? [];
+        const prodItemCodes     = rowItemCodes[rowIndex]      ?? [];
 
         const hasProducts   = prodImages.length > 0 && !(prodImages.length === 1 && prodImages[0] === "");
 
@@ -190,60 +209,117 @@ function VersionDetail({
             {!hasProducts ? (
               <p className="text-xs text-muted-foreground px-3 py-2">No products</p>
             ) : (
-              <div className="divide-y">
-                {prodImages.map((img, i) => {
-                  const groups      = prodSpecs[i] ?? [];
-                  const optItemCode = prodItemCodes[i] && prodItemCodes[i] !== "-"
-                    ? prodItemCodes[i]
-                    : null;
+              isMobile ? (
+                <div className="space-y-2 px-3 py-2">
+                  {prodImages.map((img, i) => {
+                    const groups      = prodSpecs[i] ?? [];
+                    const optItemCode = prodItemCodes[i] && prodItemCodes[i] !== "-" ? prodItemCodes[i] : null;
 
-                  return (
-                    <div key={i} className="px-3 py-2 flex gap-3 items-start">
-                      {img && img !== "-" ? (
-                        <img src={img} className="w-12 h-12 object-contain rounded border shrink-0" alt="" />
-                      ) : (
-                        <div className="w-12 h-12 bg-gray-100 rounded border shrink-0 flex items-center justify-center text-[9px] text-gray-400">
-                          No img
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                            Option {i + 1}
-                            {prodBrands[i] && prodBrands[i] !== "-" ? ` · ${prodBrands[i]}` : ""}
-                          </span>
-                          {optItemCode && (
-                            <span className="inline-flex items-center text-[10px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
-                              {optItemCode}
-                            </span>
+                    return (
+                      <div key={i} className="border rounded-lg p-3 bg-white">
+                        <div className="flex items-center gap-2 mb-2">
+                          {img && img !== "-" ? (
+                            <img src={img} className="w-12 h-12 object-contain rounded border" alt="" />
+                          ) : (
+                            <div className="w-12 h-12 bg-gray-100 rounded border flex items-center justify-center text-[9px] text-gray-400">No img</div>
                           )}
-                        </div>
-                        <div className="grid grid-cols-4 gap-x-3 gap-y-0.5 text-[11px]">
-                          <div>
-                            <span className="text-gray-400 block">Qty</span>
-                            <span className="font-medium">{prodQtys[i] || "-"}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400 block">Unit Cost</span>
-                            <span className="font-medium">{prodUnitCosts[i] || "-"}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400 block">Qty/Per Carton</span>
-                            <span className="font-medium">{prodPcsPerCartons[i] || "-"}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400 block">Subtotal</span>
-                            <span className="font-semibold text-gray-900">
-                              ₱{Number(prodSubtotals[i] || 0).toLocaleString()}
-                            </span>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold truncate">Option {i + 1}{prodBrands[i] ? ` · ${prodBrands[i]}` : ""}</p>
+                            {optItemCode && <p className="text-[10px] text-gray-500 leading-tight">{optItemCode}</p>}
                           </div>
                         </div>
-                        <SpecsBlock groups={groups} />
+                        <div className="grid grid-cols-2 gap-2 text-[10px] mb-2">
+                          <div><span className="text-gray-400">Qty</span><p>{prodQtys[i] || "-"}</p></div>
+                          <div><span className="text-gray-400">Unit Cost</span><p>{prodUnitCosts[i] || "-"}</p></div>
+                          <div><span className="text-gray-400">Qty/Per Carton</span><p>{prodPcsPerCartons[i] || "-"}</p></div>
+                          <div><span className="text-gray-400">Packaging</span><p>{prodPackaging[i] || "-"}</p></div>
+                          <div><span className="text-gray-400">Factory</span><p>{prodFactories[i] || "-"}</p></div>
+                          <div><span className="text-gray-400">Port</span><p>{prodPorts[i] || "-"}</p></div>
+                          <div><span className="text-gray-400">Subtotal</span><p>₱{Number(prodSubtotals[i] || 0).toLocaleString()}</p></div>
+                          <div><span className="text-gray-400">Lead Time</span><p>{prodLeadTimes[i] || "-"}</p></div>
+                          <div><span className="text-gray-400">Selling Cost</span><p>{prodSellingCosts[i] || "-"}</p></div>
+                          <div><span className="text-gray-400">Final Unit Cost</span><p>{prodFinalUnitCosts[i] || "-"}</p></div>
+                          <div className="col-span-2"><span className="text-gray-400">Final Subtotal</span><p>{prodFinalSubtotals[i] || "-"}</p></div>
+                        </div>
+                        <div className="text-[10px] mb-2">
+                          <p className="font-semibold">Technical Specs</p>
+                          {groups.length === 0 ? <p className="text-gray-500">-</p> : groups.map((group, gi) => (
+                            <p key={gi} className="text-gray-500">{group.title ? `${group.title}: ` : ""}{group.specs.join(", ")}</p>
+                          ))}
+                        </div>
+                        <div className="text-[10px] space-y-0.5">
+                          <p><span className="text-gray-400">Company:</span> {prodCompanyNames[i] || "-"}</p>
+                          <p><span className="text-gray-400">Contact Name:</span> {prodContactNames[i] || "-"}</p>
+                          <p><span className="text-gray-400">Contact No.:</span> {prodContactNumbers[i] || "-"}</p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="overflow-x-auto px-3 py-2">
+                  <table className="w-full border text-xs">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border px-2 py-1 text-center">Supplier Brand</th>
+                        <th className="border px-2 py-1 text-center">Image</th>
+                        <th className="border px-2 py-1 text-center">Qty</th>
+                        <th className="border px-2 py-1 text-center min-w-[180px]">Technical Specs</th>
+                        <th className="border px-2 py-1 text-center">Unit Cost</th>
+                        <th className="border px-2 py-1 text-center">Qty/Per Carton</th>
+                        <th className="border px-2 py-1 text-center">Packaging</th>
+                        <th className="border px-2 py-1 text-center">Factory</th>
+                        <th className="border px-2 py-1 text-center">Port</th>
+                        <th className="border px-2 py-1 text-center">Subtotal</th>
+                        <th className="border px-2 py-1 text-center">Company</th>
+                        <th className="border px-2 py-1 text-center">Contact Name</th>
+                        <th className="border px-2 py-1 text-center">Contact No.</th>
+                        <th className="border px-2 py-1 text-center">Lead Time</th>
+                        <th className="border px-2 py-1 text-center">Selling Cost</th>
+                        <th className="border px-2 py-1 text-center">Final Unit Cost</th>
+                        <th className="border px-2 py-1 text-center">Final Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {prodImages.map((img, i) => {
+                        const groups      = prodSpecs[i] ?? [];
+                        const optItemCode = prodItemCodes[i] && prodItemCodes[i] !== "-" ? prodItemCodes[i] : null;
+                        const specsText = groups.length === 0 ? "-" : groups
+                          .map((g) => (g.title ? `${g.title}: ${g.specs.join(", ")}` : g.specs.join(", ")))
+                          .join("; ");
+
+                        return (
+                          <tr key={i} className="align-top">
+                            <td className="border px-2 py-1 text-center">{prodBrands[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-center">
+                              {img && img !== "-" ? (
+                                <img src={img} className="w-12 h-12 object-contain mx-auto" alt="" />
+                              ) : (
+                                <span className="text-muted-foreground text-[10px]">-</span>
+                              )}
+                            </td>
+                            <td className="border px-2 py-1 text-center">{prodQtys[i] || "-"}</td>
+                            <td className="border px-2 py-1 align-top text-[11px]">{specsText}</td>
+                            <td className="border px-2 py-1 text-center">{prodUnitCosts[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-center">{prodPcsPerCartons[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-center">{prodPackaging[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-center">{prodFactories[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-center">{prodPorts[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-right">₱{Number(prodSubtotals[i] || 0).toLocaleString()}</td>
+                            <td className="border px-2 py-1 text-center">{prodCompanyNames[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-center">{prodContactNames[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-center">{prodContactNumbers[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-center">{prodLeadTimes[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-center">{prodSellingCosts[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-center">{prodFinalUnitCosts[i] || "-"}</td>
+                            <td className="border px-2 py-1 text-center">{prodFinalSubtotals[i] || "-"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
             )}
           </div>
         );
@@ -422,6 +498,7 @@ export default function SPFRequestFetchVersionHistory({
                               record={v}
                               itemDescriptions={itemDescriptions}
                               itemImages={itemImages}
+                              isMobile={isMobile}
                             />
                           ) : (
                             <p className="text-xs text-muted-foreground py-4 text-center">
