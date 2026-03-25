@@ -690,6 +690,9 @@ export default function SPFRequestCreate({
                         {p.commercialDetails?.unitCost && (
                           <p className="text-[10px] text-muted-foreground mt-0.5">Unit cost: {p.commercialDetails.unitCost}</p>
                         )}
+                        {p.commercialDetails?.pcsPerCarton && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Qty/Per Carton: {p.commercialDetails.pcsPerCarton}</p>
+                        )}
                         <InlineProductSpecs specs={p.technicalSpecifications ?? []} />
                       </div>
                       <div className="shrink-0 flex items-center">
@@ -892,6 +895,7 @@ export default function SPFRequestCreate({
                                   <th className="border px-2 py-1 w-[70px]">Qty</th>
                                   <th className="border px-2 py-1 text-center">Technical Specifications</th>
                                   <th className="border px-2 py-1 text-center">Unit Cost</th>
+                                  <th className="border px-2 py-1 text-center">Qty/Per Carton</th>
                                   <th className="border px-2 py-1 text-center">
                                     Packaging Details
                                     <div className="text-[10px] text-muted-foreground">L x W x H</div>
@@ -975,6 +979,7 @@ export default function SPFRequestCreate({
                                           ))}
                                       </td>
                                       <td className="border px-2 py-1 text-center align-middle">{unitCost}</td>
+                                      <td className="border px-2 py-1 text-center align-middle">{prod?.commercialDetails?.pcsPerCarton || "-"}</td>
                                       <td className="border px-2 py-1 text-center align-middle">{length} x {width} x {height}</td>
                                       <td className="border px-2 py-1 text-center align-middle">{factory}</td>
                                       <td className="border px-2 py-1 text-center align-middle">{port}</td>
@@ -1058,6 +1063,7 @@ export default function SPFRequestCreate({
                             {details.factoryAddress && <p><span className="font-medium">Factory:</span> {details.factoryAddress}</p>}
                             {details.portOfDischarge && <p><span className="font-medium">Port:</span> {details.portOfDischarge}</p>}
                             {details.unitCost && <p><span className="font-medium">Unit Cost:</span> {details.unitCost}</p>}
+                            {details.pcsPerCarton && <p><span className="font-medium">Qty/Per Carton:</span> {details.pcsPerCarton}</p>}
                             {(packaging.height || packaging.length || packaging.width || details.pcsPerCarton) && (
                               <div>
                                 <p className="font-medium">Packaging</p>

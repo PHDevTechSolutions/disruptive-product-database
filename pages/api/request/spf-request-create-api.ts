@@ -105,6 +105,7 @@ export default async function handler(
     const rowQtys: string[]           = [];
     const rowSpecs: string[]          = [];
     const rowUnitCosts: string[]      = [];
+    const rowPcsPerCarton: string[]   = [];
     const rowPackaging: string[]      = [];
     const rowFactories: string[]      = [];
     const rowPorts: string[]          = [];
@@ -126,6 +127,7 @@ export default async function handler(
       const qtys: string[]           = [];
       const specs: string[]          = [];
       const unitCosts: string[]      = [];
+      const pcsPerCartons: string[]  = [];
       const packaging: string[]      = [];
       const factories: string[]      = [];
       const ports: string[]          = [];
@@ -149,18 +151,20 @@ export default async function handler(
       for (let optIdx = 0; optIdx < rowProducts.length; optIdx++) {
         const p = rowProducts[optIdx];
 
-        const qty      = Number(p.qty || 0);
-        const unitCost = Number(p?.commercialDetails?.unitCost || 0);
-        const length   = p?.commercialDetails?.packaging?.length || "-";
-        const width    = p?.commercialDetails?.packaging?.width  || "-";
-        const height   = p?.commercialDetails?.packaging?.height || "-";
-        const factory  = p?.commercialDetails?.factoryAddress    || "-";
-        const port     = p?.commercialDetails?.portOfDischarge   || "-";
-        const subtotal = qty * unitCost;
+        const qty         = Number(p.qty || 0);
+        const unitCost    = Number(p?.commercialDetails?.unitCost || 0);
+        const pcsPerCarton = p?.commercialDetails?.pcsPerCarton || "-";
+        const length      = p?.commercialDetails?.packaging?.length || "-";
+        const width       = p?.commercialDetails?.packaging?.width  || "-";
+        const height      = p?.commercialDetails?.packaging?.height || "-";
+        const factory     = p?.commercialDetails?.factoryAddress    || "-";
+        const port        = p?.commercialDetails?.portOfDischarge   || "-";
+        const subtotal    = qty * unitCost;
 
         images.push(p?.mainImage?.url || "-");
         qtys.push(String(qty));
         unitCosts.push(String(unitCost));
+        pcsPerCartons.push(String(pcsPerCarton));
         packaging.push(`${length} x ${width} x ${height}`);
         factories.push(factory);
         ports.push(port);
@@ -211,6 +215,7 @@ export default async function handler(
       rowQtys.push(qtys.join(","));
       rowSpecs.push(specs.join(" || "));
       rowUnitCosts.push(unitCosts.join(","));
+      rowPcsPerCarton.push(pcsPerCartons.join(","));
       rowPackaging.push(packaging.join(","));
       rowFactories.push(factories.join(","));
       rowPorts.push(ports.join(","));
@@ -231,6 +236,7 @@ export default async function handler(
     const finalQtys           = rowQtys.join(ROW_SEP);
     const finalSpecs          = rowSpecs.join(ROW_SEP);
     const finalUnitCosts      = rowUnitCosts.join(ROW_SEP);
+    const finalPcsPerCarton   = rowPcsPerCarton.join(ROW_SEP);
     const finalPackaging      = rowPackaging.join(ROW_SEP);
     const finalFactories      = rowFactories.join(ROW_SEP);
     const finalPorts          = rowPorts.join(ROW_SEP);
@@ -285,6 +291,7 @@ export default async function handler(
           product_offer_qty:                     finalQtys,
           product_offer_technical_specification: finalSpecs,
           product_offer_unit_cost:               finalUnitCosts,
+          product_offer_pcs_per_carton:          finalPcsPerCarton,
           product_offer_packaging_details:       finalPackaging,
           product_offer_factory_address:         finalFactories,
           product_offer_port_of_discharge:       finalPorts,

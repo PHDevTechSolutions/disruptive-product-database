@@ -50,6 +50,7 @@ type SPFData = {
   product_offer_qty: string;
   product_offer_technical_specification: string;
   product_offer_unit_cost: string;
+  product_offer_pcs_per_carton?: string;
   product_offer_packaging_details: string;
   product_offer_factory_address: string;
   product_offer_port_of_discharge: string;
@@ -336,6 +337,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
     const rowImages         = splitByRow(data.product_offer_image);
     const rowQtys           = splitByRow(data.product_offer_qty);
     const rowUnitCosts      = splitByRow(data.product_offer_unit_cost);
+    const rowPcsPerCartons  = splitByRow(data.product_offer_pcs_per_carton);
     const rowPackaging      = splitByRow(data.product_offer_packaging_details);
     const rowFactories      = splitByRow(data.product_offer_factory_address);
     const rowPorts          = splitByRow(data.product_offer_port_of_discharge);
@@ -354,6 +356,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
       const imgs    = rowImages[rowIndex]       ?? [];
       const qtys    = rowQtys[rowIndex]         ?? [];
       const costs   = rowUnitCosts[rowIndex]    ?? [];
+      const pcsPerCartons = rowPcsPerCartons[rowIndex] ?? [];
       const packs   = rowPackaging[rowIndex]    ?? [];
       const facts   = rowFactories[rowIndex]    ?? [];
       const ports   = rowPorts[rowIndex]        ?? [];
@@ -382,6 +385,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
           },
           commercialDetails: {
             unitCost:        costs[i] || "0",
+            pcsPerCarton:    pcsPerCartons[i] || "-",
             factoryAddress:  facts[i] || "-",
             portOfDischarge: ports[i] || "-",
             packaging: { length, width, height },
@@ -530,6 +534,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
   const rowImages         = splitByRow(data?.product_offer_image);
   const rowQtys           = splitByRow(data?.product_offer_qty);
   const rowUnitCosts      = splitByRow(data?.product_offer_unit_cost);
+  const rowPcsPerCartons  = splitByRow(data?.product_offer_pcs_per_carton);
   const rowPackaging      = splitByRow(data?.product_offer_packaging_details);
   const rowFactories      = splitByRow(data?.product_offer_factory_address);
   const rowPorts          = splitByRow(data?.product_offer_port_of_discharge);
@@ -832,6 +837,9 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
                         {p.commercialDetails?.unitCost && (
                           <p className="text-[10px] text-muted-foreground mt-0.5">Unit cost: {p.commercialDetails.unitCost}</p>
                         )}
+                        {p.commercialDetails?.pcsPerCarton && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Qty/Per Carton: {p.commercialDetails.pcsPerCarton}</p>
+                        )}
                         <InlineProductSpecs specs={p.technicalSpecifications ?? []} />
                       </div>
                       <div className="shrink-0 flex items-center">
@@ -998,6 +1006,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
                                   <th className="border px-2 py-1 w-[70px]">Qty</th>
                                   <th className="border px-2 py-1 text-center">Technical Specifications</th>
                                   <th className="border px-2 py-1 text-center">Unit Cost</th>
+                                  <th className="border px-2 py-1 text-center">Qty/Per Carton</th>
                                   <th className="border px-2 py-1 text-center">Packaging</th>
                                   <th className="border px-2 py-1 text-center">Factory</th>
                                   <th className="border px-2 py-1 text-center">Port</th>
@@ -1071,6 +1080,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
                                           ))}
                                       </td>
                                       <td className="border px-2 py-1 text-center align-middle">{unitCost}</td>
+                                      <td className="border px-2 py-1 text-center align-middle">{prod?.commercialDetails?.pcsPerCarton || "-"}</td>
                                       <td className="border px-2 py-1 text-center align-middle">{length} x {width} x {height}</td>
                                       <td className="border px-2 py-1 text-center align-middle">{factory}</td>
                                       <td className="border px-2 py-1 text-center align-middle">{port}</td>
@@ -1144,6 +1154,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
                             {details.factoryAddress  && <p><span className="font-medium">Factory:</span> {details.factoryAddress}</p>}
                             {details.portOfDischarge && <p><span className="font-medium">Port:</span> {details.portOfDischarge}</p>}
                             {details.unitCost        && <p><span className="font-medium">Unit Cost:</span> {details.unitCost}</p>}
+                            {details.pcsPerCarton    && <p><span className="font-medium">Qty/Per Carton:</span> {details.pcsPerCarton}</p>}
                             {(packaging.height || packaging.length || packaging.width) && (
                               <div>
                                 <p className="font-medium">Packaging</p>
@@ -1224,6 +1235,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
         const prodImages       = rowImages[rowIndex]         ?? [];
         const prodQtys         = rowQtys[rowIndex]           ?? [];
         const prodUnitCosts    = rowUnitCosts[rowIndex]      ?? [];
+        const prodPcsPerCartons = rowPcsPerCartons[rowIndex] ?? [];
         const prodPackaging    = rowPackaging[rowIndex]      ?? [];
         const prodFactories    = rowFactories[rowIndex]      ?? [];
         const prodPorts        = rowPorts[rowIndex]          ?? [];
@@ -1286,6 +1298,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
                           <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
                             <div><span className="text-gray-400 block">Qty</span><span className="font-medium">{prodQtys[i] || "-"}</span></div>
                             <div><span className="text-gray-400 block">Unit Cost</span><span className="font-medium">{prodUnitCosts[i] || "-"}</span></div>
+                            <div><span className="text-gray-400 block">Qty/Per Carton</span><span className="font-medium">{prodPcsPerCartons[i] || "-"}</span></div>
                             <div><span className="text-gray-400 block">Subtotal</span><span className="font-semibold text-gray-900">₱{Number(prodSubtotals[i] || 0).toLocaleString()}</span></div>
                             <div><span className="text-gray-400 block">Packaging</span><span className="font-medium">{prodPackaging[i] || "-"}</span></div>
                           </div>
@@ -1343,6 +1356,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
             const prodImages       = rowImages[rowIndex]         ?? [];
             const prodQtys         = rowQtys[rowIndex]           ?? [];
             const prodUnitCosts    = rowUnitCosts[rowIndex]      ?? [];
+            const prodPcsPerCartons = rowPcsPerCartons[rowIndex] ?? [];
             const prodPackaging    = rowPackaging[rowIndex]      ?? [];
             const prodFactories    = rowFactories[rowIndex]      ?? [];
             const prodPorts        = rowPorts[rowIndex]          ?? [];
@@ -1403,6 +1417,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">Qty</th>
                                     <th className="border px-2 py-1 text-center min-w-[200px]">Technical Specs</th>
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">Unit Cost</th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">Qty/Per Carton</th>
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">Packaging</th>
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">Factory</th>
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">Port</th>
@@ -1448,6 +1463,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
                                       )}
                                     </td>
                                     <td className="border px-2 py-2 text-center align-middle">{prodUnitCosts[i] || "-"}</td>
+                                    <td className="border px-2 py-2 text-center align-middle">{prodPcsPerCartons[i] || "-"}</td>
                                     <td className="border px-2 py-2 text-center align-middle">{prodPackaging[i] || "-"}</td>
                                     <td className="border px-2 py-2 text-center align-middle">{prodFactories[i] || "-"}</td>
                                     <td className="border px-2 py-2 text-center align-middle">{prodPorts[i] || "-"}</td>

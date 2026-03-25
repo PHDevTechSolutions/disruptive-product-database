@@ -29,6 +29,7 @@ type VersionRecord = {
   product_offer_qty?: string;
   product_offer_technical_specification?: string;
   product_offer_unit_cost?: string;
+  product_offer_pcs_per_carton?: string;
   product_offer_packaging_details?: string;
   product_offer_factory_address?: string;
   product_offer_port_of_discharge?: string;
@@ -149,6 +150,7 @@ function VersionDetail({
   const rowImages         = splitByRow(record.product_offer_image);
   const rowQtys           = splitByRow(record.product_offer_qty);
   const rowUnitCosts      = splitByRow(record.product_offer_unit_cost);
+  const rowPcsPerCartons  = splitByRow(record.product_offer_pcs_per_carton);
   const rowPackaging      = splitByRow(record.product_offer_packaging_details);
   const rowFactories      = splitByRow(record.product_offer_factory_address);
   const rowPorts          = splitByRow(record.product_offer_port_of_discharge);
@@ -163,6 +165,7 @@ function VersionDetail({
         const prodImages    = rowImages[rowIndex]         ?? [];
         const prodQtys      = rowQtys[rowIndex]           ?? [];
         const prodUnitCosts = rowUnitCosts[rowIndex]      ?? [];
+        const prodPcsPerCartons = rowPcsPerCartons[rowIndex] ?? [];
         const prodSubtotals = rowSubtotals[rowIndex]      ?? [];
         const prodBrands    = rowSupplierBrands[rowIndex] ?? [];
         const prodSpecs     = rowSpecs[rowIndex]          ?? [];
@@ -215,7 +218,7 @@ function VersionDetail({
                             </span>
                           )}
                         </div>
-                        <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 text-[11px]">
+                        <div className="grid grid-cols-4 gap-x-3 gap-y-0.5 text-[11px]">
                           <div>
                             <span className="text-gray-400 block">Qty</span>
                             <span className="font-medium">{prodQtys[i] || "-"}</span>
@@ -223,6 +226,10 @@ function VersionDetail({
                           <div>
                             <span className="text-gray-400 block">Unit Cost</span>
                             <span className="font-medium">{prodUnitCosts[i] || "-"}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block">Qty/Per Carton</span>
+                            <span className="font-medium">{prodPcsPerCartons[i] || "-"}</span>
                           </div>
                           <div>
                             <span className="text-gray-400 block">Subtotal</span>
