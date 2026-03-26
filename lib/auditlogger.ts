@@ -190,6 +190,45 @@ export type ProductUsageEventPayload = {
   extra?           : Record<string, any>;
 };
 
+/* ─────────────────────────────────────────────
+   SPF Version History event
+───────────────────────────────────────────── */
+export type SPFVersionEventPayload = {
+  whatHappened:
+    | "SPF Created"
+    | "SPF Updated"
+    | "SPF Version Created";
+
+  spf_number?: string;
+  version_label?: string;
+  version_number?: number;
+
+  referenceID?: string;
+  userId?: string;
+
+  extra?: Record<string, any>;
+};
+
+export async function logSPFVersionEvent(
+  payload: SPFVersionEventPayload
+): Promise<void> {
+  try {
+    await addDoc(collection(db, "auditLogs_spfVersions"), {
+      ...payload.extra,
+      whatHappened : payload.whatHappened,
+      spf_number   : payload.spf_number ?? null,
+      version_label: payload.version_label ?? null,
+      version_number: payload.version_number ?? null,
+      referenceID  : payload.referenceID ?? null,
+      userId       : payload.userId ?? null,
+      date_updated : serverTimestamp(),
+      createdAt    : serverTimestamp(),
+    });
+  } catch (err) {
+    console.warn("[auditLogger] Failed to log SPF version event:", err);
+  }
+}
+
 export async function logProductUsageEvent(payload: ProductUsageEventPayload): Promise<void> {
   try {
     await addDoc(collection(db, "auditLogs_productUsages"), {

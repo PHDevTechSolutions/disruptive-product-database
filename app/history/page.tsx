@@ -91,7 +91,7 @@ type AuditLog = {
   _raw?: Record<string, any>;
 };
 
-type CollectionTab = "suppliers" | "products" | "productFamilies" | "productUsages";
+type CollectionTab = "suppliers" | "products" | "productFamilies" | "productUsages" | "spfVersions"; 
 
 const PAGE_SIZE = 20;
 
@@ -100,6 +100,9 @@ const COL_MAP: Record<CollectionTab, string> = {
   products       : "auditLogs_products",
   productFamilies: "auditLogs_productFamilies",
   productUsages  : "auditLogs_productUsages",
+
+  // ✅ ADD THIS
+  spfVersions    : "auditLogs_spfVersions",
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -125,6 +128,9 @@ const ACTION_OPTIONS: Record<CollectionTab, string[]> = {
   products       : ["Product Added", "Product Edited", "Product Deleted", "Product Bulk Upload"],
   productFamilies: ["Product Family Added", "Product Family Edited", "Product Family Deleted"],
   productUsages  : ["Product Usage Added", "Product Usage Edited", "Product Usage Deleted"],
+
+  // ✅ ADD THIS
+  spfVersions: ["SPF Created", "SPF Version Created", "SPF Updated"],
 };
 
 /* ─────────────────────────────────────────────
@@ -315,9 +321,14 @@ export default function HistoryPage() {
   const [, setNameVersion] = useState(0);
 
   const [tabStates, setTabStates] = useState<Record<CollectionTab, TabState>>({
-    suppliers: initTabState(), products: initTabState(),
-    productFamilies: initTabState(), productUsages: initTabState(),
-  });
+  suppliers: initTabState(),
+  products: initTabState(),
+  productFamilies: initTabState(),
+  productUsages: initTabState(),
+
+  // ✅ ADD THIS
+  spfVersions: initTabState(),
+});
 
   const updateTab = (tab: CollectionTab, patch: Partial<TabState>) =>
     setTabStates((prev) => ({ ...prev, [tab]: { ...prev[tab], ...patch } }));
@@ -396,6 +407,9 @@ export default function HistoryPage() {
   useEffect(() => { loadTab("products", tabStates.products.actionFilter); }, [userId, tabStates.products.actionFilter]); // eslint-disable-line
   useEffect(() => { loadTab("productFamilies", tabStates.productFamilies.actionFilter); }, [userId, tabStates.productFamilies.actionFilter]); // eslint-disable-line
   useEffect(() => { loadTab("productUsages", tabStates.productUsages.actionFilter); }, [userId, tabStates.productUsages.actionFilter]); // eslint-disable-line
+  useEffect(() => {
+  loadTab("spfVersions", tabStates.spfVersions.actionFilter);
+}, [userId, tabStates.spfVersions.actionFilter]);
 
   const loadNextPage = async (tab: CollectionTab) => {
     setFetching(true);
@@ -572,9 +586,9 @@ export default function HistoryPage() {
             </span>
             <Button size="sm" variant="outline" disabled={fetching}
               onClick={() => {
-                (["suppliers", "products", "productFamilies", "productUsages"] as CollectionTab[]).forEach((t) =>
-                  updateTab(t, { actionFilter: "all" }),
-                );
+                  (["suppliers", "products", "productFamilies", "productUsages", "spfVersions"] as CollectionTab[]).forEach((t) =>
+                    updateTab(t, { actionFilter: "all" }),
+                  );
               }}
             >
               <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", fetching && "animate-spin")} />
@@ -590,7 +604,7 @@ export default function HistoryPage() {
           <h1 className="text-lg font-bold text-gray-900">Audit Trail</h1>
           <Button size="sm" variant="outline" disabled={fetching}
             onClick={() => {
-              (["suppliers", "products", "productFamilies", "productUsages"] as CollectionTab[]).forEach((t) =>
+              (["suppliers", "products", "productFamilies", "productUsages", "spfVersions"] as CollectionTab[]).forEach((t) =>
                 updateTab(t, { actionFilter: "all" }),
               );
             }}
@@ -615,6 +629,7 @@ export default function HistoryPage() {
                 { value: "products",        label: "Products",         icon: Package   },
                 { value: "productFamilies", label: "Product Families", icon: Layers    },
                 { value: "productUsages",   label: "Product Usage",    icon: Tag       },
+                { value: "spfVersions",     label: "SPF History",      icon: Layers    },
               ] as { value: CollectionTab; label: string; icon: React.ElementType }[]).map(({ value, label, icon: Icon }) => (
                 <TabsTrigger
                   key={value}
@@ -809,6 +824,45 @@ export default function HistoryPage() {
                   onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
                 />
               ))}</>}
+            />
+          </TabsContent>
+
+          {/* ════ SPF VERSIONS ════ */}
+          <TabsContent value="spfVersions" className="flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6">
+            <TabLayout
+              tab="spfVersions"
+              searchPlaceholder="Search SPF number…"
+              tableHeaders={<>
+                <Th className="w-44">Timestamp</Th>
+                <Th>Action</Th>
+                <Th>SPF Number</Th>
+                <Th>Version</Th>
+                <Th>Performed By</Th>
+                <Th className="w-10"></Th>
+              </>}
+              tableRows={filtered("spfVersions").map((log) => (
+                <tr key={log.id} className="border-b hover:bg-white/60 align-middle">
+                  <Td className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatTimestamp(getDisplayTime(log))}
+                  </Td>
+                  <Td><ActionBadge action={log.whatHappened} /></Td>
+                  <Td className="font-medium">{log._raw?.spf_number || "—"}</Td>
+                  <Td>{log._raw?.version_label || "—"}</Td>
+                  <Td className="text-xs text-muted-foreground">{displayName(log)}</Td>
+                  <Td><EyeBtn log={log} /></Td>
+                </tr>
+              ))}
+              mobileCards={<>
+                {filtered("spfVersions").map((log) => (
+                  <MobileCard key={log.id} log={log}
+                    primaryLabel="SPF Number"
+                    primaryValue={log._raw?.spf_number || "—"}
+                    secondaryLabel="Version"
+                    secondaryValue={log._raw?.version_label || "—"}
+                    onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
+                  />
+                ))}
+              </>}
             />
           </TabsContent>
 

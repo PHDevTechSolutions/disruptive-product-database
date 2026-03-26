@@ -426,9 +426,21 @@ const managerValue = spfRequest.manager ?? null;
       return res.status(500).json(updateError);
     }
 
-    return res
-      .status(200)
-      .json({ success: true, message: "SPF created successfully" });
+// ✅ AUDIT LOG
+import("@/lib/auditlogger").then(({ logSPFVersionEvent }) => {
+  logSPFVersionEvent({
+    whatHappened: "SPF Created",
+    spf_number,
+    version_label: `${spf_number}_v1`,
+    version_number: 1,
+    referenceID: item_added_author ?? undefined,
+    userId: userId ?? undefined,
+  });
+});
+
+return res
+  .status(200)
+  .json({ success: true, message: "SPF created successfully" });
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ message: err.message || "Server error" });

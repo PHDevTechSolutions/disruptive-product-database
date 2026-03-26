@@ -309,6 +309,18 @@ await supabase
   })
   .eq("spf_number", spf_number);
 
+    // ✅ AUDIT LOG
+    import("@/lib/auditlogger").then(({ logSPFVersionEvent }) => {
+      logSPFVersionEvent({
+        whatHappened: "SPF Version Created",
+        spf_number,
+        version_label: `${spf_number}_v${nextVersion}`,
+        version_number: nextVersion,
+        referenceID: resolvedEditedBy ?? undefined,
+       userId: userId ?? undefined,
+      });
+    });
+
     return res.status(200).json({
       success: true,
       version_label: `${spf_number}_v${nextVersion}`,
