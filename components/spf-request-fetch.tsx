@@ -334,6 +334,14 @@ export default function SPFRequestFetch({
   const [pickerStep, setPickerStep] = useState<"list" | "confirm">("list");
   const [pendingProduct, setPendingProduct] = useState<any | null>(null);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const start = new Date().toISOString();
+    setSpfCreationStartTime(start);
+    setSpfCreationEndTime(null);
+    setTimerActive(true);
+  }, [open]);
   /* ── Responsive ── */
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -452,10 +460,6 @@ export default function SPFRequestFetch({
     const rowSpecs = splitSpecsByRow(
       data.product_offer_technical_specification,
     );
-    const start = new Date().toISOString();
-    setSpfCreationStartTime(start);
-    setSpfCreationEndTime(null);
-    setTimerActive(true);
 
     const descs = (requestData.item_description || "")
       .split(",")
@@ -624,34 +628,34 @@ export default function SPFRequestFetch({
           prods.map((p) => ({ ...p, __rowIndex: Number(rowIndex) })),
       );
 
-        const res = await fetch("/api/request/spf-request-edit-api", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            spf_number: spfNumber,
+      const res = await fetch("/api/request/spf-request-edit-api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spf_number: spfNumber,
 
-            // ✅ USE ACTUAL LOGGED-IN USER
-            referenceid: userId ?? null,
-            edited_by: userId ?? null,
-            author: userId ?? null,
+          // ✅ USE ACTUAL LOGGED-IN USER
+          referenceid: userId ?? null,
+          edited_by: userId ?? null,
+          author: userId ?? null,
 
-            // ✅ KEEP EXISTING DATA
-            tsm: data?.tsm ?? null,
-            manager: data?.manager ?? null,
-            item_code: data?.item_code ?? null,
+          // ✅ KEEP EXISTING DATA
+          tsm: data?.tsm ?? null,
+          manager: data?.manager ?? null,
+          item_code: data?.item_code ?? null,
 
-            // ✅ PRODUCTS
-            totalItemRows: totalRows,
-            selectedProducts: allProducts,
+          // ✅ PRODUCTS
+          totalItemRows: totalRows,
+          selectedProducts: allProducts,
 
-            // ✅ TIMER
-            spf_creation_start_time: spfCreationStartTime ?? null,
-            spf_creation_end_time: end ?? null,
+          // ✅ TIMER
+          spf_creation_start_time: spfCreationStartTime ?? null,
+          spf_creation_end_time: end ?? null,
 
-            // ✅ USER CONTEXT
-            userId: userId ?? null,
-          }),
-        });
+          // ✅ USER CONTEXT
+          userId: userId ?? null,
+        }),
+      });
 
       if (!res.ok) {
         const errText = await res.text();
@@ -1137,9 +1141,7 @@ export default function SPFRequestFetch({
         )}
       </div>
 
-      <div className="w-full mb-2">
-
-        
+      <div className="flex justify-start mb-2">
         <SPFTimer
           isActive={timerActive}
           startTime={spfCreationStartTime}
@@ -1692,50 +1694,50 @@ export default function SPFRequestFetch({
         </div>
       </div>
 
-      <DialogFooter className="mt-4 flex justify-end gap-2">
+<DialogFooter className="mt-4 flex flex-col gap-3">
+  {/* TIMER - FULL WIDTH */}
+  <div className="w-full">
+    <SPFTimer
+      isActive={timerActive}
+      startTime={spfCreationStartTime}
+      label="Edit SPF Timer"
+      onStart={(v) => setSpfCreationStartTime(v)}
+      onStop={(v) => setSpfCreationEndTime(v)}
+      onTick={() => {}}
+    />
+  </div>
 
-        <div className="w-full mb-2">
-          <SPFTimer
-            isActive={timerActive}
-            startTime={spfCreationStartTime}
-            label="Edit SPF Timer"
-            onStart={(v) => setSpfCreationStartTime(v)}
-            onStop={(v) => setSpfCreationEndTime(v)}
-            onTick={() => {}}
-          />
-        </div>
-        <Button
-          variant="outline"
-          className="rounded-none p-6"
-          onClick={() => {
-            setEditMode(false);
-            setViewMode(false);
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="outline"
-          className="rounded-none p-6"
-          onClick={() => setViewMode((prev) => !prev)}
-        >
-          {viewMode ? "Back" : "Preview"}
-        </Button>
-        {viewMode && (
-          <Button
-            className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
-            onClick={handleSubmitEdit}
-            disabled={
-              itemDescriptions.length === 0 ||
-              itemDescriptions.some(
-                (_, i) => !productOffers[i] || productOffers[i].length === 0,
-              )
-            }
-          >
-            Save Changes
-          </Button>
-        )}
-      </DialogFooter>
+  {/* BUTTONS - RIGHT SIDE */}
+  <div className="w-full flex justify-end gap-2">
+    <Button
+      variant="outline"
+      className="rounded-none p-6"
+      onClick={() => {
+        setEditMode(false);
+        setViewMode(false);
+      }}
+    >
+      Cancel
+    </Button>
+
+    <Button
+      variant="outline"
+      className="rounded-none p-6"
+      onClick={() => setViewMode((prev) => !prev)}
+    >
+      {viewMode ? "Back" : "Preview"}
+    </Button>
+
+    {viewMode && (
+      <Button
+        className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
+        onClick={handleSubmitEdit}
+      >
+        Save Changes
+      </Button>
+    )}
+  </div>
+</DialogFooter>
     </>
   );
 
