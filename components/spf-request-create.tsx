@@ -24,6 +24,7 @@ import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import CardDetails from "@/components/spf/dialog/card-details";
 import SPFTimer from "@/components/spf-timer";
+import MultipleSpecsDetected from "@/components/multiple-specs-detected";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* TYPES                                                           */
@@ -65,6 +66,22 @@ type Props = {
   isMobile: boolean;
   onSuccess: () => void;
 };
+
+/* ─────────────────────────────────────────────────────────────── */
+/* PIPE DETECTION HELPER                                           */
+/* ─────────────────────────────────────────────────────────────── */
+function hasMultipleSpecValues(product: any): boolean {
+  if (!product?.technicalSpecifications) return false;
+  return product.technicalSpecifications.some((group: any) =>
+    group.specs?.some((spec: any) => {
+      const values = (spec.value || "")
+        .split("|")
+        .map((v: string) => v.trim())
+        .filter(Boolean);
+      return values.length > 1;
+    })
+  );
+}
 
 /* ─────────────────────────────────────────────────────────────── */
 /* MOBILE-ONLY HELPERS                                             */
@@ -230,6 +247,12 @@ export default function SPFRequestCreate({
     "items",
   );
 
+  /* ── MultipleSpecsDetected modal ── */
+  const [showPipeModal, setShowPipeModal] = useState(false);
+  const [pendingPipeProduct, setPendingPipeProduct] = useState<any | null>(null);
+  // For desktop drag: we need to remember which row to drop into
+  const [pendingPipeRowIndex, setPendingPipeRowIndex] = useState<number | null>(null);
+
   /* ── Sync formData when rowData changes ── */
   useEffect(() => {
     if (!open) return;
@@ -256,6 +279,9 @@ export default function SPFRequestCreate({
     setPendingProduct(null);
     setActiveTab("items");
     setProductSearch("");
+    setShowPipeModal(false);
+    setPendingPipeProduct(null);
+    setPendingPipeRowIndex(null);
 
     const start = new Date().toISOString();
     setSpfCreationStartTime(start);
@@ -328,6 +354,30 @@ export default function SPFRequestCreate({
     return { ...product, technicalSpecifications: frozenSpecs };
   };
 
+  /* ── Add product to a row (shared logic after pipe check) ── */
+  const addProductToRow = (rowIndex: number, product: any) => {
+    setProductOffers((prev) => {
+      const copy = { ...prev };
+      copy[rowIndex] = [
+        ...(copy[rowIndex] || []),
+        { ...product, qty: product.qty ?? 1 },
+      ];
+      return copy;
+    });
+  };
+
+  /* ── Intercept product before adding — check for pipes ── */
+  const tryAddProduct = (rowIndex: number, product: any) => {
+    const frozen = freezeSpecs(product);
+    if (hasMultipleSpecValues(frozen)) {
+      setPendingPipeProduct(frozen);
+      setPendingPipeRowIndex(rowIndex);
+      setShowPipeModal(true);
+    } else {
+      addProductToRow(rowIndex, frozen);
+    }
+  };
+
   const removeProduct = (rowIndex: number, productIndex: number) => {
     setProductOffers((prev) => {
       const copy = { ...prev };
@@ -345,20 +395,21 @@ export default function SPFRequestCreate({
       setActiveTab("items");
       return;
     }
-    setPendingProduct(product);
-    setPickerStep("confirm");
+    // Check pipe before showing confirm sheet
+    const frozen = freezeSpecs(product);
+    if (hasMultipleSpecValues(frozen)) {
+      setPendingPipeProduct(frozen);
+      setPendingPipeRowIndex(activeRowIndex);
+      setShowPipeModal(true);
+    } else {
+      setPendingProduct(frozen);
+      setPickerStep("confirm");
+    }
   };
 
   const confirmAddProduct = () => {
     if (activeRowIndex === null || !pendingProduct) return;
-    setProductOffers((prev) => {
-      const copy = { ...prev };
-      copy[activeRowIndex] = [
-        ...(copy[activeRowIndex] || []),
-        { ...freezeSpecs(pendingProduct), qty: 1 },
-      ];
-      return copy;
-    });
+    addProductToRow(activeRowIndex, pendingProduct);
     setPendingProduct(null);
     setPickerStep("list");
     toast.success("Product added!");
@@ -367,6 +418,28 @@ export default function SPFRequestCreate({
   const cancelConfirm = () => {
     setPendingProduct(null);
     setPickerStep("list");
+  };
+
+  /* ── MultipleSpecsDetected confirm ── */
+  const handlePipeConfirm = (filteredProduct: any) => {
+    if (pendingPipeRowIndex === null) return;
+    // For mobile flow: after pipe modal, we skip the confirm sheet and add directly
+    addProductToRow(pendingPipeRowIndex, { ...filteredProduct, qty: 1 });
+    toast.success("Product added!");
+    setPendingPipeProduct(null);
+    setPendingPipeRowIndex(null);
+    setShowPipeModal(false);
+    // Also clear mobile confirm state just in case
+    setPendingProduct(null);
+    setPickerStep("list");
+  };
+
+  const handlePipeClose = () => {
+    setPendingPipeProduct(null);
+    setPendingPipeRowIndex(null);
+    setShowPipeModal(false);
+    setDraggedProduct(null);
+    setShowTrash(false);
   };
 
   /* ── Submit ── */
@@ -636,7 +709,6 @@ export default function SPFRequestCreate({
                             prod?.supplier?.supplierBrand ||
                             prod?.supplier?.supplierBrandName ||
                             "";
-                          const supplierCo = prod?.supplier?.company || "";
 
                           return (
                             <div key={i} className="p-3 flex gap-3 items-start">
@@ -659,9 +731,9 @@ export default function SPFRequestCreate({
                                 <p className="text-xs font-medium line-clamp-1">
                                   {prod.productName}
                                 </p>
-                                {(supplierCo || supplierBrand) && (
+                                {(prod?.supplier?.company || supplierBrand) && (
                                   <p className="text-[10px] text-muted-foreground truncate">
-                                    {[supplierCo, supplierBrand]
+                                    {[prod?.supplier?.company, supplierBrand]
                                       .filter(Boolean)
                                       .join(" · ")}
                                   </p>
@@ -1074,22 +1146,44 @@ export default function SPFRequestCreate({
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => {
                         if (viewMode || !draggedProduct) return;
-                        setProductOffers((prev) => {
-                          const copy = { ...prev };
+                        // Check for pipe values before dropping
+                        const frozen = draggedProduct.__fromRow !== undefined
+                          ? draggedProduct
+                          : freezeSpecs(draggedProduct);
+                        if (hasMultipleSpecValues(frozen)) {
+                          // Remove from source row if it came from another row
                           if (draggedProduct.__fromRow !== undefined) {
-                            const original = [
-                              ...(copy[draggedProduct.__fromRow] || []),
-                            ];
-                            original.splice(draggedProduct.__fromIndex, 1);
-                            copy[draggedProduct.__fromRow] = original;
+                            setProductOffers((prev) => {
+                              const copy = { ...prev };
+                              const original = [...(copy[draggedProduct.__fromRow] || [])];
+                              original.splice(draggedProduct.__fromIndex, 1);
+                              copy[draggedProduct.__fromRow] = original;
+                              return copy;
+                            });
                           }
-                          copy[index] = [
-                            ...(copy[index] || []),
-                            { ...freezeSpecs(draggedProduct), qty: 1 },
-                          ];
-                          return copy;
-                        });
-                        setDraggedProduct(null);
+                          setPendingPipeProduct(frozen);
+                          setPendingPipeRowIndex(index);
+                          setShowPipeModal(true);
+                          setDraggedProduct(null);
+                          setShowTrash(false);
+                        } else {
+                          setProductOffers((prev) => {
+                            const copy = { ...prev };
+                            if (draggedProduct.__fromRow !== undefined) {
+                              const original = [
+                                ...(copy[draggedProduct.__fromRow] || []),
+                              ];
+                              original.splice(draggedProduct.__fromIndex, 1);
+                              copy[draggedProduct.__fromRow] = original;
+                            }
+                            copy[index] = [
+                              ...(copy[index] || []),
+                              { ...frozen, qty: frozen.qty ?? 1 },
+                            ];
+                            return copy;
+                          });
+                          setDraggedProduct(null);
+                        }
                       }}
                     >
                       <td className="border px-2 py-1 font-medium text-center align-middle">
@@ -1615,6 +1709,14 @@ export default function SPFRequestCreate({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── MultipleSpecsDetected modal ── */}
+      <MultipleSpecsDetected
+        open={showPipeModal}
+        onClose={handlePipeClose}
+        product={pendingPipeProduct}
+        onConfirm={handlePipeConfirm}
+      />
     </>
   );
 }

@@ -34,13 +34,14 @@ import CardDetails from "@/components/spf/dialog/card-details";
 import SPFRequestFetchVersionHistory from "./spf-request-fetch-version-history";
 import SPFTimer from "@/components/spf-timer";
 import { useUser } from "@/contexts/UserContext";
+import MultipleSpecsDetected from "@/components/multiple-specs-detected";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* TYPES                                                           */
 /* ─────────────────────────────────────────────────────────────── */
 type SPFViewProps = {
   spfNumber: string;
-  processBy?: string; // who is editing (for audit trail)
+  processBy?: string;
 };
 
 type SPFData = {
@@ -79,6 +80,22 @@ type SPFRequestData = {
 const ROW_SEP = "|ROW|";
 
 type SpecGroup = { title: string; specs: string[] };
+
+/* ─────────────────────────────────────────────────────────────── */
+/* PIPE DETECTION HELPER                                           */
+/* ─────────────────────────────────────────────────────────────── */
+function hasMultipleSpecValues(product: any): boolean {
+  if (!product?.technicalSpecifications) return false;
+  return product.technicalSpecifications.some((group: any) =>
+    group.specs?.some((spec: any) => {
+      const values = (spec.value || "")
+        .split("|")
+        .map((v: string) => v.trim())
+        .filter(Boolean);
+      return values.length > 1;
+    })
+  );
+}
 
 /* ─────────────────────────────────────────────────────────────── */
 /* NAME CACHE FOR AUDIT TRAIL RESOLUTION                           */
@@ -164,7 +181,7 @@ function splitSpecsByRow(value: string | undefined): SpecGroup[][][] {
 }
 
 /* ─────────────────────────────────────────────────────────────── */
-/* MOBILE HELPERS (edit mode — mirrors spf-request-create)        */
+/* MOBILE HELPERS (edit mode)                                      */
 /* ─────────────────────────────────────────────────────────────── */
 function InlineSpecs({ specs }: { specs: any[] }) {
   const [open, setOpen] = useState(false);
@@ -303,20 +320,16 @@ export default function SPFRequestFetch({
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<SPFData | null>(null);
   const [latestVersionLabel, setLatestVersionLabel] = useState<string | null>(null);
-  const [spfCreationStartTime, setSpfCreationStartTime] = useState<
-    string | null
-  >(null);
-  const [spfCreationEndTime, setSpfCreationEndTime] = useState<string | null>(
-    null,
-  );
+  const [spfCreationStartTime, setSpfCreationStartTime] = useState<string | null>(null);
+  const [spfCreationEndTime, setSpfCreationEndTime] = useState<string | null>(null);
   const [timerActive, setTimerActive] = useState(false);
   const [requestData, setRequestData] = useState<SPFRequestData | null>(null);
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  /* ── Edit mode state (mirrors spf-request-create) ── */
+  /* ── Edit mode state ── */
   const [editMode, setEditMode] = useState(false);
-  const [viewMode, setViewMode] = useState(false); // preview within edit
+  const [viewMode, setViewMode] = useState(false);
   const [productOffers, setProductOffers] = useState<Record<number, any[]>>({});
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
@@ -328,21 +341,24 @@ export default function SPFRequestFetch({
   const [openFilter, setOpenFilter] = useState(false);
   const [draggedProduct, setDraggedProduct] = useState<any | null>(null);
   const [showTrash, setShowTrash] = useState(false);
-  const [activeTab, setActiveTab] = useState<"details" | "items" | "products">(
-    "items",
-  );
+  const [activeTab, setActiveTab] = useState<"details" | "items" | "products">("items");
   const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
   const [pickerStep, setPickerStep] = useState<"list" | "confirm">("list");
   const [pendingProduct, setPendingProduct] = useState<any | null>(null);
 
+  /* ── MultipleSpecsDetected modal ── */
+  const [showPipeModal, setShowPipeModal] = useState(false);
+  const [pendingPipeProduct, setPendingPipeProduct] = useState<any | null>(null);
+  const [pendingPipeRowIndex, setPendingPipeRowIndex] = useState<number | null>(null);
+
   useEffect(() => {
     if (!open) return;
-
     const start = new Date().toISOString();
     setSpfCreationStartTime(start);
     setSpfCreationEndTime(null);
     setTimerActive(true);
   }, [open]);
+
   /* ── Responsive ── */
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -364,9 +380,7 @@ export default function SPFRequestFetch({
           (p.productName?.toLowerCase() || "").includes(term) ||
           (p.supplier?.supplierBrand?.toLowerCase() || "").includes(term) ||
           (p.supplier?.company?.toLowerCase() || "").includes(term) ||
-          JSON.stringify(p.commercialDetails || "")
-            .toLowerCase()
-            .includes(term),
+          JSON.stringify(p.commercialDetails || "").toLowerCase().includes(term),
       ),
     );
   }, [productSearch, products]);
@@ -378,10 +392,7 @@ export default function SPFRequestFetch({
     const unsubscribe = onSnapshot(q, (snap) => {
       const list = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .sort(
-          (a: any, b: any) =>
-            (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0),
-        );
+        .sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       setProducts(list);
       setFilteredProducts(list);
       setLoadingProducts(false);
@@ -391,37 +402,31 @@ export default function SPFRequestFetch({
 
   /* ── Main data fetch ── */
   const fetchSPF = async () => {
+    const { data: versionData } = await supabase
+      .from("spf_creation_history")
+      .select("version_label, version_number")
+      .eq("spf_number", spfNumber)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-// ✅ FETCH LATEST VERSION FROM HISTORY
-const { data: versionData } = await supabase
-  .from("spf_creation_history")
-  .select("version_label, version_number")
-  .eq("spf_number", spfNumber)
-  .order("version_number", { ascending: false })
-  .limit(1)
-  .maybeSingle();
+    if (versionData) {
+      setLatestVersionLabel(
+        versionData.version_label || `${spfNumber}_v${versionData.version_number}`
+      );
+    }
 
-if (versionData) {
-  setLatestVersionLabel(
-    versionData.version_label || `${spfNumber}_v${versionData.version_number}`
-  );
-}
     try {
       setLoading(true);
-
       const { data: creation, error } = await supabase
         .from("spf_creation")
         .select("*")
         .eq("spf_number", spfNumber)
         .maybeSingle();
 
-      if (error) {
-        console.error(error);
-        return;
-      }
+      if (error) { console.error(error); return; }
       setData(creation);
 
-      // Resolve name for item_added_author
       if (creation?.item_added_author) {
         await resolveNames([creation.item_added_author]);
       }
@@ -457,7 +462,7 @@ if (versionData) {
     fetchStatus();
   }, [spfNumber]);
 
-  /* ── Enter edit mode: initialise productOffers from current data ── */
+  /* ── Enter edit mode ── */
   const enterEditMode = () => {
     if (!data || !requestData) return;
 
@@ -473,13 +478,9 @@ if (versionData) {
     const rowSellingCosts = splitByRow(data.final_selling_cost);
     const rowLeadTimes = splitByRow(data.proj_lead_time);
     const rowItemCodes = splitByRow(data.item_code);
-    const rowSpecs = splitSpecsByRow(
-      data.product_offer_technical_specification,
-    );
+    const rowSpecs = splitSpecsByRow(data.product_offer_technical_specification);
 
-    const descs = (requestData.item_description || "")
-      .split(",")
-      .map((s) => s.trim());
+    const descs = (requestData.item_description || "").split(",").map((s) => s.trim());
 
     const initialOffers: Record<number, any[]> = {};
 
@@ -497,18 +498,12 @@ if (versionData) {
       const codes = rowItemCodes[rowIndex] ?? [];
 
       const hasData = imgs.length > 0 && !(imgs.length === 1 && imgs[0] === "");
-      if (!hasData) {
-        initialOffers[rowIndex] = [];
-        return;
-      }
+      if (!hasData) { initialOffers[rowIndex] = []; return; }
 
       initialOffers[rowIndex] = imgs.map((img, i) => {
         const [length, width, height] = (packs[i] || "- x - x -")
           .split(" x ")
           .map((v) => v.trim());
-
-        /* Reconstruct a product-like shape from stored data so
-           the edit form can re-read & re-submit it via the API */
         return {
           __isExisting: true,
           __sellingCost: selling[i] ?? "-",
@@ -526,19 +521,14 @@ if (versionData) {
             portOfDischarge: ports[i] || "-",
             packaging: { length, width, height },
           },
-          technicalSpecifications: (rowSpecs[rowIndex]?.[i] ?? []).map(
-            (group) => ({
-              title: group.title,
-              specs: group.specs.map((spec) => {
-                const colonIdx = spec.indexOf(":");
-                if (colonIdx === -1) return { specId: spec, value: "" };
-                return {
-                  specId: spec.slice(0, colonIdx).trim(),
-                  value: spec.slice(colonIdx + 1).trim(),
-                };
-              }),
+          technicalSpecifications: (rowSpecs[rowIndex]?.[i] ?? []).map((group) => ({
+            title: group.title,
+            specs: group.specs.map((spec) => {
+              const colonIdx = spec.indexOf(":");
+              if (colonIdx === -1) return { specId: spec, value: "" };
+              return { specId: spec.slice(0, colonIdx).trim(), value: spec.slice(colonIdx + 1).trim() };
             }),
-          ),
+          })),
           qty: Number(qtys[i] || 1),
         };
       });
@@ -553,6 +543,9 @@ if (versionData) {
     setPickerStep("list");
     setPendingProduct(null);
     setProductSearch("");
+    setShowPipeModal(false);
+    setPendingPipeProduct(null);
+    setPendingPipeRowIndex(null);
   };
 
   /* ── Helpers (edit mode) ── */
@@ -563,21 +556,38 @@ if (versionData) {
       ...group,
       specs: group.specs?.map((spec: any) => {
         const raw = spec.value || "";
-        const values = raw
-          .split("|")
-          .map((v: string) => v.trim())
-          .filter(Boolean);
+        const values = raw.split("|").map((v: string) => v.trim()).filter(Boolean);
         const unique = Array.from(new Set(values)) as string[];
-        if (!activeFilters.length)
-          return { ...spec, value: unique.join(" | ") };
+        if (!activeFilters.length) return { ...spec, value: unique.join(" | ") };
         const filtered = unique.filter((v) => activeFilters.includes(v));
-        return {
-          ...spec,
-          value: filtered.length ? filtered.join(" | ") : unique.join(" | "),
-        };
+        return { ...spec, value: filtered.length ? filtered.join(" | ") : unique.join(" | ") };
       }),
     }));
     return { ...product, technicalSpecifications: frozenSpecs };
+  };
+
+  /* ── Add product to a row (shared logic after pipe check) ── */
+  const addProductToRow = (rowIndex: number, product: any) => {
+    setProductOffers((prev) => {
+      const copy = { ...prev };
+      copy[rowIndex] = [
+        ...(copy[rowIndex] || []),
+        { ...product, qty: product.qty ?? 1 },
+      ];
+      return copy;
+    });
+  };
+
+  /* ── Intercept product before adding — check for pipes ── */
+  const tryAddProduct = (rowIndex: number, product: any) => {
+    const frozen = freezeSpecs(product);
+    if (hasMultipleSpecValues(frozen)) {
+      setPendingPipeProduct(frozen);
+      setPendingPipeRowIndex(rowIndex);
+      setShowPipeModal(true);
+    } else {
+      addProductToRow(rowIndex, frozen);
+    }
   };
 
   const removeProduct = (rowIndex: number, productIndex: number) => {
@@ -597,20 +607,20 @@ if (versionData) {
       setActiveTab("items");
       return;
     }
-    setPendingProduct(product);
-    setPickerStep("confirm");
+    const frozen = freezeSpecs(product);
+    if (hasMultipleSpecValues(frozen)) {
+      setPendingPipeProduct(frozen);
+      setPendingPipeRowIndex(activeRowIndex);
+      setShowPipeModal(true);
+    } else {
+      setPendingProduct(frozen);
+      setPickerStep("confirm");
+    }
   };
 
   const confirmAddProduct = () => {
     if (activeRowIndex === null || !pendingProduct) return;
-    setProductOffers((prev) => {
-      const copy = { ...prev };
-      copy[activeRowIndex] = [
-        ...(copy[activeRowIndex] || []),
-        { ...freezeSpecs(pendingProduct), qty: 1 },
-      ];
-      return copy;
-    });
+    addProductToRow(activeRowIndex, pendingProduct);
     setPendingProduct(null);
     setPickerStep("list");
     toast.success("Product added!");
@@ -621,14 +631,32 @@ if (versionData) {
     setPickerStep("list");
   };
 
+  /* ── MultipleSpecsDetected confirm ── */
+  const handlePipeConfirm = (filteredProduct: any) => {
+    if (pendingPipeRowIndex === null) return;
+    addProductToRow(pendingPipeRowIndex, { ...filteredProduct, qty: 1 });
+    toast.success("Product added!");
+    setPendingPipeProduct(null);
+    setPendingPipeRowIndex(null);
+    setShowPipeModal(false);
+    setPendingProduct(null);
+    setPickerStep("list");
+  };
+
+  const handlePipeClose = () => {
+    setPendingPipeProduct(null);
+    setPendingPipeRowIndex(null);
+    setShowPipeModal(false);
+    setDraggedProduct(null);
+    setShowTrash(false);
+  };
+
   /* ── Submit edit ── */
   const handleSubmitEdit = async () => {
     const end = new Date().toISOString();
     setSpfCreationEndTime(end);
     setTimerActive(false);
-    const descs = (requestData?.item_description || "")
-      .split(",")
-      .map((s) => s.trim());
+    const descs = (requestData?.item_description || "").split(",").map((s) => s.trim());
     const totalRows = descs.length;
 
     for (let i = 0; i < totalRows; i++) {
@@ -640,8 +668,7 @@ if (versionData) {
 
     try {
       const allProducts = Object.entries(productOffers).flatMap(
-        ([rowIndex, prods]) =>
-          prods.map((p) => ({ ...p, __rowIndex: Number(rowIndex) })),
+        ([rowIndex, prods]) => prods.map((p) => ({ ...p, __rowIndex: Number(rowIndex) })),
       );
 
       const res = await fetch("/api/request/spf-request-edit-api", {
@@ -649,26 +676,16 @@ if (versionData) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           spf_number: spfNumber,
-
-          // ✅ USE ACTUAL LOGGED-IN USER
           referenceid: userId ?? null,
           edited_by: userId ?? null,
           author: userId ?? null,
-
-          // ✅ KEEP EXISTING DATA
           tsm: data?.tsm ?? null,
           manager: data?.manager ?? null,
           item_code: data?.item_code ?? null,
-
-          // ✅ PRODUCTS
           totalItemRows: totalRows,
           selectedProducts: allProducts,
-
-          // ✅ TIMER
           spf_creation_start_time: spfCreationStartTime ?? null,
           spf_creation_end_time: end ?? null,
-
-          // ✅ USER CONTEXT
           userId: userId ?? null,
         }),
       });
@@ -685,7 +702,7 @@ if (versionData) {
         toast.success(`SPF updated — ${result.version_label ?? ""}`);
         setEditMode(false);
         setViewMode(false);
-        fetchSPF(); // refresh view
+        fetchSPF();
       }
     } catch (err: any) {
       console.error("Submit edit error:", err);
@@ -721,9 +738,7 @@ if (versionData) {
   const itemDescriptions: string[] = (requestData?.item_description || "")
     .split(",")
     .map((s) => s.trim());
-  const itemImages = (requestData?.item_photo || "")
-    .split(",")
-    .map((s) => s.trim());
+  const itemImages = (requestData?.item_photo || "").split(",").map((s) => s.trim());
 
   /* ════════════════════════════════════════════════════════════ */
   /* EDIT MODE — MOBILE                                          */
@@ -876,42 +891,26 @@ if (versionData) {
                       </p>
                     </div>
                     {isActive ? (
-                      <ChevronUp
-                        size={14}
-                        className="text-orange-500 shrink-0"
-                      />
+                      <ChevronUp size={14} className="text-orange-500 shrink-0" />
                     ) : (
-                      <ChevronDown
-                        size={14}
-                        className="text-muted-foreground shrink-0"
-                      />
+                      <ChevronDown size={14} className="text-muted-foreground shrink-0" />
                     )}
                   </div>
 
                   {offers.length > 0 && (
                     <div className="border-t divide-y">
                       {offers.map((prod: any, i: number) => {
-                        const unitCost =
-                          prod?.commercialDetails?.unitCost || "-";
+                        const unitCost = prod?.commercialDetails?.unitCost || "-";
                         const qty = prod.qty ?? 1;
-                        const cost = Number(
-                          prod?.commercialDetails?.unitCost || 0,
-                        );
+                        const cost = Number(prod?.commercialDetails?.unitCost || 0);
                         const subtotal = qty * cost;
-                        const length =
-                          prod?.commercialDetails?.packaging?.length || "-";
-                        const width =
-                          prod?.commercialDetails?.packaging?.width || "-";
-                        const height =
-                          prod?.commercialDetails?.packaging?.height || "-";
-                        const factory =
-                          prod?.commercialDetails?.factoryAddress || "-";
-                        const port =
-                          prod?.commercialDetails?.portOfDischarge || "-";
+                        const length = prod?.commercialDetails?.packaging?.length || "-";
+                        const width = prod?.commercialDetails?.packaging?.width || "-";
+                        const height = prod?.commercialDetails?.packaging?.height || "-";
+                        const factory = prod?.commercialDetails?.factoryAddress || "-";
+                        const port = prod?.commercialDetails?.portOfDischarge || "-";
                         const supplierBrand =
-                          prod?.supplier?.supplierBrand ||
-                          prod?.supplier?.supplierBrandName ||
-                          "";
+                          prod?.supplier?.supplierBrand || prod?.supplier?.supplierBrandName || "";
 
                         return (
                           <div key={i} className="p-3 flex gap-3 items-start">
@@ -931,13 +930,9 @@ if (versionData) {
                                 Option {i + 1}
                                 {supplierBrand && ` · ${supplierBrand}`}
                               </span>
-                              <p className="text-xs font-medium line-clamp-1">
-                                {prod.productName}
-                              </p>
+                              <p className="text-xs font-medium line-clamp-1">{prod.productName}</p>
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-muted-foreground">
-                                  Qty
-                                </span>
+                                <span className="text-[10px] text-muted-foreground">Qty</span>
                                 <input
                                   type="number"
                                   min={1}
@@ -974,16 +969,10 @@ if (versionData) {
                               )}
                               {qty > 0 && (
                                 <p className="text-xs font-semibold text-right">
-                                  $
-                                  {subtotal.toLocaleString("en-US", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}
+                                  ${subtotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
                               )}
-                              <InlineSpecs
-                                specs={prod.technicalSpecifications ?? []}
-                              />
+                              <InlineSpecs specs={prod.technicalSpecifications ?? []} />
                             </div>
                             <button
                               type="button"
@@ -1022,38 +1011,24 @@ if (versionData) {
                       <div className="w-16 h-16 bg-muted rounded shrink-0" />
                     )}
                     <div className="min-w-0">
-                      <p className="text-sm font-medium line-clamp-2">
-                        {pendingProduct.productName}
-                      </p>
-                      {(pendingProduct?.supplier?.supplierBrand ||
-                        pendingProduct?.supplier?.supplierBrandName) && (
+                      <p className="text-sm font-medium line-clamp-2">{pendingProduct.productName}</p>
+                      {(pendingProduct?.supplier?.supplierBrand || pendingProduct?.supplier?.supplierBrandName) && (
                         <p className="text-xs text-blue-600 font-medium mt-0.5">
-                          {pendingProduct.supplier.supplierBrand ||
-                            pendingProduct.supplier.supplierBrandName}
+                          {pendingProduct.supplier.supplierBrand || pendingProduct.supplier.supplierBrandName}
                         </p>
                       )}
                       {activeRowIndex !== null && (
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          → {spfNumber}-
-                          {String(activeRowIndex + 1).padStart(3, "0")}
+                          → {spfNumber}-{String(activeRowIndex + 1).padStart(3, "0")}
                         </p>
                       )}
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1 rounded"
-                      onClick={cancelConfirm}
-                    >
+                    <Button type="button" variant="outline" className="flex-1 rounded" onClick={cancelConfirm}>
                       Cancel
                     </Button>
-                    <Button
-                      type="button"
-                      className="flex-1 rounded"
-                      onClick={confirmAddProduct}
-                    >
+                    <Button type="button" className="flex-1 rounded" onClick={confirmAddProduct}>
                       Confirm Add
                     </Button>
                   </div>
@@ -1071,20 +1046,13 @@ if (versionData) {
             )}
 
             {loadingProducts ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Loading products...
-              </p>
+              <p className="text-sm text-muted-foreground text-center py-8">Loading products...</p>
             ) : filteredProducts.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No products found.
-              </p>
+              <p className="text-sm text-muted-foreground text-center py-8">No products found.</p>
             ) : (
               <div className="space-y-2">
                 {filteredProducts.map((p) => {
-                  const supplierBrand =
-                    p?.supplier?.supplierBrand ||
-                    p?.supplier?.supplierBrandName ||
-                    "";
+                  const supplierBrand = p?.supplier?.supplierBrand || p?.supplier?.supplierBrandName || "";
                   const supplierCo = p?.supplier?.company || "";
                   return (
                     <div
@@ -1092,36 +1060,23 @@ if (versionData) {
                       role="button"
                       tabIndex={0}
                       onClick={() => handleProductTap(p)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ")
-                          handleProductTap(p);
-                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleProductTap(p); }}
                       className="w-full text-left border rounded-lg overflow-hidden flex gap-3 p-3 hover:bg-muted/40 active:bg-muted transition-colors cursor-pointer select-none"
                     >
                       {p.mainImage?.url ? (
-                        <img
-                          src={p.mainImage.url}
-                          className="w-14 h-14 object-contain rounded shrink-0"
-                          alt={p.productName}
-                        />
+                        <img src={p.mainImage.url} className="w-14 h-14 object-contain rounded shrink-0" alt={p.productName} />
                       ) : (
                         <div className="w-14 h-14 bg-muted rounded shrink-0 flex items-center justify-center text-[10px] text-muted-foreground">
                           No img
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold line-clamp-2">
-                          {p.productName}
-                        </p>
+                        <p className="text-sm font-semibold line-clamp-2">{p.productName}</p>
                         {supplierBrand && (
-                          <p className="text-xs font-semibold text-blue-600 mt-0.5 truncate">
-                            {supplierBrand}
-                          </p>
+                          <p className="text-xs font-semibold text-blue-600 mt-0.5 truncate">{supplierBrand}</p>
                         )}
                         {supplierCo && (
-                          <p className="text-[10px] text-muted-foreground truncate">
-                            {supplierCo}
-                          </p>
+                          <p className="text-[10px] text-muted-foreground truncate">{supplierCo}</p>
                         )}
                         {p.commercialDetails?.unitCost && (
                           <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -1133,9 +1088,7 @@ if (versionData) {
                             Qty/Per Carton: {p.commercialDetails.pcsPerCarton}
                           </p>
                         )}
-                        <InlineProductSpecs
-                          specs={p.technicalSpecifications ?? []}
-                        />
+                        <InlineProductSpecs specs={p.technicalSpecifications ?? []} />
                       </div>
                       <div className="shrink-0 flex items-center">
                         <div
@@ -1173,10 +1126,7 @@ if (versionData) {
           type="button"
           variant="outline"
           className="flex-1 rounded"
-          onClick={() => {
-            setEditMode(false);
-            setViewMode(false);
-          }}
+          onClick={() => { setEditMode(false); setViewMode(false); }}
         >
           Cancel
         </Button>
@@ -1184,10 +1134,7 @@ if (versionData) {
           type="button"
           variant="outline"
           className="flex-1 rounded"
-          onClick={() => {
-            setViewMode((p) => !p);
-            if (!viewMode) setActiveTab("items");
-          }}
+          onClick={() => { setViewMode((p) => !p); if (!viewMode) setActiveTab("items"); }}
         >
           {viewMode ? "Edit" : "Preview"}
         </Button>
@@ -1198,9 +1145,7 @@ if (versionData) {
             onClick={handleSubmitEdit}
             disabled={
               itemDescriptions.length === 0 ||
-              itemDescriptions.some(
-                (_, i) => !productOffers[i] || productOffers[i].length === 0,
-              )
+              itemDescriptions.some((_, i) => !productOffers[i] || productOffers[i].length === 0)
             }
           >
             Save
@@ -1236,10 +1181,7 @@ if (versionData) {
           >
             <Funnel size={16} />
           </Button>
-          <Button
-            className="rounded-none p-6"
-            onClick={() => setOpenAddProduct(true)}
-          >
+          <Button className="rounded-none p-6" onClick={() => setOpenAddProduct(true)}>
             + Add Product
           </Button>
         </div>
@@ -1286,12 +1228,8 @@ if (versionData) {
                   <tr className="bg-gray-100">
                     <th className="border px-2 py-1 text-center">#</th>
                     <th className="border px-2 py-1 text-center">Image</th>
-                    <th className="border px-2 py-1 text-center">
-                      Item Description
-                    </th>
-                    <th className="border px-2 py-1 text-center">
-                      Product Offer
-                    </th>
+                    <th className="border px-2 py-1 text-center">Item Description</th>
+                    <th className="border px-2 py-1 text-center">Product Offer</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1302,22 +1240,41 @@ if (versionData) {
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => {
                         if (!draggedProduct) return;
-                        setProductOffers((prev) => {
-                          const copy = { ...prev };
+                        const frozen = draggedProduct.__fromRow !== undefined
+                          ? draggedProduct
+                          : freezeSpecs(draggedProduct);
+                        if (hasMultipleSpecValues(frozen)) {
+                          // Remove from source row if dragged from another row
                           if (draggedProduct.__fromRow !== undefined) {
-                            const original = [
-                              ...(copy[draggedProduct.__fromRow] || []),
-                            ];
-                            original.splice(draggedProduct.__fromIndex, 1);
-                            copy[draggedProduct.__fromRow] = original;
+                            setProductOffers((prev) => {
+                              const copy = { ...prev };
+                              const original = [...(copy[draggedProduct.__fromRow] || [])];
+                              original.splice(draggedProduct.__fromIndex, 1);
+                              copy[draggedProduct.__fromRow] = original;
+                              return copy;
+                            });
                           }
-                          copy[index] = [
-                            ...(copy[index] || []),
-                            { ...freezeSpecs(draggedProduct), qty: 1 },
-                          ];
-                          return copy;
-                        });
-                        setDraggedProduct(null);
+                          setPendingPipeProduct(frozen);
+                          setPendingPipeRowIndex(index);
+                          setShowPipeModal(true);
+                          setDraggedProduct(null);
+                          setShowTrash(false);
+                        } else {
+                          setProductOffers((prev) => {
+                            const copy = { ...prev };
+                            if (draggedProduct.__fromRow !== undefined) {
+                              const original = [...(copy[draggedProduct.__fromRow] || [])];
+                              original.splice(draggedProduct.__fromIndex, 1);
+                              copy[draggedProduct.__fromRow] = original;
+                            }
+                            copy[index] = [
+                              ...(copy[index] || []),
+                              { ...frozen, qty: frozen.qty ?? 1 },
+                            ];
+                            return copy;
+                          });
+                          setDraggedProduct(null);
+                        }
                       }}
                     >
                       <td className="border px-2 py-1 font-medium text-center align-middle">
@@ -1326,14 +1283,8 @@ if (versionData) {
                       <td className="border px-2 py-1 align-middle">
                         <div className="flex justify-center items-center">
                           {itemImages[index] ? (
-                            <img
-                              src={itemImages[index]}
-                              alt={desc}
-                              className="w-24 h-24 object-contain"
-                            />
-                          ) : (
-                            "-"
-                          )}
+                            <img src={itemImages[index]} alt={desc} className="w-24 h-24 object-contain" />
+                          ) : "-"}
                         </div>
                       </td>
                       <td className="border px-2 py-1 whitespace-pre-wrap text-center align-middle text-sm leading-relaxed">
@@ -1345,197 +1296,112 @@ if (versionData) {
                             <table className="w-full text-xs">
                               <thead className="bg-muted">
                                 <tr>
-                                  <th className="border px-2 py-1 text-center">
-                                    Option
-                                  </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Supplier Brand
-                                  </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Image
-                                  </th>
-                                  <th className="border px-2 py-1 w-[70px]">
-                                    Qty
-                                  </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Technical Specifications
-                                  </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Unit Cost
-                                  </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Qty/Per Carton
-                                  </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Packaging
-                                  </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Factory
-                                  </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Port
-                                  </th>
-                                  <th className="border px-2 py-1 w-[100px]">
-                                    Sub Total
-                                  </th>
+                                  <th className="border px-2 py-1 text-center">Option</th>
+                                  <th className="border px-2 py-1 text-center">Supplier Brand</th>
+                                  <th className="border px-2 py-1 text-center">Image</th>
+                                  <th className="border px-2 py-1 w-[70px]">Qty</th>
+                                  <th className="border px-2 py-1 text-center">Technical Specifications</th>
+                                  <th className="border px-2 py-1 text-center">Unit Cost</th>
+                                  <th className="border px-2 py-1 text-center">Qty/Per Carton</th>
+                                  <th className="border px-2 py-1 text-center">Packaging</th>
+                                  <th className="border px-2 py-1 text-center">Factory</th>
+                                  <th className="border px-2 py-1 text-center">Port</th>
+                                  <th className="border px-2 py-1 w-[100px]">Sub Total</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {(productOffers[index] || []).map(
-                                  (prod: any, i: number) => {
-                                    const unitCost =
-                                      prod?.commercialDetails?.unitCost || "-";
-                                    const length =
-                                      prod?.commercialDetails?.packaging
-                                        ?.length || "-";
-                                    const width =
-                                      prod?.commercialDetails?.packaging
-                                        ?.width || "-";
-                                    const height =
-                                      prod?.commercialDetails?.packaging
-                                        ?.height || "-";
-                                    const factory =
-                                      prod?.commercialDetails?.factoryAddress ||
-                                      "-";
-                                    const port =
-                                      prod?.commercialDetails
-                                        ?.portOfDischarge || "-";
-                                    const brand =
-                                      prod?.supplier?.supplierBrand ||
-                                      prod?.supplier?.supplierBrandName ||
-                                      "-";
-                                    return (
-                                      <tr
-                                        key={i}
-                                        draggable
-                                        className="cursor-grab active:cursor-grabbing"
-                                        onDragStart={(e) => {
-                                          e.dataTransfer.setData(
-                                            "text/plain",
-                                            "dragging",
-                                          );
-                                          setDraggedProduct({
-                                            ...prod,
-                                            __fromRow: index,
-                                            __fromIndex: i,
-                                          });
-                                          setShowTrash(true);
-                                        }}
-                                        onDragEnd={() => {
-                                          setDraggedProduct(null);
-                                          setShowTrash(false);
-                                        }}
-                                      >
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
-                                            Option {i + 1}
-                                          </span>
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle font-medium">
-                                          {brand}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod.mainImage?.url ? (
-                                            <img
-                                              src={prod.mainImage.url}
-                                              className="w-16 h-16 object-contain mx-auto"
-                                              alt=""
-                                            />
-                                          ) : (
-                                            "-"
-                                          )}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          <input
-                                            type="number"
-                                            min={1}
-                                            className="w-full border px-1 text-xs"
-                                            value={prod.qty ?? 1}
-                                            onChange={(e) => {
-                                              let qty = Number(e.target.value);
-                                              if (qty < 1) qty = 1;
-                                              setProductOffers((prev) => {
-                                                const copy = { ...prev };
-                                                const row = [
-                                                  ...(copy[index] || []),
-                                                ];
-                                                row[i] = { ...row[i], qty };
-                                                copy[index] = row;
-                                                return copy;
-                                              });
-                                            }}
-                                          />
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod.technicalSpecifications
-                                            ?.map((g: any) => ({
-                                              ...g,
-                                              specs: g.specs?.filter(
-                                                (s: any) =>
-                                                  s.value &&
-                                                  s.value.trim() !== "",
-                                              ),
-                                            }))
-                                            .filter(
-                                              (g: any) =>
-                                                g.specs && g.specs.length > 0,
-                                            )
-                                            .map((g: any, gi: number) => (
-                                              <div key={gi} className="mb-2">
-                                                <b>{g.title}</b>
-                                                <div className="text-xs">
-                                                  {g.specs.map(
-                                                    (s: any, si: number) => (
-                                                      <div key={si}>
-                                                        {s.specId}: {s.value}
-                                                      </div>
-                                                    ),
-                                                  )}
-                                                </div>
+                                {(productOffers[index] || []).map((prod: any, i: number) => {
+                                  const unitCost = prod?.commercialDetails?.unitCost || "-";
+                                  const length = prod?.commercialDetails?.packaging?.length || "-";
+                                  const width = prod?.commercialDetails?.packaging?.width || "-";
+                                  const height = prod?.commercialDetails?.packaging?.height || "-";
+                                  const factory = prod?.commercialDetails?.factoryAddress || "-";
+                                  const port = prod?.commercialDetails?.portOfDischarge || "-";
+                                  const brand =
+                                    prod?.supplier?.supplierBrand || prod?.supplier?.supplierBrandName || "-";
+                                  return (
+                                    <tr
+                                      key={i}
+                                      draggable
+                                      className="cursor-grab active:cursor-grabbing"
+                                      onDragStart={(e) => {
+                                        e.dataTransfer.setData("text/plain", "dragging");
+                                        setDraggedProduct({ ...prod, __fromRow: index, __fromIndex: i });
+                                        setShowTrash(true);
+                                      }}
+                                      onDragEnd={() => { setDraggedProduct(null); setShowTrash(false); }}
+                                    >
+                                      <td className="border px-2 py-1 text-center align-middle">
+                                        <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                                          Option {i + 1}
+                                        </span>
+                                      </td>
+                                      <td className="border px-2 py-1 text-center align-middle font-medium">{brand}</td>
+                                      <td className="border px-2 py-1 text-center align-middle">
+                                        {prod.mainImage?.url ? (
+                                          <img src={prod.mainImage.url} className="w-16 h-16 object-contain mx-auto" alt="" />
+                                        ) : "-"}
+                                      </td>
+                                      <td className="border px-2 py-1 text-center align-middle">
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          className="w-full border px-1 text-xs"
+                                          value={prod.qty ?? 1}
+                                          onChange={(e) => {
+                                            let qty = Number(e.target.value);
+                                            if (qty < 1) qty = 1;
+                                            setProductOffers((prev) => {
+                                              const copy = { ...prev };
+                                              const row = [...(copy[index] || [])];
+                                              row[i] = { ...row[i], qty };
+                                              copy[index] = row;
+                                              return copy;
+                                            });
+                                          }}
+                                        />
+                                      </td>
+                                      <td className="border px-2 py-1 text-center align-middle">
+                                        {prod.technicalSpecifications
+                                          ?.map((g: any) => ({
+                                            ...g,
+                                            specs: g.specs?.filter((s: any) => s.value && s.value.trim() !== ""),
+                                          }))
+                                          .filter((g: any) => g.specs && g.specs.length > 0)
+                                          .map((g: any, gi: number) => (
+                                            <div key={gi} className="mb-2">
+                                              <b>{g.title}</b>
+                                              <div className="text-xs">
+                                                {g.specs.map((s: any, si: number) => (
+                                                  <div key={si}>{s.specId}: {s.value}</div>
+                                                ))}
                                               </div>
-                                            ))}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {unitCost}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod?.commercialDetails
-                                            ?.pcsPerCarton || "-"}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {length} x {width} x {height}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {factory}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {port}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {(() => {
-                                            const qty = prod.qty ?? 1;
-                                            const cost = Number(
-                                              prod?.commercialDetails
-                                                ?.unitCost || 0,
-                                            );
-                                            return (
-                                              <span className="text-xs font-semibold">
-                                                $
-                                                {(qty * cost).toLocaleString(
-                                                  "en-US",
-                                                  {
-                                                    minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2,
-                                                  },
-                                                )}
-                                              </span>
-                                            );
-                                          })()}
-                                        </td>
-                                      </tr>
-                                    );
-                                  },
-                                )}
+                                            </div>
+                                          ))}
+                                      </td>
+                                      <td className="border px-2 py-1 text-center align-middle">{unitCost}</td>
+                                      <td className="border px-2 py-1 text-center align-middle">
+                                        {prod?.commercialDetails?.pcsPerCarton || "-"}
+                                      </td>
+                                      <td className="border px-2 py-1 text-center align-middle">
+                                        {length} x {width} x {height}
+                                      </td>
+                                      <td className="border px-2 py-1 text-center align-middle">{factory}</td>
+                                      <td className="border px-2 py-1 text-center align-middle">{port}</td>
+                                      <td className="border px-2 py-1 text-center align-middle">
+                                        {(() => {
+                                          const qty = prod.qty ?? 1;
+                                          const cost = Number(prod?.commercialDetails?.unitCost || 0);
+                                          return (
+                                            <span className="text-xs font-semibold">
+                                              ${(qty * cost).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                          );
+                                        })()}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -1568,43 +1434,27 @@ if (versionData) {
                   setDraggedProduct({ ...p, __fromRow: undefined });
                   setShowTrash(true);
                 }}
-                onDragEnd={() => {
-                  setDraggedProduct(null);
-                  setShowTrash(false);
-                }}
+                onDragEnd={() => { setDraggedProduct(null); setShowTrash(false); }}
                 className="flex flex-col p-2 border shadow hover:shadow-md break-inside-avoid mb-3 cursor-grab"
               >
                 <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
                   {p.mainImage?.url ? (
-                    <img
-                      src={p.mainImage.url}
-                      className="w-full h-full object-contain"
-                      alt={p.productName}
-                    />
+                    <img src={p.mainImage.url} className="w-full h-full object-contain" alt={p.productName} />
                   ) : (
                     <div className="text-xs text-gray-400">No Image</div>
                   )}
                 </div>
                 <div className="mt-2 flex-1">
-                  <p className="text-sm font-semibold line-clamp-2">
-                    {p.productName}
-                  </p>
-                  {(p?.supplier?.supplierBrand ||
-                    p?.supplier?.supplierBrandName) && (
+                  <p className="text-sm font-semibold line-clamp-2">{p.productName}</p>
+                  {(p?.supplier?.supplierBrand || p?.supplier?.supplierBrandName) && (
                     <p className="text-xs font-semibold text-blue-600 mt-0.5 truncate">
                       {p.supplier.supplierBrand || p.supplier.supplierBrandName}
                     </p>
                   )}
                 </div>
-                <Accordion
-                  type="single"
-                  collapsible
-                  className="mt-2 border rounded"
-                >
+                <Accordion type="single" collapsible className="mt-2 border rounded">
                   <AccordionItem value="commercial">
-                    <AccordionTrigger className="px-3 text-xs">
-                      Commercial Details
-                    </AccordionTrigger>
+                    <AccordionTrigger className="px-3 text-xs">Commercial Details</AccordionTrigger>
                     <AccordionContent className="px-3 pb-3 text-xs space-y-2">
                       {(() => {
                         const details = p.commercialDetails;
@@ -1612,47 +1462,17 @@ if (versionData) {
                         const packaging = details.packaging || {};
                         return (
                           <>
-                            {details.factoryAddress && (
-                              <p>
-                                <span className="font-medium">Factory:</span>{" "}
-                                {details.factoryAddress}
-                              </p>
-                            )}
-                            {details.portOfDischarge && (
-                              <p>
-                                <span className="font-medium">Port:</span>{" "}
-                                {details.portOfDischarge}
-                              </p>
-                            )}
-                            {details.unitCost && (
-                              <p>
-                                <span className="font-medium">Unit Cost:</span>{" "}
-                                {details.unitCost}
-                              </p>
-                            )}
-                            {details.pcsPerCarton && (
-                              <p>
-                                <span className="font-medium">
-                                  Qty/Per Carton:
-                                </span>{" "}
-                                {details.pcsPerCarton}
-                              </p>
-                            )}
-                            {(packaging.height ||
-                              packaging.length ||
-                              packaging.width) && (
+                            {details.factoryAddress && <p><span className="font-medium">Factory:</span> {details.factoryAddress}</p>}
+                            {details.portOfDischarge && <p><span className="font-medium">Port:</span> {details.portOfDischarge}</p>}
+                            {details.unitCost && <p><span className="font-medium">Unit Cost:</span> {details.unitCost}</p>}
+                            {details.pcsPerCarton && <p><span className="font-medium">Qty/Per Carton:</span> {details.pcsPerCarton}</p>}
+                            {(packaging.height || packaging.length || packaging.width) && (
                               <div>
                                 <p className="font-medium">Packaging</p>
                                 <ul className="ml-3 list-disc">
-                                  {packaging.height && (
-                                    <li>Height: {packaging.height}</li>
-                                  )}
-                                  {packaging.length && (
-                                    <li>Length: {packaging.length}</li>
-                                  )}
-                                  {packaging.width && (
-                                    <li>Width: {packaging.width}</li>
-                                  )}
+                                  {packaging.height && <li>Height: {packaging.height}</li>}
+                                  {packaging.length && <li>Length: {packaging.length}</li>}
+                                  {packaging.width && <li>Width: {packaging.width}</li>}
                                 </ul>
                               </div>
                             )}
@@ -1662,9 +1482,7 @@ if (versionData) {
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="technical">
-                    <AccordionTrigger className="px-3 text-xs">
-                      Technical Specifications
-                    </AccordionTrigger>
+                    <AccordionTrigger className="px-3 text-xs">Technical Specifications</AccordionTrigger>
                     <AccordionContent className="px-3 pb-3 text-xs space-y-2">
                       {p.technicalSpecifications?.length ? (
                         p.technicalSpecifications
@@ -1674,19 +1492,12 @@ if (versionData) {
                               <p className="font-semibold">{group.title}</p>
                               <ul className="ml-3 list-disc">
                                 {group.specs?.map((spec: any, s: number) => (
-                                  <li key={s}>
-                                    <span className="font-medium">
-                                      {spec.specId}
-                                    </span>{" "}
-                                    : {spec.value || "-"}
-                                  </li>
+                                  <li key={s}><span className="font-medium">{spec.specId}</span> : {spec.value || "-"}</li>
                                 ))}
                               </ul>
                             </div>
                           ))
-                      ) : (
-                        <p>-</p>
-                      )}
+                      ) : <p>-</p>}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -1710,50 +1521,42 @@ if (versionData) {
         </div>
       </div>
 
-<DialogFooter className="mt-4 flex flex-col gap-3">
-  {/* TIMER - FULL WIDTH */}
-  <div className="w-full">
-    <SPFTimer
-      isActive={timerActive}
-      startTime={spfCreationStartTime}
-      label="Edit SPF Timer"
-      onStart={(v) => setSpfCreationStartTime(v)}
-      onStop={(v) => setSpfCreationEndTime(v)}
-      onTick={() => {}}
-    />
-  </div>
-
-  {/* BUTTONS - RIGHT SIDE */}
-  <div className="w-full flex justify-end gap-2">
-    <Button
-      variant="outline"
-      className="rounded-none p-6"
-      onClick={() => {
-        setEditMode(false);
-        setViewMode(false);
-      }}
-    >
-      Cancel
-    </Button>
-
-    <Button
-      variant="outline"
-      className="rounded-none p-6"
-      onClick={() => setViewMode((prev) => !prev)}
-    >
-      {viewMode ? "Back" : "Preview"}
-    </Button>
-
-    {viewMode && (
-      <Button
-        className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
-        onClick={handleSubmitEdit}
-      >
-        Save Changes
-      </Button>
-    )}
-  </div>
-</DialogFooter>
+      <DialogFooter className="mt-4 flex flex-col gap-3">
+        <div className="w-full">
+          <SPFTimer
+            isActive={timerActive}
+            startTime={spfCreationStartTime}
+            label="Edit SPF Timer"
+            onStart={(v) => setSpfCreationStartTime(v)}
+            onStop={(v) => setSpfCreationEndTime(v)}
+            onTick={() => {}}
+          />
+        </div>
+        <div className="w-full flex justify-end gap-2">
+          <Button
+            variant="outline"
+            className="rounded-none p-6"
+            onClick={() => { setEditMode(false); setViewMode(false); }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="outline"
+            className="rounded-none p-6"
+            onClick={() => setViewMode((prev) => !prev)}
+          >
+            {viewMode ? "Back" : "Preview"}
+          </Button>
+          {viewMode && (
+            <Button
+              className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
+              onClick={handleSubmitEdit}
+            >
+              Save Changes
+            </Button>
+          )}
+        </div>
+      </DialogFooter>
     </>
   );
 
@@ -1783,24 +1586,16 @@ if (versionData) {
         const prodItemCodes = rowItemCodes[rowIndex] ?? [];
 
         const hasProducts =
-          prodImages.length > 0 &&
-          !(prodImages.length === 1 && prodImages[0] === "");
+          prodImages.length > 0 && !(prodImages.length === 1 && prodImages[0] === "");
 
         return (
-          <div
-            key={rowIndex}
-            className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white"
-          >
+          <div key={rowIndex} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white">
             <div className="bg-gray-50 border-b px-3 py-2 flex items-center gap-3">
               <span className="text-xs font-bold text-gray-500 shrink-0">
                 {spfNumber}-{String(rowIndex + 1).padStart(3, "0")}
               </span>
               {itemImages[rowIndex] ? (
-                <img
-                  src={itemImages[rowIndex]}
-                  className="w-10 h-10 object-contain rounded shrink-0"
-                  alt=""
-                />
+                <img src={itemImages[rowIndex]} className="w-10 h-10 object-contain rounded shrink-0" alt="" />
               ) : null}
               <p className="text-xs font-medium text-gray-800 line-clamp-2 flex-1">
                 {desc.replace(/\|/g, " · ")}
@@ -1808,26 +1603,17 @@ if (versionData) {
             </div>
 
             {!hasProducts ? (
-              <p className="text-xs text-muted-foreground px-3 py-3">
-                No products added
-              </p>
+              <p className="text-xs text-muted-foreground px-3 py-3">No products added</p>
             ) : (
               <div className="divide-y">
                 {prodImages.map((img, i) => {
                   const groups = prodSpecs[i] ?? [];
-                  const optItemCode =
-                    prodItemCodes[i] && prodItemCodes[i] !== "-"
-                      ? prodItemCodes[i]
-                      : null;
-
+                  const optItemCode = prodItemCodes[i] && prodItemCodes[i] !== "-" ? prodItemCodes[i] : null;
                   return (
                     <div key={i} className="px-3 py-3 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                          Option {i + 1}
-                          {prodBrands[i] && prodBrands[i] !== "-"
-                            ? ` · ${prodBrands[i]}`
-                            : ""}
+                          Option {i + 1}{prodBrands[i] && prodBrands[i] !== "-" ? ` · ${prodBrands[i]}` : ""}
                         </span>
                         {optItemCode && (
                           <span className="inline-flex items-center text-[10px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
@@ -1837,11 +1623,7 @@ if (versionData) {
                       </div>
                       <div className="flex gap-3 items-start">
                         {img && img !== "-" ? (
-                          <img
-                            src={img}
-                            className="w-16 h-16 object-contain rounded border shrink-0"
-                            alt=""
-                          />
+                          <img src={img} className="w-16 h-16 object-contain rounded border shrink-0" alt="" />
                         ) : (
                           <div className="w-16 h-16 bg-gray-100 rounded border shrink-0 flex items-center justify-center text-[10px] text-gray-400">
                             No img
@@ -1849,56 +1631,23 @@ if (versionData) {
                         )}
                         <div className="flex-1 min-w-0 space-y-1.5">
                           <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                            <div><span className="text-gray-400 block">Qty</span><span className="font-medium">{prodQtys[i] || "-"}</span></div>
+                            <div><span className="text-gray-400 block">Unit Cost</span><span className="font-medium">{prodUnitCosts[i] || "-"}</span></div>
+                            <div><span className="text-gray-400 block">Qty/Per Carton</span><span className="font-medium">{prodPcsPerCartons[i] || "-"}</span></div>
                             <div>
-                              <span className="text-gray-400 block">Qty</span>
-                              <span className="font-medium">
-                                {prodQtys[i] || "-"}
-                              </span>
+                              <span className="text-gray-400 block">Subtotal</span>
+                              <span className="font-semibold text-gray-900">₱{Number(prodSubtotals[i] || 0).toLocaleString()}</span>
                             </div>
-                            <div>
-                              <span className="text-gray-400 block">
-                                Unit Cost
-                              </span>
-                              <span className="font-medium">
-                                {prodUnitCosts[i] || "-"}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-400 block">
-                                Qty/Per Carton
-                              </span>
-                              <span className="font-medium">
-                                {prodPcsPerCartons[i] || "-"}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-400 block">
-                                Subtotal
-                              </span>
-                              <span className="font-semibold text-gray-900">
-                                ₱
-                                {Number(prodSubtotals[i] || 0).toLocaleString()}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-400 block">
-                                Packaging
-                              </span>
-                              <span className="font-medium">
-                                {prodPackaging[i] || "-"}
-                              </span>
-                            </div>
+                            <div><span className="text-gray-400 block">Packaging</span><span className="font-medium">{prodPackaging[i] || "-"}</span></div>
                           </div>
                           {prodFactories[i] && prodFactories[i] !== "-" && (
                             <p className="text-[10px] text-gray-500 truncate">
-                              <span className="text-gray-400">Factory: </span>
-                              {prodFactories[i]}
+                              <span className="text-gray-400">Factory: </span>{prodFactories[i]}
                             </p>
                           )}
                           {prodPorts[i] && prodPorts[i] !== "-" && (
                             <p className="text-[10px] text-gray-500 truncate">
-                              <span className="text-gray-400">Port: </span>
-                              {prodPorts[i]}
+                              <span className="text-gray-400">Port: </span>{prodPorts[i]}
                             </p>
                           )}
                           <MobileSpecsBlock groups={groups} />
@@ -1907,75 +1656,28 @@ if (versionData) {
 
                       {isApproved && (
                         <div className="mt-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 space-y-1">
-                          <p className="text-[10px] font-bold uppercase text-green-700 mb-1">
-                            Procurement Details
-                          </p>
+                          <p className="text-[10px] font-bold uppercase text-green-700 mb-1">Procurement Details</p>
                           <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
-                            <div>
-                              <span className="text-gray-400 block">
-                                Company
-                              </span>
-                              <span className="font-medium">
-                                {prodCompanyNames[i] || "-"}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-400 block">
-                                Contact
-                              </span>
-                              <span className="font-medium">
-                                {prodContactNames[i] || "-"}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-400 block">
-                                Contact No.
-                              </span>
-                              <span className="font-medium">
-                                {prodContactNumbers[i] || "-"}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-400 block">
-                                Lead Time
-                              </span>
-                              <span className="font-medium">
-                                {prodLeadTimes[i] && prodLeadTimes[i] !== "-"
-                                  ? prodLeadTimes[i]
-                                  : "-"}
-                              </span>
-                            </div>
+                            <div><span className="text-gray-400 block">Company</span><span className="font-medium">{prodCompanyNames[i] || "-"}</span></div>
+                            <div><span className="text-gray-400 block">Contact</span><span className="font-medium">{prodContactNames[i] || "-"}</span></div>
+                            <div><span className="text-gray-400 block">Contact No.</span><span className="font-medium">{prodContactNumbers[i] || "-"}</span></div>
+                            <div><span className="text-gray-400 block">Lead Time</span><span className="font-medium">{prodLeadTimes[i] && prodLeadTimes[i] !== "-" ? prodLeadTimes[i] : "-"}</span></div>
                             <div className="col-span-2">
-                              <span className="text-gray-400 block">
-                                Selling Cost
-                              </span>
+                              <span className="text-gray-400 block">Selling Cost</span>
                               <span className="font-semibold text-green-700">
-                                {prodSellingCosts[i] &&
-                                prodSellingCosts[i] !== "-"
-                                  ? `₱${Number(prodSellingCosts[i]).toLocaleString()}`
-                                  : "-"}
+                                {prodSellingCosts[i] && prodSellingCosts[i] !== "-" ? `₱${Number(prodSellingCosts[i]).toLocaleString()}` : "-"}
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-400 block">
-                                Final Unit Cost
-                              </span>
+                              <span className="text-gray-400 block">Final Unit Cost</span>
                               <span className="font-semibold text-green-700">
-                                {prodFinalUnitCosts[i] &&
-                                prodFinalUnitCosts[i] !== "-"
-                                  ? `₱${Number(prodFinalUnitCosts[i]).toLocaleString()}`
-                                  : "-"}
+                                {prodFinalUnitCosts[i] && prodFinalUnitCosts[i] !== "-" ? `₱${Number(prodFinalUnitCosts[i]).toLocaleString()}` : "-"}
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-400 block">
-                                Final Subtotal
-                              </span>
+                              <span className="text-gray-400 block">Final Subtotal</span>
                               <span className="font-semibold text-green-700">
-                                {prodFinalSubtotals[i] &&
-                                prodFinalSubtotals[i] !== "-"
-                                  ? `₱${Number(prodFinalSubtotals[i]).toLocaleString()}`
-                                  : "-"}
+                                {prodFinalSubtotals[i] && prodFinalSubtotals[i] !== "-" ? `₱${Number(prodFinalSubtotals[i]).toLocaleString()}` : "-"}
                               </span>
                             </div>
                           </div>
@@ -2000,15 +1702,9 @@ if (versionData) {
       <table className="w-full table-auto border text-sm">
         <thead>
           <tr className="bg-gray-100">
-            <th className="border px-3 py-2 text-center whitespace-nowrap">
-              #
-            </th>
-            <th className="border px-3 py-2 text-center whitespace-nowrap">
-              Image
-            </th>
-            <th className="border px-3 py-2 text-center whitespace-nowrap">
-              Item Description
-            </th>
+            <th className="border px-3 py-2 text-center whitespace-nowrap">#</th>
+            <th className="border px-3 py-2 text-center whitespace-nowrap">Image</th>
+            <th className="border px-3 py-2 text-center whitespace-nowrap">Item Description</th>
             <th className="border px-3 py-2 text-center">Product Offer</th>
           </tr>
         </thead>
@@ -2034,8 +1730,7 @@ if (versionData) {
             const prodItemCodes = rowItemCodes[rowIndex] ?? [];
 
             const hasProducts =
-              prodImages.length > 0 &&
-              !(prodImages.length === 1 && prodImages[0] === "");
+              prodImages.length > 0 && !(prodImages.length === 1 && prodImages[0] === "");
 
             return (
               <tr key={rowIndex} className="align-top">
@@ -2044,11 +1739,7 @@ if (versionData) {
                 </td>
                 <td className="border px-3 py-2 text-center align-top pt-3">
                   {itemImages[rowIndex] ? (
-                    <img
-                      src={itemImages[rowIndex]}
-                      className="w-24 h-24 object-contain mx-auto"
-                      alt=""
-                    />
+                    <img src={itemImages[rowIndex]} className="w-24 h-24 object-contain mx-auto" alt="" />
                   ) : (
                     <span className="text-muted-foreground text-xs">-</span>
                   )}
@@ -2058,23 +1749,17 @@ if (versionData) {
                 </td>
                 <td className="border px-2 py-2 align-top">
                   {!hasProducts ? (
-                    <span className="text-xs text-muted-foreground">
-                      No products added
-                    </span>
+                    <span className="text-xs text-muted-foreground">No products added</span>
                   ) : (
                     <div className="space-y-3">
                       {prodImages.map((img, i) => {
                         const groups = prodSpecs[i] ?? [];
-                        const optItemCode =
-                          prodItemCodes[i] && prodItemCodes[i] !== "-"
-                            ? prodItemCodes[i]
-                            : null;
+                        const optItemCode = prodItemCodes[i] && prodItemCodes[i] !== "-" ? prodItemCodes[i] : null;
                         return (
                           <div key={i}>
                             <div className="mb-1 flex flex-wrap items-center gap-2">
                               <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                Option {i + 1}
-                                {prodBrands[i] && ` · ${prodBrands[i]}`}
+                                Option {i + 1}{prodBrands[i] && ` · ${prodBrands[i]}`}
                               </span>
                               {optItemCode && (
                                 <span className="inline-flex items-center text-[11px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
@@ -2086,106 +1771,53 @@ if (versionData) {
                               <table className="w-full border text-xs">
                                 <thead>
                                   <tr className="bg-gray-50">
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                      Supplier Brand
-                                    </th>
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                      Image
-                                    </th>
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                      Qty
-                                    </th>
-                                    <th className="border px-2 py-1 text-center min-w-[200px]">
-                                      Technical Specs
-                                    </th>
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                      Unit Cost
-                                    </th>
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                      Qty/Per Carton
-                                    </th>
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                      Packaging
-                                    </th>
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                      Factory
-                                    </th>
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                      Port
-                                    </th>
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                      Subtotal
-                                    </th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">Supplier Brand</th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">Image</th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">Qty</th>
+                                    <th className="border px-2 py-1 text-center min-w-[200px]">Technical Specs</th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">Unit Cost</th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">Qty/Per Carton</th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">Packaging</th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">Factory</th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">Port</th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">Subtotal</th>
                                     {isApproved && (
                                       <>
-                                        <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                          Company
-                                        </th>
-                                        <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                          Contact Name
-                                        </th>
-                                        <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                          Contact No.
-                                        </th>
-                                        <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">
-                                          Lead Time
-                                        </th>
-                                        <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">
-                                          Selling Cost
-                                        </th>
-                                        <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">
-                                          Final Unit Cost
-                                        </th>
-                                        <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">
-                                          Final Subtotal
-                                        </th>
+                                        <th className="border px-2 py-1 text-center whitespace-nowrap">Company</th>
+                                        <th className="border px-2 py-1 text-center whitespace-nowrap">Contact Name</th>
+                                        <th className="border px-2 py-1 text-center whitespace-nowrap">Contact No.</th>
+                                        <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">Lead Time</th>
+                                        <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">Selling Cost</th>
+                                        <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">Final Unit Cost</th>
+                                        <th className="border px-2 py-1 text-center whitespace-nowrap bg-green-50 text-green-700">Final Subtotal</th>
                                       </>
                                     )}
                                   </tr>
                                 </thead>
                                 <tbody>
                                   <tr className="align-top">
-                                    <td className="border px-2 py-2 text-center align-middle font-medium">
-                                      {prodBrands[i] || "-"}
-                                    </td>
+                                    <td className="border px-2 py-2 text-center align-middle font-medium">{prodBrands[i] || "-"}</td>
                                     <td className="border px-2 py-2 text-center align-middle">
                                       {img && img !== "-" ? (
-                                        <img
-                                          src={img}
-                                          className="w-16 h-16 object-contain mx-auto"
-                                          alt=""
-                                        />
+                                        <img src={img} className="w-16 h-16 object-contain mx-auto" alt="" />
                                       ) : (
-                                        <span className="text-muted-foreground">
-                                          -
-                                        </span>
+                                        <span className="text-muted-foreground">-</span>
                                       )}
                                     </td>
-                                    <td className="border px-2 py-2 text-center align-middle">
-                                      {prodQtys[i] || "-"}
-                                    </td>
+                                    <td className="border px-2 py-2 text-center align-middle">{prodQtys[i] || "-"}</td>
                                     <td className="border px-2 py-2 align-top">
                                       {groups.length === 0 ? (
-                                        <span className="text-muted-foreground">
-                                          -
-                                        </span>
+                                        <span className="text-muted-foreground">-</span>
                                       ) : (
                                         <div className="space-y-2">
                                           {groups.map((group, gi) => (
                                             <div key={gi}>
                                               {group.title && (
-                                                <p className="font-bold text-[11px] uppercase tracking-wide text-gray-800 mb-0.5">
-                                                  {group.title}
-                                                </p>
+                                                <p className="font-bold text-[11px] uppercase tracking-wide text-gray-800 mb-0.5">{group.title}</p>
                                               )}
                                               <div className="space-y-0.5">
                                                 {group.specs.map((spec, si) => (
-                                                  <p
-                                                    key={si}
-                                                    className="text-[11px] text-gray-600 leading-snug"
-                                                  >
-                                                    {spec}
-                                                  </p>
+                                                  <p key={si} className="text-[11px] text-gray-600 leading-snug">{spec}</p>
                                                 ))}
                                               </div>
                                             </div>
@@ -2193,61 +1825,30 @@ if (versionData) {
                                         </div>
                                       )}
                                     </td>
-                                    <td className="border px-2 py-2 text-center align-middle">
-                                      {prodUnitCosts[i] || "-"}
-                                    </td>
-                                    <td className="border px-2 py-2 text-center align-middle">
-                                      {prodPcsPerCartons[i] || "-"}
-                                    </td>
-                                    <td className="border px-2 py-2 text-center align-middle">
-                                      {prodPackaging[i] || "-"}
-                                    </td>
-                                    <td className="border px-2 py-2 text-center align-middle">
-                                      {prodFactories[i] || "-"}
-                                    </td>
-                                    <td className="border px-2 py-2 text-center align-middle">
-                                      {prodPorts[i] || "-"}
-                                    </td>
+                                    <td className="border px-2 py-2 text-center align-middle">{prodUnitCosts[i] || "-"}</td>
+                                    <td className="border px-2 py-2 text-center align-middle">{prodPcsPerCartons[i] || "-"}</td>
+                                    <td className="border px-2 py-2 text-center align-middle">{prodPackaging[i] || "-"}</td>
+                                    <td className="border px-2 py-2 text-center align-middle">{prodFactories[i] || "-"}</td>
+                                    <td className="border px-2 py-2 text-center align-middle">{prodPorts[i] || "-"}</td>
                                     <td className="border px-2 py-2 text-center align-middle font-semibold">
-                                      ₱
-                                      {Number(
-                                        prodSubtotals[i] || 0,
-                                      ).toLocaleString()}
+                                      ₱{Number(prodSubtotals[i] || 0).toLocaleString()}
                                     </td>
                                     {isApproved && (
                                       <>
-                                        <td className="border px-2 py-2 text-center align-middle">
-                                          {prodCompanyNames[i] || "-"}
-                                        </td>
-                                        <td className="border px-2 py-2 text-center align-middle">
-                                          {prodContactNames[i] || "-"}
-                                        </td>
-                                        <td className="border px-2 py-2 text-center align-middle">
-                                          {prodContactNumbers[i] || "-"}
-                                        </td>
+                                        <td className="border px-2 py-2 text-center align-middle">{prodCompanyNames[i] || "-"}</td>
+                                        <td className="border px-2 py-2 text-center align-middle">{prodContactNames[i] || "-"}</td>
+                                        <td className="border px-2 py-2 text-center align-middle">{prodContactNumbers[i] || "-"}</td>
                                         <td className="border px-2 py-2 text-center align-middle bg-green-50">
-                                          {prodLeadTimes[i] &&
-                                          prodLeadTimes[i] !== "-"
-                                            ? prodLeadTimes[i]
-                                            : "-"}
+                                          {prodLeadTimes[i] && prodLeadTimes[i] !== "-" ? prodLeadTimes[i] : "-"}
                                         </td>
                                         <td className="border px-2 py-2 text-center align-middle bg-green-50 text-green-700 font-semibold">
-                                          {prodSellingCosts[i] &&
-                                          prodSellingCosts[i] !== "-"
-                                            ? `₱${Number(prodSellingCosts[i]).toLocaleString()}`
-                                            : "-"}
+                                          {prodSellingCosts[i] && prodSellingCosts[i] !== "-" ? `₱${Number(prodSellingCosts[i]).toLocaleString()}` : "-"}
                                         </td>
                                         <td className="border px-2 py-2 text-center align-middle bg-green-50 text-green-700 font-semibold">
-                                          {prodFinalUnitCosts[i] &&
-                                          prodFinalUnitCosts[i] !== "-"
-                                            ? `₱${Number(prodFinalUnitCosts[i]).toLocaleString()}`
-                                            : "-"}
+                                          {prodFinalUnitCosts[i] && prodFinalUnitCosts[i] !== "-" ? `₱${Number(prodFinalUnitCosts[i]).toLocaleString()}` : "-"}
                                         </td>
                                         <td className="border px-2 py-2 text-center align-middle bg-green-50 text-green-700 font-semibold">
-                                          {prodFinalSubtotals[i] &&
-                                          prodFinalSubtotals[i] !== "-"
-                                            ? `₱${Number(prodFinalSubtotals[i]).toLocaleString()}`
-                                            : "-"}
+                                          {prodFinalSubtotals[i] && prodFinalSubtotals[i] !== "-" ? `₱${Number(prodFinalSubtotals[i]).toLocaleString()}` : "-"}
                                         </td>
                                       </>
                                     )}
@@ -2303,10 +1904,7 @@ if (versionData) {
       <Dialog
         open={open && !editMode}
         onOpenChange={(o) => {
-          if (!o) {
-            setOpen(false);
-            setEditMode(false);
-          } else setOpen(true);
+          if (!o) { setOpen(false); setEditMode(false); } else setOpen(true);
         }}
       >
         <DialogContent
@@ -2316,27 +1914,17 @@ if (versionData) {
               : "sm:max-w-7xl max-h-[90vh] overflow-y-auto rounded-none"
           }
         >
-          {/* Header */}
-          <DialogHeader
-            className={
-              isMobile ? "px-4 pt-4 pb-3 border-b shrink-0" : "space-y-2"
-            }
-          >
+          <DialogHeader className={isMobile ? "px-4 pt-4 pb-3 border-b shrink-0" : "space-y-2"}>
             <div className="flex items-center justify-between gap-2">
               <DialogTitle className="flex items-center gap-2">
                 SPF Request View
-
                 {latestVersionLabel && (
                   <span className="text-[11px] px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 font-mono">
                     {latestVersionLabel}
                   </span>
                 )}
               </DialogTitle>
-              {/* Version history button */}
-              <SPFRequestFetchVersionHistory
-                spfNumber={spfNumber}
-                isMobile={isMobile}
-              />
+              <SPFRequestFetchVersionHistory spfNumber={spfNumber} isMobile={isMobile} />
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-sm mt-1">
@@ -2366,7 +1954,6 @@ if (versionData) {
                 </div>
               )}
 
-              {/* Edit button — only shown when status is "For Revision" */}
               {isForRevision && (
                 <Button
                   size="sm"
@@ -2376,7 +1963,6 @@ if (versionData) {
                     setOpen(false);
                     enterEditMode();
                     setEditMode(true);
-                    // Re-open in edit mode after slight delay so dialog transitions cleanly
                     setTimeout(() => setOpen(true), 50);
                   }}
                 >
@@ -2387,24 +1973,13 @@ if (versionData) {
             </div>
           </DialogHeader>
 
-          {/* Body */}
-          <div
-            className={
-              isMobile ? "flex-1 overflow-y-auto px-3 pt-3 pb-4" : "mt-2"
-            }
-          >
+          <div className={isMobile ? "flex-1 overflow-y-auto px-3 pt-3 pb-4" : "mt-2"}>
             {loading && (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Loading...
-              </p>
+              <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
             )}
-            {!loading &&
-              data &&
-              (isMobile ? renderViewMobile() : renderViewDesktop())}
+            {!loading && data && (isMobile ? renderViewMobile() : renderViewDesktop())}
             {!loading && !data && (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No SPF creation found.
-              </p>
+              <p className="text-sm text-muted-foreground text-center py-8">No SPF creation found.</p>
             )}
           </div>
         </DialogContent>
@@ -2414,10 +1989,7 @@ if (versionData) {
       <Dialog
         open={open && editMode}
         onOpenChange={(o) => {
-          if (!o) {
-            setOpen(false);
-            setEditMode(false);
-          } else setOpen(true);
+          if (!o) { setOpen(false); setEditMode(false); } else setOpen(true);
         }}
       >
         <DialogContent
@@ -2440,17 +2012,13 @@ if (versionData) {
               : "sm:max-w-[1200px] max-h-[90vh] overflow-y-auto"
           }
         >
-          <DialogHeader
-            className={isMobile ? "px-4 pt-4 pb-2 border-b shrink-0" : ""}
-          >
+          <DialogHeader className={isMobile ? "px-4 pt-4 pb-2 border-b shrink-0" : ""}>
             <DialogTitle>Add Product</DialogTitle>
           </DialogHeader>
           <div className={isMobile ? "flex-1 overflow-y-auto p-4" : ""}>
             <AddProductComponent onClose={() => setOpenAddProduct(false)} />
           </div>
-          <DialogFooter
-            className={isMobile ? "px-4 py-3 border-t shrink-0" : ""}
-          >
+          <DialogFooter className={isMobile ? "px-4 py-3 border-t shrink-0" : ""}>
             <Button
               variant="outline"
               className={isMobile ? "w-full rounded-none" : "rounded-none"}
@@ -2461,6 +2029,14 @@ if (versionData) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── MultipleSpecsDetected modal ── */}
+      <MultipleSpecsDetected
+        open={showPipeModal}
+        onClose={handlePipeClose}
+        product={pendingPipeProduct}
+        onConfirm={handlePipeConfirm}
+      />
     </>
   );
 }
