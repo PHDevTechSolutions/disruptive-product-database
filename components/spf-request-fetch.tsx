@@ -302,6 +302,7 @@ export default function SPFRequestFetch({
   /* ── Dialog / data state ── */
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<SPFData | null>(null);
+  const [latestVersionLabel, setLatestVersionLabel] = useState<string | null>(null);
   const [spfCreationStartTime, setSpfCreationStartTime] = useState<
     string | null
   >(null);
@@ -390,6 +391,21 @@ export default function SPFRequestFetch({
 
   /* ── Main data fetch ── */
   const fetchSPF = async () => {
+
+// ✅ FETCH LATEST VERSION FROM HISTORY
+const { data: versionData } = await supabase
+  .from("spf_creation_history")
+  .select("version_label, version_number")
+  .eq("spf_number", spfNumber)
+  .order("version_number", { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+if (versionData) {
+  setLatestVersionLabel(
+    versionData.version_label || `${spfNumber}_v${versionData.version_number}`
+  );
+}
     try {
       setLoading(true);
 
@@ -2307,7 +2323,15 @@ export default function SPFRequestFetch({
             }
           >
             <div className="flex items-center justify-between gap-2">
-              <DialogTitle>SPF Request View</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                SPF Request View
+
+                {latestVersionLabel && (
+                  <span className="text-[11px] px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 font-mono">
+                    {latestVersionLabel}
+                  </span>
+                )}
+              </DialogTitle>
               {/* Version history button */}
               <SPFRequestFetchVersionHistory
                 spfNumber={spfNumber}
