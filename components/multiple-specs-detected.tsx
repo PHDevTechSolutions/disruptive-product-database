@@ -95,46 +95,57 @@ export default function MultipleSpecsDetected({
         </DialogHeader>
 
         <div className="space-y-4 max-h-[400px] overflow-auto">
-          {product.technicalSpecifications?.map((group: any, gi: number) => (
-            <div key={gi}>
-              <p className="font-semibold">{group.title}</p>
+{product.technicalSpecifications
+  ?.filter((group: any) =>
+    group.specs?.some((spec: any) => {
+      const values = (spec.value || "")
+        .split("|")
+        .map((v: string) => v.trim())
+        .filter(Boolean);
 
-              {group.specs?.map((spec: any, si: number) => {
-                const values = (spec.value || "")
-                  .split("|")
-                  .map((v: string) => v.trim())
-                  .filter(Boolean);
+      return values.length > 1;
+    })
+  )
+  .map((group: any, gi: number) => (
+    <div key={gi}>
+      <p className="font-semibold">{group.title}</p>
 
-                if (values.length <= 1) return null;
+      {group.specs?.map((spec: any, si: number) => {
+        const values = (spec.value || "")
+          .split("|")
+          .map((v: string) => v.trim())
+          .filter(Boolean);
+
+        if (values.length <= 1) return null;
+
+        return (
+          <div key={si} className="mt-2">
+            <p className="text-sm">{spec.specId}</p>
+
+            <div className="flex flex-wrap gap-2 mt-1">
+              {values.map((v: string, i: number) => {
+                const isSelected =
+                  selectedSpecs[spec.specId] === v;
 
                 return (
-                  <div key={si} className="mt-2">
-                    <p className="text-sm">{spec.specId}</p>
-
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {values.map((v: string, i: number) => {
-                        const isSelected =
-                          selectedSpecs[spec.specId] === v;
-
-                        return (
-                          <Button
-                            key={i}
-                            size="sm"
-                            variant={isSelected ? "default" : "outline"}
-                            onClick={() =>
-                              handleSelect(spec.specId, v)
-                            }
-                          >
-                            {v}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <Button
+                    key={i}
+                    size="sm"
+                    variant={isSelected ? "default" : "outline"}
+                    onClick={() =>
+                      handleSelect(spec.specId, v)
+                    }
+                  >
+                    {v}
+                  </Button>
                 );
               })}
             </div>
-          ))}
+          </div>
+        );
+      })}
+    </div>
+  ))}
         </div>
 
         {/* Progress */}
