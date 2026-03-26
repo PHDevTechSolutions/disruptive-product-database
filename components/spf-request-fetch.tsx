@@ -1138,6 +1138,8 @@ export default function SPFRequestFetch({
       </div>
 
       <div className="w-full mb-2">
+
+        
         <SPFTimer
           isActive={timerActive}
           startTime={spfCreationStartTime}
@@ -1691,6 +1693,17 @@ export default function SPFRequestFetch({
       </div>
 
       <DialogFooter className="mt-4 flex justify-end gap-2">
+
+        <div className="w-full mb-2">
+          <SPFTimer
+            isActive={timerActive}
+            startTime={spfCreationStartTime}
+            label="Edit SPF Timer"
+            onStart={(v) => setSpfCreationStartTime(v)}
+            onStop={(v) => setSpfCreationEndTime(v)}
+            onTick={() => {}}
+          />
+        </div>
         <Button
           variant="outline"
           className="rounded-none p-6"
