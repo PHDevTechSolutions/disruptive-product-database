@@ -63,6 +63,23 @@ const {
       return res.status(400).json({ message: "Missing SPF number" });
     }
 
+const { data: spfRequest, error: spfRequestError } = await supabase
+  .from("spf_request")
+  .select("referenceid, tsm, manager")
+  .eq("spf_number", spf_number)
+  .single();
+
+if (spfRequestError || !spfRequest) {
+  console.error("spf_request fetch error:", spfRequestError);
+  return res.status(400).json({
+    message: "SPF request not found",
+  })
+}
+
+const referenceIdValue = spfRequest.referenceid ?? null;
+const tsmValue = spfRequest.tsm ?? null;
+const managerValue = spfRequest.manager ?? null;
+
     /* ── RESOLVE LOGGED-IN USER (item_added_author) ── */
     let item_added_author: string | null = null;
 
@@ -96,7 +113,7 @@ const {
     for (const supplierId of uniqueSupplierIds) {
       if (supplierCache.has(supplierId)) continue;
       try {
-        const supplierRef  = doc(db, "suppliers", supplierId);
+        const supplierRef = doc(db, "suppliers", supplierId);
         const supplierSnap = await getDoc(supplierRef);
         if (supplierSnap.exists()) {
           const supplierData: any = supplierSnap.data();
@@ -201,7 +218,8 @@ const {
         itemCodes.push(`${rowBase}-OPT-${optIdx + 1}`);
 
         /* Company / Contact — per product, from cache */
-        const supplierId = p?.supplier?.supplierId;
+        const supplierId = String(p?.supplier?.supplierId || "");
+        if (!supplierId) continue;
         const cached     = supplierId ? supplierCache.get(supplierId) : null;
         companyNames.push(cached?.company         || p?.supplier?.company || "-");
         contactNames.push(cached?.contactNames    || "-");
@@ -290,15 +308,16 @@ const {
       return res.status(500).json(checkError);
     }
 
+    
     /* ── INSERT SPF ── */
     if (!existing) {
       const { error: insertError } = await supabase
         .from("spf_creation")
         .insert({
           spf_number,
-          referenceid,
-          tsm,
-          manager,
+          referenceid: referenceIdValue,
+          tsm: tsmValue,
+          manager: managerValue,
           item_added_author,
 
           /* ── item_code now carries the full OPT-coded string ── */
@@ -371,6 +390,10 @@ const {
 
           spf_creation_start_time: spf_creation_start_time ?? null,
           spf_creation_end_time:   spf_creation_end_time ?? null,
+
+            referenceid: spfRequest.referenceid,
+            tsm: spfRequest.tsm,
+            manager: spfRequest.manager,
         });
 
       if (historyError) {

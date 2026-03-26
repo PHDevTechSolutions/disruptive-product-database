@@ -260,41 +260,54 @@ export default async function handler(
       proj_lead_time: finalLeadTimes,
       final_selling_cost: finalSellingCosts,
 
-      item_code: finalItemCode,
 
       spf_creation_start_time: spf_creation_start_time ?? null,
       spf_creation_end_time: spf_creation_end_time ?? null,
+
+      referenceid: referenceid ?? null,
+      tsm: tsm ?? null,
+      manager: manager ?? null,
+      item_code: finalItemCode || item_code || null,
     });
 
-    /* ── UPDATE MAIN TABLE ── */
-    await supabase
-      .from("spf_creation")
-      .update({
-        item_code: finalItemCode,
-        company_name: finalCompanyNames,
-        supplier_brand: finalSupplierBrands,
-        contact_name: finalContactNames,
-        contact_number: finalContactNumbers,
+/* ── UPDATE MAIN TABLE ── */
+await supabase
+  .from("spf_creation")
+  .update({
+    // ✅ NEW FIELDS (TOP for clarity)
+    referenceid: referenceid ?? null,
+    tsm: tsm ?? null,
+    manager: manager ?? null,
 
-        product_offer_image: finalImages,
-        product_offer_qty: finalQtys,
-        product_offer_technical_specification: finalSpecs,
-        product_offer_unit_cost: finalUnitCosts,
-        product_offer_pcs_per_carton: finalPcsPerCarton,
-        product_offer_packaging_details: finalPackaging,
-        product_offer_factory_address: finalFactories,
-        product_offer_port_of_discharge: finalPorts,
-        product_offer_subtotal: finalSubtotals,
+    // ✅ FIXED item_code (no duplicate)
+    item_code: finalItemCode || item_code || null,
 
-        final_selling_cost: finalSellingCosts,
-        proj_lead_time: finalLeadTimes,
+    // ✅ MAIN DATA
+    company_name: finalCompanyNames,
+    supplier_brand: finalSupplierBrands,
+    contact_name: finalContactNames,
+    contact_number: finalContactNumbers,
 
-        status: "Pending For Procurement",
-        spf_creation_start_time: spf_creation_start_time ?? null,
-        spf_creation_end_time: spf_creation_end_time ?? null,
-        date_updated: new Date().toISOString(),
-      })
-      .eq("spf_number", spf_number);
+    product_offer_image: finalImages,
+    product_offer_qty: finalQtys,
+    product_offer_technical_specification: finalSpecs,
+    product_offer_unit_cost: finalUnitCosts,
+    product_offer_pcs_per_carton: finalPcsPerCarton,
+    product_offer_packaging_details: finalPackaging,
+    product_offer_factory_address: finalFactories,
+    product_offer_port_of_discharge: finalPorts,
+    product_offer_subtotal: finalSubtotals,
+
+    final_selling_cost: finalSellingCosts,
+    proj_lead_time: finalLeadTimes,
+
+    // ✅ STATUS + TIMINGS
+    status: "Pending For Procurement",
+    spf_creation_start_time: spf_creation_start_time ?? null,
+    spf_creation_end_time: spf_creation_end_time ?? null,
+    date_updated: new Date().toISOString(),
+  })
+  .eq("spf_number", spf_number);
 
     return res.status(200).json({
       success: true,
