@@ -13,7 +13,7 @@ const supplierCache = new Map<
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({ message: "Method not allowed" });
@@ -39,7 +39,7 @@ export default async function handler(
     try {
       if (userId) {
         const userRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/users?id=${userId}`
+          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/users?id=${userId}`,
         );
 
         if (userRes.ok) {
@@ -67,18 +67,14 @@ export default async function handler(
       .limit(1);
 
     const lastVersion =
-      historyRows && historyRows.length > 0
-        ? historyRows[0].version_number
-        : 0;
+      historyRows && historyRows.length > 0 ? historyRows[0].version_number : 0;
 
     const nextVersion = lastVersion + 1;
 
     /* ── SUPPLIER CACHE ── */
     const uniqueSupplierIds = [
       ...new Set(
-        products
-          .map((p: any) => p?.supplier?.supplierId)
-          .filter(Boolean)
+        products.map((p: any) => p?.supplier?.supplierId).filter(Boolean),
       ),
     ];
 
@@ -243,8 +239,8 @@ export default async function handler(
       version_number: nextVersion,
       version_label: `${spf_number}_v${nextVersion}`,
       created_at: new Date().toISOString(),
-       edited_by: resolvedEditedBy,
-       item_added_author: resolvedEditedBy,
+      edited_by: resolvedEditedBy,
+      item_added_author: resolvedEditedBy,
 
       supplier_brand: finalSupplierBrands,
       product_offer_image: finalImages,
@@ -267,7 +263,7 @@ export default async function handler(
       item_code: finalItemCode,
 
       spf_creation_start_time: spf_creation_start_time ?? null,
-      spf_creation_end_time:   spf_creation_end_time   ?? null,
+      spf_creation_end_time: spf_creation_end_time ?? null,
     });
 
     /* ── UPDATE MAIN TABLE ── */
@@ -295,7 +291,7 @@ export default async function handler(
 
         status: "Pending For Procurement",
         spf_creation_start_time: spf_creation_start_time ?? null,
-        spf_creation_end_time:   spf_creation_end_time   ?? null,
+        spf_creation_end_time: spf_creation_end_time ?? null,
         date_updated: new Date().toISOString(),
       })
       .eq("spf_number", spf_number);
@@ -304,7 +300,6 @@ export default async function handler(
       success: true,
       version_label: `${spf_number}_v${nextVersion}`,
     });
-
   } catch (err: any) {
     return res.status(500).json({ message: err.message });
   }
