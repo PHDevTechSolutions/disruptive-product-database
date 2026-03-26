@@ -28,10 +28,28 @@ export default async function handler(
       item_code,
       totalItemRows,
       selectedProducts,
-      edited_by,
       spf_creation_start_time,
       spf_creation_end_time,
+      userId,
     } = req.body;
+
+    /* ── RESOLVE LOGGED-IN USER (edited_by) ── */
+    let resolvedEditedBy: string | null = null;
+
+    try {
+      if (userId) {
+        const userRes = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/users?id=${userId}`
+        );
+
+        if (userRes.ok) {
+          const user = await userRes.json();
+          resolvedEditedBy = user?.ReferenceID || null;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to resolve edited_by:", err);
+    }
 
     if (!spf_number) {
       return res.status(400).json({ message: "Missing SPF number" });
@@ -225,7 +243,8 @@ export default async function handler(
       version_number: nextVersion,
       version_label: `${spf_number}_v${nextVersion}`,
       created_at: new Date().toISOString(),
-      edited_by: edited_by ?? null,
+       edited_by: resolvedEditedBy,
+       item_added_author: resolvedEditedBy,
 
       supplier_brand: finalSupplierBrands,
       product_offer_image: finalImages,

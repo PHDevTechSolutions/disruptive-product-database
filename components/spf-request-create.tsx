@@ -1,5 +1,5 @@
 "use client";
-
+import { useUser } from "@/contexts/UserContext";
 import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -189,7 +189,7 @@ export default function SPFRequestCreate({
     item_description: [],
     item_photo: [],
   });
-
+const { userId } = useUser();
   /* ── Products ── */
   const [productOffers, setProductOffers]       = useState<Record<number, any[]>>({});
   const [products, setProducts]                 = useState<any[]>([]);
@@ -373,6 +373,7 @@ export default function SPFRequestCreate({
           totalItemRows:            formData.item_description?.length ?? 1,
           spf_creation_start_time:  spfCreationStartTime,
           spf_creation_end_time:    end,
+           userId,
         }),
       });
 

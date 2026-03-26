@@ -46,20 +46,39 @@ export default async function handler(
   }
 
   try {
-    const {
-      spf_number,
-      referenceid,
-      tsm,
-      manager,
-      item_code,
-      totalItemRows,
-      selectedProducts,
-      spf_creation_start_time,
-      spf_creation_end_time,
-    } = req.body;
+const {
+  spf_number,
+  referenceid,
+  tsm,
+  manager,
+  item_code,
+  totalItemRows,
+  selectedProducts,
+  spf_creation_start_time,
+  spf_creation_end_time,
+  userId, // ✅ ADD THIS
+} = req.body;
 
     if (!spf_number) {
       return res.status(400).json({ message: "Missing SPF number" });
+    }
+
+    /* ── RESOLVE LOGGED-IN USER (item_added_author) ── */
+    let item_added_author: string | null = null;
+
+    try {
+      if (userId) {
+        const userRes = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/users?id=${userId}`
+        );
+
+        if (userRes.ok) {
+          const user = await userRes.json();
+          item_added_author = user?.ReferenceID || null;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to resolve item_added_author:", err);
     }
 
     const products = Array.isArray(selectedProducts) ? selectedProducts : [];
@@ -280,6 +299,7 @@ export default async function handler(
           referenceid,
           tsm,
           manager,
+          item_added_author,
 
           /* ── item_code now carries the full OPT-coded string ── */
           item_code: finalItemCode,
@@ -304,6 +324,7 @@ export default async function handler(
 
           status: "Pending For Procurement",
 
+
           spf_creation_start_time: spf_creation_start_time ?? null,
           spf_creation_end_time:   spf_creation_end_time ?? null,
 
@@ -325,6 +346,8 @@ export default async function handler(
           version_label: `${spf_number}_v1`,
           created_at: new Date().toISOString(),
           edited_by: null, // First creation has no editor
+          item_added_author,
+          
 
           supplier_brand: finalSupplierBrands,
           product_offer_image: finalImages,

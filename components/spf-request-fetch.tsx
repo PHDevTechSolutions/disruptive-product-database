@@ -16,7 +16,6 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/utils/supabase";
 import {
   ChevronDown,
@@ -32,7 +31,6 @@ import { db } from "@/lib/firebase";
 import FilteringComponent from "@/components/filtering-component-v2";
 import AddProductComponent from "@/components/add-product-component";
 import CardDetails from "@/components/spf/dialog/card-details";
-import SPFTimer from "@/components/spf-timer";
 import SPFRequestFetchVersionHistory from "./spf-request-fetch-version-history";
 
 /* ─────────────────────────────────────────────────────────────── */
@@ -67,6 +65,7 @@ type SPFData = {
   referenceid?: string;
   tsm?: string;
   manager?: string;
+  item_added_author?: string;
 };
 
 type SPFRequestData = {
@@ -78,6 +77,36 @@ type SPFRequestData = {
 const ROW_SEP = "|ROW|";
 
 type SpecGroup = { title: string; specs: string[] };
+
+/* ─────────────────────────────────────────────────────────────── */
+/* NAME CACHE FOR AUDIT TRAIL RESOLUTION                           */
+/* ─────────────────────────────────────────────────────────────── */
+const nameCache = new Map<string, string>();
+
+async function resolveNames(referenceIDs: string[]): Promise<void> {
+  const unresolved = referenceIDs.filter((id) => id && !nameCache.has(id));
+  if (!unresolved.length) return;
+  await Promise.allSettled(
+    unresolved.map(async (refId) => {
+      try {
+        const response = await fetch(`/api/users?referenceID=${encodeURIComponent(refId)}`);
+        if (response.ok) {
+          const user = await response.json();
+          nameCache.set(refId, user?.Firstname ? `${user.Firstname} ${user.Lastname ?? ""}`.trim() : refId);
+        } else {
+          nameCache.set(refId, refId);
+        }
+      } catch {
+        nameCache.set(refId, refId);
+      }
+    }),
+  );
+}
+
+function getResolvedName(referenceID: string | undefined): string {
+  if (!referenceID) return "";
+  return nameCache.get(referenceID) ?? referenceID;
+}
 
 /* ─────────────────────────────────────────────────────────────── */
 /* STATUS LABEL MAPPING                                            */
@@ -230,18 +259,12 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
   const [data, setData]               = useState<SPFData | null>(null);
   const [requestData, setRequestData] = useState<SPFRequestData | null>(null);
   const [loading, setLoading]         = useState(false);
-  const [currentVersionLabel, setCurrentVersionLabel] = useState<string | null>(null);
   const [isMobile, setIsMobile]       = useState(false);
 
   /* ── Edit mode state (mirrors spf-request-create) ── */
   const [editMode, setEditMode]               = useState(false);
   const [viewMode, setViewMode]               = useState(false); // preview within edit
   const [productOffers, setProductOffers]     = useState<Record<number, any[]>>({});
-
-  /* ── Timer state for edit duration tracking ── */
-  const [spfEditStartTime, setSpfEditStartTime] = useState<string | null>(null);
-  const [spfEditEndTime, setSpfEditEndTime]     = useState<string | null>(null);
-  const [timerActive, setTimerActive]           = useState(false);
   const [products, setProducts]               = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -309,6 +332,11 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
       if (error) { console.error(error); return; }
       setData(creation);
 
+      // Resolve name for item_added_author
+      if (creation?.item_added_author) {
+        await resolveNames([creation.item_added_author]);
+      }
+
       const { data: request } = await supabase
         .from("spf_request")
         .select("item_description,item_photo,item_code")
@@ -316,22 +344,6 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
         .maybeSingle();
 
       setRequestData(request);
-
-      // Fetch current version info (number + label)
-      const { data: versionData } = await supabase
-        .from("spf_creation_history")
-        .select("version_number,version_label")
-        .eq("spf_number", spfNumber)
-        .order("version_number", { ascending: false })
-        .limit(1);
-
-      if (versionData && versionData.length > 0) {
-        setCurrentVersionLabel(
-          versionData[0].version_label || `${spfNumber}_v${versionData[0].version_number}`
-        );
-      } else {
-        setCurrentVersionLabel(null);
-      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -439,11 +451,6 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
     setPickerStep("list");
     setPendingProduct(null);
     setProductSearch("");
-
-    const start = new Date().toISOString();
-    setSpfEditStartTime(start);
-    setSpfEditEndTime(null);
-    setTimerActive(true);
   };
 
   /* ── Helpers (edit mode) ── */
@@ -519,24 +526,18 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
         prods.map((p) => ({ ...p, __rowIndex: Number(rowIndex) }))
       );
 
-      const end = new Date().toISOString();
-      setSpfEditEndTime(end);
-      setTimerActive(false);
-
       const res = await fetch("/api/request/spf-request-edit-api", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          spf_number:               spfNumber,
-          referenceid:              data?.referenceid,
-          tsm:                      data?.tsm,
-          manager:                  data?.manager,
-          item_code:                data?.item_code,
-          totalItemRows:            totalRows,
-          selectedProducts:         allProducts,
-          edited_by:                processBy ?? null,
-          spf_creation_start_time:  spfEditStartTime,
-          spf_creation_end_time:    end,
+          spf_number:       spfNumber,
+          referenceid:      data?.referenceid,
+          tsm:              data?.tsm,
+          manager:          data?.manager,
+          item_code:        data?.item_code,
+          totalItemRows:    totalRows,
+          selectedProducts: allProducts,
+          edited_by:        processBy ?? null,
         }),
       });
 
@@ -893,23 +894,12 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
         )}
       </div>
 
-      <DialogFooter className="px-4 py-3 border-t shrink-0 flex-col gap-2">
-        <div className="w-full mb-2">
-          <SPFTimer
-            isActive={timerActive}
-            startTime={spfEditStartTime}
-            label="Edit SPF Timer"
-            onStart={(v) => setSpfEditStartTime(v)}
-            onStop={(v) => setSpfEditEndTime(v)}
-            onTick={() => {}}
-          />
-        </div>
-        <div className="w-full flex gap-2">
-          <Button type="button" variant="outline" className="flex-1 rounded" onClick={() => { setEditMode(false); setViewMode(false); setTimerActive(false); }}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
+      <DialogFooter className="px-4 py-3 border-t shrink-0 flex-row gap-2">
+        <Button type="button" variant="outline" className="flex-1 rounded" onClick={() => { setEditMode(false); setViewMode(false); }}>
+          Cancel
+        </Button>
+        <Button
+          type="button"
           variant="outline"
           className="flex-1 rounded"
           onClick={() => { setViewMode((p) => !p); if (!viewMode) setActiveTab("items"); }}
@@ -929,7 +919,6 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
             Save
           </Button>
         )}
-      </div>
       </DialogFooter>
     </>
   );
@@ -1252,35 +1241,23 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
         </div>
       </div>
 
-      <DialogFooter className="mt-4 flex flex-col gap-2">
-        <div className="w-full">
-          <SPFTimer
-            isActive={timerActive}
-            startTime={spfEditStartTime}
-            label="Edit SPF Timer"
-            onStart={(v) => setSpfEditStartTime(v)}
-            onStop={(v) => setSpfEditEndTime(v)}
-            onTick={() => {}}
-          />
-        </div>
-        <div className="w-full flex justify-end gap-2">
-          <Button variant="outline" className="rounded-none p-6" onClick={() => { setEditMode(false); setViewMode(false); setTimerActive(false); }}>Cancel</Button>
-          <Button variant="outline" className="rounded-none p-6" onClick={() => setViewMode((prev) => !prev)}>
-            {viewMode ? "Back" : "Preview"}
+      <DialogFooter className="mt-4 flex justify-end gap-2">
+        <Button variant="outline" className="rounded-none p-6" onClick={() => { setEditMode(false); setViewMode(false); }}>Cancel</Button>
+        <Button variant="outline" className="rounded-none p-6" onClick={() => setViewMode((prev) => !prev)}>
+          {viewMode ? "Back" : "Preview"}
+        </Button>
+        {viewMode && (
+          <Button
+            className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
+            onClick={handleSubmitEdit}
+            disabled={
+              itemDescriptions.length === 0 ||
+              itemDescriptions.some((_, i) => !productOffers[i] || productOffers[i].length === 0)
+            }
+          >
+            Save Changes
           </Button>
-          {viewMode && (
-            <Button
-              className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
-              onClick={handleSubmitEdit}
-              disabled={
-                itemDescriptions.length === 0 ||
-                itemDescriptions.some((_, i) => !productOffers[i] || productOffers[i].length === 0)
-              }
-            >
-              Save Changes
-            </Button>
-          )}
-        </div>
+        )}
       </DialogFooter>
     </>
   );
@@ -1585,32 +1562,19 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
       {/* ── Main view dialog ── */}
       <Dialog
         open={open && !editMode}
-        onOpenChange={(o) => {
-          if (!o) {
-            setOpen(false);
-            setEditMode(false);
-            setTimerActive(false);
-          } else setOpen(true);
-        }}
+        onOpenChange={(o) => { if (!o) { setOpen(false); setEditMode(false); } else setOpen(true); }}
       >
         <DialogContent
           className={
             isMobile
               ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-              : "w-[95vw] max-w-[1200px] xl:max-w-[95vw] max-h-[90vh] overflow-y-auto rounded-none"
+              : "sm:max-w-7xl max-h-[90vh] overflow-y-auto rounded-none"
           }
         >
           {/* Header */}
           <DialogHeader className={isMobile ? "px-4 pt-4 pb-3 border-b shrink-0" : "space-y-2"}>
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <DialogTitle>SPF Request View</DialogTitle>
-                {currentVersionLabel && (
-                  <Badge variant="secondary" className="text-xs">
-                    {currentVersionLabel}
-                  </Badge>
-                )}
-              </div>
+              <DialogTitle>SPF Request View</DialogTitle>
               {/* Version history button */}
               <SPFRequestFetchVersionHistory spfNumber={spfNumber} isMobile={isMobile} />
             </div>
@@ -1627,6 +1591,15 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
                         : "bg-yellow-100 text-yellow-700"
                   }`}>
                     {getStatusLabel(data.status)}
+                  </span>
+                </div>
+              )}
+
+              {data?.item_added_author && (
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-xs">Author:</span>
+                  <span className="text-xs text-muted-foreground">
+                    {getResolvedName(data.item_added_author)}
                   </span>
                 </div>
               )}
@@ -1668,19 +1641,13 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
       {/* ── Edit dialog (For Revision) ── */}
       <Dialog
         open={open && editMode}
-        onOpenChange={(o) => {
-          if (!o) {
-            setOpen(false);
-            setEditMode(false);
-            setTimerActive(false);
-          } else setOpen(true);
-        }}
+        onOpenChange={(o) => { if (!o) { setOpen(false); setEditMode(false); } else setOpen(true); }}
       >
         <DialogContent
           className={
             isMobile
               ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-              : "w-[95vw] max-w-[1200px] xl:max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-6 rounded-none"
+              : "sm:max-w-8xl rounded-none p-6 max-h-[90vh] overflow-hidden flex flex-col"
           }
         >
           {isMobile ? renderEditMobile() : renderEditDesktop()}
@@ -1693,7 +1660,7 @@ export default function SPFRequestFetch({ spfNumber, processBy }: SPFViewProps) 
           className={
             isMobile
               ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-              : "w-[95vw] max-w-[1200px] xl:max-w-[95vw] max-h-[90vh] overflow-y-auto rounded-none"
+              : "sm:max-w-[1200px] max-h-[90vh] overflow-y-auto"
           }
         >
           <DialogHeader className={isMobile ? "px-4 pt-4 pb-2 border-b shrink-0" : ""}>

@@ -22,6 +22,7 @@ type VersionRecord = {
   version_label: string;
   created_at: string;
   edited_by?: string;
+  item_added_author?: string;
   status?: string;
   spf_creation_start_time?: string;
   spf_creation_end_time?: string;
@@ -54,6 +55,36 @@ type Props = {
 const ROW_SEP = "|ROW|";
 
 type SpecGroup = { title: string; specs: string[] };
+
+/* ─────────────────────────────────────────────────────────────── */
+/* NAME CACHE FOR AUDIT TRAIL RESOLUTION                           */
+/* ─────────────────────────────────────────────────────────────── */
+const nameCache = new Map<string, string>();
+
+async function resolveNames(referenceIDs: string[]): Promise<void> {
+  const unresolved = referenceIDs.filter((id) => id && !nameCache.has(id));
+  if (!unresolved.length) return;
+  await Promise.allSettled(
+    unresolved.map(async (refId) => {
+      try {
+        const response = await fetch(`/api/users?referenceID=${encodeURIComponent(refId)}`);
+        if (response.ok) {
+          const user = await response.json();
+          nameCache.set(refId, user?.Firstname ? `${user.Firstname} ${user.Lastname ?? ""}`.trim() : refId);
+        } else {
+          nameCache.set(refId, refId);
+        }
+      } catch {
+        nameCache.set(refId, refId);
+      }
+    }),
+  );
+}
+
+function getResolvedName(referenceID: string | undefined): string {
+  if (!referenceID) return "";
+  return nameCache.get(referenceID) ?? referenceID;
+}
 
 /* ─────────────────────────────────────────────────────────────── */
 /* HELPERS (same parsing as spf-request-fetch.tsx)                */
@@ -383,6 +414,13 @@ export default function SPFRequestFetchVersionHistory({
         console.error("Version history fetch error:", error);
       } else {
         setVersions(historyData || []);
+        // Resolve names for audit trail
+        const referenceIDs = (historyData || [])
+          .flatMap(v => [v.edited_by, v.item_added_author].filter(Boolean))
+          .filter((id, index, arr) => arr.indexOf(id) === index); // unique
+        if (referenceIDs.length > 0) {
+          await resolveNames(referenceIDs);
+        }
       }
 
       /* Fetch item descriptions for display */
@@ -520,7 +558,7 @@ export default function SPFRequestFetchVersionHistory({
                               {v.edited_by && (
                                 <span className="flex items-center gap-1 truncate">
                                   <User size={10} />
-                                  {v.edited_by}
+                                  {getResolvedName(v.edited_by)}
                                 </span>
                               )}
                             </div>
@@ -528,6 +566,12 @@ export default function SPFRequestFetchVersionHistory({
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0 ml-2">
+                          {v.item_added_author && (
+                            <span className="flex items-center gap-1 text-[9px] px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                              <User size={8} />
+                              {getResolvedName(v.item_added_author)}
+                            </span>
+                          )}
                           {v.status && (
                             <span className="hidden sm:inline-flex text-[9px] px-2 py-0.5 rounded uppercase font-semibold bg-yellow-100 text-yellow-700">
                               {v.status}
