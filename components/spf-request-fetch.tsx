@@ -2505,13 +2505,13 @@ export default function SPFRequestFetch({
           } else setOpen(true);
         }}
       >
-<DialogContent
-  className={
-    isMobile
-      ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-      : "w-[95vw] max-w-none rounded-none p-6 max-h-[95vh] overflow-hidden flex flex-col"
-  }
->
+        <DialogContent
+          className={
+            isMobile
+              ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
+              : "sm:max-w-8xl max-h-[90vh] overflow-y-auto rounded-none"
+          }
+        >
           {isMobile ? renderEditMobile() : renderEditDesktop()}
         </DialogContent>
       </Dialog>
@@ -2532,7 +2532,7 @@ export default function SPFRequestFetch({
           className={
             isMobile
               ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-              : "sm:max-w-[1200px] max-h-[90vh] overflow-y-auto"
+              : "sm:max-w-8xl max-h-[90vh] overflow-y-auto rounded-none"
           }
         >
           <DialogHeader
