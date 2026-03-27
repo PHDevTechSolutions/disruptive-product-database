@@ -9,6 +9,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { SidebarLeft } from "@/components/sidebar-left";
 import { SplashScreen } from "@/components/splash-screen";
 import { usePathname } from "next/navigation";
+import { useSidebar } from "@/components/ui/sidebar";
 
 export default function LayoutShell({
   children,
@@ -18,6 +19,7 @@ export default function LayoutShell({
   const { userId, loading } = useUser();
   const { wallpaper, opacity } = useWallpaper();
   const pathname = usePathname();
+  const { state, isMobile } = useSidebar();
 
   const isLogin = pathname === "/login";
 
@@ -59,8 +61,15 @@ export default function LayoutShell({
           {wallpaper && (
             <div
               aria-hidden
-              className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-500"
+              className="pointer-events-none fixed top-0 right-0 bottom-0 z-0 transition-all duration-500"
               style={{
+                left: userId
+                  ? isMobile
+                    ? "0px"
+                    : state === "expanded"
+                      ? "16rem"
+                      : "3rem"
+                  : "0px",
                 backgroundImage: `url(${wallpaper})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
@@ -70,9 +79,7 @@ export default function LayoutShell({
             />
           )}
           {/* Content sits above wallpaper */}
-          <div className="relative z-10">
-            {children}
-          </div>
+          <div className="relative z-10">{children}</div>
         </main>
       </div>
     </NotificationProvider>
