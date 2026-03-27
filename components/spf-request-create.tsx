@@ -79,7 +79,7 @@ function hasMultipleSpecValues(product: any): boolean {
         .map((v: string) => v.trim())
         .filter(Boolean);
       return values.length > 1;
-    })
+    }),
   );
 }
 
@@ -249,9 +249,13 @@ export default function SPFRequestCreate({
 
   /* ── MultipleSpecsDetected modal ── */
   const [showPipeModal, setShowPipeModal] = useState(false);
-  const [pendingPipeProduct, setPendingPipeProduct] = useState<any | null>(null);
+  const [pendingPipeProduct, setPendingPipeProduct] = useState<any | null>(
+    null,
+  );
   // For desktop drag: we need to remember which row to drop into
-  const [pendingPipeRowIndex, setPendingPipeRowIndex] = useState<number | null>(null);
+  const [pendingPipeRowIndex, setPendingPipeRowIndex] = useState<number | null>(
+    null,
+  );
 
   /* ── Sync formData when rowData changes ── */
   useEffect(() => {
@@ -398,9 +402,11 @@ export default function SPFRequestCreate({
     // Check pipe before showing confirm sheet
     const frozen = freezeSpecs(product);
     if (hasMultipleSpecValues(frozen)) {
+      // Store row index in a local var so pipe modal has it
       setPendingPipeProduct(frozen);
       setPendingPipeRowIndex(activeRowIndex);
       setShowPipeModal(true);
+      // Don't navigate away — pipe modal will handle adding
     } else {
       setPendingProduct(frozen);
       setPickerStep("confirm");
@@ -838,11 +844,6 @@ export default function SPFRequestCreate({
                             pendingProduct.supplier.supplierBrandName}
                         </p>
                       )}
-                      {pendingProduct?.supplier?.company && (
-                        <p className="text-[11px] text-muted-foreground truncate">
-                          {pendingProduct.supplier.company}
-                        </p>
-                      )}
                       {activeRowIndex !== null && (
                         <p className="text-xs text-muted-foreground mt-0.5">
                           → {formData.spf_number}-
@@ -1016,6 +1017,14 @@ export default function SPFRequestCreate({
           )}
         </div>
       </DialogFooter>
+
+      {/* ── MultipleSpecsDetected — rendered OUTSIDE Dialog scroll area to avoid close ── */}
+      <MultipleSpecsDetected
+        open={showPipeModal}
+        onClose={handlePipeClose}
+        product={pendingPipeProduct}
+        onConfirm={handlePipeConfirm}
+      />
     </>
   );
 
@@ -1147,15 +1156,18 @@ export default function SPFRequestCreate({
                       onDrop={() => {
                         if (viewMode || !draggedProduct) return;
                         // Check for pipe values before dropping
-                        const frozen = draggedProduct.__fromRow !== undefined
-                          ? draggedProduct
-                          : freezeSpecs(draggedProduct);
+                        const frozen =
+                          draggedProduct.__fromRow !== undefined
+                            ? draggedProduct
+                            : freezeSpecs(draggedProduct);
                         if (hasMultipleSpecValues(frozen)) {
                           // Remove from source row if it came from another row
                           if (draggedProduct.__fromRow !== undefined) {
                             setProductOffers((prev) => {
                               const copy = { ...prev };
-                              const original = [...(copy[draggedProduct.__fromRow] || [])];
+                              const original = [
+                                ...(copy[draggedProduct.__fromRow] || []),
+                              ];
                               original.splice(draggedProduct.__fromIndex, 1);
                               copy[draggedProduct.__fromRow] = original;
                               return copy;
@@ -1679,6 +1691,16 @@ export default function SPFRequestCreate({
         </DialogContent>
       </Dialog>
 
+      {/* Desktop MultipleSpecsDetected — outside Dialog to avoid stacking issues */}
+      {!isMobile && (
+        <MultipleSpecsDetected
+          open={showPipeModal}
+          onClose={handlePipeClose}
+          product={pendingPipeProduct}
+          onConfirm={handlePipeConfirm}
+        />
+      )}
+
       {/* Add Product sub-dialog */}
       <Dialog open={openAddProduct} onOpenChange={setOpenAddProduct}>
         <DialogContent
@@ -1709,14 +1731,6 @@ export default function SPFRequestCreate({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* ── MultipleSpecsDetected modal ── */}
-      <MultipleSpecsDetected
-        open={showPipeModal}
-        onClose={handlePipeClose}
-        product={pendingPipeProduct}
-        onConfirm={handlePipeConfirm}
-      />
     </>
   );
 }
