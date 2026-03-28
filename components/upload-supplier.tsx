@@ -31,7 +31,7 @@ import UploadSupplierWarning, {
   SupplierConflict,
 } from "@/components/upload-supplier-warning";
 
-import DuplicateCheckModal, { DuplicateRow } from "@/components/duplicate-check-modal"; // ✅ NEW
+import DuplicateCheckModal, { DuplicateRow } from "@/components/duplicate-check-modal";
 
 import { logSupplierEvent } from "@/lib/auditlogger";
 
@@ -125,6 +125,14 @@ const parseContacts = (rawNames: string, rawPhones: string): { name: string; pho
   });
 };
 
+/* ─────────────────────────────────────────────────────────────────
+ * ✅ Normalize company name for duplicate comparison
+ * Strips extra whitespace and lowercases — prevents mismatches
+ * caused by trailing spaces or casing differences in the Excel file
+ * ───────────────────────────────────────────────────────────────── */
+const normalizeCompany = (val: string | null | undefined): string =>
+  (val ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                           */
 /* ------------------------------------------------------------------ */
@@ -138,10 +146,8 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   const [conflicts, setConflicts] = useState<SupplierConflict[]>([]);
   const [warningOpen, setWarningOpen] = useState(false);
 
-  // ✅ NEW — duplicate check state
   const [duplicateRows, setDuplicateRows] = useState<DuplicateRow[]>([]);
   const [duplicateCheckOpen, setDuplicateCheckOpen] = useState(false);
-  // rows that are NOT duplicates (will always be uploaded)
   const [nonDuplicateRows, setNonDuplicateRows] = useState<ExcelRow[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -196,10 +202,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   };
 
   /* ----------------------------------------------------------------
-   * ✅ NEW — Pre-upload duplicate check
-   * Runs BEFORE the actual upload. Splits rows into:
-   *   duplicateRows  — company names already in Firestore (active)
-   *   nonDuplicateRows — everything else
+   * ✅ Pre-upload duplicate check
+   * Uses normalizeCompany() on both sides so "  Apple Inc  " and
+   * "apple inc" both resolve to "apple inc" before comparing.
    * ---------------------------------------------------------------- */
   const runDuplicateCheck = async (): Promise<{
     dupeRows: DuplicateRow[];
@@ -207,10 +212,12 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     dupeExcelRows: ExcelRow[];
   }> => {
     const snap = await getDocs(collection(db, "suppliers"));
+
+    // ✅ Build normalized key set from ALL active suppliers in Firestore
     const existingKeys = new Set(
       snap.docs
         .filter((d) => d.data().isActive !== false)
-        .map((d) => String(d.data().company ?? "").toLowerCase().trim())
+        .map((d) => normalizeCompany(d.data().company))
     );
 
     const dupeExcelRows: ExcelRow[] = [];
@@ -218,17 +225,23 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
     for (const row of rows) {
       const company = String(
-        row["Company Name"] ?? (row as any)["Company"] ?? (row as any)["company name"] ?? (row as any)["company"] ?? "",
+        row["Company Name"] ??
+        (row as any)["Company"] ??
+        (row as any)["company name"] ??
+        (row as any)["company"] ??
+        "",
       ).trim();
+
+      // ✅ Rows with no company name are NOT duplicates — let upload handle them
       if (!company) { nonDupes.push(row); continue; }
-      if (existingKeys.has(company.toLowerCase())) {
+
+      if (existingKeys.has(normalizeCompany(company))) {
         dupeExcelRows.push(row);
       } else {
         nonDupes.push(row);
       }
     }
 
-    // Build display rows for the modal table
     const COLS = [
       "Company Name", "Supplier Brand", "Addresses", "Emails",
       "Website", "Contact Name(s)", "Phone Number(s)",
@@ -245,7 +258,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         String(row.Emails ?? ""),
         String(row.Website ?? ""),
         String(row["Contact Name(s)"] ?? ""),
-        safeSplit(String(row["Phone Number(s)"] ?? "")).map((p) => parsePhone(p).normalized).join(" | "),
+        safeSplit(String(row["Phone Number(s)"] ?? ""))
+          .map((p) => parsePhone(p).normalized)
+          .join(" | "),
         String(row["Forte Product(s)"] ?? ""),
         String(row["Product(s)"] ?? ""),
         String(row["Certificate(s)"] ?? ""),
@@ -257,9 +272,6 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
   /* ----------------------------------------------------------------
    * Called when user clicks "Go / Confirm Upload"
-   * 1. Run duplicate check
-   * 2a. If no dupes → proceed straight to upload
-   * 2b. If dupes found → show DuplicateCheckModal
    * ---------------------------------------------------------------- */
   const handleConfirmUpload = async () => {
     if (!rows.length) { toast.error("No data to upload"); return; }
@@ -267,8 +279,18 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
     setLoading(true);
     try {
-      const { dupeRows, nonDupes, dupeExcelRows } = await runDuplicateCheck();
+      const { dupeRows, nonDupes } = await runDuplicateCheck();
 
+      // ✅ 100% DUPLICATE — block agad
+      if (dupeRows.length === rows.length) {
+        toast.error("Upload blocked", {
+          description: `All ${rows.length} rows already exist in the system. Nothing to upload.`,
+        });
+        setLoading(false);
+        return;
+      }
+
+      // ✅ PARTIAL DUPLICATE — show modal
       if (dupeRows.length > 0) {
         setDuplicateRows(dupeRows);
         setNonDuplicateRows(nonDupes);
@@ -277,7 +299,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         return;
       }
 
-      // No dupes — upload everything
+      // ✅ ZERO DUPLICATE — upload lahat
       await performUpload(rows);
     } catch (err) {
       console.error(err);
@@ -287,7 +309,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   };
 
   /* ----------------------------------------------------------------
-   * Duplicate modal: "Skip Duplicates" → upload only non-dupes
+   * Duplicate modal handlers
    * ---------------------------------------------------------------- */
   const handleSkipDuplicates = async () => {
     setDuplicateCheckOpen(false);
@@ -299,9 +321,6 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     await performUpload(nonDuplicateRows);
   };
 
-  /* ----------------------------------------------------------------
-   * Duplicate modal: "Upload All" → upload everything (overwrites dupes)
-   * ---------------------------------------------------------------- */
   const handleUploadAll = async () => {
     setDuplicateCheckOpen(false);
     setLoading(true);
@@ -309,7 +328,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   };
 
   /* ----------------------------------------------------------------
-   * Core upload logic (extracted from original handleConfirmUpload)
+   * Core upload logic
    * ---------------------------------------------------------------- */
   const performUpload = async (uploadRows: ExcelRow[]) => {
     try {
@@ -318,7 +337,12 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
       snap.docs.forEach((d) => {
         const data = d.data();
         if (!data.company) return;
-        supplierMap.set(data.company.toLowerCase(), { id: d.id, isActive: data.isActive !== false, data });
+        // ✅ Use normalizeCompany for map keys too
+        supplierMap.set(normalizeCompany(data.company), {
+          id: d.id,
+          isActive: data.isActive !== false,
+          data,
+        });
       });
 
       let inserted = 0;
@@ -328,14 +352,22 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
       for (const row of uploadRows) {
         const company = String(
-          row["Company Name"] ?? (row as any)["Company"] ?? (row as any)["company name"] ?? (row as any)["company"] ?? "",
+          row["Company Name"] ??
+          (row as any)["Company"] ??
+          (row as any)["company name"] ??
+          (row as any)["company"] ??
+          "",
         ).trim();
 
         if (!company) { skipped++; continue; }
 
-        const key = company.toLowerCase();
+        // ✅ Use normalizeCompany for lookup
+        const key = normalizeCompany(company);
         const existing = supplierMap.get(key);
-        const incomingContacts = parseContacts(String(row["Contact Name(s)"] ?? ""), String(row["Phone Number(s)"] ?? ""));
+        const incomingContacts = parseContacts(
+          String(row["Contact Name(s)"] ?? ""),
+          String(row["Phone Number(s)"] ?? ""),
+        );
 
         // 🔴 EXISTING & ACTIVE → check for differences
         if (existing?.isActive) {
@@ -362,7 +394,12 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
             normalizeJoin(existingData.certificates) !== normalizeJoin(incomingData.certificates);
 
           if (isDifferent) {
-            detectedConflicts.push({ supplierId: existing.id, company, existing: existingData, incoming: incomingData });
+            detectedConflicts.push({
+              supplierId: existing.id,
+              company,
+              existing: existingData,
+              incoming: incomingData,
+            });
           } else {
             skipped++;
           }
@@ -373,30 +410,30 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         if (existing) {
           const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
           await updateDoc(doc(db, "suppliers", existing.id), {
-            whatHappened  : "Supplier Added",
-            date_updated  : serverTimestamp(),
-            supplierId    : existing.id,
+            whatHappened   : "Supplier Added",
+            date_updated   : serverTimestamp(),
+            supplierId     : existing.id,
             supplierBrand,
             supplierbrandId: existing.id,
-            addresses     : safeSplit(row.Addresses),
-            emails        : safeSplit(row.Emails),
-            website       : row.Website || "",
-            contacts      : incomingContacts,
-            forteProducts : safeSplit(row["Forte Product(s)"]),
-            products      : safeSplit(row["Product(s)"]),
-            certificates  : safeSplit(row["Certificate(s)"]),
-            isActive      : true,
-            updatedAt     : serverTimestamp(),
+            addresses      : safeSplit(row.Addresses),
+            emails         : safeSplit(row.Emails),
+            website        : row.Website || "",
+            contacts       : incomingContacts,
+            forteProducts  : safeSplit(row["Forte Product(s)"]),
+            products       : safeSplit(row["Product(s)"]),
+            certificates   : safeSplit(row["Certificate(s)"]),
+            isActive       : true,
+            updatedAt      : serverTimestamp(),
           });
 
           await logSupplierEvent({
-            whatHappened  : "Supplier Reactivated",
-            supplierId    : existing.id,
+            whatHappened : "Supplier Reactivated",
+            supplierId   : existing.id,
             company,
             supplierBrand,
-            referenceID   : user!.ReferenceID,
-            userId        : userId ?? undefined,
-            extra         : { source: "excel_upload" },
+            referenceID  : user!.ReferenceID,
+            userId       : userId ?? undefined,
+            extra        : { source: "excel_upload" },
           });
 
           supplierMap.set(key, { ...existing, isActive: true });
@@ -409,34 +446,34 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         const docRef = await addDoc(collection(db, "suppliers"), {
           company,
           supplierBrand,
-          addresses     : safeSplit(row.Addresses),
-          emails        : safeSplit(row.Emails),
-          website       : row.Website || "",
-          contacts      : incomingContacts,
-          forteProducts : safeSplit(row["Forte Product(s)"]),
-          products      : safeSplit(row["Product(s)"]),
-          certificates  : safeSplit(row["Certificate(s)"]),
-          createdBy     : userId,
-          referenceID   : user!.ReferenceID,
-          isActive      : true,
-          createdAt     : serverTimestamp(),
+          addresses    : safeSplit(row.Addresses),
+          emails       : safeSplit(row.Emails),
+          website      : row.Website || "",
+          contacts     : incomingContacts,
+          forteProducts: safeSplit(row["Forte Product(s)"]),
+          products     : safeSplit(row["Product(s)"]),
+          certificates : safeSplit(row["Certificate(s)"]),
+          createdBy    : userId,
+          referenceID  : user!.ReferenceID,
+          isActive     : true,
+          createdAt    : serverTimestamp(),
         });
 
         await updateDoc(doc(db, "suppliers", docRef.id), {
-          supplierId    : docRef.id,
+          supplierId     : docRef.id,
           supplierbrandId: docRef.id,
-          whatHappened  : "Supplier Added",
-          date_updated  : serverTimestamp(),
+          whatHappened   : "Supplier Added",
+          date_updated   : serverTimestamp(),
         });
 
         await logSupplierEvent({
-          whatHappened  : "Supplier Added",
-          supplierId    : docRef.id,
+          whatHappened : "Supplier Added",
+          supplierId   : docRef.id,
           company,
           supplierBrand,
-          referenceID   : user!.ReferenceID,
-          userId        : userId ?? undefined,
-          extra         : { source: "excel_upload" },
+          referenceID  : user!.ReferenceID,
+          userId       : userId ?? undefined,
+          extra        : { source: "excel_upload" },
         });
 
         supplierMap.set(key, { id: "new", isActive: true, data: {} });
@@ -503,7 +540,13 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           >
             Click or drag & drop Excel file here
             <div className="text-xs text-muted-foreground mt-1">(.xlsx, .xls, .csv)</div>
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
           </div>
 
           {rows.length > 0 && (
@@ -549,7 +592,11 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           )}
 
           <DialogFooter className="gap-2">
-            <Button variant="secondary" onClick={() => { setRows([]); onOpenChange(false); }} disabled={loading}>
+            <Button
+              variant="secondary"
+              onClick={() => { setRows([]); onOpenChange(false); }}
+              disabled={loading}
+            >
               Cancel
             </Button>
             <Button onClick={handleConfirmUpload} disabled={loading || rows.length === 0}>
@@ -569,28 +616,28 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
             for (const c of conflicts) {
               await updateDoc(doc(db, "suppliers", c.supplierId), {
-                supplierBrand       : c.incoming.supplierBrand,
-                supplierbrandId     : c.supplierId,
-                addresses           : c.incoming.addresses,
-                emails              : c.incoming.emails,
-                website             : c.incoming.website,
-                contacts            : c.incoming.contacts,
-                forteProducts       : c.incoming.forteProducts,
-                products            : c.incoming.products,
-                certificates        : c.incoming.certificates,
-                updatedAt           : serverTimestamp(),
-                updatedBy           : userId,
-                updatedByReferenceID: user?.ReferenceID,
+                supplierBrand        : c.incoming.supplierBrand,
+                supplierbrandId      : c.supplierId,
+                addresses            : c.incoming.addresses,
+                emails               : c.incoming.emails,
+                website              : c.incoming.website,
+                contacts             : c.incoming.contacts,
+                forteProducts        : c.incoming.forteProducts,
+                products             : c.incoming.products,
+                certificates         : c.incoming.certificates,
+                updatedAt            : serverTimestamp(),
+                updatedBy            : userId,
+                updatedByReferenceID : user?.ReferenceID,
               });
 
               await logSupplierEvent({
-                whatHappened  : "Supplier Edited",
-                supplierId    : c.supplierId,
-                company       : c.company,
-                supplierBrand : c.incoming.supplierBrand,
-                referenceID   : user?.ReferenceID,
-                userId        : userId ?? undefined,
-                extra         : { source: "excel_upload_conflict_overwrite" },
+                whatHappened : "Supplier Edited",
+                supplierId   : c.supplierId,
+                company      : c.company,
+                supplierBrand: c.incoming.supplierBrand,
+                referenceID  : user?.ReferenceID,
+                userId       : userId ?? undefined,
+                extra        : { source: "excel_upload_conflict_overwrite" },
               });
             }
 
@@ -613,7 +660,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         />
       </Dialog>
 
-      {/* ✅ NEW — Duplicate Check Modal */}
+      {/* Duplicate Check Modal */}
       <DuplicateCheckModal
         open={duplicateCheckOpen}
         onOpenChange={setDuplicateCheckOpen}
