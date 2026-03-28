@@ -3,35 +3,8 @@ import { supabase } from "@/utils/supabase";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
-/* ─────────────────────────────────────────────────────────────────
-   DELIMITER STRATEGY (all stored in Supabase columns):
-
-   Within one product's tech specs:
-     "@@"  → separates spec GROUPS  (LAMP DETAILS vs ELECTRICAL)
-     "~~"  → separates group TITLE from its spec rows
-     ";;"  → separates individual SPEC ROWS within a group
-
-   Between products within the same item row:
-     ","   → standard comma separator
-
-   Between item ROWS:
-     "|ROW|"  → row boundary separator
-                parsed by spf-request-view.tsx
-
-   ALL columns follow the same structure:
-     product1,product2|ROW|product1,product2
-
-   item_code column structure (NEW):
-     Row 0 codes joined by "," → "SPF-XXX-001-OPT-1,SPF-XXX-001-OPT-2"
-     Rows joined by "|ROW|"    → "SPF-XXX-001-OPT-1,SPF-XXX-001-OPT-2|ROW|SPF-XXX-002-OPT-1"
-
-   final_selling_cost and proj_lead_time follow the same structure:
-     -,-|ROW|-,-
-     (one "-" per product per row, filled later by procurement)
-─────────────────────────────────────────────────────────────────── */
 const ROW_SEP = "|ROW|";
 
-/* Cache supplier contacts to avoid redundant Firestore fetches */
 const supplierCache = new Map<
   string,
   { company: string; contactNames: string; contactNumbers: string }
@@ -46,49 +19,43 @@ export default async function handler(
   }
 
   try {
-const {
-  spf_number,
-  referenceid,
-  tsm,
-  manager,
-  item_code,
-  totalItemRows,
-  selectedProducts,
-  spf_creation_start_time,
-  spf_creation_end_time,
-  userId, // ✅ ADD THIS
-} = req.body;
+    const {
+      spf_number,
+      item_code,
+      totalItemRows,
+      selectedProducts,
+      spf_creation_start_time,
+      spf_creation_end_time,
+      userId,
+    } = req.body;
 
     if (!spf_number) {
       return res.status(400).json({ message: "Missing SPF number" });
     }
 
-const { data: spfRequest, error: spfRequestError } = await supabase
-  .from("spf_request")
-  .select("referenceid, tsm, manager")
-  .eq("spf_number", spf_number)
-  .single();
+    /* ── Fetch spf_request metadata ── */
+    const { data: spfRequest, error: spfRequestError } = await supabase
+      .from("spf_request")
+      .select("referenceid, tsm, manager")
+      .eq("spf_number", spf_number)
+      .single();
 
-if (spfRequestError || !spfRequest) {
-  console.error("spf_request fetch error:", spfRequestError);
-  return res.status(400).json({
-    message: "SPF request not found",
-  })
-}
+    if (spfRequestError || !spfRequest) {
+      console.error("spf_request fetch error:", spfRequestError);
+      return res.status(400).json({ message: "SPF request not found" });
+    }
 
-const referenceIdValue = spfRequest.referenceid ?? null;
-const tsmValue = spfRequest.tsm ?? null;
-const managerValue = spfRequest.manager ?? null;
+    const referenceIdValue = spfRequest.referenceid ?? null;
+    const tsmValue         = spfRequest.tsm          ?? null;
+    const managerValue     = spfRequest.manager       ?? null;
 
-    /* ── RESOLVE LOGGED-IN USER (item_added_author) ── */
+    /* ── Resolve item_added_author ── */
     let item_added_author: string | null = null;
-
     try {
       if (userId) {
         const userRes = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/users?id=${userId}`
         );
-
         if (userRes.ok) {
           const user = await userRes.json();
           item_added_author = user?.ReferenceID || null;
@@ -104,32 +71,29 @@ const managerValue = spfRequest.manager ?? null;
     /* ── Pre-fetch all unique supplier contacts ── */
     const uniqueSupplierIds = [
       ...new Set(
-        products
-          .map((p: any) => p?.supplier?.supplierId)
-          .filter(Boolean)
+        products.map((p: any) => p?.supplier?.supplierId).filter(Boolean)
       ),
-    ];
+    ] as string[];
 
     for (const supplierId of uniqueSupplierIds) {
       if (supplierCache.has(supplierId)) continue;
       try {
-        const supplierRef = doc(db, "suppliers", supplierId);
-        const supplierSnap = await getDoc(supplierRef);
+        const supplierSnap = await getDoc(doc(db, "suppliers", supplierId));
         if (supplierSnap.exists()) {
-          const supplierData: any = supplierSnap.data();
-          const contacts          = supplierData.contacts || [];
+          const d: any   = supplierSnap.data();
+          const contacts = d.contacts || [];
           supplierCache.set(supplierId, {
-            company:        supplierData.company || "-",
+            company:        d.company || "-",
             contactNames:   contacts.map((c: any) => c.name).filter(Boolean).join(" | "),
             contactNumbers: contacts.map((c: any) => c.phone).filter(Boolean).join(" | "),
           });
         }
       } catch (err) {
-        console.error("Supplier contact fetch error:", err);
+        console.error("Supplier fetch error:", err);
       }
     }
 
-    /* ── Group products by their item row ── */
+    /* ── Group products by row ── */
     const rowMap: Record<number, any[]> = {};
     for (let i = 0; i < rowCount; i++) rowMap[i] = [];
     for (const p of products) {
@@ -138,67 +102,60 @@ const managerValue = spfRequest.manager ?? null;
       rowMap[idx].push(p);
     }
 
-    /* ── Build per-row arrays, then join rows with ROW_SEP ── */
-    const rowImages: string[]         = [];
-    const rowQtys: string[]           = [];
-    const rowSpecs: string[]          = [];
-    const rowUnitCosts: string[]      = [];
-    const rowPcsPerCarton: string[]   = [];
-    const rowPackaging: string[]      = [];
-    const rowFactories: string[]      = [];
-    const rowPorts: string[]          = [];
-    const rowSubtotals: string[]      = [];
+    /* ── Per-row accumulators ── */
+    const rowImages:         string[] = [];
+    const rowQtys:           string[] = [];
+    const rowSpecs:          string[] = [];
+    const rowUnitCosts:      string[] = [];
+    const rowPcsPerCarton:   string[] = [];
+    const rowPackaging:      string[] = [];
+    const rowFactories:      string[] = [];
+    const rowPorts:          string[] = [];
+    const rowSubtotals:      string[] = [];
     const rowSupplierBrands: string[] = [];
-    const rowCompanyNames: string[]   = [];
-    const rowContactNames: string[]   = [];
+    const rowCompanyNames:   string[] = [];
+    const rowContactNames:   string[] = [];
     const rowContactNumbers: string[] = [];
-    const rowSellingCosts: string[]   = [];
-    const rowLeadTimes: string[]      = [];
-
-    /* ── NEW: per-row item codes ── */
-    const rowItemCodes: string[]      = [];
+    const rowSellingCosts:   string[] = [];
+    const rowLeadTimes:      string[] = [];
+    const rowItemCodes:      string[] = [];
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
 
-      const images: string[]         = [];
-      const qtys: string[]           = [];
-      const specs: string[]          = [];
-      const unitCosts: string[]      = [];
-      const pcsPerCartons: string[]  = [];
-      const packaging: string[]      = [];
-      const factories: string[]      = [];
-      const ports: string[]          = [];
-      const subtotals: string[]      = [];
+      const images:         string[] = [];
+      const qtys:           string[] = [];
+      const specs:          string[] = [];
+      const unitCosts:      string[] = [];
+      const pcsPerCartons:  string[] = [];
+      const packaging:      string[] = [];
+      const factories:      string[] = [];
+      const ports:          string[] = [];
+      const subtotals:      string[] = [];
       const supplierBrands: string[] = [];
-      const companyNames: string[]   = [];
-      const contactNames: string[]   = [];
+      const companyNames:   string[] = [];
+      const contactNames:   string[] = [];
       const contactNumbers: string[] = [];
-      const sellingCosts: string[]   = [];
-      const leadTimes: string[]      = [];
-
-      /* ── NEW: item codes for this row ──
-         Base row code = spf_number + "-" + zero-padded (rowIdx+1)
-         e.g. SPF-DSI-26-004-001 for rowIdx=0
-         Each option appends -OPT-N
-      ── */
-      const itemCodes: string[]      = [];
+      const sellingCosts:   string[] = [];
+      const leadTimes:      string[] = [];
+      const itemCodes:      string[] = [];
 
       const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
 
       for (let optIdx = 0; optIdx < rowProducts.length; optIdx++) {
         const p = rowProducts[optIdx];
 
-        const qty         = Number(p.qty || 0);
-        const unitCost    = Number(p?.commercialDetails?.unitCost || 0);
+        const qty          = Number(p.qty || 0);
+        const unitCost     = Number(p?.commercialDetails?.unitCost || 0);
         const pcsPerCarton = p?.commercialDetails?.pcsPerCarton || "-";
-        const length      = p?.commercialDetails?.packaging?.length || "-";
-        const width       = p?.commercialDetails?.packaging?.width  || "-";
-        const height      = p?.commercialDetails?.packaging?.height || "-";
-        const factory     = p?.commercialDetails?.factoryAddress    || "-";
-        const port        = p?.commercialDetails?.portOfDischarge   || "-";
-        const subtotal    = qty * unitCost;
+        const length       = p?.commercialDetails?.packaging?.length || "-";
+        const width        = p?.commercialDetails?.packaging?.width  || "-";
+        const height       = p?.commercialDetails?.packaging?.height || "-";
+        const factory      = p?.commercialDetails?.factoryAddress    || "-";
+        const port         = p?.commercialDetails?.portOfDischarge   || "-";
+        const subtotal     = qty * unitCost;
 
+        /* ── Every array always gets exactly one push per product ── */
         images.push(p?.mainImage?.url || "-");
         qtys.push(String(qty));
         unitCosts.push(String(unitCost));
@@ -207,25 +164,21 @@ const managerValue = spfRequest.manager ?? null;
         factories.push(factory);
         ports.push(port);
         subtotals.push(String(subtotal));
-        supplierBrands.push(p?.supplier?.supplierBrand || "-");
-
-        /* final_selling_cost and proj_lead_time:
-           one "-" per product — filled later by procurement team */
+        supplierBrands.push(
+          p?.supplier?.supplierBrand || p?.supplier?.supplierBrandName || "-"
+        );
         sellingCosts.push("-");
         leadTimes.push("-");
-
-        /* ── Generate option item code ── */
         itemCodes.push(`${rowBase}-OPT-${optIdx + 1}`);
 
-        /* Company / Contact — per product, from cache */
+        /* ── company/contact — always push regardless of supplierId ── */
         const supplierId = String(p?.supplier?.supplierId || "");
-        if (!supplierId) continue;
-        const cached     = supplierId ? supplierCache.get(supplierId) : null;
-        companyNames.push(cached?.company         || p?.supplier?.company || "-");
+        const cached     = supplierId ? supplierCache.get(supplierId) : undefined;
+        companyNames.push(cached?.company        || p?.supplier?.company || "-");
         contactNames.push(cached?.contactNames    || "-");
         contactNumbers.push(cached?.contactNumbers || "-");
 
-        /* TECH SPECS */
+        /* ── Tech specs ── */
         if (p?.technicalSpecifications?.length) {
           const groupedTech = p.technicalSpecifications
             .map((g: any) => {
@@ -245,7 +198,6 @@ const managerValue = spfRequest.manager ?? null;
         }
       }
 
-      /* If a row has no products yet, push an empty placeholder */
       if (rowProducts.length === 0) {
         itemCodes.push("-");
       }
@@ -265,12 +217,10 @@ const managerValue = spfRequest.manager ?? null;
       rowContactNumbers.push(contactNumbers.join(","));
       rowSellingCosts.push(sellingCosts.join(","));
       rowLeadTimes.push(leadTimes.join(","));
-
-      /* ── Commit item codes for this row ── */
       rowItemCodes.push(itemCodes.join(","));
     }
 
-    /* ── Final strings stored in Supabase ── */
+    /* ── Final strings ── */
     const finalImages         = rowImages.join(ROW_SEP);
     const finalQtys           = rowQtys.join(ROW_SEP);
     const finalSpecs          = rowSpecs.join(ROW_SEP);
@@ -286,17 +236,11 @@ const managerValue = spfRequest.manager ?? null;
     const finalContactNumbers = rowContactNumbers.join(ROW_SEP);
     const finalSellingCosts   = rowSellingCosts.join(ROW_SEP);
     const finalLeadTimes      = rowLeadTimes.join(ROW_SEP);
-    
-
-    /* ── NEW: final item_code string ──
-       Format: "SPF-XXX-001-OPT-1,SPF-XXX-001-OPT-2|ROW|SPF-XXX-002-OPT-1"
-       Falls back to the original item_code field if no products were added at all.
-    ── */
-    const finalItemCode = rowItemCodes.some((r) => r !== "-" && r !== "")
+    const finalItemCode       = rowItemCodes.some((r) => r !== "-" && r !== "")
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
 
-    /* ── CHECK EXISTING SPF ── */
+    /* ── Check existing SPF ── */
     const { data: existing, error: checkError } = await supabase
       .from("spf_creation")
       .select("id, spf_creation_start_time, spf_creation_end_time")
@@ -308,20 +252,17 @@ const managerValue = spfRequest.manager ?? null;
       return res.status(500).json(checkError);
     }
 
-    
-    /* ── INSERT SPF ── */
+    /* ── INSERT ── */
     if (!existing) {
       const { error: insertError } = await supabase
         .from("spf_creation")
         .insert({
           spf_number,
-          referenceid: referenceIdValue,
-          tsm: tsmValue,
-          manager: managerValue,
+          referenceid:      referenceIdValue,
+          tsm:              tsmValue,
+          manager:          managerValue,
           item_added_author,
-
-          /* ── item_code now carries the full OPT-coded string ── */
-          item_code: finalItemCode,
+          item_code:        finalItemCode,
 
           company_name:   finalCompanyNames,
           supplier_brand: finalSupplierBrands,
@@ -343,9 +284,8 @@ const managerValue = spfRequest.manager ?? null;
 
           status: "Pending For Procurement",
 
-
           spf_creation_start_time: spf_creation_start_time ?? null,
-          spf_creation_end_time:   spf_creation_end_time ?? null,
+          spf_creation_end_time:   spf_creation_end_time   ?? null,
 
           date_created: new Date().toISOString(),
           date_updated: new Date().toISOString(),
@@ -356,52 +296,50 @@ const managerValue = spfRequest.manager ?? null;
         return res.status(500).json(insertError);
       }
 
-      /* ── INSERT VERSION HISTORY FOR V1 ── */
+      /* ── Version history v1 ── */
       const { error: historyError } = await supabase
         .from("spf_creation_history")
         .insert({
           spf_number,
           version_number: 1,
-          version_label: `${spf_number}_v1`,
-          created_at: new Date().toISOString(),
-          edited_by: null, // First creation has no editor
+          version_label:  `${spf_number}_v1`,
+          created_at:     new Date().toISOString(),
+          edited_by:      null,
           item_added_author,
-          
 
-          supplier_brand: finalSupplierBrands,
-          product_offer_image: finalImages,
-          product_offer_qty: finalQtys,
+          supplier_brand:                        finalSupplierBrands,
+          product_offer_image:                   finalImages,
+          product_offer_qty:                     finalQtys,
           product_offer_technical_specification: finalSpecs,
-          product_offer_unit_cost: finalUnitCosts,
-          product_offer_pcs_per_carton: finalPcsPerCarton,
-          product_offer_packaging_details: finalPackaging,
-          product_offer_factory_address: finalFactories,
-          product_offer_port_of_discharge: finalPorts,
-          product_offer_subtotal: finalSubtotals,
+          product_offer_unit_cost:               finalUnitCosts,
+          product_offer_pcs_per_carton:          finalPcsPerCarton,
+          product_offer_packaging_details:       finalPackaging,
+          product_offer_factory_address:         finalFactories,
+          product_offer_port_of_discharge:       finalPorts,
+          product_offer_subtotal:                finalSubtotals,
 
-          company_name: finalCompanyNames,
-          contact_name: finalContactNames,
+          company_name:   finalCompanyNames,
+          contact_name:   finalContactNames,
           contact_number: finalContactNumbers,
 
-          proj_lead_time: finalLeadTimes,
+          proj_lead_time:     finalLeadTimes,
           final_selling_cost: finalSellingCosts,
 
           item_code: finalItemCode,
 
           spf_creation_start_time: spf_creation_start_time ?? null,
-          spf_creation_end_time:   spf_creation_end_time ?? null,
+          spf_creation_end_time:   spf_creation_end_time   ?? null,
 
-            referenceid: spfRequest.referenceid,
-            tsm: spfRequest.tsm,
-            manager: spfRequest.manager,
+          referenceid: referenceIdValue,
+          tsm:         tsmValue,
+          manager:     managerValue,
         });
 
       if (historyError) {
         console.error("History insert error:", historyError);
-        // Don't fail the whole request for history error
       }
     } else {
-      /* If record already exists, update timestamp in main record */
+      /* Already exists — just update timestamps */
       await supabase
         .from("spf_creation")
         .update({
@@ -412,7 +350,7 @@ const managerValue = spfRequest.manager ?? null;
         .eq("spf_number", spf_number);
     }
 
-    /* ── UPDATE REQUEST STATUS ── */
+    /* ── Update spf_request status ── */
     const { error: updateError } = await supabase
       .from("spf_request")
       .update({
@@ -426,21 +364,19 @@ const managerValue = spfRequest.manager ?? null;
       return res.status(500).json(updateError);
     }
 
-// ✅ AUDIT LOG
-import("@/lib/auditlogger").then(({ logSPFVersionEvent }) => {
-  logSPFVersionEvent({
-    whatHappened: "SPF Created",
-    spf_number,
-    version_label: `${spf_number}_v1`,
-    version_number: 1,
-    referenceID: item_added_author ?? undefined,
-    userId: userId ?? undefined,
-  });
-});
+    /* ── Audit log ── */
+    import("@/lib/auditlogger").then(({ logSPFVersionEvent }) => {
+      logSPFVersionEvent({
+        whatHappened:   "SPF Created",
+        spf_number,
+        version_label:  `${spf_number}_v1`,
+        version_number: 1,
+        referenceID:    item_added_author ?? undefined,
+        userId:         userId            ?? undefined,
+      });
+    });
 
-return res
-  .status(200)
-  .json({ success: true, message: "SPF created successfully" });
+    return res.status(200).json({ success: true, message: "SPF created successfully" });
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ message: err.message || "Server error" });

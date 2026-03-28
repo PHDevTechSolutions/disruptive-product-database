@@ -773,5 +773,7 @@
   }
 
 }
-
+:root {
+  --sidebar-collapsed-width: 3.5rem; /* adjust kung kailangan */
+}
 }

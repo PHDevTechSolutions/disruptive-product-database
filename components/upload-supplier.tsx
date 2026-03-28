@@ -31,7 +31,9 @@ import UploadSupplierWarning, {
   SupplierConflict,
 } from "@/components/upload-supplier-warning";
 
-import { logSupplierEvent } from "@/lib/auditlogger"; // ✅ AUDIT
+import DuplicateCheckModal, { DuplicateRow } from "@/components/duplicate-check-modal"; // ✅ NEW
+
+import { logSupplierEvent } from "@/lib/auditlogger";
 
 /* ---------------- Types ---------------- */
 type UserDetails = {
@@ -123,7 +125,9 @@ const parseContacts = (rawNames: string, rawPhones: string): { name: string; pho
   });
 };
 
-/* ---------------- Component ---------------- */
+/* ------------------------------------------------------------------ */
+/*  Component                                                           */
+/* ------------------------------------------------------------------ */
 function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   const { userId } = useUser();
 
@@ -133,6 +137,12 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   const [dragActive, setDragActive] = useState(false);
   const [conflicts, setConflicts] = useState<SupplierConflict[]>([]);
   const [warningOpen, setWarningOpen] = useState(false);
+
+  // ✅ NEW — duplicate check state
+  const [duplicateRows, setDuplicateRows] = useState<DuplicateRow[]>([]);
+  const [duplicateCheckOpen, setDuplicateCheckOpen] = useState(false);
+  // rows that are NOT duplicates (will always be uploaded)
+  const [nonDuplicateRows, setNonDuplicateRows] = useState<ExcelRow[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -185,13 +195,124 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  /* ----------------------------------------------------------------
+   * ✅ NEW — Pre-upload duplicate check
+   * Runs BEFORE the actual upload. Splits rows into:
+   *   duplicateRows  — company names already in Firestore (active)
+   *   nonDuplicateRows — everything else
+   * ---------------------------------------------------------------- */
+  const runDuplicateCheck = async (): Promise<{
+    dupeRows: DuplicateRow[];
+    nonDupes: ExcelRow[];
+    dupeExcelRows: ExcelRow[];
+  }> => {
+    const snap = await getDocs(collection(db, "suppliers"));
+    const existingKeys = new Set(
+      snap.docs
+        .filter((d) => d.data().isActive !== false)
+        .map((d) => String(d.data().company ?? "").toLowerCase().trim())
+    );
+
+    const dupeExcelRows: ExcelRow[] = [];
+    const nonDupes: ExcelRow[] = [];
+
+    for (const row of rows) {
+      const company = String(
+        row["Company Name"] ?? (row as any)["Company"] ?? (row as any)["company name"] ?? (row as any)["company"] ?? "",
+      ).trim();
+      if (!company) { nonDupes.push(row); continue; }
+      if (existingKeys.has(company.toLowerCase())) {
+        dupeExcelRows.push(row);
+      } else {
+        nonDupes.push(row);
+      }
+    }
+
+    // Build display rows for the modal table
+    const COLS = [
+      "Company Name", "Supplier Brand", "Addresses", "Emails",
+      "Website", "Contact Name(s)", "Phone Number(s)",
+      "Forte Product(s)", "Product(s)", "Certificate(s)",
+    ];
+
+    const dupeRows: DuplicateRow[] = dupeExcelRows.map((row) => ({
+      key: String(row["Company Name"] ?? ""),
+      columns: COLS,
+      values: [
+        String(row["Company Name"] ?? ""),
+        String(row["Supplier Brand"] ?? ""),
+        String(row.Addresses ?? ""),
+        String(row.Emails ?? ""),
+        String(row.Website ?? ""),
+        String(row["Contact Name(s)"] ?? ""),
+        safeSplit(String(row["Phone Number(s)"] ?? "")).map((p) => parsePhone(p).normalized).join(" | "),
+        String(row["Forte Product(s)"] ?? ""),
+        String(row["Product(s)"] ?? ""),
+        String(row["Certificate(s)"] ?? ""),
+      ],
+    }));
+
+    return { dupeRows, nonDupes, dupeExcelRows };
+  };
+
+  /* ----------------------------------------------------------------
+   * Called when user clicks "Go / Confirm Upload"
+   * 1. Run duplicate check
+   * 2a. If no dupes → proceed straight to upload
+   * 2b. If dupes found → show DuplicateCheckModal
+   * ---------------------------------------------------------------- */
   const handleConfirmUpload = async () => {
     if (!rows.length) { toast.error("No data to upload"); return; }
     if (!user?.ReferenceID) { toast.error("User reference not loaded"); return; }
 
+    setLoading(true);
     try {
-      setLoading(true);
+      const { dupeRows, nonDupes, dupeExcelRows } = await runDuplicateCheck();
 
+      if (dupeRows.length > 0) {
+        setDuplicateRows(dupeRows);
+        setNonDuplicateRows(nonDupes);
+        setDuplicateCheckOpen(true);
+        setLoading(false);
+        return;
+      }
+
+      // No dupes — upload everything
+      await performUpload(rows);
+    } catch (err) {
+      console.error(err);
+      toast.error("Duplicate check failed");
+      setLoading(false);
+    }
+  };
+
+  /* ----------------------------------------------------------------
+   * Duplicate modal: "Skip Duplicates" → upload only non-dupes
+   * ---------------------------------------------------------------- */
+  const handleSkipDuplicates = async () => {
+    setDuplicateCheckOpen(false);
+    if (!nonDuplicateRows.length) {
+      toast.warning("Nothing to upload", { description: "All rows were duplicates." });
+      return;
+    }
+    setLoading(true);
+    await performUpload(nonDuplicateRows);
+  };
+
+  /* ----------------------------------------------------------------
+   * Duplicate modal: "Upload All" → upload everything (overwrites dupes)
+   * ---------------------------------------------------------------- */
+  const handleUploadAll = async () => {
+    setDuplicateCheckOpen(false);
+    setLoading(true);
+    await performUpload(rows);
+  };
+
+  /* ----------------------------------------------------------------
+   * Core upload logic (extracted from original handleConfirmUpload)
+   * ---------------------------------------------------------------- */
+  const performUpload = async (uploadRows: ExcelRow[]) => {
+    try {
       const snap = await getDocs(collection(db, "suppliers"));
       const supplierMap = new Map<string, { id: string; isActive: boolean; data: any }>();
       snap.docs.forEach((d) => {
@@ -205,7 +326,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
       let reactivated = 0;
       const detectedConflicts: SupplierConflict[] = [];
 
-      for (const row of rows) {
+      for (const row of uploadRows) {
         const company = String(
           row["Company Name"] ?? (row as any)["Company"] ?? (row as any)["company name"] ?? (row as any)["company"] ?? "",
         ).trim();
@@ -268,13 +389,12 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
             updatedAt     : serverTimestamp(),
           });
 
-          // ✅ AUDIT — reactivated
           await logSupplierEvent({
             whatHappened  : "Supplier Reactivated",
             supplierId    : existing.id,
             company,
             supplierBrand,
-            referenceID   : user.ReferenceID,
+            referenceID   : user!.ReferenceID,
             userId        : userId ?? undefined,
             extra         : { source: "excel_upload" },
           });
@@ -297,7 +417,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           products      : safeSplit(row["Product(s)"]),
           certificates  : safeSplit(row["Certificate(s)"]),
           createdBy     : userId,
-          referenceID   : user.ReferenceID,
+          referenceID   : user!.ReferenceID,
           isActive      : true,
           createdAt     : serverTimestamp(),
         });
@@ -309,13 +429,12 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           date_updated  : serverTimestamp(),
         });
 
-        // ✅ AUDIT — new supplier
         await logSupplierEvent({
           whatHappened  : "Supplier Added",
           supplierId    : docRef.id,
           company,
           supplierBrand,
-          referenceID   : user.ReferenceID,
+          referenceID   : user!.ReferenceID,
           userId        : userId ?? undefined,
           extra         : { source: "excel_upload" },
         });
@@ -340,10 +459,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           description: `Inserted: ${inserted}, Reactivated: ${reactivated}, Skipped: ${skipped}`,
         });
 
-        // ✅ AUDIT — bulk upload summary
         await logSupplierEvent({
           whatHappened : "Supplier Bulk Upload",
-          referenceID  : user.ReferenceID,
+          referenceID  : user!.ReferenceID,
           userId       : userId ?? undefined,
           inserted,
           reactivated,
@@ -362,6 +480,9 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     }
   };
 
+  /* ----------------------------------------------------------------
+   * Render
+   * ---------------------------------------------------------------- */
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -432,7 +553,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
               Cancel
             </Button>
             <Button onClick={handleConfirmUpload} disabled={loading || rows.length === 0}>
-              {loading ? "Uploading..." : "Go / Confirm Upload"}
+              {loading ? "Checking duplicates..." : "Go / Confirm Upload"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -462,7 +583,6 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
                 updatedByReferenceID: user?.ReferenceID,
               });
 
-              // ✅ AUDIT — per-supplier overwrite
               await logSupplierEvent({
                 whatHappened  : "Supplier Edited",
                 supplierId    : c.supplierId,
@@ -474,7 +594,6 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
               });
             }
 
-            // ✅ AUDIT — bulk overwrite summary
             await logSupplierEvent({
               whatHappened : "Supplier Bulk Upload",
               referenceID  : user?.ReferenceID,
@@ -493,6 +612,17 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           }}
         />
       </Dialog>
+
+      {/* ✅ NEW — Duplicate Check Modal */}
+      <DuplicateCheckModal
+        open={duplicateCheckOpen}
+        onOpenChange={setDuplicateCheckOpen}
+        title={`${duplicateRows.length} Duplicate Supplier${duplicateRows.length > 1 ? "s" : ""} Found`}
+        duplicates={duplicateRows}
+        uploading={loading}
+        onSkipDuplicates={handleSkipDuplicates}
+        onUploadAll={handleUploadAll}
+      />
     </>
   );
 }

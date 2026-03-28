@@ -29,7 +29,9 @@ import {
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
 import { useUser } from "@/contexts/UserContext";
-import { logProductEvent, logProductUsageEvent, logProductFamilyEvent } from "@/lib/auditlogger"; // ✅ AUDIT
+import { logProductEvent, logProductUsageEvent, logProductFamilyEvent } from "@/lib/auditlogger";
+
+import DuplicateCheckModal, { DuplicateRow } from "@/components/duplicate-check-modal"; // ✅ NEW
 
 type Props = {
   iconOnly?: boolean;
@@ -45,6 +47,33 @@ type CategoryType = { id: string; name: string };
 type ProductFamily = { id: string; name: string; categoryTypeId: string };
 type Supplier = { supplierId: string; company: string; supplierBrand?: string };
 type TemplateSpec = { id: string; title: string; specs: { specId: string }[]; sortOrder?: number };
+
+/* ------------------------------------------------------------------ */
+/*  Parsed row shape (extracted from worksheet during pre-check)       */
+/* ------------------------------------------------------------------ */
+type ParsedProductRow = {
+  usage: string;
+  family: string;
+  productClass: string;
+  pricePoint: string;
+  brandOrigin: string;
+  supplierBrand: string;
+  imageURL: string;
+  dimensionalURL: string;
+  illuminanceURL: string;
+  unitCost: string;
+  length: string;
+  width: string;
+  height: string;
+  pcsPerCarton: string;
+  factoryAddress: string;
+  portOfDischarge: string;
+  /** raw worksheet reference for full upload */
+  wsIndex: number;
+  rowIndex: number;
+  /** spec values keyed by "title||specId" */
+  specValues: Record<string, string>;
+};
 
 const cleanExcelValue = (val: any) => {
   if (val === null || val === undefined) return "";
@@ -66,6 +95,19 @@ const convertDriveToThumbnail = (url?: string) => {
   return url;
 };
 
+const extractHyperlink = (cell: any): string => {
+  if (!cell) return "";
+  if (typeof cell === "object") {
+    if (cell.text) return cell.text;
+    if (cell.hyperlink) return cell.hyperlink;
+    return String(cell);
+  }
+  return cleanExcelValue(cell);
+};
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                           */
+/* ------------------------------------------------------------------ */
 export default function UploadProduct({ iconOnly = false }: Props) {
   const { userId } = useUser();
   const [user, setUser] = useState<UserDetails | null>(null);
@@ -76,10 +118,15 @@ export default function UploadProduct({ iconOnly = false }: Props) {
   const [uploadProgress, setUploadProgress] = React.useState(0);
   const [totalRows, setTotalRows] = React.useState(0);
 
+  // ✅ NEW — duplicate check state
+  const [duplicateRows, setDuplicateRows] = useState<DuplicateRow[]>([]);
+  const [duplicateCheckOpen, setDuplicateCheckOpen] = useState(false);
+  const [parsedRows, setParsedRows] = useState<ParsedProductRow[]>([]);
+  const [nonDuplicateParsedRows, setNonDuplicateParsedRows] = useState<ParsedProductRow[]>([]);
+
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const cancelRef = React.useRef(false);
 
-  /* ── Fetch user details for audit log ── */
   useEffect(() => {
     if (!userId) return;
     fetch(`/api/users?id=${encodeURIComponent(userId)}`)
@@ -92,6 +139,9 @@ export default function UploadProduct({ iconOnly = false }: Props) {
       .catch(console.error);
   }, [userId]);
 
+  /* ----------------------------------------------------------------
+   *  Firestore helpers (unchanged from original)
+   * ---------------------------------------------------------------- */
   const generateProductReferenceID = async () => {
     const snap = await getDocs(collection(db, "products"));
     const count = snap.size + 1;
@@ -110,7 +160,6 @@ export default function UploadProduct({ iconOnly = false }: Props) {
       name, isActive: true, createdAt: serverTimestamp(),
       whatHappened: "Product Usage Added (Excel Upload)", date_updated: serverTimestamp(),
     });
-    // ✅ AUDIT — new product usage created during upload
     await logProductUsageEvent({
       whatHappened    : "Product Usage Added",
       productUsageId  : newDoc.id,
@@ -134,7 +183,6 @@ export default function UploadProduct({ iconOnly = false }: Props) {
       name, categoryTypeId, isActive: true, createdAt: serverTimestamp(),
       whatHappened: "Product Family Added (Excel Upload)", date_updated: serverTimestamp(),
     });
-    // ✅ AUDIT — new product family created during upload
     await logProductFamilyEvent({
       whatHappened     : "Product Family Added",
       productFamilyId  : newDoc.id,
@@ -217,8 +265,230 @@ export default function UploadProduct({ iconOnly = false }: Props) {
     }
   };
 
+  /* ----------------------------------------------------------------
+   * ✅ NEW — Parse workbook into flat rows for duplicate checking
+   * Returns all parsed rows without touching Firestore products
+   * ---------------------------------------------------------------- */
+  const parseWorkbookRows = async (workbook: ExcelJS.Workbook): Promise<ParsedProductRow[]> => {
+    const result: ParsedProductRow[] = [];
+
+    for (let wsIndex = 0; wsIndex < workbook.worksheets.length; wsIndex++) {
+      const ws = workbook.worksheets[wsIndex];
+      const header1Row = ws.getRow(1);
+      const header2Row = ws.getRow(2);
+      const header3Row = ws.getRow(3);
+
+      const commercialColMap: Record<string, number> = {
+        unitCost: -1, length: -1, width: -1, height: -1,
+        pcsPerCarton: -1, factoryAddress: -1, portOfDischarge: -1,
+      };
+      const excelColumns: { title: string; specId: string; col: number }[] = [];
+
+      for (let col = 1; col <= ws.columnCount; col++) {
+        const specHeader    = cleanExcelValue(header1Row.getCell(col).value);
+        const groupHeader   = cleanExcelValue(header2Row.getCell(col).value);
+        const commercialHeader = cleanExcelValue(header3Row.getCell(col).value);
+        if (commercialHeader === "Unit Cost")        { commercialColMap.unitCost = col; continue; }
+        if (commercialHeader === "Length")           { commercialColMap.length = col; continue; }
+        if (commercialHeader === "Width")            { commercialColMap.width = col; continue; }
+        if (commercialHeader === "Height")           { commercialColMap.height = col; continue; }
+        if (commercialHeader === "pcs/carton")       { commercialColMap.pcsPerCarton = col; continue; }
+        if (commercialHeader === "Factory Address")  { commercialColMap.factoryAddress = col; continue; }
+        if (commercialHeader === "Port of Discharge"){ commercialColMap.portOfDischarge = col; continue; }
+        if (col < 10) continue;
+        if (groupHeader === "COMMERCIAL DETAILS") continue;
+        if (!groupHeader || !specHeader) continue;
+        excelColumns.push({ title: groupHeader, specId: specHeader, col });
+      }
+
+      let lastUsage = "", lastFamily = "", lastClass = "", lastPricePoint = "";
+      let lastBrandOrigin = "", lastSupplier = "", lastImage = "";
+
+      const getCellVal = (row: ExcelJS.Row, colIndex: number) =>
+        colIndex > 0 ? cleanExcelValue(row.getCell(colIndex).value) : "";
+      const cleanCM = (val: string) => val ? val.replace(/[^0-9.]/g, "") : "";
+
+      for (let r = 4; r <= ws.actualRowCount; r++) {
+        const row = ws.getRow(r);
+
+        const usage        = cleanExcelValue(row.getCell(1).value) || lastUsage;
+        const family       = cleanExcelValue(row.getCell(2).value) || lastFamily;
+        const productClass = cleanExcelValue(row.getCell(3).value) || lastClass;
+        const pricePoint   = cleanExcelValue(row.getCell(4).value) || lastPricePoint;
+        const brandOrigin  = cleanExcelValue(row.getCell(5).value) || lastBrandOrigin;
+        const supplierBrand = cleanExcelValue(row.getCell(6).value) || lastSupplier;
+        let imageURL       = convertDriveToThumbnail(extractHyperlink(row.getCell(7).value)) || lastImage;
+        const dimensionalURL = convertDriveToThumbnail(extractHyperlink(row.getCell(8).value));
+        const illuminanceURL = convertDriveToThumbnail(extractHyperlink(row.getCell(9).value));
+
+        lastUsage = usage; lastFamily = family; lastClass = productClass;
+        lastPricePoint = pricePoint; lastBrandOrigin = brandOrigin;
+        lastSupplier = supplierBrand; lastImage = imageURL;
+
+        if (!usage || !family) continue;
+        if (!productClass && !pricePoint && !brandOrigin && !supplierBrand) continue;
+
+        const specValues: Record<string, string> = {};
+        for (const col of excelColumns) {
+          specValues[`${col.title}||${col.specId}`] = cleanExcelValue(row.getCell(col.col).value);
+        }
+
+        result.push({
+          usage, family, productClass, pricePoint, brandOrigin, supplierBrand,
+          imageURL, dimensionalURL, illuminanceURL,
+          unitCost      : getCellVal(row, commercialColMap.unitCost),
+          length        : cleanCM(getCellVal(row, commercialColMap.length)),
+          width         : cleanCM(getCellVal(row, commercialColMap.width)),
+          height        : cleanCM(getCellVal(row, commercialColMap.height)),
+          pcsPerCarton  : getCellVal(row, commercialColMap.pcsPerCarton),
+          factoryAddress: getCellVal(row, commercialColMap.factoryAddress),
+          portOfDischarge: getCellVal(row, commercialColMap.portOfDischarge),
+          wsIndex, rowIndex: r,
+          specValues,
+        });
+      }
+    }
+
+    return result;
+  };
+
+  /* ----------------------------------------------------------------
+   * ✅ NEW — Check parsed rows against existing products in Firestore
+   * Duplicate = same productClass + pricePoint + brandOrigin + supplierBrand
+   * within the same usage + family.
+   * ---------------------------------------------------------------- */
+  const checkForDuplicates = async (
+    rows: ParsedProductRow[],
+  ): Promise<{ dupeRows: DuplicateRow[]; nonDupes: ParsedProductRow[]; dupeOriginals: ParsedProductRow[] }> => {
+    const snap = await getDocs(collection(db, "products"));
+
+    // Build a fingerprint set from existing active products
+    const existingFingerprints = new Set<string>();
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      if (data.isActive === false) return;
+      const usage   = data.categoryTypes?.[0]?.categoryTypeName ?? "";
+      const family  = data.productFamilies?.[0]?.productFamilyName ?? "";
+      const fp = `${usage}|${family}|${data.productClass ?? ""}|${data.pricePoint ?? ""}|${data.brandOrigin ?? ""}|${data.supplier?.supplierBrand ?? ""}`.toLowerCase();
+      existingFingerprints.add(fp);
+    });
+
+    const dupeOriginals: ParsedProductRow[] = [];
+    const nonDupes: ParsedProductRow[] = [];
+
+    for (const row of rows) {
+      const fp = `${row.usage}|${row.family}|${row.productClass}|${row.pricePoint}|${row.brandOrigin}|${row.supplierBrand}`.toLowerCase();
+      if (existingFingerprints.has(fp)) {
+        dupeOriginals.push(row);
+      } else {
+        nonDupes.push(row);
+      }
+    }
+
+    const COLS = [
+      "Usage", "Family", "Product Class", "Price Point",
+      "Brand Origin", "Supplier Brand", "Image", "Dimensional", "Illuminance",
+      "Unit Cost", "L (cm)", "W (cm)", "H (cm)", "Pcs/Carton",
+      "Factory Address", "Port of Discharge",
+    ];
+
+    const dupeRows: DuplicateRow[] = dupeOriginals.map((row, i) => ({
+      key: `${i}-${row.usage}-${row.productClass}`,
+      columns: COLS,
+      values: [
+        row.usage, row.family, row.productClass, row.pricePoint,
+        row.brandOrigin, row.supplierBrand,
+        row.imageURL ? "✓ Image" : "—",
+        row.dimensionalURL ? "✓ Drawing" : "—",
+        row.illuminanceURL ? "✓ Illuminance" : "—",
+        row.unitCost, row.length, row.width, row.height, row.pcsPerCarton,
+        row.factoryAddress, row.portOfDischarge,
+      ],
+    }));
+
+    return { dupeRows, nonDupes, dupeOriginals };
+  };
+
+  /* ----------------------------------------------------------------
+   * Called when user clicks Upload button
+   * 1. Parse workbook
+   * 2. Check duplicates
+   * 3a. No dupes → upload all
+   * 3b. Dupes found → show DuplicateCheckModal
+   * ---------------------------------------------------------------- */
   const handleUpload = async () => {
     if (!file) return;
+    cancelRef.current = false;
+
+    setUploading(true);
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await file.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+
+      const allRows = await parseWorkbookRows(workbook);
+      setParsedRows(allRows);
+
+      if (!allRows.length) {
+        toast.warning("No valid rows found in the file.");
+        setUploading(false);
+        return;
+      }
+
+      const { dupeRows, nonDupes, dupeOriginals } = await checkForDuplicates(allRows);
+
+      if (dupeRows.length > 0) {
+        setDuplicateRows(dupeRows);
+        setNonDuplicateParsedRows(nonDupes);
+        setDuplicateCheckOpen(true);
+        setUploading(false);
+        return;
+      }
+
+      // No duplicates — proceed
+      await performUpload(allRows, workbook);
+    } catch (error) {
+      console.error(error);
+      toast.error("Upload failed");
+      setUploading(false);
+    }
+  };
+
+  /* ----------------------------------------------------------------
+   * Duplicate modal: "Skip Duplicates"
+   * ---------------------------------------------------------------- */
+  const handleSkipDuplicates = async () => {
+    setDuplicateCheckOpen(false);
+    if (!nonDuplicateParsedRows.length) {
+      toast.warning("Nothing to upload", { description: "All rows were duplicates." });
+      return;
+    }
+    if (!file) return;
+    setUploading(true);
+    const workbook = new ExcelJS.Workbook();
+    const buffer = await file.arrayBuffer();
+    await workbook.xlsx.load(buffer);
+    await performUpload(nonDuplicateParsedRows, workbook);
+  };
+
+  /* ----------------------------------------------------------------
+   * Duplicate modal: "Upload All" (overwrite)
+   * ---------------------------------------------------------------- */
+  const handleUploadAll = async () => {
+    setDuplicateCheckOpen(false);
+    if (!file) return;
+    setUploading(true);
+    const workbook = new ExcelJS.Workbook();
+    const buffer = await file.arrayBuffer();
+    await workbook.xlsx.load(buffer);
+    await performUpload(parsedRows, workbook);
+  };
+
+  /* ----------------------------------------------------------------
+   * Core upload logic — works from pre-parsed rows
+   * ---------------------------------------------------------------- */
+  const performUpload = async (rowsToUpload: ParsedProductRow[], workbook: ExcelJS.Workbook) => {
     cancelRef.current = false;
 
     try {
@@ -233,219 +503,128 @@ export default function UploadProduct({ iconOnly = false }: Props) {
         console.warn("Audio blocked by browser");
       }
 
-      setUploading(true);
-      const workbook = new ExcelJS.Workbook();
-      const buffer = await file.arrayBuffer();
-      await workbook.xlsx.load(buffer);
-
-      let validRows = 0;
-      for (const ws of workbook.worksheets) {
-        if (cancelRef.current) { toast.message("Upload cancelled"); break; }
-        let lastUsage = ""; let lastFamily = "";
-        for (let r = 4; r <= ws.actualRowCount; r++) {
-          if (cancelRef.current) break;
-          const row = ws.getRow(r);
-          const usage = cleanExcelValue(row.getCell(1).value) || lastUsage;
-          const family = cleanExcelValue(row.getCell(2).value) || lastFamily;
-          lastUsage = usage; lastFamily = family;
-          if (!usage || !family) continue;
-          const category = await findCategoryType(usage);
-          if (!category) continue;
-          const productFamily = await findProductFamily(category.id, family);
-          if (!productFamily) continue;
-          validRows++;
-        }
-      }
-
-      setTotalRows(validRows);
+      setTotalRows(rowsToUpload.length);
       setUploadProgress(0);
 
-      let totalInserted = 0;
-
-      for (const ws of workbook.worksheets) {
-        if (cancelRef.current) { toast.message("Upload cancelled"); break; }
-
+      // Build excelColumns map per wsIndex from workbook headers
+      const wsColumnsMap = new Map<number, { title: string; specId: string; col: number }[]>();
+      for (let wsIndex = 0; wsIndex < workbook.worksheets.length; wsIndex++) {
+        const ws = workbook.worksheets[wsIndex];
         const header1Row = ws.getRow(1);
         const header2Row = ws.getRow(2);
         const header3Row = ws.getRow(3);
-
-        const excelColumns: { title: string; specId: string; col: number }[] = [];
-        const commercialColMap: Record<string, number> = {
-          unitCost: -1, length: -1, width: -1, height: -1,
-          pcsPerCarton: -1, factoryAddress: -1, portOfDischarge: -1,
-        };
-
+        const cols: { title: string; specId: string; col: number }[] = [];
         for (let col = 1; col <= ws.columnCount; col++) {
-          const specHeader = cleanExcelValue(header1Row.getCell(col).value);
-          const groupHeader = cleanExcelValue(header2Row.getCell(col).value);
-          const commercialHeader = cleanExcelValue(header3Row.getCell(col).value);
-
-          if (commercialHeader === "Unit Cost") { commercialColMap.unitCost = col; continue; }
-          if (commercialHeader === "Length") { commercialColMap.length = col; continue; }
-          if (commercialHeader === "Width") { commercialColMap.width = col; continue; }
-          if (commercialHeader === "Height") { commercialColMap.height = col; continue; }
-          if (commercialHeader === "pcs/carton") { commercialColMap.pcsPerCarton = col; continue; }
-          if (commercialHeader === "Factory Address") { commercialColMap.factoryAddress = col; continue; }
-          if (commercialHeader === "Port of Discharge") { commercialColMap.portOfDischarge = col; continue; }
+          const specHeader    = cleanExcelValue(header1Row.getCell(col).value);
+          const groupHeader   = cleanExcelValue(header2Row.getCell(col).value);
+          const commercialHdr = cleanExcelValue(header3Row.getCell(col).value);
+          if (["Unit Cost","Length","Width","Height","pcs/carton","Factory Address","Port of Discharge"].includes(commercialHdr)) continue;
           if (col < 10) continue;
           if (groupHeader === "COMMERCIAL DETAILS") continue;
           if (!groupHeader || !specHeader) continue;
-          excelColumns.push({ title: groupHeader, specId: specHeader, col });
+          cols.push({ title: groupHeader, specId: specHeader, col });
         }
+        wsColumnsMap.set(wsIndex, cols);
+      }
 
-        const syncedFamilies = new Set<string>();
-        let lastUsage = ""; let lastFamily = ""; let lastClass = ""; let lastPricePoint = "";
-        let lastBrandOrigin = ""; let lastSupplier = ""; let lastImage = "";
+      const syncedFamilies = new Set<string>();
+      let totalInserted = 0;
 
-        for (let r = 4; r <= ws.actualRowCount; r++) {
-          if (cancelRef.current) { toast.message("Upload cancelled"); break; }
+      for (const row of rowsToUpload) {
+        if (cancelRef.current) { toast.message("Upload cancelled"); break; }
 
-          const row = ws.getRow(r);
-          let usage = cleanExcelValue(row.getCell(1).value) || lastUsage;
-          let family = cleanExcelValue(row.getCell(2).value) || lastFamily;
-          let productClass = cleanExcelValue(row.getCell(3).value) || lastClass;
-          let pricePoint = cleanExcelValue(row.getCell(4).value) || lastPricePoint;
-          let brandOrigin = cleanExcelValue(row.getCell(5).value) || lastBrandOrigin;
-          let supplierBrand = cleanExcelValue(row.getCell(6).value) || lastSupplier;
+        const category = await findCategoryType(row.usage);
+        if (!category) continue;
+        const productFamily = await findProductFamily(category.id, row.family);
+        if (!productFamily) continue;
+        const supplier = await findSupplier(row.supplierBrand);
 
-          let imageCell: any = row.getCell(7).value;
-          let dimensionalCell: any = row.getCell(8).value;
-          let dimensionalURL = "";
-          if (typeof dimensionalCell === "object" && dimensionalCell !== null) {
-            if (dimensionalCell.text) dimensionalURL = dimensionalCell.text;
-            else if (dimensionalCell.hyperlink) dimensionalURL = dimensionalCell.hyperlink;
-            else dimensionalURL = String(dimensionalCell);
-          } else { dimensionalURL = cleanExcelValue(dimensionalCell); }
-          dimensionalURL = convertDriveToThumbnail(dimensionalURL);
-
-          let illuminanceCell: any = row.getCell(9).value;
-          let illuminanceURL = "";
-          if (typeof illuminanceCell === "object" && illuminanceCell !== null) {
-            if (illuminanceCell.text) illuminanceURL = illuminanceCell.text;
-            else if (illuminanceCell.hyperlink) illuminanceURL = illuminanceCell.hyperlink;
-            else illuminanceURL = String(illuminanceCell);
-          } else { illuminanceURL = cleanExcelValue(illuminanceCell); }
-          illuminanceURL = convertDriveToThumbnail(illuminanceURL);
-
-          let imageURL = "";
-          if (typeof imageCell === "object" && imageCell !== null) {
-            if (imageCell.text) imageURL = imageCell.text;
-            else if (imageCell.hyperlink) imageURL = imageCell.hyperlink;
-            else imageURL = String(imageCell);
-          } else { imageURL = cleanExcelValue(imageCell); }
-          imageURL = imageURL || lastImage;
-          imageURL = convertDriveToThumbnail(imageURL);
-
-          const getCellVal = (colIndex: number) => colIndex > 0 ? cleanExcelValue(row.getCell(colIndex).value) : "";
-          const cleanCM = (val: string) => { if (!val) return ""; return val.replace(/[^0-9.]/g, ""); };
-
-          const unitCost = getCellVal(commercialColMap.unitCost);
-          const length = cleanCM(getCellVal(commercialColMap.length));
-          const width = cleanCM(getCellVal(commercialColMap.width));
-          const height = cleanCM(getCellVal(commercialColMap.height));
-          const pcsPerCarton = getCellVal(commercialColMap.pcsPerCarton);
-          const factoryAddress = getCellVal(commercialColMap.factoryAddress);
-          const portOfDischarge = getCellVal(commercialColMap.portOfDischarge);
-
-          lastUsage = usage; lastFamily = family; lastClass = productClass;
-          lastPricePoint = pricePoint; lastBrandOrigin = brandOrigin;
-          lastSupplier = supplierBrand; lastImage = imageURL;
-
-          if (!usage || !family) continue;
-          if (!productClass && !pricePoint && !brandOrigin && !supplierBrand) continue;
-
-          const category = await findCategoryType(usage);
-          if (!category) continue;
-          const productFamily = await findProductFamily(category.id, family);
-          if (!productFamily) continue;
-          const supplier = await findSupplier(supplierBrand);
-
-          const syncKey = category.id + "_" + productFamily.id;
-          if (!syncedFamilies.has(syncKey)) {
-            if (cancelRef.current) break;
-            await createMissingTemplateSpecs(category.id, productFamily.id, excelColumns);
-            if (cancelRef.current) break;
-            await syncExistingProductsToTemplate(category.id, productFamily.id);
-            syncedFamilies.add(syncKey);
-          }
-
-          const templateSpecs = await findTemplateSpecs(category.id, productFamily.id);
-          const productSpecs = templateSpecs.map((template) => ({
-            technicalSpecificationId: template.id,
-            title: template.title,
-            specs: template.specs.map((templateSpec) => {
-              const excelMatch = excelColumns.find((col) => col.title === template.title && col.specId === templateSpec.specId);
-              const cellValue = excelMatch ? cleanExcelValue(row.getCell(excelMatch.col).value) : "";
-              return { specId: templateSpec.specId, value: cellValue };
-            }),
-          }));
-
-          const referenceID = await generateProductReferenceID();
+        const excelColumns = wsColumnsMap.get(row.wsIndex) ?? [];
+        const syncKey = category.id + "_" + productFamily.id;
+        if (!syncedFamilies.has(syncKey)) {
           if (cancelRef.current) break;
-
-          const newDocRef = await addDoc(collection(db, "products"), {
-            productReferenceID: referenceID,
-            productClass, pricePoint, brandOrigin, supplier,
-            mainImage         : imageURL ? { url: imageURL } : null,
-            dimensionalDrawing: dimensionalURL ? { url: dimensionalURL } : null,
-            illuminanceDrawing: illuminanceURL ? { url: illuminanceURL } : null,
-            categoryTypes     : [{ productUsageId: category.id, categoryTypeName: category.name }],
-            productFamilies   : [{ productFamilyId: productFamily.id, productFamilyName: productFamily.name, productUsageId: category.id }],
-            technicalSpecifications: productSpecs,
-            commercialDetails : {
-              unitCost      : unitCost ? parseFloat(unitCost) : null,
-              packaging     : {
-                length : length ? `${parseFloat(length)} cm` : null,
-                width  : width ? `${parseFloat(width)} cm` : null,
-                height : height ? `${parseFloat(height)} cm` : null,
-              },
-              pcsPerCarton  : pcsPerCarton ? parseInt(pcsPerCarton) : null,
-              factoryAddress: factoryAddress || "",
-              portOfDischarge: portOfDischarge || "",
-            },
-            isActive    : true,
-            createdAt   : serverTimestamp(),
-            whatHappened: "Product Added",
-            date_updated: serverTimestamp(),
-          });
-
-          // ✅ AUDIT — per product, real-time with referenceID
-          await logProductEvent({
-            whatHappened      : "Product Added",
-            productId         : newDocRef.id,
-            productReferenceID: referenceID,
-            productClass,
-            pricePoint,
-            brandOrigin,
-            supplier          : supplier ?? null,
-            categoryTypes     : [{ productUsageId: category.id, categoryTypeName: category.name }],
-            productFamilies   : [{ productFamilyId: productFamily.id, productFamilyName: productFamily.name }],
-            mainImage          : imageURL ? { url: imageURL } : null,
-            dimensionalDrawing : dimensionalURL ? { url: dimensionalURL } : null,
-            illuminanceDrawing : illuminanceURL ? { url: illuminanceURL } : null,
-            technicalSpecifications: productSpecs.map(s => ({
-              technicalSpecificationId: s.technicalSpecificationId,
-              title: s.title,
-              specs: s.specs,
-            })),
-            referenceID       : user?.ReferenceID,   // ✅ who did it
-            userId            : userId ?? undefined,
-            extra             : { source: "excel_upload", filename: file?.name ?? "" },
-          });
-
-          totalInserted++;
-          setUploadProgress((prev) => prev + 1);
+          await createMissingTemplateSpecs(category.id, productFamily.id, excelColumns);
+          if (cancelRef.current) break;
+          await syncExistingProductsToTemplate(category.id, productFamily.id);
+          syncedFamilies.add(syncKey);
         }
+
+        const templateSpecs = await findTemplateSpecs(category.id, productFamily.id);
+        const productSpecs = templateSpecs.map((template) => ({
+          technicalSpecificationId: template.id,
+          title: template.title,
+          specs: template.specs.map((templateSpec) => ({
+            specId: templateSpec.specId,
+            value : row.specValues[`${template.title}||${templateSpec.specId}`] ?? "",
+          })),
+        }));
+
+        const referenceID = await generateProductReferenceID();
+        if (cancelRef.current) break;
+
+        const newDocRef = await addDoc(collection(db, "products"), {
+          productReferenceID: referenceID,
+          productClass      : row.productClass,
+          pricePoint        : row.pricePoint,
+          brandOrigin       : row.brandOrigin,
+          supplier,
+          mainImage         : row.imageURL ? { url: row.imageURL } : null,
+          dimensionalDrawing: row.dimensionalURL ? { url: row.dimensionalURL } : null,
+          illuminanceDrawing: row.illuminanceURL ? { url: row.illuminanceURL } : null,
+          categoryTypes     : [{ productUsageId: category.id, categoryTypeName: category.name }],
+          productFamilies   : [{ productFamilyId: productFamily.id, productFamilyName: productFamily.name, productUsageId: category.id }],
+          technicalSpecifications: productSpecs,
+          commercialDetails : {
+            unitCost      : row.unitCost ? parseFloat(row.unitCost) : null,
+            packaging     : {
+              length : row.length ? `${parseFloat(row.length)} cm` : null,
+              width  : row.width  ? `${parseFloat(row.width)} cm`  : null,
+              height : row.height ? `${parseFloat(row.height)} cm` : null,
+            },
+            pcsPerCarton   : row.pcsPerCarton ? parseInt(row.pcsPerCarton) : null,
+            factoryAddress : row.factoryAddress || "",
+            portOfDischarge: row.portOfDischarge || "",
+          },
+          isActive    : true,
+          createdAt   : serverTimestamp(),
+          whatHappened: "Product Added",
+          date_updated: serverTimestamp(),
+        });
+
+        await logProductEvent({
+          whatHappened      : "Product Added",
+          productId         : newDocRef.id,
+          productReferenceID: referenceID,
+          productClass      : row.productClass,
+          pricePoint        : row.pricePoint,
+          brandOrigin       : row.brandOrigin,
+          supplier          : supplier ?? null,
+          categoryTypes     : [{ productUsageId: category.id, categoryTypeName: category.name }],
+          productFamilies   : [{ productFamilyId: productFamily.id, productFamilyName: productFamily.name }],
+          mainImage          : row.imageURL ? { url: row.imageURL } : null,
+          dimensionalDrawing : row.dimensionalURL ? { url: row.dimensionalURL } : null,
+          illuminanceDrawing : row.illuminanceURL ? { url: row.illuminanceURL } : null,
+          technicalSpecifications: productSpecs.map(s => ({
+            technicalSpecificationId: s.technicalSpecificationId,
+            title: s.title,
+            specs: s.specs,
+          })),
+          referenceID       : user?.ReferenceID,
+          userId            : userId ?? undefined,
+          extra             : { source: "excel_upload", filename: file?.name ?? "" },
+        });
+
+        totalInserted++;
+        setUploadProgress((prev) => prev + 1);
       }
 
       audioRef.current?.pause();
       audioRef.current!.currentTime = 0;
 
-      // ✅ AUDIT — bulk summary with referenceID
       await logProductEvent({
         whatHappened: "Product Bulk Upload",
         inserted    : totalInserted,
-        referenceID : user?.ReferenceID,   // ✅ who did it
+        referenceID : user?.ReferenceID,
         userId      : userId ?? undefined,
         extra       : { source: "excel_upload", filename: file?.name ?? "" },
       });
@@ -465,63 +644,79 @@ export default function UploadProduct({ iconOnly = false }: Props) {
     }
   };
 
+  /* ----------------------------------------------------------------
+   * Render
+   * ---------------------------------------------------------------- */
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {iconOnly ? (
-          <button className="h-8 w-8 rounded-full border border-gray-200 bg-white/80 flex items-center justify-center">
-            <Upload className="h-4 w-4 text-gray-600" />
-          </button>
-        ) : (
-          <Button>
-            <Upload className="w-4 h-4 mr-2" />
-            Upload
-          </Button>
-        )}
-      </DialogTrigger>
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {iconOnly ? (
+            <button className="h-8 w-8 rounded-full border border-gray-200 bg-white/80 flex items-center justify-center">
+              <Upload className="h-4 w-4 text-gray-600" />
+            </button>
+          ) : (
+            <Button>
+              <Upload className="w-4 h-4 mr-2" />
+              Upload
+            </Button>
+          )}
+        </DialogTrigger>
 
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Upload Products</DialogTitle>
-        </DialogHeader>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Products</DialogTitle>
+          </DialogHeader>
 
-        <div
-          className="border-2 border-dashed rounded-lg p-10 text-center cursor-pointer hover:bg-gray-50 transition"
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => { e.preventDefault(); const droppedFile = e.dataTransfer.files?.[0]; if (droppedFile) setFile(droppedFile); }}
-          onClick={() => document.getElementById("product-upload-input")?.click()}
-        >
-          <div className="flex flex-col items-center gap-3">
-            <Upload className="w-10 h-10 text-gray-500" />
-            <p className="text-sm text-gray-600">Drag & Drop your Excel file here</p>
-            <p className="text-xs text-gray-400">or click to browse</p>
-            {file && !uploading && <p className="text-sm font-medium text-green-600">{file.name}</p>}
-            {uploading && (
-              <div className="flex flex-col items-center gap-2 mt-2">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-                <p className="text-sm font-medium">Uploading products...</p>
-                <p className="text-xs text-gray-500">{uploadProgress} out of {totalRows}</p>
-              </div>
-            )}
+          <div
+            className="border-2 border-dashed rounded-lg p-10 text-center cursor-pointer hover:bg-gray-50 transition"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => { e.preventDefault(); const droppedFile = e.dataTransfer.files?.[0]; if (droppedFile) setFile(droppedFile); }}
+            onClick={() => document.getElementById("product-upload-input")?.click()}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <Upload className="w-10 h-10 text-gray-500" />
+              <p className="text-sm text-gray-600">Drag & Drop your Excel file here</p>
+              <p className="text-xs text-gray-400">or click to browse</p>
+              {file && !uploading && <p className="text-sm font-medium text-green-600">{file.name}</p>}
+              {uploading && (
+                <div className="flex flex-col items-center gap-2 mt-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                  <p className="text-sm font-medium">Uploading products...</p>
+                  <p className="text-xs text-gray-500">{uploadProgress} out of {totalRows}</p>
+                </div>
+              )}
+            </div>
+            <input id="product-upload-input" type="file" accept=".xlsx" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
           </div>
-          <input id="product-upload-input" type="file" accept=".xlsx" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => {
-            cancelRef.current = true;
-            if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
-            setUploading(false);
-            setOpen(false);
-            toast.message("Upload cancelled");
-          }}>
-            Cancel
-          </Button>
-          <Button disabled={!file || uploading} onClick={handleUpload}>
-            {uploading ? "Uploading..." : "Upload"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              cancelRef.current = true;
+              if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+              setUploading(false);
+              setOpen(false);
+              toast.message("Upload cancelled");
+            }}>
+              Cancel
+            </Button>
+            <Button disabled={!file || uploading} onClick={handleUpload}>
+              {uploading ? "Checking..." : "Upload"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ NEW — Duplicate Check Modal */}
+      <DuplicateCheckModal
+        open={duplicateCheckOpen}
+        onOpenChange={setDuplicateCheckOpen}
+        title={`${duplicateRows.length} Duplicate Product${duplicateRows.length > 1 ? "s" : ""} Found`}
+        duplicates={duplicateRows}
+        uploading={uploading}
+        onSkipDuplicates={handleSkipDuplicates}
+        onUploadAll={handleUploadAll}
+      />
+    </>
   );
 }
