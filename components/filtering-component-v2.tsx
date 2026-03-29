@@ -8,7 +8,7 @@ import {
   CommandItem,
   CommandEmpty,
 } from "@/components/ui/command";
-import { Check } from "lucide-react";
+import { Check, ChevronRight, SlidersHorizontal, X, ArrowLeft } from "lucide-react";
 import EyeDetails from "@/components/eye-details";
 
 type Props = {
@@ -26,17 +26,17 @@ const getEffectivePricePoint = (p: any): string => p.pricePoint || "ECONOMY";
 const getEffectiveBrandOriginLocal = (p: any): string => p.brandOrigin || "CHINA";
 const getEffectivePricePointLocal = (p: any): string => p.pricePoint || "ECONOMY";
 
-/* Returns the display label for supplier brand — falls back to NO_SUPPLIER_BRAND */
 const getEffectiveSupplierBrand = (p: any): string =>
   p.supplier?.supplierBrand?.trim() || NO_SUPPLIER_BRAND;
 
-const stepColors: Record<string, string> = {
-  "Product Usage": "bg-blue-100",
-  "Product Family": "bg-green-100",
-  "Product Class": "bg-yellow-100",
-  "Price Point": "bg-purple-100",
-  "Brand Origin": "bg-orange-100",
-  "Supplier Brand": "bg-pink-100",
+/* Step accent colors — refined palette */
+const stepAccents: Record<string, { dot: string; ring: string; badge: string }> = {
+  "Product Usage":   { dot: "bg-sky-500",    ring: "ring-sky-200",    badge: "bg-sky-50 text-sky-700 border-sky-200" },
+  "Product Family":  { dot: "bg-emerald-500", ring: "ring-emerald-200", badge: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  "Product Class":   { dot: "bg-amber-500",   ring: "ring-amber-200",   badge: "bg-amber-50 text-amber-700 border-amber-200" },
+  "Price Point":     { dot: "bg-violet-500",  ring: "ring-violet-200",  badge: "bg-violet-50 text-violet-700 border-violet-200" },
+  "Brand Origin":    { dot: "bg-orange-500",  ring: "ring-orange-200",  badge: "bg-orange-50 text-orange-700 border-orange-200" },
+  "Supplier Brand":  { dot: "bg-rose-500",    ring: "ring-rose-200",    badge: "bg-rose-50 text-rose-700 border-rose-200" },
 };
 
 const COLLAPSE_THRESHOLD = 6;
@@ -50,11 +50,9 @@ const splitValues = (value: string): string[] => {
 
 const formatSpec = (s: any): string => {
   if (!s) return "";
-  if (s.isRanging)
-    return `${s.rangeFrom} - ${s.rangeTo}${s.unit ? ` ${s.unit}` : ""}`;
+  if (s.isRanging) return `${s.rangeFrom} - ${s.rangeTo}${s.unit ? ` ${s.unit}` : ""}`;
   if (s.isSlashing) return s.slashValues?.join("/") || "";
-  if (s.isDimension)
-    return `${s.slashValues?.join(" x ") || ""}${s.unit ? ` ${s.unit}` : ""}`;
+  if (s.isDimension) return `${s.slashValues?.join(" x ") || ""}${s.unit ? ` ${s.unit}` : ""}`;
   if (s.isIPRating) return `IP${s.ipFirst}${s.ipSecond}`;
   if (s.value) return s.unit ? `${s.value} ${s.unit}` : s.value;
   return "";
@@ -107,12 +105,9 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       if (!check("Product Class", p.productClass)) return false;
       if (!check("Price Point", getEffectivePricePoint(p))) return false;
       if (!check("Brand Origin", getEffectiveBrandOrigin(p))) return false;
-
-      /* ✅ Supplier Brand: use effective value so NO_SUPPLIER_BRAND matches */
       if (filters["Supplier Brand"]?.length) {
         if (!filters["Supplier Brand"].includes(getEffectiveSupplierBrand(p))) return false;
       }
-
       for (const [k, vals] of Object.entries(filters) as [string, string[]][]) {
         if (!k.includes("||")) continue;
         if (!vals.length) continue;
@@ -129,7 +124,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         });
         if (!vals.some((v) => pv.includes(v))) return false;
       }
-
       return true;
     });
   }, [filters, products]);
@@ -158,9 +152,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     return result;
   }, [sourceProducts]);
 
-  /* ================================================= */
-  /* TECH SPEC GROUP ORDER — only non-empty groups     */
-  /* ================================================= */
   const techSpecGroupOrder = useMemo(() => {
     const ordered: string[] = [];
     technicalSpecs.forEach((specMap, groupTitle) => {
@@ -170,47 +161,30 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     return ordered;
   }, [technicalSpecs]);
 
-  /* ================================================= */
-  /* FULL STEP ORDER                                   */
-  /* ================================================= */
   const fullStepOrder = useMemo(() => {
     return [...BASE_STEP_ORDER, ...techSpecGroupOrder];
   }, [techSpecGroupOrder]);
 
-  /* ================================================= */
-  /* SYNC visibleSteps when techSpecGroupOrder changes */
-  /* ================================================= */
   useEffect(() => {
     setVisibleSteps((prev) => {
       const hasTechSpecVisible = prev.some((s) => !BASE_STEP_ORDER.includes(s));
       if (!hasTechSpecVisible) return prev;
-
       const lastVisibleTech = [...prev].reverse().find((s) => !BASE_STEP_ORDER.includes(s));
       if (!lastVisibleTech) return prev;
-
       const lastShownGroupIndex = techSpecGroupOrder.indexOf(lastVisibleTech);
-
       if (lastShownGroupIndex === -1) {
-        return prev.filter(
-          (s) => BASE_STEP_ORDER.includes(s) || techSpecGroupOrder.includes(s),
-        );
+        return prev.filter((s) => BASE_STEP_ORDER.includes(s) || techSpecGroupOrder.includes(s));
       }
-
       const baseVisible = prev.filter((s) => BASE_STEP_ORDER.includes(s));
       const techVisible = techSpecGroupOrder.slice(0, lastShownGroupIndex + 1);
-
       const merged = [...baseVisible];
-      techVisible.forEach((s) => {
-        if (!merged.includes(s)) merged.push(s);
-      });
-
+      techVisible.forEach((s) => { if (!merged.includes(s)) merged.push(s); });
       return merged;
     });
   }, [techSpecGroupOrder]);
 
   /* ================= FILTER SOURCES ================= */
   const productUsages = uniq(products.map((p) => p.categoryTypes?.[0]?.categoryTypeName));
-
   const productFamilies = uniq(
     products
       .filter((p) => {
@@ -220,12 +194,10 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       })
       .map((p) => p.productFamilies?.[0]?.productFamilyName),
   );
-
   const pricePoints = uniq(products.map((p) => getEffectivePricePoint(p)));
   const brandOrigins = uniq(products.map((p) => getEffectiveBrandOrigin(p)));
   const productClasses = uniq(products.map((p) => p.productClass));
 
-  /* ✅ Supplier Brand list: always include NO_SUPPLIER_BRAND if any product lacks a brand */
   const suppliers = useMemo(() => {
     const filtered = products.filter((p) => {
       if (filters["Product Usage"]?.length && !filters["Product Usage"].includes(p.categoryTypes?.[0]?.categoryTypeName)) return false;
@@ -235,26 +207,18 @@ export default function FilteringComponent({ products, onFilter }: Props) {
       if (filters["Brand Origin"]?.length && !filters["Brand Origin"].includes(getEffectiveBrandOrigin(p))) return false;
       return true;
     });
-
     const brands = new Set<string>();
-    filtered.forEach((p) => {
-      brands.add(getEffectiveSupplierBrand(p));
-    });
-
-    /* Sort: real brands alphabetically first, then NO SUPPLIER BRAND at end */
-    const sorted = Array.from(brands).sort((a, b) => {
+    filtered.forEach((p) => { brands.add(getEffectiveSupplierBrand(p)); });
+    return Array.from(brands).sort((a, b) => {
       if (a === NO_SUPPLIER_BRAND) return 1;
       if (b === NO_SUPPLIER_BRAND) return -1;
       return a.localeCompare(b);
     });
-
-    return sorted;
   }, [products, filters]);
 
   /* ================= FILTER ENGINE ================= */
   useEffect(() => {
     (window as any).__ACTIVE_FILTERS__ = Object.values(filters).flat();
-
     const filtered = products.filter((p) => {
       const check = (key: string, value: any) => {
         if (filters[key]?.length) {
@@ -265,31 +229,23 @@ export default function FilteringComponent({ products, onFilter }: Props) {
             const match = valueStr.match(/(\d+(\.\d+)?)\s*-\s*(\d+(\.\d+)?)/);
             if (match && !isNaN(Number(filterVal))) {
               const num = Number(filterVal);
-              const from = Number(match[1]);
-              const to = Number(match[3]);
-              if (num >= from && num <= to) return true;
+              if (num >= Number(match[1]) && num <= Number(match[3])) return true;
             }
             return false;
           });
         }
-        if (searchFilters[key])
-          return value?.toLowerCase().includes(searchFilters[key].toLowerCase());
+        if (searchFilters[key]) return value?.toLowerCase().includes(searchFilters[key].toLowerCase());
         return true;
       };
-
       if (!check("Product Usage", p.categoryTypes?.[0]?.categoryTypeName)) return false;
       if (!check("Product Family", p.productFamilies?.[0]?.productFamilyName)) return false;
       if (!check("Price Point", getEffectivePricePoint(p))) return false;
       if (!check("Brand Origin", getEffectiveBrandOrigin(p))) return false;
       if (!check("Product Class", p.productClass)) return false;
       if (!check("Supplier", p.supplier?.company)) return false;
-
-      /* ✅ Supplier Brand filter: match using effective value */
       if (filters["Supplier Brand"]?.length) {
-        const effectiveBrand = getEffectiveSupplierBrand(p);
-        if (!filters["Supplier Brand"].includes(effectiveBrand)) return false;
+        if (!filters["Supplier Brand"].includes(getEffectiveSupplierBrand(p))) return false;
       }
-
       for (const [k, vals] of Object.entries(filters) as [string, string[]][]) {
         if (!k.includes("||")) continue;
         const [gt, sn] = k.split("||");
@@ -305,10 +261,8 @@ export default function FilteringComponent({ products, onFilter }: Props) {
         });
         if (vals.length && !vals.some((v) => pv.includes(v))) return false;
       }
-
       return true;
     });
-
     onFilter(filtered);
   }, [filters, searchFilters, products]);
 
@@ -316,19 +270,15 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   const advanceToNextStep = (currentTitle: string) => {
     const currentIndex = fullStepOrder.indexOf(currentTitle);
     if (currentIndex === -1 || currentIndex >= fullStepOrder.length - 1) return;
-
     let nextIndex = currentIndex + 1;
     while (nextIndex < fullStepOrder.length) {
       const candidate = fullStepOrder[nextIndex];
       if (BASE_STEP_ORDER.includes(candidate)) break;
       const groupMap = technicalSpecs.get(candidate);
-      const hasValues = groupMap
-        ? Array.from(groupMap.values()).some((s) => s.size > 0)
-        : false;
+      const hasValues = groupMap ? Array.from(groupMap.values()).some((s) => s.size > 0) : false;
       if (hasValues) break;
       nextIndex++;
     }
-
     if (nextIndex < fullStepOrder.length) {
       const nextStep = fullStepOrder[nextIndex];
       setVisibleSteps((prev) => {
@@ -343,14 +293,12 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   const toggle = (title: string, value: string) => {
     setFilters((prev) => {
       const alreadySelected = prev[title]?.includes(value);
-
       const updated = {
         ...prev,
         [title]: alreadySelected
           ? prev[title].filter((v) => v !== value)
           : [...(prev[title] || []), value],
       };
-
       if (!alreadySelected && BASE_STEP_ORDER.includes(title)) {
         const currentIndex = BASE_STEP_ORDER.indexOf(title);
         if (currentIndex < BASE_STEP_ORDER.length - 1) {
@@ -362,7 +310,6 @@ export default function FilteringComponent({ products, onFilter }: Props) {
           scrollToStep(nextStep);
         }
       }
-
       return updated;
     });
   };
@@ -371,16 +318,12 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   const handleBack = (title: string) => {
     const currentIndex = fullStepOrder.indexOf(title);
     if (currentIndex <= 0) return;
-
     const stepsToKeep = fullStepOrder.slice(0, currentIndex);
     setVisibleSteps(stepsToKeep);
-
     setFilters((prev) => {
       const updated = { ...prev };
       const clearedSteps = fullStepOrder.slice(currentIndex);
-      clearedSteps.forEach((step) => {
-        delete updated[step];
-      });
+      clearedSteps.forEach((step) => { delete updated[step]; });
       Object.keys(updated).forEach((key) => {
         if (!key.includes("||")) return;
         const [gt] = key.split("||");
@@ -401,218 +344,358 @@ export default function FilteringComponent({ products, onFilter }: Props) {
   const setSearch = (title: string, value: string) =>
     setSearchFilters((prev) => ({ ...prev, [title]: value }));
 
+  /* Count active filters */
+  const activeFilterCount = Object.values(filters).flat().length;
+
   /* ================= UI ================= */
   return (
-    <div className="border rounded-lg bg-card flex flex-col h-full">
-      {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-card p-4 border-b rounded-t-lg">
-        <div className="flex justify-between items-center">
-          <h2 className="font-semibold">Filters</h2>
-          <div className="flex items-center gap-3">
-            <button
-              className="border px-2 py-1 rounded text-xs bg-neutral-100 hover:bg-neutral-200 transition-colors"
-              onClick={() => {
-                setFilters({});
-                setSearchFilters({});
-                setVisibleSteps(["Product Usage"]);
+    <div
+      className="flex flex-col h-full overflow-hidden"
+      style={{
+        background: "linear-gradient(160deg, #f8fafc 0%, #f1f5f9 100%)",
+        border: "1px solid #e2e8f0",
+        borderRadius: "16px",
+        fontFamily: "'DM Sans', 'Inter', sans-serif",
+        boxShadow: "0 4px 24px -4px rgba(0,0,0,0.08), 0 1px 4px -1px rgba(0,0,0,0.04)",
+      }}
+    >
+      {/* ── Header ── */}
+      <div
+        className="flex-shrink-0 px-5 py-4"
+        style={{
+          borderBottom: "1px solid #e2e8f0",
+          background: "rgba(255,255,255,0.8)",
+          backdropFilter: "blur(12px)",
+          borderRadius: "16px 16px 0 0",
+        }}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="flex items-center justify-center"
+              style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                boxShadow: "0 2px 8px rgba(99,102,241,0.35)",
               }}
             >
-              Clear Filters
-            </button>
+              <SlidersHorizontal size={15} color="white" strokeWidth={2.5} />
+            </div>
+            <div>
+              <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", letterSpacing: "-0.01em" }}>
+                Filters
+              </span>
+              {activeFilterCount > 0 && (
+                <span
+                  className="ml-2 inline-flex items-center justify-center"
+                  style={{
+                    minWidth: 20, height: 20, borderRadius: 10,
+                    background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                    color: "white", fontSize: 11, fontWeight: 700, padding: "0 6px",
+                  }}
+                >
+                  {activeFilterCount}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
             {getPreviousStep() && (
               <button
-                className="text-xs text-blue-600 underline whitespace-nowrap"
                 onClick={() => handleBack(getPreviousStep()!)}
+                className="flex items-center gap-1"
+                style={{
+                  fontSize: 12, color: "#6366f1", fontWeight: 600,
+                  padding: "4px 10px", borderRadius: 8,
+                  background: "#eef2ff", border: "1px solid #c7d2fe",
+                  cursor: "pointer", transition: "all 0.15s ease",
+                }}
               >
-                ← Back
+                <ArrowLeft size={12} strokeWidth={2.5} />
+                Back
+              </button>
+            )}
+            {activeFilterCount > 0 && (
+              <button
+                onClick={() => { setFilters({}); setSearchFilters({}); setVisibleSteps(["Product Usage"]); }}
+                className="flex items-center gap-1"
+                style={{
+                  fontSize: 12, color: "#64748b", fontWeight: 600,
+                  padding: "4px 10px", borderRadius: 8,
+                  background: "#f1f5f9", border: "1px solid #e2e8f0",
+                  cursor: "pointer", transition: "all 0.15s ease",
+                }}
+              >
+                <X size={12} strokeWidth={2.5} />
+                Clear
               </button>
             )}
           </div>
         </div>
+
+        {/* Step progress breadcrumb */}
+        {visibleSteps.length > 1 && (
+          <div className="flex items-center gap-1 mt-3 flex-wrap" style={{ gap: "4px 6px" }}>
+            {visibleSteps.map((step, idx) => {
+              const isBase = BASE_STEP_ORDER.includes(step);
+              const accent = stepAccents[step];
+              const shortLabel = step.replace("Product ", "").replace("Supplier ", "");
+              return (
+                <div key={step} className="flex items-center gap-1">
+                  <span
+                    style={{
+                      fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                      borderRadius: 20,
+                      background: isBase ? (accent?.badge?.split(" ")[0] ?? "#f1f5f9") : "#fdf4ff",
+                      color: isBase ? (accent ? "#374151" : "#374151") : "#7e22ce",
+                      border: `1px solid ${isBase ? "#e2e8f0" : "#e9d5ff"}`,
+                    }}
+                  >
+                    {shortLabel}
+                  </span>
+                  {idx < visibleSteps.length - 1 && (
+                    <ChevronRight size={10} color="#94a3b8" strokeWidth={2} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Scrollable body */}
-      <div ref={scrollContainerRef} className="overflow-y-auto flex-1 p-4 space-y-6">
-        <div className="flex flex-col gap-4">
+      {/* ── Scrollable body ── */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto"
+        style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}
+      >
+        {/* STEP 1 — Product Usage */}
+        {visibleSteps.includes("Product Usage") && (
+          <div ref={setStepRef("Product Usage")} className="scroll-mt-4">
+            <Section
+              title="Product Usage"
+              items={productUsages}
+              filters={filters}
+              toggle={toggle}
+              setSearch={setSearch}
+              sourceProducts={sourceProducts}
+              products={products}
+              stepNumber={1}
+            />
+          </div>
+        )}
 
-          {/* STEP 1 */}
-          {visibleSteps.includes("Product Usage") && (
-            <div ref={setStepRef("Product Usage")} className="w-full scroll-mt-4">
-              <Section
-                title="Product Usage"
-                items={productUsages}
-                filters={filters}
-                toggle={toggle}
-                setSearch={setSearch}
-                sourceProducts={sourceProducts}
-                products={products}
+        {/* STEP 2 — Product Family */}
+        {visibleSteps.includes("Product Family") && (
+          <div ref={setStepRef("Product Family")} className="scroll-mt-4">
+            <BackButton onClick={() => handleBack("Product Family")} />
+            <Section
+              title="Product Family"
+              items={productFamilies}
+              filters={filters}
+              toggle={toggle}
+              setSearch={setSearch}
+              sourceProducts={sourceProducts}
+              products={products}
+              stepNumber={2}
+            />
+          </div>
+        )}
+
+        {/* STEP 3 — Product Class */}
+        {visibleSteps.includes("Product Class") && (
+          <div ref={setStepRef("Product Class")} className="scroll-mt-4">
+            <BackButton onClick={() => handleBack("Product Class")} />
+            <Section
+              title="Product Class"
+              items={productClasses}
+              filters={filters}
+              toggle={toggle}
+              setSearch={setSearch}
+              sourceProducts={sourceProducts}
+              products={products}
+              stepNumber={3}
+            />
+          </div>
+        )}
+
+        {/* STEP 4 — Price Point */}
+        {visibleSteps.includes("Price Point") && (
+          <div ref={setStepRef("Price Point")} className="scroll-mt-4">
+            <BackButton onClick={() => handleBack("Price Point")} />
+            <Section
+              title="Price Point"
+              items={pricePoints}
+              filters={filters}
+              toggle={toggle}
+              setSearch={setSearch}
+              sourceProducts={sourceProducts}
+              products={products}
+              stepNumber={4}
+            />
+          </div>
+        )}
+
+        {/* STEP 5 — Brand Origin */}
+        {visibleSteps.includes("Brand Origin") && (
+          <div ref={setStepRef("Brand Origin")} className="scroll-mt-4">
+            <BackButton onClick={() => handleBack("Brand Origin")} />
+            <Section
+              title="Brand Origin"
+              items={brandOrigins}
+              filters={filters}
+              toggle={toggle}
+              setSearch={setSearch}
+              sourceProducts={sourceProducts}
+              products={products}
+              stepNumber={5}
+            />
+          </div>
+        )}
+
+        {/* STEP 6 — Supplier Brand */}
+        {visibleSteps.includes("Supplier Brand") && (
+          <div ref={setStepRef("Supplier Brand")} className="scroll-mt-4">
+            <BackButton onClick={() => handleBack("Supplier Brand")} />
+            <Section
+              title="Supplier Brand"
+              items={suppliers}
+              filters={filters}
+              toggle={toggle}
+              setSearch={setSearch}
+              sourceProducts={sourceProducts}
+              products={products}
+              noSupplierBrandLabel={NO_SUPPLIER_BRAND}
+              stepNumber={6}
+            />
+            {techSpecGroupOrder.length > 0 && !visibleSteps.includes(techSpecGroupOrder[0]) && (
+              <NextButton
+                label={techSpecGroupOrder[0]}
+                onClick={() => advanceToNextStep("Supplier Brand")}
               />
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {/* STEP 2 */}
-          {visibleSteps.includes("Product Family") && (
-            <div ref={setStepRef("Product Family")} className="w-full space-y-2 scroll-mt-4">
-              <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Product Family")}>← Back</button>
-              <Section
-                title="Product Family"
-                items={productFamilies}
-                filters={filters}
-                toggle={toggle}
-                setSearch={setSearch}
-                sourceProducts={sourceProducts}
-                products={products}
-              />
-            </div>
-          )}
+        {/* ===== TECH SPEC GROUP STEPS ===== */}
+        {techSpecGroupOrder.map((groupTitle, groupIndex) => {
+          if (!visibleSteps.includes(groupTitle)) return null;
+          const groupMap = technicalSpecs.get(groupTitle);
+          if (!groupMap) return null;
+          const hasValues = Array.from(groupMap.values()).some((vals) => vals.size > 0);
+          if (!hasValues) return null;
 
-          {/* STEP 3 */}
-          {visibleSteps.includes("Product Class") && (
-            <div ref={setStepRef("Product Class")} className="w-full space-y-2 scroll-mt-4">
-              <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Product Class")}>← Back</button>
-              <Section
-                title="Product Class"
-                items={productClasses}
-                filters={filters}
-                toggle={toggle}
-                setSearch={setSearch}
-                sourceProducts={sourceProducts}
-                products={products}
-              />
-            </div>
-          )}
+          let nextGroupTitle: string | null = null;
+          for (let i = groupIndex + 1; i < techSpecGroupOrder.length; i++) {
+            const candidate = techSpecGroupOrder[i];
+            const candidateMap = technicalSpecs.get(candidate);
+            const candidateHasValues = candidateMap
+              ? Array.from(candidateMap.values()).some((s) => s.size > 0)
+              : false;
+            if (candidateHasValues) { nextGroupTitle = candidate; break; }
+          }
 
-          {/* STEP 4 */}
-          {visibleSteps.includes("Price Point") && (
-            <div ref={setStepRef("Price Point")} className="w-full space-y-2 scroll-mt-4">
-              <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Price Point")}>← Back</button>
-              <Section
-                title="Price Point"
-                items={pricePoints}
-                filters={filters}
-                toggle={toggle}
-                setSearch={setSearch}
-                sourceProducts={sourceProducts}
-                products={products}
-              />
-            </div>
-          )}
+          return (
+            <div key={groupTitle} ref={setStepRef(groupTitle)} className="scroll-mt-4 space-y-2">
+              <BackButton onClick={() => handleBack(groupTitle)} />
 
-          {/* STEP 5 */}
-          {visibleSteps.includes("Brand Origin") && (
-            <div ref={setStepRef("Brand Origin")} className="w-full space-y-2 scroll-mt-4">
-              <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Brand Origin")}>← Back</button>
-              <Section
-                title="Brand Origin"
-                items={brandOrigins}
-                filters={filters}
-                toggle={toggle}
-                setSearch={setSearch}
-                sourceProducts={sourceProducts}
-                products={products}
-              />
-            </div>
-          )}
-
-          {/* STEP 6 */}
-          {visibleSteps.includes("Supplier Brand") && (
-            <div ref={setStepRef("Supplier Brand")} className="w-full space-y-2 scroll-mt-4">
-              <button className="text-xs text-blue-600 underline" onClick={() => handleBack("Supplier Brand")}>← Back</button>
-              <Section
-                title="Supplier Brand"
-                items={suppliers}
-                filters={filters}
-                toggle={toggle}
-                setSearch={setSearch}
-                sourceProducts={sourceProducts}
-                products={products}
-                noSupplierBrandLabel={NO_SUPPLIER_BRAND}
-              />
-              {techSpecGroupOrder.length > 0 && !visibleSteps.includes(techSpecGroupOrder[0]) && (
-                <button
-                  className="mt-2 w-full text-xs border border-pink-300 text-pink-700 bg-pink-50 hover:bg-pink-100 rounded py-1.5 transition-colors"
-                  onClick={() => advanceToNextStep("Supplier Brand")}
-                >
-                  Next: {techSpecGroupOrder[0]} →
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* ===== TECH SPEC GROUP STEPS ===== */}
-          {techSpecGroupOrder.map((groupTitle, groupIndex) => {
-            if (!visibleSteps.includes(groupTitle)) return null;
-
-            const groupMap = technicalSpecs.get(groupTitle);
-            if (!groupMap) return null;
-
-            const hasValues = Array.from(groupMap.values()).some((vals) => vals.size > 0);
-            if (!hasValues) return null;
-
-            let nextGroupTitle: string | null = null;
-            for (let i = groupIndex + 1; i < techSpecGroupOrder.length; i++) {
-              const candidate = techSpecGroupOrder[i];
-              const candidateMap = technicalSpecs.get(candidate);
-              const candidateHasValues = candidateMap
-                ? Array.from(candidateMap.values()).some((s) => s.size > 0)
-                : false;
-              if (candidateHasValues) {
-                nextGroupTitle = candidate;
-                break;
-              }
-            }
-
-            return (
-              <div key={groupTitle} ref={setStepRef(groupTitle)} className="w-full space-y-3 scroll-mt-4">
-                <button className="text-xs text-blue-600 underline" onClick={() => handleBack(groupTitle)}>
-                  ← Back
-                </button>
-
-                <div className="border rounded p-3 space-y-3 bg-pink-100">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-sm uppercase tracking-wide">
+              <div
+                style={{
+                  border: "1px solid #e9d5ff",
+                  borderRadius: 12,
+                  background: "linear-gradient(135deg, #fdf4ff 0%, #faf5ff 100%)",
+                  padding: "14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      style={{
+                        width: 6, height: 6, borderRadius: "50%",
+                        background: "linear-gradient(135deg, #a855f7, #7c3aed)",
+                      }}
+                    />
+                    <span style={{ fontWeight: 700, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7e22ce" }}>
                       {groupTitle}
-                    </p>
-                    <EyeDetails groupTitle={groupTitle} filters={filters} />
+                    </span>
                   </div>
-
-                  {Array.from(groupMap.entries()).map(([specName, vals]) => {
-                    if (vals.size === 0) return null;
-                    return (
-                      <Section
-                        key={specName}
-                        title={`${groupTitle}||${specName}`}
-                        label={specName}
-                        items={[...vals]}
-                        filters={filters}
-                        toggle={toggle}
-                        setSearch={setSearch}
-                        sourceProducts={sourceProducts}
-                        products={products}
-                      />
-                    );
-                  })}
+                  <EyeDetails groupTitle={groupTitle} filters={filters} />
                 </div>
 
-                {nextGroupTitle && !visibleSteps.includes(nextGroupTitle) && (
-                  <button
-                    className="w-full text-xs border border-pink-300 text-pink-700 bg-pink-50 hover:bg-pink-100 rounded py-1.5 transition-colors"
-                    onClick={() => advanceToNextStep(groupTitle)}
-                  >
-                    Next: {nextGroupTitle} →
-                  </button>
-                )}
+                {Array.from(groupMap.entries()).map(([specName, vals]) => {
+                  if (vals.size === 0) return null;
+                  return (
+                    <Section
+                      key={specName}
+                      title={`${groupTitle}||${specName}`}
+                      label={specName}
+                      items={[...vals]}
+                      filters={filters}
+                      toggle={toggle}
+                      setSearch={setSearch}
+                      sourceProducts={sourceProducts}
+                      products={products}
+                      isTechSpec
+                    />
+                  );
+                })}
               </div>
-            );
-          })}
 
-        </div>
+              {nextGroupTitle && !visibleSteps.includes(nextGroupTitle) && (
+                <NextButton label={nextGroupTitle} onClick={() => advanceToNextStep(groupTitle)} />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-/* ================= SECTION ================= */
+/* ─────────── Small helper components ─────────── */
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1 mb-2"
+      style={{
+        fontSize: 11, color: "#6366f1", fontWeight: 600,
+        padding: "3px 8px", borderRadius: 6,
+        background: "#eef2ff", border: "1px solid #c7d2fe",
+        cursor: "pointer",
+      }}
+    >
+      <ArrowLeft size={11} strokeWidth={2.5} /> Back
+    </button>
+  );
+}
+
+function NextButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center justify-between w-full mt-2"
+      style={{
+        fontSize: 12, fontWeight: 600,
+        padding: "8px 14px", borderRadius: 10,
+        background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)",
+        border: "1px solid #c4b5fd",
+        color: "#6d28d9", cursor: "pointer",
+        transition: "all 0.15s ease",
+      }}
+    >
+      <span>Next: {label}</span>
+      <ChevronRight size={14} strokeWidth={2.5} />
+    </button>
+  );
+}
+
+/* ─────────── SECTION ─────────── */
 function Section({
   title,
   label,
@@ -623,6 +706,8 @@ function Section({
   sourceProducts,
   products,
   noSupplierBrandLabel,
+  stepNumber,
+  isTechSpec = false,
 }: any) {
   const [input, setInput] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -632,9 +717,7 @@ function Section({
     return value.split("|").map((v: string) => v.trim()).filter(Boolean);
   };
 
-  useEffect(() => {
-    setSearch(title, input);
-  }, [input]);
+  useEffect(() => { setSearch(title, input); }, [input]);
 
   const counts: Record<string, number> = {};
   items.forEach((val: string) => (counts[val] = 0));
@@ -642,6 +725,8 @@ function Section({
   const currentStepIndex = BASE_STEP_ORDER.indexOf(title);
   const isTechSpecId = title.includes("||");
   const isSupplierBrand = title === "Supplier Brand";
+
+  const accent = stepAccents[title] ?? null;
 
   const baseList = products.filter((p: any) => {
     if (!isTechSpecId) {
@@ -659,7 +744,6 @@ function Section({
       });
       if (!stepMatch) return false;
     }
-
     if (isTechSpecId) {
       if (filters["Product Usage"]?.length && !filters["Product Usage"].includes(p.categoryTypes?.[0]?.categoryTypeName)) return false;
       if (filters["Product Family"]?.length && !filters["Product Family"].includes(p.productFamilies?.[0]?.productFamilyName)) return false;
@@ -677,7 +761,6 @@ function Section({
       if (!vals.length) continue;
       const [gt, sn] = k.split("||");
       if (gt === selfGt && sn === selfSn) continue;
-
       const productVals: string[] = [];
       p.technicalSpecifications?.forEach((g: any) => {
         if (g.title !== gt) return;
@@ -689,7 +772,6 @@ function Section({
       });
       if (!vals.some((v) => productVals.includes(v))) return false;
     }
-
     return true;
   });
 
@@ -707,7 +789,6 @@ function Section({
       });
       values.forEach((v) => { if (counts[v] !== undefined) counts[v]++; });
     } else if (isSupplierBrand) {
-      /* ✅ Count using effective supplier brand so NO SUPPLIER BRAND gets counted */
       const value = getEffectiveSupplierBrand(p);
       if (counts[value] !== undefined) counts[value]++;
     } else {
@@ -723,10 +804,7 @@ function Section({
 
   const visible = items.filter((i: string) => {
     if (!input) return true;
-    /* Always show NO SUPPLIER BRAND when searching blank or matching text */
-    if (i === NO_SUPPLIER_BRAND) {
-      return NO_SUPPLIER_BRAND.toLowerCase().includes(input.toLowerCase());
-    }
+    if (i === NO_SUPPLIER_BRAND) return NO_SUPPLIER_BRAND.toLowerCase().includes(input.toLowerCase());
     const extractNumbers = (str: string) => {
       const matches = str.match(/(\d+(\.\d+)?)/g);
       return matches ? matches.map(Number) : [];
@@ -762,10 +840,7 @@ function Section({
 
   const suggestion = (() => {
     if (!input || visible.length > 0) return null;
-    const extractNumbers = (str: string) => {
-      const matches = str.match(/(\d+(\.\d+)?)/g);
-      return matches ? matches.map(Number) : [];
-    };
+    const extractNumbers = (str: string) => { const m = str.match(/(\d+(\.\d+)?)/g); return m ? m.map(Number) : []; };
     const inputNums = extractNumbers(input);
     if (inputNums.length > 0) {
       let bestItem = null, bestDiff = Infinity, highestItem = null, highestValue = -Infinity;
@@ -775,10 +850,7 @@ function Section({
         if (nums.length === 0) return;
         const compareNum = nums[0];
         if (compareNum > highestValue) { highestValue = compareNum; highestItem = item; }
-        if (compareNum > inputNums[0]) {
-          const diff = compareNum - inputNums[0];
-          if (diff < bestDiff) { bestDiff = diff; bestItem = item; }
-        }
+        if (compareNum > inputNums[0]) { const diff = compareNum - inputNums[0]; if (diff < bestDiff) { bestDiff = diff; bestItem = item; } }
       });
       if (!bestItem && highestItem) return { value: highestItem, phrase: "Highest available" };
       if (bestItem) return { value: bestItem, phrase: pickPhrase() };
@@ -795,55 +867,159 @@ function Section({
     return null;
   })();
 
-  const stepColor = isTechSpecId ? "bg-white" : (stepColors[title] ?? "bg-gray-50");
   const isLongList = visible.length > COLLAPSE_THRESHOLD;
   const showScrollable = isLongList && !input;
+  const selectedCount = filters[title]?.length ?? 0;
+
+  /* Determine container style */
+  const containerStyle: React.CSSProperties = isTechSpecId
+    ? {
+        border: "1px solid #ede9fe",
+        borderRadius: 10,
+        background: "white",
+        padding: "10px",
+      }
+    : {
+        border: `1px solid ${accent ? "#e2e8f0" : "#e2e8f0"}`,
+        borderRadius: 12,
+        background: "white",
+        padding: "12px",
+        boxShadow: "0 1px 4px -1px rgba(0,0,0,0.06)",
+      };
 
   return (
-    <div className={`border rounded p-2 space-y-2 ${stepColor}`}>
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">{label ?? title}</p>
+    <div style={containerStyle}>
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          {accent && !isTechSpecId && (
+            <div
+              style={{
+                width: 7, height: 7, borderRadius: "50%",
+                background: `var(--dot-color, #94a3b8)`,
+                // Tailwind won't set CSS vars, so inline:
+                ...(accent.dot.includes("sky") ? { background: "#0ea5e9" } :
+                    accent.dot.includes("emerald") ? { background: "#10b981" } :
+                    accent.dot.includes("amber") ? { background: "#f59e0b" } :
+                    accent.dot.includes("violet") ? { background: "#8b5cf6" } :
+                    accent.dot.includes("orange") ? { background: "#f97316" } :
+                    accent.dot.includes("rose") ? { background: "#f43f5e" } : {}),
+              }}
+            />
+          )}
+          <span style={{ fontWeight: 600, fontSize: 12, color: "#334155", letterSpacing: "-0.01em" }}>
+            {label ?? title}
+          </span>
+          {selectedCount > 0 && (
+            <span
+              style={{
+                fontSize: 10, fontWeight: 700,
+                padding: "1px 6px", borderRadius: 10,
+                background: "#6366f1", color: "white",
+              }}
+            >
+              {selectedCount}
+            </span>
+          )}
+        </div>
         {isLongList && !input && (
-          <button className="text-xs text-blue-600 underline shrink-0 ml-2" onClick={() => setIsCollapsed((prev) => !prev)}>
-            {isCollapsed ? `Show all (${visible.length})` : "Collapse"}
+          <button
+            onClick={() => setIsCollapsed((prev) => !prev)}
+            style={{ fontSize: 11, color: "#6366f1", fontWeight: 600, cursor: "pointer" }}
+          >
+            {isCollapsed ? `+${visible.length - COLLAPSE_THRESHOLD} more` : "Collapse"}
           </button>
         )}
       </div>
 
       <Command shouldFilter={false}>
-        <CommandInput
-          placeholder="Type to search..."
-          value={input}
-          onValueChange={(val) => { setInput(val); if (val) setIsCollapsed(false); }}
-        />
+        <div style={{ position: "relative" }}>
+          <CommandInput
+            placeholder="Search…"
+            value={input}
+            onValueChange={(val) => { setInput(val); if (val) setIsCollapsed(false); }}
+            style={{ fontSize: 12 }}
+          />
+        </div>
 
         {visible.length === 0 && (
-          <CommandEmpty>
-            No results
+          <CommandEmpty style={{ fontSize: 12, color: "#94a3b8", padding: "10px 8px" }}>
+            No results found
             {suggestion && (
-              <div className="text-blue-500 cursor-pointer mt-1" onClick={() => setInput(suggestion.value)}>
-                {suggestion.phrase}: <b>{suggestion.value}</b>
+              <div
+                onClick={() => setInput(suggestion.value)}
+                style={{ color: "#6366f1", cursor: "pointer", marginTop: 4, fontWeight: 600 }}
+              >
+                {suggestion.phrase}: <span style={{ textDecoration: "underline" }}>{suggestion.value}</span>
               </div>
             )}
           </CommandEmpty>
         )}
 
         {visible.length > 0 && (
-          <CommandGroup className={showScrollable ? isCollapsed ? "max-h-[200px] overflow-y-auto" : "max-h-[240px] overflow-y-auto" : ""}>
+          <CommandGroup
+            style={showScrollable ? {
+              maxHeight: isCollapsed ? 200 : 240,
+              overflowY: "auto",
+            } : {}}
+          >
             {visible.map((i: string) => {
               const isDisabled = (counts[i] ?? 0) === 0 && !filters[title]?.includes(i);
-              /* ✅ Style NO SUPPLIER BRAND differently — italic + muted */
               const isNoSupplier = i === NO_SUPPLIER_BRAND;
+              const isSelected = filters[title]?.includes(i);
+              const count = counts[i] ?? 0;
+
               return (
                 <CommandItem
                   key={i}
                   onSelect={() => { if (isDisabled) return; toggle(title, i); }}
-                  className={`${isDisabled ? "opacity-40" : ""} ${isNoSupplier ? "italic text-muted-foreground" : ""}`}
+                  style={{
+                    opacity: isDisabled ? 0.35 : 1,
+                    cursor: isDisabled ? "not-allowed" : "pointer",
+                    borderRadius: 7,
+                    padding: "5px 8px",
+                    marginBottom: 1,
+                    background: isSelected ? "#eef2ff" : "transparent",
+                    border: isSelected ? "1px solid #c7d2fe" : "1px solid transparent",
+                    transition: "all 0.12s ease",
+                  }}
                 >
-                  <Check className={`mr-2 h-4 w-4 ${filters[title]?.includes(i) ? "opacity-100" : "opacity-0"}`} />
-                  <div className="flex justify-between w-full">
-                    <span>{i}</span>
-                    <span className="text-xs bg-muted px-2 py-0.5 rounded">{counts[i] ?? 0}</span>
+                  {/* Custom checkbox */}
+                  <span
+                    style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      width: 15, height: 15, borderRadius: 4, marginRight: 8, flexShrink: 0,
+                      border: isSelected ? "none" : "1.5px solid #cbd5e1",
+                      background: isSelected
+                        ? "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)"
+                        : "white",
+                      boxShadow: isSelected ? "0 1px 4px rgba(99,102,241,0.4)" : "none",
+                      transition: "all 0.12s ease",
+                    }}
+                  >
+                    {isSelected && <Check size={9} color="white" strokeWidth={3} />}
+                  </span>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                    <span
+                      style={{
+                        fontSize: 12, fontWeight: isSelected ? 600 : 400,
+                        color: isNoSupplier ? "#94a3b8" : isSelected ? "#4338ca" : "#374151",
+                        fontStyle: isNoSupplier ? "italic" : "normal",
+                      }}
+                    >
+                      {i}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 10, fontWeight: 600, minWidth: 20, textAlign: "center",
+                        padding: "1px 5px", borderRadius: 6,
+                        background: isSelected ? "#c7d2fe" : "#f1f5f9",
+                        color: isSelected ? "#4338ca" : "#64748b",
+                      }}
+                    >
+                      {count}
+                    </span>
                   </div>
                 </CommandItem>
               );
