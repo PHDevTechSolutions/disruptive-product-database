@@ -170,9 +170,9 @@ export default function EditProductPage() {
       setProductClass(data.productClass || "");
       if (data.commercialDetails) {
         setUnitCost(data.commercialDetails.unitCost?.toString() || "");
-        setPackLength(data.commercialDetails.packaging?.length?.toString() || "");
-        setPackWidth(data.commercialDetails.packaging?.width?.toString() || "");
-        setPackHeight(data.commercialDetails.packaging?.height?.toString() || "");
+        setPackLength((data.commercialDetails.packaging?.length || "").replace(" cm", ""));
+        setPackWidth((data.commercialDetails.packaging?.width || "").replace(" cm", ""));
+        setPackHeight((data.commercialDetails.packaging?.height || "").replace(" cm", ""));
         setPcsPerCarton(data.commercialDetails.pcsPerCarton?.toString() || "");
         setFactoryAddress(data.commercialDetails.factoryAddress || "");
         setPortOfDischarge(data.commercialDetails.portOfDischarge || "");
