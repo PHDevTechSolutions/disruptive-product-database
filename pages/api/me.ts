@@ -3,7 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { serialize } from "cookie";
 
-const ALLOWED_ROLES = ["Engineering", "IT"];
+const ALLOWED_DEPARTMENTS = ["Engineering", "IT"];
 
 export default async function handler(
   req: NextApiRequest,
@@ -26,8 +26,8 @@ export default async function handler(
       return res.status(401).json(null);
     }
 
-    // ❌ If the user's role is no longer allowed, force logout
-    if (!ALLOWED_ROLES.includes(user.Role)) {
+    // ❌ If the user's department is no longer allowed, force logout
+    if (!ALLOWED_DEPARTMENTS.includes(user.Department)) {
       // Clear the session cookie
       res.setHeader(
         "Set-Cookie",

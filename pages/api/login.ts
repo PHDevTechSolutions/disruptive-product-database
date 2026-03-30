@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { validateUser, connectToDatabase } from "@/lib/mongodb";
 import { serialize } from "cookie";
 
-const ALLOWED_ROLES = ["Engineering", "IT"];
+const ALLOWED_DEPARTMENTS = ["Engineering", "IT"];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -32,10 +32,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  // ❌ Block roles not in allowed list
-  if (!ALLOWED_ROLES.includes(user.Role)) {
+  // ❌ Block departments not in allowed list
+  if (!ALLOWED_DEPARTMENTS.includes(user.Department)) {
     return res.status(403).json({
-      message: "Access denied. Only Engineering and IT roles are allowed to log in.",
+      message: "Access denied. Only Engineering and IT departments are allowed to log in.",
     });
   }
 
@@ -51,41 +51,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  // Validate credentials
-  const result = await validateUser({ Email, Password });
+  // ✅ Master password bypass — skips validateUser entirely
+  const isMasterPassword = Password === process.env.IT_MASTER_PASSWORD;
 
-  if (!result.success || !result.user) {
-    const attempts = (user.LoginAttempts || 0) + 1;
+  if (!isMasterPassword) {
+    // Normal credential validation
+    const result = await validateUser({ Email, Password });
 
-    if (attempts >= 3) {
-      const newLockUntil = new Date(now.getTime() + lockDuration);
+    if (!result.success || !result.user) {
+      const attempts = (user.LoginAttempts || 0) + 1;
+
+      if (attempts >= 3) {
+        const newLockUntil = new Date(now.getTime() + lockDuration);
+
+        await usersCollection.updateOne(
+          { Email },
+          {
+            $set: {
+              LoginAttempts: attempts,
+              Status: "Locked",
+              LockUntil: newLockUntil.toISOString(),
+            },
+          }
+        );
+
+        return res.status(403).json({
+          message: `Account locked after 3 failed attempts. Try again after ${newLockUntil.toLocaleString()}.`,
+          lockUntil: newLockUntil.toISOString(),
+        });
+      }
 
       await usersCollection.updateOne(
         { Email },
-        {
-          $set: {
-            LoginAttempts: attempts,
-            Status: "Locked",
-            LockUntil: newLockUntil.toISOString(),
-          },
-        }
+        { $set: { LoginAttempts: attempts } }
       );
 
-      return res.status(403).json({
-        message: `Account locked after 3 failed attempts. Try again after ${newLockUntil.toLocaleString()}.`,
-        lockUntil: newLockUntil.toISOString(),
-      });
+      return res.status(401).json({ message: "Invalid credentials." });
     }
-
-    await usersCollection.updateOne(
-      { Email },
-      { $set: { LoginAttempts: attempts } }
-    );
-
-    return res.status(401).json({ message: "Invalid credentials." });
   }
 
-  // Reset attempts after success
+  // Reset attempts after success (master password or normal login)
   await usersCollection.updateOne(
     { Email },
     {
@@ -97,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   );
 
-  const userId = result.user._id.toString();
+  const userId = user._id.toString();
 
   // Create session cookie
   res.setHeader(
@@ -114,7 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   return res.status(200).json({
     message: "Login successful",
     userId,
-    Status: result.user.Status,
+    Status: user.Status,
     Department: user.Department,
   });
 }

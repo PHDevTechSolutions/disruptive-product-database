@@ -57,12 +57,22 @@ export function SidebarLeft() {
 
   React.useEffect(() => {
     if (!userId) return;
-    fetch(`/api/users?id=${encodeURIComponent(userId)}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch user");
-        return res.json();
-      })
-      .then((data) => {
+
+    let cancelled = false;
+
+    async function fetchUser() {
+      try {
+        const res = await fetch(`/api/users?id=${encodeURIComponent(userId!)}`);
+
+        if (!res.ok) {
+          console.warn(`SidebarLeft: /api/users returned ${res.status}`);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (cancelled) return;
+
         setUser({
           Firstname:      data.Firstname      ?? "",
           Lastname:       data.Lastname       ?? "",
@@ -70,8 +80,18 @@ export function SidebarLeft() {
           Email:          data.Email          ?? "",
           profilePicture: data.profilePicture ?? "",
         });
-      })
-      .catch((err) => console.error("Sidebar user fetch error:", err));
+      } catch (err) {
+        if (!cancelled) {
+          console.error("SidebarLeft user fetch error:", err);
+        }
+      }
+    }
+
+    fetchUser();
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   /* ─────────────────────────────────────────────

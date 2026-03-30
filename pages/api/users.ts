@@ -13,8 +13,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const user = await db.collection("users").findOne({ _id: new ObjectId(userId) });
         if (user) {
-          const { password, ...userData } = user;
-          return res.status(200).json(userData);
+          const { Password, password, _id, ...userData } = user;
+          return res.status(200).json({
+            ...userData,
+            _id: _id.toString(), // ✅ serialize ObjectId to string
+          });
         } else {
           return res.status(404).json({ error: "User not found" });
         }
@@ -29,8 +32,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const user = await db.collection("users").findOne({ ReferenceID: referenceID });
         if (user) {
-          const { password, ...userData } = user;
-          return res.status(200).json(userData);
+          const { Password, password, _id, ...userData } = user;
+          return res.status(200).json({
+            ...userData,
+            _id: _id.toString(), // ✅ serialize ObjectId to string
+          });
         } else {
           return res.status(404).json({ error: "User not found" });
         }

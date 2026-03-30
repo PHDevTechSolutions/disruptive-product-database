@@ -395,6 +395,8 @@ export default function UploadProduct({ iconOnly = false }: Props) {
         unitCost: -1, length: -1, width: -1, height: -1,
         pcsPerCarton: -1, factoryAddress: -1, portOfDischarge: -1,
       };
+      let dimensionalCol = -1;
+      let illuminanceCol = -1;
       const excelColumns: { title: string; specId: string; col: number }[] = [];
 
       for (let col = 1; col <= ws.columnCount; col++) {
@@ -411,6 +413,15 @@ export default function UploadProduct({ iconOnly = false }: Props) {
         if (col < 10) continue;
         if (groupHeader === "COMMERCIAL DETAILS") continue;
         if (!groupHeader || !specHeader) continue;
+        if (specHeader === "Dimensional Drawing") {
+          dimensionalCol = col;
+          continue;
+        }
+
+        if (specHeader === "Illuminance Drawing") {
+          illuminanceCol = col;
+          continue;
+        }
         excelColumns.push({ title: groupHeader, specId: specHeader, col });
       }
 
@@ -432,8 +443,13 @@ export default function UploadProduct({ iconOnly = false }: Props) {
         const supplierBrand = cleanExcelValue(row.getCell(6).value) || lastSupplier;
         const imageURL      =
           convertDriveToThumbnail(extractHyperlink(row.getCell(7).value)) || lastImage;
-        const dimensionalURL = convertDriveToThumbnail(extractHyperlink(row.getCell(8).value));
-        const illuminanceURL = convertDriveToThumbnail(extractHyperlink(row.getCell(9).value));
+        const dimensionalURL = dimensionalCol > 0
+          ? convertDriveToThumbnail(extractHyperlink(row.getCell(dimensionalCol).value))
+          : "";
+
+        const illuminanceURL = illuminanceCol > 0
+          ? convertDriveToThumbnail(extractHyperlink(row.getCell(illuminanceCol).value))
+          : "";
 
         lastUsage = usage; lastFamily = family; lastClass = productClass;
         lastPricePoint = pricePoint; lastBrandOrigin = brandOrigin;
@@ -657,6 +673,9 @@ export default function UploadProduct({ iconOnly = false }: Props) {
       const existingSnap = await getDocs(collection(db, "products"));
       let productCounter = existingSnap.size;
 
+      let dimensionalCol = -1;
+      let illuminanceCol = -1;
+
       // Build excelColumns map per wsIndex
       const wsColumnsMap = new Map<number, { title: string; specId: string; col: number }[]>();
       for (let wsIndex = 0; wsIndex < workbook.worksheets.length; wsIndex++) {
@@ -677,6 +696,18 @@ export default function UploadProduct({ iconOnly = false }: Props) {
           if (groupHeader === "COMMERCIAL DETAILS") continue;
           if (!groupHeader || !specHeader) continue;
           cols.push({ title: groupHeader, specId: specHeader, col });
+
+          if (specHeader === "Dimensional Drawing") {
+            dimensionalCol = col;
+            continue;
+          }
+
+          if (specHeader === "Illuminance Drawing") {
+            illuminanceCol = col;
+            continue;
+          }
+
+          if (!groupHeader || !specHeader) continue;
         }
         wsColumnsMap.set(wsIndex, cols);
       }
