@@ -16,10 +16,11 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import { Funnel, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Funnel, Plus, Trash2, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import FilteringComponent from "@/components/filtering-component-v2";
 import AddProductComponent from "@/components/add-product-component";
+import EditProductComponent from "@/components/edit-product-component";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import CardDetails from "@/components/spf/dialog/card-details";
@@ -224,6 +225,8 @@ export default function SPFRequestCreate({
   /* ── UI state ── */
   const [viewMode, setViewMode] = useState(false);
   const [openAddProduct, setOpenAddProduct] = useState(false);
+  const [openEditProduct, setOpenEditProduct] = useState(false);
+const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [openFilter, setOpenFilter] = useState(false);
 
   /* ── Timer state ── */
@@ -1472,23 +1475,31 @@ export default function SPFRequestCreate({
         >
           <div className="columns-2 gap-3">
             {filteredProducts.map((p) => (
-              <Card
-                key={p.id}
-                draggable={!viewMode}
-                onDragStart={() => {
-                  if (viewMode) return;
-                  setDraggedProduct({ ...p, __fromRow: undefined });
-                  setShowTrash(true);
-                }}
-                onDragEnd={() => {
-                  if (viewMode) return;
-                  setDraggedProduct(null);
-                  setShowTrash(false);
-                }}
-                className={`flex flex-col p-2 border shadow hover:shadow-md break-inside-avoid mb-3 ${
-                  viewMode ? "cursor-default" : "cursor-grab"
-                }`}
-              >
+<Card
+  key={p.id}
+  draggable
+  onDragStart={() => {
+    setDraggedProduct({ ...p, __fromRow: undefined });
+    setShowTrash(true);
+  }}
+  onDragEnd={() => {
+    setDraggedProduct(null);
+    setShowTrash(false);
+  }}
+  className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside-avoid mb-3 cursor-grab"
+>
+  {/* 🔥 EDIT BUTTON */}
+  <button
+    type="button"
+    onClick={(e) => {
+      e.stopPropagation();
+      setSelectedProduct(p);
+      setOpenEditProduct(true);
+    }}
+    className="absolute top-2 right-2 z-10 bg-white border rounded-full p-1 hover:bg-gray-100 shadow"
+  >
+    <Pencil size={14} className="text-orange-500" />
+  </button>
                 <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
                   {p.mainImage?.url ? (
                     <img
@@ -1731,6 +1742,31 @@ export default function SPFRequestCreate({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 🔥 EDIT PRODUCT MODAL */}
+<Dialog open={openEditProduct} onOpenChange={setOpenEditProduct}>
+  <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>Edit Product</DialogTitle>
+    </DialogHeader>
+
+    {selectedProduct && (
+<EditProductComponent
+  productId={selectedProduct?.id}
+  onClose={() => setOpenEditProduct(false)}
+/>
+    )}
+
+    <DialogFooter>
+      <Button
+        variant="outline"
+        onClick={() => setOpenEditProduct(false)}
+      >
+        Close
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
     </>
   );
 }
