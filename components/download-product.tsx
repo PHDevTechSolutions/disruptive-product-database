@@ -73,7 +73,12 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         groupMap.set(data.title, data.specs.map((s: any) => s.specId));
       });
 
-      // ── Static columns (Image URL only, Dimensional & Illuminance moved to end) ──
+      /* ── Column layout ──────────────────────────────────────────────
+       *  Cols 1-7  : static product fields (Usage → Image URL)
+       *  Cols 8+   : technical spec columns (grouped)
+       *  Next 7    : COMMERCIAL DETAILS (Unit Cost … Port of Discharge)
+       *  Last 2    : Dimensional Drawing, Illuminance Level   ← moved here
+       * ─────────────────────────────────────────────────────────────── */
       const staticColumns = [
         "Product Usage",
         "Product Family",
@@ -88,12 +93,14 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
       const header2: any[] = [];
       const header3: any[] = [];
 
+      // Static cols (1-7)
       staticColumns.forEach((col) => {
         header1.push(col);
         header2.push("");
         header3.push("");
       });
 
+      // Technical spec cols (col 8+)
       groupMap.forEach((specIds, groupTitle) => {
         specIds.forEach((specId, index) => {
           header1.push(specId);
@@ -102,30 +109,37 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         });
       });
 
-      // ── Commercial Details columns ──
+      // Commercial Details block
       header1.push("Unit Cost", "Length", "Width", "Height", "pcs/carton", "Factory Address", "Port of Discharge");
       header2.push("COMMERCIAL DETAILS", "", "", "", "", "", "");
       header3.push("", "Packaging Details (cm)", "", "", "", "", "");
 
-      // ── Dimensional Drawing & Illuminance Level appended after Commercial Details ──
-      header1.push("Dimensional Drawing", "Illuminance Drawing");
-      header2.push("", "");
+      // Drawing columns — AFTER commercial details
+      header1.push("Dimensional Drawing", "Illuminance Level");
+      header2.push("DRAWINGS", "");
       header3.push("", "");
-
-      const cdStart = staticColumns.length + 1;
-      let specColCount = 0;
-      groupMap.forEach((specIds) => { specColCount += specIds.length; });
-      const commercialStart = staticColumns.length + specColCount + 1;
-      const commercialEnd = commercialStart + 6;
 
       ws.addRow(header1);
       ws.addRow(header2);
       ws.addRow(header3);
 
-      ws.mergeCells(2, commercialStart, 2, commercialEnd);
-      ws.mergeCells(3, commercialStart + 1, 3, commercialStart + 3);
+      // ── Merge: COMMERCIAL DETAILS group header (row 2) ──
+      const cdStart = staticColumns.length + 1 + (() => {
+        let total = 0;
+        groupMap.forEach((ids) => { total += ids.length; });
+        return total;
+      })();
+      const cdEnd = cdStart + 6; // 7 commercial cols → cdStart … cdStart+6
 
-      // ── Style static columns ──
+      ws.mergeCells(2, cdStart, 2, cdEnd);
+      ws.mergeCells(3, cdStart + 1, 3, cdStart + 3); // Packaging Details (L/W/H)
+
+      // ── Merge: DRAWINGS group header (row 2) ──
+      const drawStart = cdEnd + 1;
+      const drawEnd   = drawStart + 1; // 2 drawing cols
+      ws.mergeCells(2, drawStart, 2, drawEnd);
+
+      // ── Style: static cols (blue) ──
       for (let col = 1; col <= staticColumns.length; col++) {
         const cell = ws.getRow(1).getCell(col);
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "4472C4" } };
@@ -133,34 +147,32 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
-      // ── Style Commercial Details columns ──
-      for (let col = commercialStart; col <= commercialEnd; col++) {
-        const headerCell = ws.getRow(1).getCell(col);
-        const groupCell = ws.getRow(2).getCell(col);
-        const subGroupCell = ws.getRow(3).getCell(col);
+      // ── Style: commercial detail cols (purple) ──
+      for (let col = cdStart; col <= cdEnd; col++) {
         const purple = "D9D2E9";
-        headerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: purple } };
-        groupCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: purple } };
-        subGroupCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: purple } };
-        headerCell.font = { bold: true };
-        groupCell.font = { bold: true };
-        subGroupCell.font = { bold: true, italic: true };
-        headerCell.alignment = { vertical: "middle", horizontal: "center" };
-        groupCell.alignment = { vertical: "middle", horizontal: "center" };
-        subGroupCell.alignment = { vertical: "middle", horizontal: "center" };
+        const applyStyle = (row: ExcelJS.Row, italic = false) => {
+          const c = row.getCell(col);
+          c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: purple } };
+          c.font = { bold: true, color: { argb: "000000" }, italic };
+          c.alignment = { vertical: "middle", horizontal: "center" };
+        };
+        applyStyle(ws.getRow(1));
+        applyStyle(ws.getRow(2));
+        applyStyle(ws.getRow(3), true);
       }
 
-      // ── Style Dimensional Drawing & Illuminance Drawing columns ──
-      const drawingStart = commercialEnd + 1;
-      const drawingEnd = commercialEnd + 2;
-      for (let col = drawingStart; col <= drawingEnd; col++) {
-        const cell = ws.getRow(1).getCell(col);
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "4472C4" } };
-        cell.font = { bold: true, color: { argb: "FFFFFF" } };
-        cell.alignment = { vertical: "middle", horizontal: "center" };
+      // ── Style: drawing cols (light green) ──
+      const drawColor = "E2EFDA";
+      for (let col = drawStart; col <= drawEnd; col++) {
+        [ws.getRow(1), ws.getRow(2), ws.getRow(3)].forEach((r, ri) => {
+          const c = r.getCell(col);
+          c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: drawColor } };
+          c.font = { bold: true, italic: ri === 2 };
+          c.alignment = { vertical: "middle", horizontal: "center" };
+        });
       }
 
-      // ── Style technical spec group columns ──
+      // ── Style: technical spec group cols (alternating colors) ──
       let colStart = staticColumns.length + 1;
       let groupIndex = 0;
 
@@ -170,7 +182,7 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         const color = GROUP_COLORS[groupIndex % GROUP_COLORS.length];
         for (let col = colStart; col <= colEnd; col++) {
           const headerCell = ws.getRow(1).getCell(col);
-          const groupCell = ws.getRow(2).getCell(col);
+          const groupCell  = ws.getRow(2).getCell(col);
           headerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
           headerCell.font = { bold: true };
           headerCell.alignment = { vertical: "middle", horizontal: "center" };
@@ -185,6 +197,8 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
       // ── Data rows ──
       sheetProducts.forEach((product) => {
         const row: any[] = [];
+
+        // Static cols 1-7
         row.push(product.categoryTypes?.[0]?.categoryTypeName || "");
         row.push(product.productFamilies?.[0]?.productFamilyName || "");
         row.push(product.productClass || "");
@@ -192,21 +206,21 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         row.push(product.brandOrigin || "CHINA");
         row.push(product.supplier?.supplierBrand || "ECONOMY");
 
-        // Image URL (col 7)
-        let imageURL = product.mainImage?.url || "";
-        imageURL = convertDriveToThumbnail(imageURL);
+        let imageURL = convertDriveToThumbnail(product.mainImage?.url || "");
         row.push(imageURL);
 
-        // Technical Specs
+        // Technical spec cols
         groupMap.forEach((specIds, groupTitle) => {
-          const groupData = product.technicalSpecifications?.find((g: any) => g.title === groupTitle);
+          const groupData = product.technicalSpecifications?.find(
+            (g: any) => g.title === groupTitle,
+          );
           specIds.forEach((specId) => {
             const spec = groupData?.specs?.find((s: any) => s.specId === specId);
             row.push(spec?.value || "");
           });
         });
 
-        // Commercial Details
+        // Commercial details
         const cd = product.commercialDetails || {};
         row.push(cd.unitCost || "");
         row.push(cd.packaging?.length || "");
@@ -216,36 +230,37 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         row.push(cd.factoryAddress || "");
         row.push(cd.portOfDischarge || "");
 
-        // Dimensional Drawing & Illuminance Drawing (now at the end)
-        let dimensionalURL = product.dimensionalDrawing?.url || "";
-        dimensionalURL = convertDriveToThumbnail(dimensionalURL);
+        // Drawing URLs — AFTER commercial details
+        let dimensionalURL = convertDriveToThumbnail(product.dimensionalDrawing?.url || "");
         row.push(dimensionalURL);
 
-        let illuminanceURL = product.illuminanceDrawing?.url || "";
-        illuminanceURL = convertDriveToThumbnail(illuminanceURL);
+        let illuminanceURL = convertDriveToThumbnail(product.illuminanceDrawing?.url || "");
         row.push(illuminanceURL);
 
         ws.addRow(row);
       });
 
+      // ── Cell alignment for spec cols ──
       const specStartCol = staticColumns.length + 1;
-      const specEndCol = commercialStart - 1;
+      const specEndCol   = cdStart - 1;
 
-      for (let row = 4; row <= ws.rowCount; row++) {
+      for (let r = 4; r <= ws.rowCount; r++) {
         for (let col = specStartCol; col <= specEndCol; col++) {
-          const cell = ws.getRow(row).getCell(col);
+          const cell = ws.getRow(r).getCell(col);
           cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
         }
       }
 
-      const mergeColumns = ws.columnCount;
-      for (let row = 4; row <= ws.rowCount; row++) {
-        for (let col = 1; col <= mergeColumns; col++) {
-          const cell = ws.getRow(row).getCell(col);
+      // ── Cell alignment for all cols ──
+      const totalCols = ws.columnCount;
+      for (let r = 4; r <= ws.rowCount; r++) {
+        for (let col = 1; col <= totalCols; col++) {
+          const cell = ws.getRow(r).getCell(col);
           cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
         }
       }
 
+      // ── Auto column width ──
       ws.columns.forEach((column) => {
         let max = 15;
         column.eachCell?.({ includeEmpty: true }, (cell) => {
