@@ -67,6 +67,21 @@ export default async function handler(
       historyRows && historyRows.length > 0 ? historyRows[0].version_number : 0;
     const nextVersion = lastVersion + 1;
 
+    /* ── ✅ Fetch current status from spf_creation to snapshot into history ── */
+    let currentStatus: string = "Pending For Procurement";
+    try {
+      const { data: currentCreation } = await supabase
+        .from("spf_creation")
+        .select("status")
+        .eq("spf_number", spf_number)
+        .maybeSingle();
+      if (currentCreation?.status) {
+        currentStatus = currentCreation.status;
+      }
+    } catch (err) {
+      console.error("Failed to fetch current status:", err);
+    }
+
     /* ── Pre-fetch all unique supplier contacts ── */
     const uniqueSupplierIds = [
       ...new Set(
@@ -239,7 +254,7 @@ export default async function handler(
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
 
-    /* ── INSERT version history snapshot ── */
+    /* ── INSERT version history snapshot — now includes status ── */
     await supabase.from("spf_creation_history").insert({
       spf_number,
       version_number: nextVersion,
@@ -247,6 +262,9 @@ export default async function handler(
       created_at:     new Date().toISOString(),
       edited_by:      resolvedEditedBy,
       item_added_author: resolvedEditedBy,
+
+      /* ✅ STATUS — snapshot of spf_creation status at the time of this edit */
+      status: currentStatus,
 
       supplier_brand:                        finalSupplierBrands,
       product_offer_image:                   finalImages,
@@ -275,7 +293,7 @@ export default async function handler(
       item_code:   finalItemCode || item_code || null,
     });
 
-    /* ── UPDATE main spf_creation table ── */
+    /* ── UPDATE main spf_creation table — reset to Pending For Procurement on edit ── */
     await supabase
       .from("spf_creation")
       .update({

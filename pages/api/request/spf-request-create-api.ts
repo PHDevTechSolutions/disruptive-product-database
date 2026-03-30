@@ -240,6 +240,9 @@ export default async function handler(
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
 
+    /* ── The status for v1 is always "Pending For Procurement" ── */
+    const initialStatus = "Pending For Procurement";
+
     /* ── Check existing SPF ── */
     const { data: existing, error: checkError } = await supabase
       .from("spf_creation")
@@ -282,7 +285,7 @@ export default async function handler(
           final_selling_cost: finalSellingCosts,
           proj_lead_time:     finalLeadTimes,
 
-          status: "Pending For Procurement",
+          status: initialStatus,
 
           spf_creation_start_time: spf_creation_start_time ?? null,
           spf_creation_end_time:   spf_creation_end_time   ?? null,
@@ -296,7 +299,7 @@ export default async function handler(
         return res.status(500).json(insertError);
       }
 
-      /* ── Version history v1 ── */
+      /* ── Version history v1 — now includes status ── */
       const { error: historyError } = await supabase
         .from("spf_creation_history")
         .insert({
@@ -306,6 +309,9 @@ export default async function handler(
           created_at:     new Date().toISOString(),
           edited_by:      null,
           item_added_author,
+
+          /* ✅ STATUS — snapshot of spf_creation status at this version */
+          status: initialStatus,
 
           supplier_brand:                        finalSupplierBrands,
           product_offer_image:                   finalImages,

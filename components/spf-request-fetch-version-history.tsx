@@ -57,7 +57,7 @@ const ROW_SEP = "|ROW|";
 type SpecGroup = { title: string; specs: string[] };
 
 /* ─────────────────────────────────────────────────────────────── */
-/* NAME CACHE FOR AUDIT TRAIL RESOLUTION                           */
+/* NAME CACHE                                                      */
 /* ─────────────────────────────────────────────────────────────── */
 const nameCache = new Map<string, string>();
 
@@ -94,7 +94,23 @@ function getResolvedName(referenceID: string | undefined): string {
 }
 
 /* ─────────────────────────────────────────────────────────────── */
-/* HELPERS (same parsing as spf-request-fetch.tsx)                */
+/* STATUS LABEL                                                    */
+/* ─────────────────────────────────────────────────────────────── */
+function getStatusLabel(status: string | undefined): string {
+  if (status === "Pending For Procurement") return "For Procurement Costing";
+  if (status === "Approved By Procurement") return "Ready For Quotation";
+  if (status === "For Revision") return "Revised By Sales";
+  return status ?? "";
+}
+
+function getStatusClass(status: string | undefined): string {
+  if (status === "Approved By Procurement") return "bg-green-100 text-green-700 border-green-200";
+  if (status === "For Revision") return "bg-orange-100 text-orange-700 border-orange-200";
+  return "bg-yellow-100 text-yellow-700 border-yellow-200";
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/* PARSERS                                                         */
 /* ─────────────────────────────────────────────────────────────── */
 function parseTechSpec(raw: string): SpecGroup[] {
   if (!raw || raw === "-") return [];
@@ -145,7 +161,73 @@ function formatDateTime(iso: string): string {
 }
 
 /* ─────────────────────────────────────────────────────────────── */
-/* COLLAPSIBLE SPEC BLOCK                                          */
+/* DIFF HELPERS                                                     */
+/* ─────────────────────────────────────────────────────────────── */
+
+/**
+ * Returns true if the value differs from the previous version's
+ * equivalent value (or if there was no previous version = it's new).
+ */
+function isDifferent(current: string | undefined, previous: string | undefined): boolean {
+  const c = (current ?? "").trim();
+  const p = (previous ?? "").trim();
+  return c !== p;
+}
+
+/** Wrapper: highlights cell yellow if changed vs previous version */
+function DiffCell({
+  current,
+  previous,
+  children,
+  className = "",
+}: {
+  current: string | undefined;
+  previous: string | undefined;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const changed = isDifferent(current, previous);
+  return (
+    <td
+      className={`border px-2 py-1 text-center align-middle ${changed ? "bg-yellow-100" : ""} ${className}`}
+      title={changed && previous !== undefined ? `Was: ${previous || "-"}` : undefined}
+    >
+      {changed && previous !== undefined && (
+        <span className="block text-[9px] text-yellow-700 font-semibold mb-0.5 leading-none">
+          ✎ changed
+        </span>
+      )}
+      {children}
+    </td>
+  );
+}
+
+/** Mobile diff wrapper */
+function DiffValue({
+  label,
+  current,
+  previous,
+}: {
+  label: string;
+  current: string | undefined;
+  previous: string | undefined;
+}) {
+  const changed = isDifferent(current, previous);
+  return (
+    <div className={`${changed ? "bg-yellow-50 rounded px-1 py-0.5 border border-yellow-200" : ""}`}>
+      <span className="text-gray-400 block text-[10px]">{label}</span>
+      {changed && previous !== undefined && (
+        <span className="text-[9px] text-yellow-700 font-semibold block leading-none mb-0.5">
+          ✎ changed
+        </span>
+      )}
+      <p className="text-[10px]">{current || "-"}</p>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/* SPEC BLOCK                                                      */
 /* ─────────────────────────────────────────────────────────────── */
 function SpecsBlock({ groups }: { groups: SpecGroup[] }) {
   const [open, setOpen] = useState(false);
@@ -210,14 +292,18 @@ function renderHistoryTechnicalSpecs(groups: SpecGroup[]) {
 /* ─────────────────────────────────────────────────────────────── */
 function VersionDetail({
   record,
+  prevRecord,
   itemDescriptions,
   itemImages,
   isMobile,
+  isFirst,
 }: {
   record: VersionRecord;
+  prevRecord: VersionRecord | null; // the older version for diffing (next in array since sorted desc)
   itemDescriptions: string[];
   itemImages: string[];
   isMobile?: boolean;
+  isFirst: boolean; // v1 = no previous, no highlighting
 }) {
   const rowImages = splitByRow(record.product_offer_image);
   const rowQtys = splitByRow(record.product_offer_qty);
@@ -228,9 +314,7 @@ function VersionDetail({
   const rowPorts = splitByRow(record.product_offer_port_of_discharge);
   const rowSubtotals = splitByRow(record.product_offer_subtotal);
   const rowSupplierBrands = splitByRow(record.supplier_brand);
-  const rowSpecs = splitSpecsByRow(
-    record.product_offer_technical_specification,
-  );
+  const rowSpecs = splitSpecsByRow(record.product_offer_technical_specification);
   const rowCompanyNames = splitByRow(record.company_name);
   const rowContactNames = splitByRow(record.contact_name);
   const rowContactNumbers = splitByRow(record.contact_number);
@@ -239,6 +323,38 @@ function VersionDetail({
   const rowFinalUnitCosts = splitByRow(record.final_unit_cost);
   const rowFinalSubtotals = splitByRow(record.final_subtotal);
   const rowItemCodes = splitByRow(record.item_code);
+
+  // Previous version parsed values (for diff)
+  const prevRowImages = splitByRow(prevRecord?.product_offer_image);
+  const prevRowQtys = splitByRow(prevRecord?.product_offer_qty);
+  const prevRowUnitCosts = splitByRow(prevRecord?.product_offer_unit_cost);
+  const prevRowPcsPerCartons = splitByRow(prevRecord?.product_offer_pcs_per_carton);
+  const prevRowPackaging = splitByRow(prevRecord?.product_offer_packaging_details);
+  const prevRowFactories = splitByRow(prevRecord?.product_offer_factory_address);
+  const prevRowPorts = splitByRow(prevRecord?.product_offer_port_of_discharge);
+  const prevRowSubtotals = splitByRow(prevRecord?.product_offer_subtotal);
+  const prevRowBrands = splitByRow(prevRecord?.supplier_brand);
+  const prevRowSpecs = splitSpecsByRow(prevRecord?.product_offer_technical_specification);
+  const prevRowCompanyNames = splitByRow(prevRecord?.company_name);
+  const prevRowContactNames = splitByRow(prevRecord?.contact_name);
+  const prevRowContactNumbers = splitByRow(prevRecord?.contact_number);
+  const prevRowLeadTimes = splitByRow(prevRecord?.proj_lead_time);
+  const prevRowSellingCosts = splitByRow(prevRecord?.final_selling_cost);
+  const prevRowFinalUnitCosts = splitByRow(prevRecord?.final_unit_cost);
+  const prevRowFinalSubtotals = splitByRow(prevRecord?.final_subtotal);
+  const prevRowItemCodes = splitByRow(prevRecord?.item_code);
+
+  // Helper to get prev value safely (undefined = no prev = no highlight)
+  const getPrev = (arr: string[][], rowIdx: number, i: number): string | undefined => {
+    if (isFirst || !prevRecord) return undefined;
+    return arr[rowIdx]?.[i];
+  };
+
+  const getSpecsPrev = (arr: SpecGroup[][][], rowIdx: number, i: number): string | undefined => {
+    if (isFirst || !prevRecord) return undefined;
+    const groups = arr[rowIdx]?.[i] ?? [];
+    return JSON.stringify(groups);
+  };
 
   return (
     <div className="space-y-3 mt-2">
@@ -266,12 +382,20 @@ function VersionDetail({
           prodImages.length > 0 &&
           !(prodImages.length === 1 && prodImages[0] === "");
 
+        // Check if this entire row is new (didn't exist in previous version)
+        const rowIsNew = !isFirst && prevRecord && (prevRowImages[rowIndex] === undefined || prevRowImages[rowIndex]?.every(v => !v || v === ""));
+
         return (
           <div
             key={rowIndex}
-            className="border border-gray-200 rounded-lg overflow-hidden bg-white"
+            className={`border rounded-lg overflow-hidden bg-white ${rowIsNew ? "border-yellow-400" : "border-gray-200"}`}
           >
-            <div className="bg-gray-50 border-b px-3 py-2 flex items-center gap-3">
+            <div className={`border-b px-3 py-2 flex items-center gap-3 ${rowIsNew ? "bg-yellow-50" : "bg-gray-50"}`}>
+              {rowIsNew && (
+                <span className="text-[9px] font-bold text-yellow-700 bg-yellow-200 px-1.5 py-0.5 rounded shrink-0">
+                  NEW ROW
+                </span>
+              )}
               <span className="text-xs font-bold text-gray-500 shrink-0">
                 {record.spf_number}-{String(rowIndex + 1).padStart(3, "0")}
               </span>
@@ -295,13 +419,17 @@ function VersionDetail({
               <div className="space-y-2 px-3 py-2">
                 {prodImages.map((img, i) => {
                   const groups = prodSpecs[i] ?? [];
-                  const optItemCode =
-                    prodItemCodes[i] && prodItemCodes[i] !== "-"
-                      ? prodItemCodes[i]
-                      : null;
+                  const optItemCode = prodItemCodes[i] && prodItemCodes[i] !== "-" ? prodItemCodes[i] : null;
+                  // Check if this option is new (didn't exist in prev version)
+                  const optIsNew = !isFirst && prevRecord && prevRowImages[rowIndex]?.[i] === undefined;
 
                   return (
-                    <div key={i} className="border rounded-lg p-3 bg-white">
+                    <div key={i} className={`border rounded-lg p-3 bg-white ${optIsNew ? "border-yellow-400 bg-yellow-50" : ""}`}>
+                      {optIsNew && (
+                        <span className="text-[9px] font-bold text-yellow-700 bg-yellow-200 px-1.5 py-0.5 rounded block mb-2 w-fit">
+                          NEW OPTION
+                        </span>
+                      )}
                       <div className="flex items-center gap-2 mb-2">
                         {img && img !== "-" ? (
                           <img
@@ -327,51 +455,18 @@ function VersionDetail({
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-[10px] mb-2">
-                        <div>
-                          <span className="text-gray-400">Qty</span>
-                          <p>{prodQtys[i] || "-"}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Unit Cost</span>
-                          <p>{prodUnitCosts[i] || "-"}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Qty/Per Carton</span>
-                          <p>{prodPcsPerCartons[i] || "-"}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Packaging</span>
-                          <p>{prodPackaging[i] || "-"}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Factory</span>
-                          <p>{prodFactories[i] || "-"}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Port</span>
-                          <p>{prodPorts[i] || "-"}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Subtotal</span>
-                          <p>
-                            ₱{Number(prodSubtotals[i] || 0).toLocaleString()}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Lead Time</span>
-                          <p>{prodLeadTimes[i] || "-"}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Selling Cost</span>
-                          <p>{prodSellingCosts[i] || "-"}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Final Unit Cost</span>
-                          <p>{prodFinalUnitCosts[i] || "-"}</p>
-                        </div>
+                        <DiffValue label="Qty" current={prodQtys[i]} previous={getPrev(prevRowQtys, rowIndex, i)} />
+                        <DiffValue label="Unit Cost" current={prodUnitCosts[i]} previous={getPrev(prevRowUnitCosts, rowIndex, i)} />
+                        <DiffValue label="Qty/Per Carton" current={prodPcsPerCartons[i]} previous={getPrev(prevRowPcsPerCartons, rowIndex, i)} />
+                        <DiffValue label="Packaging" current={prodPackaging[i]} previous={getPrev(prevRowPackaging, rowIndex, i)} />
+                        <DiffValue label="Factory" current={prodFactories[i]} previous={getPrev(prevRowFactories, rowIndex, i)} />
+                        <DiffValue label="Port" current={prodPorts[i]} previous={getPrev(prevRowPorts, rowIndex, i)} />
+                        <DiffValue label="Subtotal" current={prodSubtotals[i] ? `₱${Number(prodSubtotals[i] || 0).toLocaleString()}` : undefined} previous={getPrev(prevRowSubtotals, rowIndex, i) ? `₱${Number(getPrev(prevRowSubtotals, rowIndex, i) || 0).toLocaleString()}` : getPrev(prevRowSubtotals, rowIndex, i)} />
+                        <DiffValue label="Lead Time" current={prodLeadTimes[i]} previous={getPrev(prevRowLeadTimes, rowIndex, i)} />
+                        <DiffValue label="Selling Cost" current={prodSellingCosts[i]} previous={getPrev(prevRowSellingCosts, rowIndex, i)} />
+                        <DiffValue label="Final Unit Cost" current={prodFinalUnitCosts[i]} previous={getPrev(prevRowFinalUnitCosts, rowIndex, i)} />
                         <div className="col-span-2">
-                          <span className="text-gray-400">Final Subtotal</span>
-                          <p>{prodFinalSubtotals[i] || "-"}</p>
+                          <DiffValue label="Final Subtotal" current={prodFinalSubtotals[i]} previous={getPrev(prevRowFinalSubtotals, rowIndex, i)} />
                         </div>
                       </div>
                       <div className="text-[10px] mb-2">
@@ -388,83 +483,56 @@ function VersionDetail({
                         )}
                       </div>
                       <div className="text-[10px] space-y-0.5">
-                        <p>
-                          <span className="text-gray-400">Company:</span>{" "}
-                          {prodCompanyNames[i] || "-"}
-                        </p>
-                        <p>
-                          <span className="text-gray-400">Contact Name:</span>{" "}
-                          {prodContactNames[i] || "-"}
-                        </p>
-                        <p>
-                          <span className="text-gray-400">Contact No.:</span>{" "}
-                          {prodContactNumbers[i] || "-"}
-                        </p>
+                        <DiffValue label="Company" current={prodCompanyNames[i]} previous={getPrev(prevRowCompanyNames, rowIndex, i)} />
+                        <DiffValue label="Contact Name" current={prodContactNames[i]} previous={getPrev(prevRowContactNames, rowIndex, i)} />
+                        <DiffValue label="Contact No." current={prodContactNumbers[i]} previous={getPrev(prevRowContactNumbers, rowIndex, i)} />
                       </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="overflow-x-auto px-4 py-3 min-w-[1400px]">
-                <table className="w-full border text-sm">
+              <div className="overflow-x-auto px-4 py-3">
+                <table className="w-full border text-sm" style={{ minWidth: "1400px" }}>
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="border px-2 py-1 text-center">
-                        Supplier Brand
-                      </th>
-                      <th className="border px-2 py-1 text-center">Image</th>
-                      <th className="border px-2 py-1 text-center">Qty</th>
-                      <th className="border px-2 py-1 text-center min-w-[180px]">
-                        Technical Specs
-                      </th>
-                      <th className="border px-2 py-1 text-center">
-                        Unit Cost
-                      </th>
-                      <th className="border px-2 py-1 text-center">
-                        Qty/Per Carton
-                      </th>
-                      <th className="border px-2 py-1 text-center">
-                        Packaging
-                      </th>
-                      <th className="border px-2 py-1 text-center">Factory</th>
-                      <th className="border px-2 py-1 text-center">Port</th>
-                      <th className="border px-2 py-1 text-center">Subtotal</th>
-                      <th className="border px-2 py-1 text-center">Company</th>
-                      <th className="border px-2 py-1 text-center">
-                        Contact Name
-                      </th>
-                      <th className="border px-2 py-1 text-center">
-                        Contact No.
-                      </th>
-                      <th className="border px-2 py-1 text-center">
-                        Lead Time
-                      </th>
-                      <th className="border px-2 py-1 text-center">
-                        Selling Cost
-                      </th>
-                      <th className="border px-2 py-1 text-center">
-                        Final Unit Cost
-                      </th>
-                      <th className="border px-2 py-1 text-center">
-                        Final Subtotal
-                      </th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Supplier Brand</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Image</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Qty</th>
+                      <th className="border px-2 py-1 text-center min-w-[180px]">Technical Specs</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Unit Cost</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Qty/Per Carton</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Packaging</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Factory</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Port</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Subtotal</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Company</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Contact Name</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Contact No.</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Lead Time</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Selling Cost</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Final Unit Cost</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Final Subtotal</th>
                     </tr>
                   </thead>
                   <tbody>
                     {prodImages.map((img, i) => {
                       const groups = prodSpecs[i] ?? [];
-                      const optItemCode =
-                        prodItemCodes[i] && prodItemCodes[i] !== "-"
-                          ? prodItemCodes[i]
-                          : null;
+                      const prevGroups = prevRowSpecs[rowIndex]?.[i] ?? [];
+                      const specsChanged = !isFirst && prevRecord && JSON.stringify(groups) !== JSON.stringify(prevGroups);
+                      const optIsNew = !isFirst && prevRecord && prevRowImages[rowIndex]?.[i] === undefined;
 
                       return (
-                        <tr key={i} className="align-top">
-                          <td className="border px-2 py-1 text-center">
+                        <tr key={i} className={`align-top ${optIsNew ? "bg-yellow-50" : ""}`}>
+                          <DiffCell current={prodBrands[i]} previous={getPrev(prevRowBrands, rowIndex, i)}>
                             {prodBrands[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <td className={`border px-2 py-1 text-center ${optIsNew ? "bg-yellow-50" : ""}`}>
+                            {optIsNew && (
+                              <span className="block text-[9px] font-bold text-yellow-700 bg-yellow-200 px-1 rounded mb-0.5 w-fit mx-auto">
+                                NEW
+                              </span>
+                            )}
                             {img && img !== "-" ? (
                               <img
                                 src={img}
@@ -472,56 +540,60 @@ function VersionDetail({
                                 alt=""
                               />
                             ) : (
-                              <span className="text-muted-foreground text-[10px]">
-                                -
-                              </span>
+                              <span className="text-muted-foreground text-[10px]">-</span>
                             )}
                           </td>
-                          <td className="border px-2 py-1 text-center">
+                          <DiffCell current={prodQtys[i]} previous={getPrev(prevRowQtys, rowIndex, i)}>
                             {prodQtys[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 align-top text-[11px]">
+                          </DiffCell>
+                          <td
+                            className={`border px-2 py-1 align-top text-[11px] ${specsChanged ? "bg-yellow-100" : ""}`}
+                            title={specsChanged ? "Specs changed" : undefined}
+                          >
+                            {specsChanged && (
+                              <span className="block text-[9px] text-yellow-700 font-semibold mb-0.5 leading-none">✎ changed</span>
+                            )}
                             {renderHistoryTechnicalSpecs(groups)}
                           </td>
-                          <td className="border px-2 py-1 text-center">
+                          <DiffCell current={prodUnitCosts[i]} previous={getPrev(prevRowUnitCosts, rowIndex, i)}>
                             {prodUnitCosts[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <DiffCell current={prodPcsPerCartons[i]} previous={getPrev(prevRowPcsPerCartons, rowIndex, i)}>
                             {prodPcsPerCartons[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <DiffCell current={prodPackaging[i]} previous={getPrev(prevRowPackaging, rowIndex, i)}>
                             {prodPackaging[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <DiffCell current={prodFactories[i]} previous={getPrev(prevRowFactories, rowIndex, i)}>
                             {prodFactories[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <DiffCell current={prodPorts[i]} previous={getPrev(prevRowPorts, rowIndex, i)}>
                             {prodPorts[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-right">
+                          </DiffCell>
+                          <DiffCell current={prodSubtotals[i]} previous={getPrev(prevRowSubtotals, rowIndex, i)}>
                             ₱{Number(prodSubtotals[i] || 0).toLocaleString()}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <DiffCell current={prodCompanyNames[i]} previous={getPrev(prevRowCompanyNames, rowIndex, i)}>
                             {prodCompanyNames[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <DiffCell current={prodContactNames[i]} previous={getPrev(prevRowContactNames, rowIndex, i)}>
                             {prodContactNames[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <DiffCell current={prodContactNumbers[i]} previous={getPrev(prevRowContactNumbers, rowIndex, i)}>
                             {prodContactNumbers[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <DiffCell current={prodLeadTimes[i]} previous={getPrev(prevRowLeadTimes, rowIndex, i)}>
                             {prodLeadTimes[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <DiffCell current={prodSellingCosts[i]} previous={getPrev(prevRowSellingCosts, rowIndex, i)}>
                             {prodSellingCosts[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <DiffCell current={prodFinalUnitCosts[i]} previous={getPrev(prevRowFinalUnitCosts, rowIndex, i)}>
                             {prodFinalUnitCosts[i] || "-"}
-                          </td>
-                          <td className="border px-2 py-1 text-center">
+                          </DiffCell>
+                          <DiffCell current={prodFinalSubtotals[i]} previous={getPrev(prevRowFinalSubtotals, rowIndex, i)}>
                             {prodFinalSubtotals[i] || "-"}
-                          </td>
+                          </DiffCell>
                         </tr>
                       );
                     })}
@@ -547,8 +619,8 @@ export default function SPFRequestFetchVersionHistory({
   const [versions, setVersions] = useState<VersionRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedVersion, setExpanded] = useState<number | null>(null);
+  const [, setNameVersion] = useState(0);
 
-  /* We also need the item descriptions from spf_request for context */
   const [itemDescriptions, setItemDescriptions] = useState<string[]>([]);
   const [itemImages, setItemImages] = useState<string[]>([]);
 
@@ -556,7 +628,6 @@ export default function SPFRequestFetchVersionHistory({
     try {
       setLoading(true);
 
-      /* Fetch version history */
       const { data: historyData, error } = await supabase
         .from("spf_creation_history")
         .select("*")
@@ -567,16 +638,15 @@ export default function SPFRequestFetchVersionHistory({
         console.error("Version history fetch error:", error);
       } else {
         setVersions(historyData || []);
-        // Resolve names for audit trail
         const referenceIDs = (historyData || [])
           .flatMap((v) => [v.edited_by, v.item_added_author].filter(Boolean))
-          .filter((id, index, arr) => arr.indexOf(id) === index); // unique
+          .filter((id, index, arr) => arr.indexOf(id) === index);
         if (referenceIDs.length > 0) {
           await resolveNames(referenceIDs);
+          setNameVersion((n) => n + 1);
         }
       }
 
-      /* Fetch item descriptions for display */
       const { data: requestData } = await supabase
         .from("spf_request")
         .select("item_description,item_photo")
@@ -639,8 +709,11 @@ export default function SPFRequestFetchVersionHistory({
               Version History — {spfNumber}
             </DialogTitle>
             <p className="text-xs text-muted-foreground mt-1">
-              Each entry represents a saved revision. Click to expand and view
-              the state at that version.
+              Each entry represents a saved revision. Click to expand.{" "}
+              <span className="inline-flex items-center gap-1 text-yellow-700 font-medium">
+                <span className="inline-block w-3 h-3 bg-yellow-200 border border-yellow-400 rounded-sm" />
+                Yellow = changed from previous version.
+              </span>
             </p>
           </DialogHeader>
 
@@ -657,40 +730,37 @@ export default function SPFRequestFetchVersionHistory({
 
             {!loading && versions.length === 0 && (
               <div className="text-center py-12 space-y-2">
-                <History
-                  size={32}
-                  className="mx-auto text-muted-foreground/40"
-                />
-                <p className="text-sm text-muted-foreground">
-                  No version history yet.
-                </p>
+                <History size={32} className="mx-auto text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">No version history yet.</p>
                 <p className="text-xs text-muted-foreground/70">
-                  Versions are created each time the SPF is revised and
-                  resubmitted.
+                  Versions are created each time the SPF is revised and resubmitted.
                 </p>
               </div>
             )}
 
             {!loading && versions.length > 0 && (
               <div className="space-y-3">
-                {versions.map((v) => {
+                {versions.map((v, idx) => {
                   const isExpanded = expandedVersion === v.version_number;
+                  // versions sorted desc → previous version = the next item in array (lower version number)
+                  const prevRecord = versions[idx + 1] ?? null;
+                  // v1 has no previous to diff against
+                  const isFirst = v.version_number === 1;
+
                   return (
                     <Card
                       key={v.version_number}
                       className="overflow-hidden border border-gray-200 rounded-xl shadow-sm"
                     >
-                      {/* Version header — always visible, clickable */}
+                      {/* Version header */}
                       <button
                         type="button"
                         onClick={() => toggleExpand(v.version_number)}
                         className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          {/* Version badge */}
                           <span className="inline-flex items-center shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200 font-mono">
-                            {v.version_label ||
-                              `${spfNumber}_v${v.version_number}`}
+                            {v.version_label || `${spfNumber}_v${v.version_number}`}
                           </span>
 
                           <div className="min-w-0">
@@ -711,32 +781,21 @@ export default function SPFRequestFetchVersionHistory({
                                   {formatDateTime(v.spf_creation_end_time)}
                                 </span>
                               )}
-                              {v.spf_creation_start_time &&
-                                v.spf_creation_end_time && (
-                                  <span className="flex items-center gap-1 truncate">
-                                    <span className="font-medium">Dur:</span>
-                                    {(() => {
-                                      const start = new Date(
-                                        v.spf_creation_start_time,
-                                      ).getTime();
-                                      const end = new Date(
-                                        v.spf_creation_end_time,
-                                      ).getTime();
-                                      const diff = Math.max(
-                                        0,
-                                        Math.floor((end - start) / 1000),
-                                      );
-                                      const hrs = Math.floor(diff / 3600);
-                                      const mins = Math.floor(
-                                        (diff % 3600) / 60,
-                                      );
-                                      const secs = diff % 60;
-                                      const z = (n: number) =>
-                                        String(n).padStart(2, "0");
-                                      return `${hrs > 0 ? `${z(hrs)}:` : ""}${z(mins)}:${z(secs)}`;
-                                    })()}
-                                  </span>
-                                )}
+                              {v.spf_creation_start_time && v.spf_creation_end_time && (
+                                <span className="flex items-center gap-1 truncate">
+                                  <span className="font-medium">Dur:</span>
+                                  {(() => {
+                                    const start = new Date(v.spf_creation_start_time).getTime();
+                                    const end = new Date(v.spf_creation_end_time).getTime();
+                                    const diff = Math.max(0, Math.floor((end - start) / 1000));
+                                    const hrs = Math.floor(diff / 3600);
+                                    const mins = Math.floor((diff % 3600) / 60);
+                                    const secs = diff % 60;
+                                    const z = (n: number) => String(n).padStart(2, "0");
+                                    return `${hrs > 0 ? `${z(hrs)}:` : ""}${z(mins)}:${z(secs)}`;
+                                  })()}
+                                </span>
+                              )}
                               {v.edited_by && (
                                 <span className="flex items-center gap-1 truncate">
                                   <User size={10} />
@@ -748,15 +807,18 @@ export default function SPFRequestFetchVersionHistory({
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0 ml-2">
-                          {v.item_added_author && (
-                            <span className="flex items-center gap-1 text-[9px] px-2 py-0.5 rounded bg-blue-100 text-blue-700">
-                              <User size={8} />
-                              {getResolvedName(v.item_added_author)}
+                          {/* ✅ STATUS BADGE — shown on every version card */}
+                          {v.status && (
+                            <span
+                              className={`inline-flex text-[9px] px-2 py-0.5 rounded-full uppercase font-semibold border whitespace-nowrap ${getStatusClass(v.status)}`}
+                            >
+                              {getStatusLabel(v.status)}
                             </span>
                           )}
-                          {v.status && (
-                            <span className="hidden sm:inline-flex text-[9px] px-2 py-0.5 rounded uppercase font-semibold bg-yellow-100 text-yellow-700">
-                              {v.status}
+                          {v.item_added_author && (
+                            <span className="hidden sm:flex items-center gap-1 text-[9px] px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                              <User size={8} />
+                              {getResolvedName(v.item_added_author)}
                             </span>
                           )}
                           {isExpanded ? (
@@ -770,12 +832,26 @@ export default function SPFRequestFetchVersionHistory({
                       {/* Expanded content */}
                       {isExpanded && (
                         <div className="px-3 pb-3 border-t bg-white">
+                          {/* Legend for non-v1 versions */}
+                          {!isFirst && prevRecord && (
+                            <div className="flex items-center gap-2 mt-2 mb-3 px-1">
+                              <span className="inline-block w-4 h-4 bg-yellow-100 border border-yellow-300 rounded-sm" />
+                              <span className="text-[11px] text-yellow-700 font-medium">
+                                Yellow cells = changed from{" "}
+                                <span className="font-mono font-bold">
+                                  {prevRecord.version_label || `v${prevRecord.version_number}`}
+                                </span>
+                              </span>
+                            </div>
+                          )}
                           {itemDescriptions.length > 0 ? (
                             <VersionDetail
                               record={v}
+                              prevRecord={prevRecord}
                               itemDescriptions={itemDescriptions}
                               itemImages={itemImages}
                               isMobile={isMobile}
+                              isFirst={isFirst}
                             />
                           ) : (
                             <p className="text-xs text-muted-foreground py-4 text-center">
