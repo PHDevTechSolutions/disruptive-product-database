@@ -56,12 +56,23 @@ const HEADERS = [
 ];
 
 const highlightText = (text: string, keyword: string) => {
-  if (!keyword) return text;
-  const regex = new RegExp(`(${keyword})`, "gi");
-  return text.split(regex).map((part, i) =>
-    part.toLowerCase() === keyword.toLowerCase() ? (
-      <mark key={i} className="bg-yellow-200 text-black px-0.5 rounded">{part}</mark>
-    ) : part
+  if (!text) return text;
+
+  const upperText = text.toUpperCase();
+  const upperKeyword = keyword.toUpperCase();
+
+  if (!keyword) return upperText;
+
+  const regex = new RegExp(`(${upperKeyword})`, "gi");
+
+  return upperText.split(regex).map((part, i) =>
+    part === upperKeyword ? (
+      <mark key={i} className="bg-yellow-200 text-black px-0.5 rounded">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
   );
 };
 
