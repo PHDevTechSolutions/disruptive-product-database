@@ -2,6 +2,8 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { validateUser, connectToDatabase } from "@/lib/mongodb";
 import { serialize } from "cookie";
 
+const ALLOWED_ROLES = ["Engineering", "IT"];
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -27,6 +29,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (user.Status === "Resigned" || user.Status === "Terminated") {
     return res.status(403).json({
       message: `Your account is ${user.Status}. Login not allowed.`,
+    });
+  }
+
+  // ❌ Block roles not in allowed list
+  if (!ALLOWED_ROLES.includes(user.Role)) {
+    return res.status(403).json({
+      message: "Access denied. Only Engineering and IT roles are allowed to log in.",
     });
   }
 
@@ -75,13 +84,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(401).json({ message: "Invalid credentials." });
   }
-
-  // // ❗ ❗ FINAL FILTER — ONLY SALES CAN LOGIN
-  // if (user.Department !== "CSR") {
-  //   return res.status(403).json({
-  //     message: "Only Sales department users are allowed to log in.",
-  //   });
-  // }
 
   // Reset attempts after success
   await usersCollection.updateOne(

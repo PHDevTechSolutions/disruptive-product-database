@@ -18,11 +18,9 @@ type UserContextType = {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userId, setUserIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // sessionStorage: persists across page refreshes within the same tab,
-  // but resets when the tab is closed (so splash shows again on fresh session)
   const [splashDone, setSplashDoneState] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       return sessionStorage.getItem("splashDone") === "true";
@@ -41,12 +39,38 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setSplashDoneState(done);
   }
 
+  function setUserId(id: string | null) {
+    // When logging out (id = null), clear splash so it replays on next login
+    if (!id) {
+      sessionStorage.removeItem("splashPlayed");
+      sessionStorage.removeItem("splashDone");
+      setSplashDoneState(false);
+    }
+    setUserIdState(id);
+  }
+
   useEffect(() => {
     fetch("/api/me")
-      .then((res) => (res.ok ? res.json() : null))
+      .then(async (res) => {
+        if (res.status === 403) {
+          const data = await res.json();
+          if (data?.forceLogout) {
+            // Clear splash so it replays on next login
+            sessionStorage.removeItem("splashPlayed");
+            sessionStorage.removeItem("splashDone");
+            setSplashDoneState(false);
+
+            setUserIdState(null);
+            await fetch("/api/logout", { method: "POST" });
+            window.location.href = "/login";
+          }
+          return null;
+        }
+        return res.ok ? res.json() : null;
+      })
       .then((data) => {
         if (data?.userId) {
-          setUserId(data.userId);
+          setUserIdState(data.userId);
         }
       })
       .finally(() => {
