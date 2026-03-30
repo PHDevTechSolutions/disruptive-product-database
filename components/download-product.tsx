@@ -19,7 +19,7 @@ import { db } from "@/lib/firebase";
 
 type Props = {
   products: any[];
-  iconOnly?: boolean; // when true, renders a compact icon-only trigger button (used on mobile)
+  iconOnly?: boolean;
 };
 
 export default function DownloadProduct({ products, iconOnly = false }: Props) {
@@ -73,6 +73,7 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         groupMap.set(data.title, data.specs.map((s: any) => s.specId));
       });
 
+      // ── Static columns (Image URL only, Dimensional & Illuminance moved to end) ──
       const staticColumns = [
         "Product Usage",
         "Product Family",
@@ -81,8 +82,6 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         "Brand Origin",
         "Supplier Brand",
         "Image URL",
-        "Dimensional Drawing",
-        "Illuminance Drawing",
       ];
 
       const header1: any[] = [];
@@ -103,25 +102,30 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         });
       });
 
-      const commercialSpecs = [
-        "Unit Cost", "Length", "Width", "Height",
-        "pcs/carton", "Factory Address", "Port of Discharge",
-      ];
-
+      // ── Commercial Details columns ──
       header1.push("Unit Cost", "Length", "Width", "Height", "pcs/carton", "Factory Address", "Port of Discharge");
       header2.push("COMMERCIAL DETAILS", "", "", "", "", "", "");
       header3.push("", "Packaging Details (cm)", "", "", "", "", "");
+
+      // ── Dimensional Drawing & Illuminance Level appended after Commercial Details ──
+      header1.push("Dimensional Drawing", "Illuminance Drawing");
+      header2.push("", "");
+      header3.push("", "");
+
+      const cdStart = staticColumns.length + 1;
+      let specColCount = 0;
+      groupMap.forEach((specIds) => { specColCount += specIds.length; });
+      const commercialStart = staticColumns.length + specColCount + 1;
+      const commercialEnd = commercialStart + 6;
 
       ws.addRow(header1);
       ws.addRow(header2);
       ws.addRow(header3);
 
-      const cdStart = header1.length - 6;
-      const cdEnd = header1.length;
+      ws.mergeCells(2, commercialStart, 2, commercialEnd);
+      ws.mergeCells(3, commercialStart + 1, 3, commercialStart + 3);
 
-      ws.mergeCells(2, cdStart, 2, cdEnd);
-      ws.mergeCells(3, cdStart + 1, 3, cdStart + 3);
-
+      // ── Style static columns ──
       for (let col = 1; col <= staticColumns.length; col++) {
         const cell = ws.getRow(1).getCell(col);
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "4472C4" } };
@@ -129,7 +133,8 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         cell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
-      for (let col = cdStart; col <= cdEnd; col++) {
+      // ── Style Commercial Details columns ──
+      for (let col = commercialStart; col <= commercialEnd; col++) {
         const headerCell = ws.getRow(1).getCell(col);
         const groupCell = ws.getRow(2).getCell(col);
         const subGroupCell = ws.getRow(3).getCell(col);
@@ -145,6 +150,17 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         subGroupCell.alignment = { vertical: "middle", horizontal: "center" };
       }
 
+      // ── Style Dimensional Drawing & Illuminance Drawing columns ──
+      const drawingStart = commercialEnd + 1;
+      const drawingEnd = commercialEnd + 2;
+      for (let col = drawingStart; col <= drawingEnd; col++) {
+        const cell = ws.getRow(1).getCell(col);
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "4472C4" } };
+        cell.font = { bold: true, color: { argb: "FFFFFF" } };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      }
+
+      // ── Style technical spec group columns ──
       let colStart = staticColumns.length + 1;
       let groupIndex = 0;
 
@@ -166,6 +182,7 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         colStart = colEnd + 1;
       });
 
+      // ── Data rows ──
       sheetProducts.forEach((product) => {
         const row: any[] = [];
         row.push(product.categoryTypes?.[0]?.categoryTypeName || "");
@@ -175,18 +192,12 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         row.push(product.brandOrigin || "CHINA");
         row.push(product.supplier?.supplierBrand || "ECONOMY");
 
+        // Image URL (col 7)
         let imageURL = product.mainImage?.url || "";
         imageURL = convertDriveToThumbnail(imageURL);
         row.push(imageURL);
 
-        let dimensionalURL = product.dimensionalDrawing?.url || "";
-        dimensionalURL = convertDriveToThumbnail(dimensionalURL);
-        row.push(dimensionalURL);
-
-        let illuminanceURL = product.illuminanceDrawing?.url || "";
-        illuminanceURL = convertDriveToThumbnail(illuminanceURL);
-        row.push(illuminanceURL);
-
+        // Technical Specs
         groupMap.forEach((specIds, groupTitle) => {
           const groupData = product.technicalSpecifications?.find((g: any) => g.title === groupTitle);
           specIds.forEach((specId) => {
@@ -195,6 +206,7 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
           });
         });
 
+        // Commercial Details
         const cd = product.commercialDetails || {};
         row.push(cd.unitCost || "");
         row.push(cd.packaging?.length || "");
@@ -203,11 +215,21 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         row.push(cd.pcsPerCarton || "");
         row.push(cd.factoryAddress || "");
         row.push(cd.portOfDischarge || "");
+
+        // Dimensional Drawing & Illuminance Drawing (now at the end)
+        let dimensionalURL = product.dimensionalDrawing?.url || "";
+        dimensionalURL = convertDriveToThumbnail(dimensionalURL);
+        row.push(dimensionalURL);
+
+        let illuminanceURL = product.illuminanceDrawing?.url || "";
+        illuminanceURL = convertDriveToThumbnail(illuminanceURL);
+        row.push(illuminanceURL);
+
         ws.addRow(row);
       });
 
       const specStartCol = staticColumns.length + 1;
-      const specEndCol = ws.columnCount - 7;
+      const specEndCol = commercialStart - 1;
 
       for (let row = 4; row <= ws.rowCount; row++) {
         for (let col = specStartCol; col <= specEndCol; col++) {
@@ -245,12 +267,10 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {iconOnly ? (
-          // ── Mobile icon-only trigger ──
           <button className="h-8 w-8 rounded-full border border-gray-200 bg-white/80 flex items-center justify-center">
             <Download className="h-4 w-4 text-gray-600" />
           </button>
         ) : (
-          // ── Desktop full button trigger ──
           <Button>
             <Download className="w-4 h-4 mr-2" />
             Download
