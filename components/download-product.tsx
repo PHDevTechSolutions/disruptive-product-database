@@ -73,15 +73,17 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         groupMap.set(data.title, data.specs.map((s: any) => s.specId));
       });
 
-const staticColumns = [
-  "Product Usage",
-  "Product Family",
-  "Product Class",
-  "Price Point",
-  "Brand Origin",
-  "Supplier Brand",
-  "Image URL",
-];
+      const staticColumns = [
+        "Product Usage",
+        "Product Family",
+        "Product Class",
+        "Price Point",
+        "Brand Origin",
+        "Supplier Brand",
+        "Image URL",
+        "Dimensional Drawing",
+        "Illuminance Drawing",
+      ];
 
       const header1: any[] = [];
       const header2: any[] = [];
@@ -106,26 +108,16 @@ const staticColumns = [
         "pcs/carton", "Factory Address", "Port of Discharge",
       ];
 
-        header1.push(
-          "Unit Cost",
-          "Length",
-          "Width",
-          "Height",
-          "pcs/carton",
-          "Factory Address",
-          "Port of Discharge",
-          "Dimensional Drawing",
-          "Illuminance Drawing"
-        );
-      header2.push("COMMERCIAL DETAILS", "", "", "", "", "", "", "", "");
-      header3.push("", "Packaging Details (cm)", "", "", "", "", "", "", "");
+      header1.push("Unit Cost", "Length", "Width", "Height", "pcs/carton", "Factory Address", "Port of Discharge");
+      header2.push("COMMERCIAL DETAILS", "", "", "", "", "", "");
+      header3.push("", "Packaging Details (cm)", "", "", "", "", "");
 
       ws.addRow(header1);
       ws.addRow(header2);
       ws.addRow(header3);
 
-      const cdStart = header1.length - 8;
-      const cdEnd = header1.length - 2;
+      const cdStart = header1.length - 6;
+      const cdEnd = header1.length;
 
       ws.mergeCells(2, cdStart, 2, cdEnd);
       ws.mergeCells(3, cdStart + 1, 3, cdStart + 3);
@@ -187,6 +179,14 @@ const staticColumns = [
         imageURL = convertDriveToThumbnail(imageURL);
         row.push(imageURL);
 
+        let dimensionalURL = product.dimensionalDrawing?.url || "";
+        dimensionalURL = convertDriveToThumbnail(dimensionalURL);
+        row.push(dimensionalURL);
+
+        let illuminanceURL = product.illuminanceDrawing?.url || "";
+        illuminanceURL = convertDriveToThumbnail(illuminanceURL);
+        row.push(illuminanceURL);
+
         groupMap.forEach((specIds, groupTitle) => {
           const groupData = product.technicalSpecifications?.find((g: any) => g.title === groupTitle);
           specIds.forEach((specId) => {
@@ -203,16 +203,6 @@ const staticColumns = [
         row.push(cd.pcsPerCarton || "");
         row.push(cd.factoryAddress || "");
         row.push(cd.portOfDischarge || "");
-
-      // Dimensional Drawing (FINAL position)
-      let dimensionalURL = product.dimensionalDrawing?.url || "";
-      dimensionalURL = convertDriveToThumbnail(dimensionalURL);
-      row.push(dimensionalURL);
-
-      // Illuminance Drawing (FINAL position)
-      let illuminanceURL = product.illuminanceDrawing?.url || "";
-      illuminanceURL = convertDriveToThumbnail(illuminanceURL);
-      row.push(illuminanceURL);
         ws.addRow(row);
       });
 
