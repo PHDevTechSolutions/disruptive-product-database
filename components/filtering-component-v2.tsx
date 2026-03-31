@@ -115,8 +115,8 @@ function BreadcrumbRow({
         paddingBottom: 2,
         marginTop: 6,
         /* hide scrollbar visually but keep it functional */
-scrollbarWidth: "thin",
-msOverflowStyle: "auto",
+        scrollbarWidth: "thin",
+        msOverflowStyle: "auto",
       } as React.CSSProperties}
     >
       {visibleSteps.map((step, idx) => {
