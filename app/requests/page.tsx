@@ -26,6 +26,35 @@ function getStatusLabel(status: string | undefined): string {
 }
 
 /* ─────────────────────────────────────────────────────────────── */
+/* ALLOWED STATUSES                                                */
+/* ─────────────────────────────────────────────────────────────── */
+const ALLOWED_STATUSES = [
+  "Approved by TSM",
+  "Approved By TSM",
+  "Approved by Sales Head",
+  "Approved By Sales Head",
+];
+
+/* ─────────────────────────────────────────────────────────────── */
+/* STATUS BADGE                                                     */
+/* ─────────────────────────────────────────────────────────────── */
+function StatusBadge({ status }: { status: string | undefined }) {
+  if (!status) return null;
+  const isSalesHead = status.toLowerCase().includes("sales head");
+  return (
+    <span
+      className={`text-xs px-2 py-1 rounded uppercase font-semibold whitespace-nowrap ${
+        isSalesHead
+          ? "bg-purple-100 text-purple-700"
+          : "bg-blue-100 text-blue-700"
+      }`}
+    >
+      {status}
+    </span>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
 /* HOOK: useIsMobile                                               */
 /* ─────────────────────────────────────────────────────────────── */
 function useIsMobile(breakpoint = 768) {
@@ -121,18 +150,19 @@ export default function RequestsPage() {
       setCreatedSPFLoaded(false);
       setLoadingPage(true);
 
-const res = await fetch(`/api/request/spf-request-fetch-api?page=1`);
-if (!res.ok) throw new Error("Failed to fetch SPF requests");
+      const res = await fetch(`/api/request/spf-request-fetch-api?page=1`);
+      if (!res.ok) throw new Error("Failed to fetch SPF requests");
 
-const data = await res.json();
+      const data = await res.json();
 
-const mapped = (data.requests || []).map((r: any) => ({
-  ...r,
-  date_created: r.date_created
-    ? new Date(r.date_created).toISOString()
-    : null,
-}));
-
+      const mapped = (data.requests || [])
+        .filter((r: any) => ALLOWED_STATUSES.includes(r.status ?? ""))
+        .map((r: any) => ({
+          ...r,
+          date_created: r.date_created
+            ? new Date(r.date_created).toISOString()
+            : null,
+        }));
 
       setRequests(mapped);
       await fetchCreatedSPF(mapped.map((r: any) => r.spf_number));
@@ -268,7 +298,7 @@ const mapped = (data.requests || []).map((r: any) => ({
         <table className="w-full text-sm border-collapse">
           <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">
             <tr>
-              {["SPF Number", "Customer Name", "Special Instructions", "Date Created", "Action"].map((h) => (
+              {["SPF Number", "Customer Name", "Special Instructions", "Approval Status", "Date Created", "Action"].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-bold border-b whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -276,11 +306,11 @@ const mapped = (data.requests || []).map((r: any) => ({
           <tbody>
             {loadingPage ? (
               <tr>
-                <td colSpan={5} className="text-center py-10 text-muted-foreground">Loading...</td>
+                <td colSpan={6} className="text-center py-10 text-muted-foreground">Loading...</td>
               </tr>
             ) : filteredRequests.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center py-10 text-muted-foreground">No SPF requests yet.</td>
+                <td colSpan={6} className="text-center py-10 text-muted-foreground">No SPF requests yet.</td>
               </tr>
             ) : (
               paginatedRequests.map((req) => {
@@ -297,6 +327,9 @@ const mapped = (data.requests || []).map((r: any) => ({
                       <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase">
                         {req.special_instructions || "-"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={req.status} />
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formattedDate}</td>
                     <td className="px-4 py-3">
@@ -352,6 +385,9 @@ const mapped = (data.requests || []).map((r: any) => ({
                 <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase w-fit inline-block">
                   {req.special_instructions || "-"}
                 </span>
+                <div>
+                  <StatusBadge status={req.status} />
+                </div>
                 <div className="flex gap-2 pt-1 flex-wrap">
                   {!isProcurementStatus(req.spf_number) && (
                     <Button size="sm" className="rounded-xl flex-1 h-9" variant="outline" onClick={() => handleCreateFromRow(req)}>
