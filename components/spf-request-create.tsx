@@ -222,6 +222,10 @@ export default function SPFRequestCreate({
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productSearch, setProductSearch] = useState("");
 
+  /* ── Pagination state ── */
+  const [productPage, setProductPage] = useState(1);
+  const PRODUCTS_PER_PAGE = 20;
+
   /* ── UI state ── */
   const [viewMode, setViewMode] = useState(false);
   const [openAddProduct, setOpenAddProduct] = useState(false);
@@ -317,6 +321,11 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
       ),
     );
   }, [productSearch, products]);
+
+  /* ── Reset pagination when filters change ── */
+  useEffect(() => {
+    setProductPage(1);
+  }, [filteredProducts, productSearch]);
 
   /* ── Fetch products ── */
   const fetchProducts = useCallback((_customerName: string) => {
@@ -895,7 +904,35 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
               </p>
             ) : (
               <div className="space-y-2">
-                {filteredProducts.map((p) => {
+                {/* Pagination controls */}
+                {filteredProducts.length > PRODUCTS_PER_PAGE && (
+                  <div className="flex justify-between items-center mb-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setProductPage(prev => Math.max(1, prev - 1))}
+                      disabled={productPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      Page {productPage} of {Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE)}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setProductPage(prev => Math.min(Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE), prev + 1))}
+                      disabled={productPage === Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+
+                {/* Paginated products */}
+                {filteredProducts
+                  .slice((productPage - 1) * PRODUCTS_PER_PAGE, productPage * PRODUCTS_PER_PAGE)
+                  .map((p) => {
                   const supplierBrand =
                     p?.supplier?.supplierBrand ||
                     p?.supplier?.supplierBrandName ||
@@ -1473,8 +1510,35 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
               : "opacity-100 w-[30%]"
           } max-h-[70vh] overflow-y-auto overscroll-contain`}
         >
+          {/* Pagination controls for desktop */}
+          {filteredProducts.length > PRODUCTS_PER_PAGE && (
+            <div className="flex justify-between items-center mb-4 sticky top-0 bg-background z-10 p-2 border-b">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setProductPage(prev => Math.max(1, prev - 1))}
+                disabled={productPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {productPage} of {Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE)}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setProductPage(prev => Math.min(Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE), prev + 1))}
+                disabled={productPage === Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE)}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+
           <div className="columns-2 gap-3">
-            {filteredProducts.map((p) => (
+            {filteredProducts
+              .slice((productPage - 1) * PRODUCTS_PER_PAGE, productPage * PRODUCTS_PER_PAGE)
+              .map((p) => (
 <Card
   key={p.id}
   draggable
