@@ -877,7 +877,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
             )}
 
             {openFilter && (
-              <div className="mb-3 border rounded-lg overflow-hidden max-h-[50vh] overflow-y-auto">
+              <div className="mb-3 border rounded-lg overflow-hidden h-[50vh]">
                 <FilteringComponent
                   products={products}
                   onFilter={(filtered) => setFilteredProducts(filtered)}
@@ -1631,7 +1631,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
             viewMode || !openFilter
               ? "opacity-0 w-0 overflow-hidden pointer-events-none"
               : "opacity-100 w-[320px]"
-          } shrink-0 self-start sticky top-0 max-h-[calc(80vh-200px)] overflow-y-auto border-l pl-2`}
+          } shrink-0 self-start sticky top-0 h-[calc(80vh-200px)] overflow-hidden border-l pl-2`}
         >
           <FilteringComponent
             products={products}
