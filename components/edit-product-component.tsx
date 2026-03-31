@@ -501,8 +501,8 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
   );
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50">
-      <div className="p-4 md:p-6 space-y-4 md:space-y-6 pb-[100px]">
+    <div className="h-screen overflow-hidden bg-gray-50">
+      <div className="h-full overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 pb-[140px]">
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 md:gap-6">
 
           {/* LEFT COLUMN */}
