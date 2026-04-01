@@ -170,11 +170,17 @@ export default async function handler(
         const port         = p?.commercialDetails?.portOfDischarge   || "-";
         const subtotal     = qty * unitCost;
 
-        // price_validity
+        // price_validity: store as-is (text column, delimited string)
         const rawPV = p?.price_validity;
-        const priceValidity = rawPV && rawPV !== ""
-          ? new Date(rawPV).toISOString()
-          : "-";
+        let priceValidity = "-";
+        if (rawPV && rawPV !== "" && rawPV !== "-") {
+          try {
+            const parsed = new Date(rawPV);
+            priceValidity = isNaN(parsed.getTime()) ? "-" : parsed.toISOString();
+          } catch {
+            priceValidity = "-";
+          }
+        }
 
         images.push(p?.mainImage?.url || "-");
         qtys.push(String(qty));
