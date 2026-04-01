@@ -951,27 +951,39 @@ function Section({
     }
   });
 
-  const visible = items.filter((i: string) => {
-    if (!input) return true;
-    if (i === NO_SUPPLIER_BRAND) return NO_SUPPLIER_BRAND.toLowerCase().includes(input.toLowerCase());
-    const extractNumbers = (str: string) => {
-      const matches = str.match(/(\d+(\.\d+)?)/g);
-      return matches ? matches.map(Number) : [];
-    };
-    const itemNums = extractNumbers(i);
-    const inputNums = extractNumbers(input);
-    if (itemNums.length === 0) return i.toLowerCase().includes(input.toLowerCase());
-    if (inputNums.length >= 2) {
-      if (itemNums.length >= 2) return inputNums[0] >= itemNums[0] && inputNums[1] <= itemNums[1];
-      return false;
+const visible = items.filter((i: string) => {
+  if (!input) return true;
+  if (i === NO_SUPPLIER_BRAND) return NO_SUPPLIER_BRAND.toLowerCase().includes(input.toLowerCase());
+
+  const extractNumbers = (str: string) => {
+    const matches = str.match(/(\d+(\.\d+)?)/g);
+    return matches ? matches.map(Number) : [];
+  };
+
+  const itemNums = extractNumbers(i);
+  const inputNums = extractNumbers(input);
+
+  if (itemNums.length === 0) return i.toLowerCase().includes(input.toLowerCase());
+
+  if (inputNums.length >= 2) {
+    const rangeMin = Math.min(inputNums[0], inputNums[1]);
+    const rangeMax = Math.max(inputNums[0], inputNums[1]);
+    if (itemNums.length >= 2) {
+      // item is a range (e.g. "1000 - 2000 LM") — check overlap
+      return itemNums[0] <= rangeMax && itemNums[1] >= rangeMin;
     }
-    if (inputNums.length === 1) {
-      const inputVal = inputNums[0];
-      if (itemNums.length >= 2) return inputVal >= itemNums[0] && inputVal <= itemNums[1];
-      if (itemNums.length === 1) return itemNums[0] >= inputVal;
-    }
-    return i.toLowerCase().includes(input.toLowerCase());
-  });
+    // ✅ item is a single value (e.g. "830 LM") — check if it falls within typed range
+    return itemNums[0] >= rangeMin && itemNums[0] <= rangeMax;
+  }
+
+  if (inputNums.length === 1) {
+    const inputVal = inputNums[0];
+    if (itemNums.length >= 2) return inputVal >= itemNums[0] && inputVal <= itemNums[1];
+    if (itemNums.length === 1) return itemNums[0] >= inputVal;
+  }
+
+  return i.toLowerCase().includes(input.toLowerCase());
+});
 
   const levenshtein = (a: string, b: string) => {
     const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
