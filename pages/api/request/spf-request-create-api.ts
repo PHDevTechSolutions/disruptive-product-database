@@ -356,19 +356,7 @@ export default async function handler(
         .eq("spf_number", spf_number);
     }
 
-    /* ── Update spf_request status ── */
-    const { error: updateError } = await supabase
-      .from("spf_request")
-      .update({
-        status:       "Processed by PD",
-        date_updated: new Date().toISOString(),
-      })
-      .eq("spf_number", spf_number);
-
-    if (updateError) {
-      console.error(updateError);
-      return res.status(500).json(updateError);
-    }
+      return res.status(200).json({ success: true, message: "SPF created successfully" });
 
     /* ── Audit log ── */
     import("@/lib/auditlogger").then(({ logSPFVersionEvent }) => {
