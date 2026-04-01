@@ -26,6 +26,7 @@ type VersionRecord = {
   status?: string;
   spf_creation_start_time?: string;
   spf_creation_end_time?: string;
+  price_validity?: string;
 
   supplier_brand?: string;
   product_offer_image?: string;
@@ -322,7 +323,8 @@ function VersionDetail({
   const rowSellingCosts = splitByRow(record.final_selling_cost);
   const rowFinalUnitCosts = splitByRow(record.final_unit_cost);
   const rowFinalSubtotals = splitByRow(record.final_subtotal);
-  const rowItemCodes = splitByRow(record.item_code);
+const rowItemCodes = splitByRow(record.item_code);
+  const rowPriceValidities = splitByRow(record.price_validity);
 
   // Previous version parsed values (for diff)
   const prevRowImages = splitByRow(prevRecord?.product_offer_image);
@@ -343,6 +345,7 @@ function VersionDetail({
   const prevRowFinalUnitCosts = splitByRow(prevRecord?.final_unit_cost);
   const prevRowFinalSubtotals = splitByRow(prevRecord?.final_subtotal);
   const prevRowItemCodes = splitByRow(prevRecord?.item_code);
+  const prevRowPriceValidities = splitByRow(prevRecord?.price_validity);
 
   // Helper to get prev value safely (undefined = no prev = no highlight)
   const getPrev = (arr: string[][], rowIdx: number, i: number): string | undefined => {
@@ -377,6 +380,7 @@ function VersionDetail({
         const prodFinalUnitCosts = rowFinalUnitCosts[rowIndex] ?? [];
         const prodFinalSubtotals = rowFinalSubtotals[rowIndex] ?? [];
         const prodItemCodes = rowItemCodes[rowIndex] ?? [];
+        const prodPriceValidities = rowPriceValidities[rowIndex] ?? [];
 
         const hasProducts =
           prodImages.length > 0 &&
@@ -459,6 +463,19 @@ function VersionDetail({
                         <DiffValue label="Unit Cost" current={prodUnitCosts[i]} previous={getPrev(prevRowUnitCosts, rowIndex, i)} />
                         <DiffValue label="Qty/Per Carton" current={prodPcsPerCartons[i]} previous={getPrev(prevRowPcsPerCartons, rowIndex, i)} />
                         <DiffValue label="Packaging" current={prodPackaging[i]} previous={getPrev(prevRowPackaging, rowIndex, i)} />
+                        <DiffValue
+                          label="Price Validity"
+                          current={(() => {
+                            const pv = prodPriceValidities[i];
+                            if (!pv || pv === "-") return "-";
+                            try { return new Date(pv).toLocaleString("en-PH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return pv; }
+                          })()}
+                          previous={(() => {
+                            const pv = getPrev(prevRowPriceValidities, rowIndex, i);
+                            if (!pv || pv === "-") return "-";
+                            try { return new Date(pv).toLocaleString("en-PH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return pv; }
+                          })()}
+                        />
                         <DiffValue label="Factory" current={prodFactories[i]} previous={getPrev(prevRowFactories, rowIndex, i)} />
                         <DiffValue label="Port" current={prodPorts[i]} previous={getPrev(prevRowPorts, rowIndex, i)} />
                         <DiffValue label="Subtotal" current={prodSubtotals[i] ? `₱${Number(prodSubtotals[i] || 0).toLocaleString()}` : undefined} previous={getPrev(prevRowSubtotals, rowIndex, i) ? `₱${Number(getPrev(prevRowSubtotals, rowIndex, i) || 0).toLocaleString()}` : getPrev(prevRowSubtotals, rowIndex, i)} />
@@ -499,6 +516,7 @@ function VersionDetail({
                       <th className="border px-2 py-1 text-center whitespace-nowrap">Supplier Brand</th>
                       <th className="border px-2 py-1 text-center whitespace-nowrap">Image</th>
                       <th className="border px-2 py-1 text-center whitespace-nowrap">Qty</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">Price Validity</th>
                       <th className="border px-2 py-1 text-center min-w-[180px]">Technical Specs</th>
                       <th className="border px-2 py-1 text-center whitespace-nowrap">Unit Cost</th>
                       <th className="border px-2 py-1 text-center whitespace-nowrap">Qty/Per Carton</th>
@@ -545,6 +563,13 @@ function VersionDetail({
                           </td>
                           <DiffCell current={prodQtys[i]} previous={getPrev(prevRowQtys, rowIndex, i)}>
                             {prodQtys[i] || "-"}
+                          </DiffCell>
+                          <DiffCell current={prodPriceValidities[i]} previous={getPrev(prevRowPriceValidities, rowIndex, i)}>
+                            {(() => {
+                              const pv = prodPriceValidities[i];
+                              if (!pv || pv === "-") return "-";
+                              try { return new Date(pv).toLocaleString("en-PH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return pv; }
+                            })()}
                           </DiffCell>
                           <td
                             className={`border px-2 py-1 align-top text-[11px] ${specsChanged ? "bg-yellow-100" : ""}`}

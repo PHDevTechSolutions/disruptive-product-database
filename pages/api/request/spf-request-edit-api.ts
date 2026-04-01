@@ -36,7 +36,7 @@ export default async function handler(
       return res.status(400).json({ message: "Missing SPF number" });
     }
 
-    /* ── Resolve edited_by — direct MongoDB query (works on Vercel) ── */
+    /* ── Resolve edited_by ── */
     let resolvedEditedBy: string | null = null;
     try {
       if (userId) {
@@ -68,7 +68,7 @@ export default async function handler(
       historyRows && historyRows.length > 0 ? historyRows[0].version_number : 0;
     const nextVersion = lastVersion + 1;
 
-    /* ── Fetch current status from spf_creation to snapshot into history ── */
+    /* ── Fetch current status ── */
     let currentStatus: string = "Pending For Procurement";
     try {
       const { data: currentCreation } = await supabase
@@ -85,9 +85,7 @@ export default async function handler(
 
     /* ── Pre-fetch all unique supplier contacts ── */
     const uniqueSupplierIds = [
-      ...new Set(
-        products.map((p: any) => p?.supplier?.supplierId).filter(Boolean)
-      ),
+      ...new Set(products.map((p: any) => p?.supplier?.supplierId).filter(Boolean)),
     ] as string[];
 
     for (const supplierId of uniqueSupplierIds) {
@@ -118,42 +116,44 @@ export default async function handler(
     }
 
     /* ── Per-row accumulators ── */
-    const rowImages:         string[] = [];
-    const rowQtys:           string[] = [];
-    const rowSpecs:          string[] = [];
-    const rowUnitCosts:      string[] = [];
-    const rowPcsPerCarton:   string[] = [];
-    const rowPackaging:      string[] = [];
-    const rowFactories:      string[] = [];
-    const rowPorts:          string[] = [];
-    const rowSubtotals:      string[] = [];
-    const rowSupplierBrands: string[] = [];
-    const rowCompanyNames:   string[] = [];
-    const rowContactNames:   string[] = [];
-    const rowContactNumbers: string[] = [];
-    const rowSellingCosts:   string[] = [];
-    const rowLeadTimes:      string[] = [];
-    const rowItemCodes:      string[] = [];
+    const rowImages:          string[] = [];
+    const rowQtys:            string[] = [];
+    const rowSpecs:           string[] = [];
+    const rowUnitCosts:       string[] = [];
+    const rowPcsPerCarton:    string[] = [];
+    const rowPackaging:       string[] = [];
+    const rowFactories:       string[] = [];
+    const rowPorts:           string[] = [];
+    const rowSubtotals:       string[] = [];
+    const rowSupplierBrands:  string[] = [];
+    const rowCompanyNames:    string[] = [];
+    const rowContactNames:    string[] = [];
+    const rowContactNumbers:  string[] = [];
+    const rowSellingCosts:    string[] = [];
+    const rowLeadTimes:       string[] = [];
+    const rowItemCodes:       string[] = [];
+    const rowPriceValidities: string[] = [];
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
 
-      const images:         string[] = [];
-      const qtys:           string[] = [];
-      const specs:          string[] = [];
-      const unitCosts:      string[] = [];
-      const pcsPerCartons:  string[] = [];
-      const packaging:      string[] = [];
-      const factories:      string[] = [];
-      const ports:          string[] = [];
-      const subtotals:      string[] = [];
-      const supplierBrands: string[] = [];
-      const companyNames:   string[] = [];
-      const contactNames:   string[] = [];
-      const contactNumbers: string[] = [];
-      const sellingCosts:   string[] = [];
-      const leadTimes:      string[] = [];
-      const itemCodes:      string[] = [];
+      const images:          string[] = [];
+      const qtys:            string[] = [];
+      const specs:           string[] = [];
+      const unitCosts:       string[] = [];
+      const pcsPerCartons:   string[] = [];
+      const packaging:       string[] = [];
+      const factories:       string[] = [];
+      const ports:           string[] = [];
+      const subtotals:       string[] = [];
+      const supplierBrands:  string[] = [];
+      const companyNames:    string[] = [];
+      const contactNames:    string[] = [];
+      const contactNumbers:  string[] = [];
+      const sellingCosts:    string[] = [];
+      const leadTimes:       string[] = [];
+      const itemCodes:       string[] = [];
+      const priceValidities: string[] = [];
 
       const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
 
@@ -170,6 +170,12 @@ export default async function handler(
         const port         = p?.commercialDetails?.portOfDischarge   || "-";
         const subtotal     = qty * unitCost;
 
+        // price_validity
+        const rawPV = p?.price_validity;
+        const priceValidity = rawPV && rawPV !== ""
+          ? new Date(rawPV).toISOString()
+          : "-";
+
         images.push(p?.mainImage?.url || "-");
         qtys.push(String(qty));
         unitCosts.push(String(unitCost));
@@ -178,9 +184,8 @@ export default async function handler(
         factories.push(factory);
         ports.push(port);
         subtotals.push(String(subtotal));
-        supplierBrands.push(
-          p?.supplier?.supplierBrand || p?.supplier?.supplierBrandName || "-"
-        );
+        supplierBrands.push(p?.supplier?.supplierBrand || p?.supplier?.supplierBrandName || "-");
+        priceValidities.push(priceValidity);
 
         /* ── Carry __sellingCost/__leadTime from existing products ── */
         sellingCosts.push(p?.__sellingCost ?? "-");
@@ -230,25 +235,27 @@ export default async function handler(
       rowSellingCosts.push(sellingCosts.join(","));
       rowLeadTimes.push(leadTimes.join(","));
       rowItemCodes.push(itemCodes.join(","));
+      rowPriceValidities.push(priceValidities.join(","));
     }
 
     /* ── Final strings ── */
-    const finalImages         = rowImages.join(ROW_SEP);
-    const finalQtys           = rowQtys.join(ROW_SEP);
-    const finalSpecs          = rowSpecs.join(ROW_SEP);
-    const finalUnitCosts      = rowUnitCosts.join(ROW_SEP);
-    const finalPcsPerCarton   = rowPcsPerCarton.join(ROW_SEP);
-    const finalPackaging      = rowPackaging.join(ROW_SEP);
-    const finalFactories      = rowFactories.join(ROW_SEP);
-    const finalPorts          = rowPorts.join(ROW_SEP);
-    const finalSubtotals      = rowSubtotals.join(ROW_SEP);
-    const finalSupplierBrands = rowSupplierBrands.join(ROW_SEP);
-    const finalCompanyNames   = rowCompanyNames.join(ROW_SEP);
-    const finalContactNames   = rowContactNames.join(ROW_SEP);
-    const finalContactNumbers = rowContactNumbers.join(ROW_SEP);
-    const finalSellingCosts   = rowSellingCosts.join(ROW_SEP);
-    const finalLeadTimes      = rowLeadTimes.join(ROW_SEP);
-    const finalItemCode       = rowItemCodes.some((r) => r !== "" && r.length > 0)
+    const finalImages          = rowImages.join(ROW_SEP);
+    const finalQtys            = rowQtys.join(ROW_SEP);
+    const finalSpecs           = rowSpecs.join(ROW_SEP);
+    const finalUnitCosts       = rowUnitCosts.join(ROW_SEP);
+    const finalPcsPerCarton    = rowPcsPerCarton.join(ROW_SEP);
+    const finalPackaging       = rowPackaging.join(ROW_SEP);
+    const finalFactories       = rowFactories.join(ROW_SEP);
+    const finalPorts           = rowPorts.join(ROW_SEP);
+    const finalSubtotals       = rowSubtotals.join(ROW_SEP);
+    const finalSupplierBrands  = rowSupplierBrands.join(ROW_SEP);
+    const finalCompanyNames    = rowCompanyNames.join(ROW_SEP);
+    const finalContactNames    = rowContactNames.join(ROW_SEP);
+    const finalContactNumbers  = rowContactNumbers.join(ROW_SEP);
+    const finalSellingCosts    = rowSellingCosts.join(ROW_SEP);
+    const finalLeadTimes       = rowLeadTimes.join(ROW_SEP);
+    const finalPriceValidities = rowPriceValidities.join(ROW_SEP);
+    const finalItemCode        = rowItemCodes.some((r) => r !== "" && r.length > 0)
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
 
@@ -280,6 +287,7 @@ export default async function handler(
 
       proj_lead_time:     finalLeadTimes,
       final_selling_cost: finalSellingCosts,
+      price_validity:     finalPriceValidities,
 
       spf_creation_start_time: spf_creation_start_time ?? null,
       spf_creation_end_time:   spf_creation_end_time   ?? null,
@@ -317,6 +325,7 @@ export default async function handler(
 
         final_selling_cost: finalSellingCosts,
         proj_lead_time:     finalLeadTimes,
+        price_validity:     finalPriceValidities,
 
         status: "Pending For Procurement",
 
@@ -326,7 +335,7 @@ export default async function handler(
       })
       .eq("spf_number", spf_number);
 
-    /* ── Audit log — MUST be before return ── */
+    /* ── Audit log ── */
     try {
       const { logSPFVersionEvent } = await import("@/lib/auditlogger");
       await logSPFVersionEvent({

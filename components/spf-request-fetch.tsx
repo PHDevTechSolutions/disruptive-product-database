@@ -70,6 +70,7 @@ type SPFData = {
   tsm?: string;
   manager?: string;
   item_added_author?: string;
+  price_validity?: string;
 };
 
 type SPFRequestData = {
@@ -511,9 +512,10 @@ export default function SPFRequestFetch({
     const rowSellingCosts = splitByRow(data.final_selling_cost);
     const rowLeadTimes = splitByRow(data.proj_lead_time);
     const rowItemCodes = splitByRow(data.item_code);
-    const rowSpecs = splitSpecsByRow(
-      data.product_offer_technical_specification,
-    );
+        const rowPriceValidities = splitByRow(data.price_validity);
+        const rowSpecs = splitSpecsByRow(
+          data.product_offer_technical_specification,
+        );
 
     const descs = (requestData.item_description || "")
       .split(",")
@@ -575,6 +577,16 @@ export default function SPFRequestFetch({
             }),
           ),
           qty: Number(qtys[i] || 1),
+          __priceValidity: (() => {
+            const pv = (rowPriceValidities[rowIndex] ?? [])[i];
+            if (!pv || pv === "-") return "";
+            try { return new Date(pv).toISOString().slice(0, 16); } catch { return ""; }
+          })(),
+          price_validity: (() => {
+            const pv = (rowPriceValidities[rowIndex] ?? [])[i];
+            if (!pv || pv === "-") return "";
+            return pv;
+          })(),
         };
       });
     });
@@ -792,6 +804,7 @@ export default function SPFRequestFetch({
   const rowFinalUnitCosts = splitByRow(data?.final_unit_cost);
   const rowFinalSubtotals = splitByRow(data?.final_subtotal);
   const rowItemCodes = splitByRow(data?.item_code);
+  const rowPriceValidities = splitByRow(data?.price_validity);
 
   const itemDescriptions: string[] = (requestData?.item_description || "")
     .split(",")
@@ -1035,6 +1048,25 @@ export default function SPFRequestFetch({
                                 <span className="text-[10px] text-muted-foreground ml-auto">
                                   Unit: {unitCost}
                                 </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                  Price Validity
+                                </span>
+                                <input
+                                  type="datetime-local"
+                                  className="border rounded px-2 py-0.5 text-xs flex-1"
+                                  value={prod.__priceValidity ?? ""}
+                                  onChange={(e) => {
+                                    setProductOffers((prev) => {
+                                      const copy = { ...prev };
+                                      const row = [...(copy[index] || [])];
+                                      row[i] = { ...row[i], __priceValidity: e.target.value, price_validity: e.target.value };
+                                      copy[index] = row;
+                                      return copy;
+                                    });
+                                  }}
+                                />
                               </div>
                               <p className="text-[10px] text-muted-foreground">
                                 Pack: {length} × {width} × {height}
@@ -1494,6 +1526,9 @@ export default function SPFRequestFetch({
                                   <th className="border px-2 py-1 w-[70px]">
                                     Qty
                                   </th>
+                                  <th className="border px-2 py-1 text-center whitespace-nowrap">
+                                    Price Validity
+                                  </th>
                                   <th className="border px-2 py-1 text-center">
                                     Technical Specifications
                                   </th>
@@ -1597,6 +1632,22 @@ export default function SPFRequestFetch({
                                                   ...(copy[index] || []),
                                                 ];
                                                 row[i] = { ...row[i], qty };
+                                                copy[index] = row;
+                                                return copy;
+                                              });
+                                            }}
+                                          />
+                                        </td>
+                                                    <td className="border px-2 py-1 text-center align-middle">
+                                          <input
+                                            type="datetime-local"
+                                            className="border px-1 py-0.5 text-xs w-full"
+                                            value={prod.__priceValidity ?? ""}
+                                            onChange={(e) => {
+                                              setProductOffers((prev) => {
+                                                const copy = { ...prev };
+                                                const row = [...(copy[index] || [])];
+                                                row[i] = { ...row[i], __priceValidity: e.target.value, price_validity: e.target.value };
                                                 copy[index] = row;
                                                 return copy;
                                               });
@@ -2058,6 +2109,18 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                 {prodPackaging[i] || "-"}
                               </span>
                             </div>
+                            <div>
+                              <span className="text-gray-400 block">
+                                Price Validity
+                              </span>
+                              <span className="font-medium">
+                                {(() => {
+                                  const pv = (rowPriceValidities[rowIndex] ?? [])[i];
+                                  if (!pv || pv === "-") return "-";
+                                  try { return new Date(pv).toLocaleString("en-PH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return pv; }
+                                })()}
+                              </span>
+                            </div>
                           </div>
                           {prodFactories[i] && prodFactories[i] !== "-" && (
                             <p className="text-[10px] text-gray-500 truncate">
@@ -2262,8 +2325,11 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
                                       Image
                                     </th>
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
+<th className="border px-2 py-1 text-center whitespace-nowrap">
                                       Qty
+                                    </th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
+                                      Price Validity
                                     </th>
                                     <th className="border px-2 py-1 text-center min-w-[200px]">
                                       Technical Specs
@@ -2333,6 +2399,13 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                     </td>
                                     <td className="border px-2 py-2 text-center align-middle">
                                       {prodQtys[i] || "-"}
+                                    </td>
+                                    <td className="border px-2 py-2 text-center align-middle whitespace-nowrap">
+                                      {(() => {
+                                        const pv = (rowPriceValidities[rowIndex] ?? [])[i];
+                                        if (!pv || pv === "-") return "-";
+                                        try { return new Date(pv).toLocaleString("en-PH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return pv; }
+                                      })()}
                                     </td>
                                     <td className="border px-2 py-2 align-top">
                                       {groups.length === 0 ? (

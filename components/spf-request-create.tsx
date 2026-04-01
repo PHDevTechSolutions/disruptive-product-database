@@ -782,6 +782,23 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                     Unit: {unitCost}
                                   </span>
                                 </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[10px] text-muted-foreground shrink-0">Price Validity</span>
+                                    <input
+                                      type="datetime-local"
+                                      className="border rounded px-2 py-0.5 text-xs flex-1"
+                                      value={prod.__priceValidity ?? ""}
+                                      onChange={(e) => {
+                                        setProductOffers((prev) => {
+                                          const copy = { ...prev };
+                                          const row = [...(copy[index] || [])];
+                                          row[i] = { ...row[i], __priceValidity: e.target.value, price_validity: e.target.value };
+                                          copy[index] = row;
+                                          return copy;
+                                        });
+                                      }}
+                                    />
+                                  </div>
                                 <p className="text-[10px] text-muted-foreground">
                                   Pack: {length} × {width} × {height}
                                 </p>
@@ -1296,6 +1313,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                     Qty
                                   </th>
                                   <th className="border px-2 py-1 text-center">
+                                    Price Validity
+                                  </th>
+                                  <th className="border px-2 py-1 text-center">
                                     Technical Specifications
                                   </th>
                                   <th className="border px-2 py-1 text-center">
@@ -1415,9 +1435,25 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                             }}
                                           />
                                         </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod.technicalSpecifications
-                                            ?.map((g: any) => ({
+                                          <td className="border px-2 py-1 text-center align-middle">
+                                            <input
+                                              type="datetime-local"
+                                              className="border px-1 py-0.5 text-xs w-full"
+                                              value={prod.__priceValidity ?? ""}
+                                              onChange={(e) => {
+                                                setProductOffers((prev) => {
+                                                  const copy = { ...prev };
+                                                  const row = [...(copy[index] || [])];
+                                                  row[i] = { ...row[i], __priceValidity: e.target.value, price_validity: e.target.value };
+                                                  copy[index] = row;
+                                                  return copy;
+                                                });
+                                              }}
+                                            />
+                                          </td>
+                                          <td className="border px-2 py-1 text-center align-middle">
+                                            {prod.technicalSpecifications
+                                              ?.map((g: any) => ({
                                               ...g,
                                               specs: g.specs?.filter(
                                                 (s: any) =>
