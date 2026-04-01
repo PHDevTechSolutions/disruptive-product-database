@@ -36,20 +36,21 @@ export default async function handler(
       return res.status(400).json({ message: "Missing SPF number" });
     }
 
-    /* ── Resolve edited_by ── */
+    /* ── Resolve edited_by — direct MongoDB query (works on Vercel) ── */
     let resolvedEditedBy: string | null = null;
     try {
       if (userId) {
-        const userRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/users?id=${userId}`
+        const { connectToDatabase } = await import("@/lib/mongodb");
+        const { ObjectId } = await import("mongodb");
+        const mongoDb = await connectToDatabase();
+        const user = await mongoDb.collection("users").findOne(
+          { _id: new ObjectId(userId) },
+          { projection: { ReferenceID: 1 } }
         );
-        if (userRes.ok) {
-          const user = await userRes.json();
-          resolvedEditedBy = user?.ReferenceID || null;
-        }
+        resolvedEditedBy = user?.ReferenceID || null;
       }
     } catch (err) {
-      console.error("Failed to resolve edited_by:", err);
+      console.error("Failed to resolve resolvedEditedBy:", err);
     }
 
     const products = Array.isArray(selectedProducts) ? selectedProducts : [];
@@ -67,7 +68,7 @@ export default async function handler(
       historyRows && historyRows.length > 0 ? historyRows[0].version_number : 0;
     const nextVersion = lastVersion + 1;
 
-    /* ── ✅ Fetch current status from spf_creation to snapshot into history ── */
+    /* ── Fetch current status from spf_creation to snapshot into history ── */
     let currentStatus: string = "Pending For Procurement";
     try {
       const { data: currentCreation } = await supabase
@@ -169,7 +170,6 @@ export default async function handler(
         const port         = p?.commercialDetails?.portOfDischarge   || "-";
         const subtotal     = qty * unitCost;
 
-        /* ── Every array always gets exactly one push per product ── */
         images.push(p?.mainImage?.url || "-");
         qtys.push(String(qty));
         unitCosts.push(String(unitCost));
@@ -186,10 +186,8 @@ export default async function handler(
         sellingCosts.push(p?.__sellingCost ?? "-");
         leadTimes.push(p?.__leadTime      ?? "-");
 
-        /* ── Item code ── */
         itemCodes.push(`${rowBase}-OPT-${optIdx + 1}`);
 
-        /* ── company/contact — always push regardless of supplierId ── */
         const supplierId = String(p?.supplier?.supplierId || "");
         const cached     = supplierId ? supplierCache.get(supplierId) : undefined;
         companyNames.push(cached?.company        || p?.supplier?.company || "-");
@@ -254,7 +252,7 @@ export default async function handler(
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
 
-    /* ── INSERT version history snapshot — now includes status ── */
+    /* ── INSERT version history snapshot ── */
     await supabase.from("spf_creation_history").insert({
       spf_number,
       version_number: nextVersion,
@@ -263,7 +261,6 @@ export default async function handler(
       edited_by:      resolvedEditedBy,
       item_added_author: resolvedEditedBy,
 
-      /* ✅ STATUS — snapshot of spf_creation status at the time of this edit */
       status: currentStatus,
 
       supplier_brand:                        finalSupplierBrands,
@@ -293,7 +290,7 @@ export default async function handler(
       item_code:   finalItemCode || item_code || null,
     });
 
-    /* ── UPDATE main spf_creation table — reset to Pending For Procurement on edit ── */
+    /* ── UPDATE main spf_creation table ── */
     await supabase
       .from("spf_creation")
       .update({
@@ -329,9 +326,10 @@ export default async function handler(
       })
       .eq("spf_number", spf_number);
 
-    /* ── Audit log ── */
-    import("@/lib/auditlogger").then(({ logSPFVersionEvent }) => {
-      logSPFVersionEvent({
+    /* ── Audit log — MUST be before return ── */
+    try {
+      const { logSPFVersionEvent } = await import("@/lib/auditlogger");
+      await logSPFVersionEvent({
         whatHappened:   "SPF Version Created",
         spf_number,
         version_label:  `${spf_number}_v${nextVersion}`,
@@ -339,12 +337,15 @@ export default async function handler(
         referenceID:    resolvedEditedBy ?? undefined,
         userId:         userId           ?? undefined,
       });
-    });
+    } catch (auditErr) {
+      console.error("Audit log error:", auditErr);
+    }
 
     return res.status(200).json({
       success:       true,
       version_label: `${spf_number}_v${nextVersion}`,
     });
+
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ message: err.message });

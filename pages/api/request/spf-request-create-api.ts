@@ -12,7 +12,7 @@ const supplierCache = new Map<
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse,
+  res: NextApiResponse
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({ message: "Method not allowed" });
@@ -46,22 +46,20 @@ export default async function handler(
     }
 
     const referenceIdValue = spfRequest.referenceid ?? null;
-    const tsmValue = spfRequest.tsm ?? null;
-    const managerValue = spfRequest.manager ?? null;
+    const tsmValue         = spfRequest.tsm          ?? null;
+    const managerValue     = spfRequest.manager       ?? null;
 
-    /* ── Resolve item_added_author ── */
+    /* ── Resolve item_added_author — direct MongoDB query (works on Vercel) ── */
     let item_added_author: string | null = null;
     try {
       if (userId) {
         const { connectToDatabase } = await import("@/lib/mongodb");
         const { ObjectId } = await import("mongodb");
         const mongoDb = await connectToDatabase();
-        const user = await mongoDb
-          .collection("users")
-          .findOne(
-            { _id: new ObjectId(userId) },
-            { projection: { ReferenceID: 1 } },
-          );
+        const user = await mongoDb.collection("users").findOne(
+          { _id: new ObjectId(userId) },
+          { projection: { ReferenceID: 1 } }
+        );
         item_added_author = user?.ReferenceID || null;
       }
     } catch (err) {
@@ -74,7 +72,7 @@ export default async function handler(
     /* ── Pre-fetch all unique supplier contacts ── */
     const uniqueSupplierIds = [
       ...new Set(
-        products.map((p: any) => p?.supplier?.supplierId).filter(Boolean),
+        products.map((p: any) => p?.supplier?.supplierId).filter(Boolean)
       ),
     ] as string[];
 
@@ -83,18 +81,12 @@ export default async function handler(
       try {
         const supplierSnap = await getDoc(doc(db, "suppliers", supplierId));
         if (supplierSnap.exists()) {
-          const d: any = supplierSnap.data();
+          const d: any   = supplierSnap.data();
           const contacts = d.contacts || [];
           supplierCache.set(supplierId, {
-            company: d.company || "-",
-            contactNames: contacts
-              .map((c: any) => c.name)
-              .filter(Boolean)
-              .join(" | "),
-            contactNumbers: contacts
-              .map((c: any) => c.phone)
-              .filter(Boolean)
-              .join(" | "),
+            company:        d.company || "-",
+            contactNames:   contacts.map((c: any) => c.name).filter(Boolean).join(" | "),
+            contactNumbers: contacts.map((c: any) => c.phone).filter(Boolean).join(" | "),
           });
         }
       } catch (err) {
@@ -112,59 +104,58 @@ export default async function handler(
     }
 
     /* ── Per-row accumulators ── */
-    const rowImages: string[] = [];
-    const rowQtys: string[] = [];
-    const rowSpecs: string[] = [];
-    const rowUnitCosts: string[] = [];
-    const rowPcsPerCarton: string[] = [];
-    const rowPackaging: string[] = [];
-    const rowFactories: string[] = [];
-    const rowPorts: string[] = [];
-    const rowSubtotals: string[] = [];
+    const rowImages:         string[] = [];
+    const rowQtys:           string[] = [];
+    const rowSpecs:          string[] = [];
+    const rowUnitCosts:      string[] = [];
+    const rowPcsPerCarton:   string[] = [];
+    const rowPackaging:      string[] = [];
+    const rowFactories:      string[] = [];
+    const rowPorts:          string[] = [];
+    const rowSubtotals:      string[] = [];
     const rowSupplierBrands: string[] = [];
-    const rowCompanyNames: string[] = [];
-    const rowContactNames: string[] = [];
+    const rowCompanyNames:   string[] = [];
+    const rowContactNames:   string[] = [];
     const rowContactNumbers: string[] = [];
-    const rowSellingCosts: string[] = [];
-    const rowLeadTimes: string[] = [];
-    const rowItemCodes: string[] = [];
+    const rowSellingCosts:   string[] = [];
+    const rowLeadTimes:      string[] = [];
+    const rowItemCodes:      string[] = [];
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
 
-      const images: string[] = [];
-      const qtys: string[] = [];
-      const specs: string[] = [];
-      const unitCosts: string[] = [];
-      const pcsPerCartons: string[] = [];
-      const packaging: string[] = [];
-      const factories: string[] = [];
-      const ports: string[] = [];
-      const subtotals: string[] = [];
+      const images:         string[] = [];
+      const qtys:           string[] = [];
+      const specs:          string[] = [];
+      const unitCosts:      string[] = [];
+      const pcsPerCartons:  string[] = [];
+      const packaging:      string[] = [];
+      const factories:      string[] = [];
+      const ports:          string[] = [];
+      const subtotals:      string[] = [];
       const supplierBrands: string[] = [];
-      const companyNames: string[] = [];
-      const contactNames: string[] = [];
+      const companyNames:   string[] = [];
+      const contactNames:   string[] = [];
       const contactNumbers: string[] = [];
-      const sellingCosts: string[] = [];
-      const leadTimes: string[] = [];
-      const itemCodes: string[] = [];
+      const sellingCosts:   string[] = [];
+      const leadTimes:      string[] = [];
+      const itemCodes:      string[] = [];
 
       const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
 
       for (let optIdx = 0; optIdx < rowProducts.length; optIdx++) {
         const p = rowProducts[optIdx];
 
-        const qty = Number(p.qty || 0);
-        const unitCost = Number(p?.commercialDetails?.unitCost || 0);
+        const qty          = Number(p.qty || 0);
+        const unitCost     = Number(p?.commercialDetails?.unitCost || 0);
         const pcsPerCarton = p?.commercialDetails?.pcsPerCarton || "-";
-        const length = p?.commercialDetails?.packaging?.length || "-";
-        const width = p?.commercialDetails?.packaging?.width || "-";
-        const height = p?.commercialDetails?.packaging?.height || "-";
-        const factory = p?.commercialDetails?.factoryAddress || "-";
-        const port = p?.commercialDetails?.portOfDischarge || "-";
-        const subtotal = qty * unitCost;
+        const length       = p?.commercialDetails?.packaging?.length || "-";
+        const width        = p?.commercialDetails?.packaging?.width  || "-";
+        const height       = p?.commercialDetails?.packaging?.height || "-";
+        const factory      = p?.commercialDetails?.factoryAddress    || "-";
+        const port         = p?.commercialDetails?.portOfDischarge   || "-";
+        const subtotal     = qty * unitCost;
 
-        /* ── Every array always gets exactly one push per product ── */
         images.push(p?.mainImage?.url || "-");
         qtys.push(String(qty));
         unitCosts.push(String(unitCost));
@@ -174,24 +165,23 @@ export default async function handler(
         ports.push(port);
         subtotals.push(String(subtotal));
         supplierBrands.push(
-          p?.supplier?.supplierBrand || p?.supplier?.supplierBrandName || "-",
+          p?.supplier?.supplierBrand || p?.supplier?.supplierBrandName || "-"
         );
         sellingCosts.push("-");
         leadTimes.push("-");
         itemCodes.push(`${rowBase}-OPT-${optIdx + 1}`);
 
-        /* ── company/contact — always push regardless of supplierId ── */
         const supplierId = String(p?.supplier?.supplierId || "");
-        const cached = supplierId ? supplierCache.get(supplierId) : undefined;
-        companyNames.push(cached?.company || p?.supplier?.company || "-");
-        contactNames.push(cached?.contactNames || "-");
+        const cached     = supplierId ? supplierCache.get(supplierId) : undefined;
+        companyNames.push(cached?.company        || p?.supplier?.company || "-");
+        contactNames.push(cached?.contactNames    || "-");
         contactNumbers.push(cached?.contactNumbers || "-");
 
         /* ── Tech specs ── */
         if (p?.technicalSpecifications?.length) {
           const groupedTech = p.technicalSpecifications
             .map((g: any) => {
-              const title = (g.title || "").trim();
+              const title     = (g.title || "").trim();
               const specLines = (g.specs || [])
                 .filter((s: any) => s.value && s.value.trim() !== "")
                 .map((s: any) => `${s.specId}: ${s.value.trim()}`)
@@ -230,22 +220,22 @@ export default async function handler(
     }
 
     /* ── Final strings ── */
-    const finalImages = rowImages.join(ROW_SEP);
-    const finalQtys = rowQtys.join(ROW_SEP);
-    const finalSpecs = rowSpecs.join(ROW_SEP);
-    const finalUnitCosts = rowUnitCosts.join(ROW_SEP);
-    const finalPcsPerCarton = rowPcsPerCarton.join(ROW_SEP);
-    const finalPackaging = rowPackaging.join(ROW_SEP);
-    const finalFactories = rowFactories.join(ROW_SEP);
-    const finalPorts = rowPorts.join(ROW_SEP);
-    const finalSubtotals = rowSubtotals.join(ROW_SEP);
+    const finalImages         = rowImages.join(ROW_SEP);
+    const finalQtys           = rowQtys.join(ROW_SEP);
+    const finalSpecs          = rowSpecs.join(ROW_SEP);
+    const finalUnitCosts      = rowUnitCosts.join(ROW_SEP);
+    const finalPcsPerCarton   = rowPcsPerCarton.join(ROW_SEP);
+    const finalPackaging      = rowPackaging.join(ROW_SEP);
+    const finalFactories      = rowFactories.join(ROW_SEP);
+    const finalPorts          = rowPorts.join(ROW_SEP);
+    const finalSubtotals      = rowSubtotals.join(ROW_SEP);
     const finalSupplierBrands = rowSupplierBrands.join(ROW_SEP);
-    const finalCompanyNames = rowCompanyNames.join(ROW_SEP);
-    const finalContactNames = rowContactNames.join(ROW_SEP);
+    const finalCompanyNames   = rowCompanyNames.join(ROW_SEP);
+    const finalContactNames   = rowContactNames.join(ROW_SEP);
     const finalContactNumbers = rowContactNumbers.join(ROW_SEP);
-    const finalSellingCosts = rowSellingCosts.join(ROW_SEP);
-    const finalLeadTimes = rowLeadTimes.join(ROW_SEP);
-    const finalItemCode = rowItemCodes.some((r) => r !== "-" && r !== "")
+    const finalSellingCosts   = rowSellingCosts.join(ROW_SEP);
+    const finalLeadTimes      = rowLeadTimes.join(ROW_SEP);
+    const finalItemCode       = rowItemCodes.some((r) => r !== "-" && r !== "")
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
 
@@ -270,34 +260,34 @@ export default async function handler(
         .from("spf_creation")
         .insert({
           spf_number,
-          referenceid: referenceIdValue,
-          tsm: tsmValue,
-          manager: managerValue,
+          referenceid:      referenceIdValue,
+          tsm:              tsmValue,
+          manager:          managerValue,
           item_added_author,
-          item_code: finalItemCode,
+          item_code:        finalItemCode,
 
-          company_name: finalCompanyNames,
+          company_name:   finalCompanyNames,
           supplier_brand: finalSupplierBrands,
-          contact_name: finalContactNames,
+          contact_name:   finalContactNames,
           contact_number: finalContactNumbers,
 
-          product_offer_image: finalImages,
-          product_offer_qty: finalQtys,
+          product_offer_image:                   finalImages,
+          product_offer_qty:                     finalQtys,
           product_offer_technical_specification: finalSpecs,
-          product_offer_unit_cost: finalUnitCosts,
-          product_offer_pcs_per_carton: finalPcsPerCarton,
-          product_offer_packaging_details: finalPackaging,
-          product_offer_factory_address: finalFactories,
-          product_offer_port_of_discharge: finalPorts,
-          product_offer_subtotal: finalSubtotals,
+          product_offer_unit_cost:               finalUnitCosts,
+          product_offer_pcs_per_carton:          finalPcsPerCarton,
+          product_offer_packaging_details:       finalPackaging,
+          product_offer_factory_address:         finalFactories,
+          product_offer_port_of_discharge:       finalPorts,
+          product_offer_subtotal:                finalSubtotals,
 
           final_selling_cost: finalSellingCosts,
-          proj_lead_time: finalLeadTimes,
+          proj_lead_time:     finalLeadTimes,
 
           status: initialStatus,
 
           spf_creation_start_time: spf_creation_start_time ?? null,
-          spf_creation_end_time: spf_creation_end_time ?? null,
+          spf_creation_end_time:   spf_creation_end_time   ?? null,
 
           date_created: new Date().toISOString(),
           date_updated: new Date().toISOString(),
@@ -308,46 +298,45 @@ export default async function handler(
         return res.status(500).json(insertError);
       }
 
-      /* ── Version history v1 — now includes status ── */
+      /* ── Version history v1 ── */
       const { error: historyError } = await supabase
         .from("spf_creation_history")
         .insert({
           spf_number,
           version_number: 1,
-          version_label: `${spf_number}_v1`,
-          created_at: new Date().toISOString(),
-          edited_by: null,
+          version_label:  `${spf_number}_v1`,
+          created_at:     new Date().toISOString(),
+          edited_by:      null,
           item_added_author,
 
-          /* ✅ STATUS — snapshot of spf_creation status at this version */
           status: initialStatus,
 
-          supplier_brand: finalSupplierBrands,
-          product_offer_image: finalImages,
-          product_offer_qty: finalQtys,
+          supplier_brand:                        finalSupplierBrands,
+          product_offer_image:                   finalImages,
+          product_offer_qty:                     finalQtys,
           product_offer_technical_specification: finalSpecs,
-          product_offer_unit_cost: finalUnitCosts,
-          product_offer_pcs_per_carton: finalPcsPerCarton,
-          product_offer_packaging_details: finalPackaging,
-          product_offer_factory_address: finalFactories,
-          product_offer_port_of_discharge: finalPorts,
-          product_offer_subtotal: finalSubtotals,
+          product_offer_unit_cost:               finalUnitCosts,
+          product_offer_pcs_per_carton:          finalPcsPerCarton,
+          product_offer_packaging_details:       finalPackaging,
+          product_offer_factory_address:         finalFactories,
+          product_offer_port_of_discharge:       finalPorts,
+          product_offer_subtotal:                finalSubtotals,
 
-          company_name: finalCompanyNames,
-          contact_name: finalContactNames,
+          company_name:   finalCompanyNames,
+          contact_name:   finalContactNames,
           contact_number: finalContactNumbers,
 
-          proj_lead_time: finalLeadTimes,
+          proj_lead_time:     finalLeadTimes,
           final_selling_cost: finalSellingCosts,
 
           item_code: finalItemCode,
 
           spf_creation_start_time: spf_creation_start_time ?? null,
-          spf_creation_end_time: spf_creation_end_time ?? null,
+          spf_creation_end_time:   spf_creation_end_time   ?? null,
 
           referenceid: referenceIdValue,
-          tsm: tsmValue,
-          manager: managerValue,
+          tsm:         tsmValue,
+          manager:     managerValue,
         });
 
       if (historyError) {
@@ -358,36 +347,30 @@ export default async function handler(
       await supabase
         .from("spf_creation")
         .update({
-          spf_creation_start_time:
-            spf_creation_start_time ??
-            existing?.spf_creation_start_time ??
-            null,
-          spf_creation_end_time:
-            spf_creation_end_time ?? existing?.spf_creation_end_time ?? null,
+          spf_creation_start_time: spf_creation_start_time ?? existing?.spf_creation_start_time ?? null,
+          spf_creation_end_time:   spf_creation_end_time   ?? existing?.spf_creation_end_time   ?? null,
           date_updated: new Date().toISOString(),
         })
         .eq("spf_number", spf_number);
     }
 
-    return res
-      .status(200)
-      .json({ success: true, message: "SPF created successfully" });
-
-    /* ── Audit log ── */
-    import("@/lib/auditlogger").then(({ logSPFVersionEvent }) => {
-      logSPFVersionEvent({
-        whatHappened: "SPF Created",
+    /* ── Audit log — MUST be before return ── */
+    try {
+      const { logSPFVersionEvent } = await import("@/lib/auditlogger");
+      await logSPFVersionEvent({
+        whatHappened:   "SPF Created",
         spf_number,
-        version_label: `${spf_number}_v1`,
+        version_label:  `${spf_number}_v1`,
         version_number: 1,
-        referenceID: item_added_author ?? undefined,
-        userId: userId ?? undefined,
+        referenceID:    item_added_author ?? undefined,
+        userId:         userId            ?? undefined,
       });
-    });
+    } catch (auditErr) {
+      console.error("Audit log error:", auditErr);
+    }
 
-    return res
-      .status(200)
-      .json({ success: true, message: "SPF created successfully" });
+    return res.status(200).json({ success: true, message: "SPF created successfully" });
+
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ message: err.message || "Server error" });
