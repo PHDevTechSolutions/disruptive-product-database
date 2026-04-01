@@ -25,6 +25,7 @@ import {
   Truck,
   History,
   ClipboardList,
+  User,
 } from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
@@ -45,6 +46,7 @@ const NAV_ITEMS = [
   { href: "/suppliers", icon: Truck,             label: "Suppliers"  },
   { href: "/requests",  icon: ClipboardList,     label: "Requests", showBadge: true },
   { href: "/history",   icon: History,           label: "History"    },
+  { href: "/roles",     icon: User,              label: "Roles"      },
 ];
 
 export function SidebarLeft() {
