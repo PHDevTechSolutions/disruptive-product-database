@@ -18,6 +18,8 @@ export default function RolesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [userData, setUserData] = useState<any>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const [cardScale, setCardScale] = useState(() => {
     if (typeof window !== "undefined") {
@@ -88,8 +90,40 @@ export default function RolesPage() {
 
   useEffect(() => {
     if (!userId) { router.push("/login"); return; }
-    // TODO: Add roles data fetching logic here
-    setLoading(false);
+    
+    // Fetch user data to check department and role
+    const fetchUserData = async () => {
+      try {
+        const res = await fetch(`/api/users?id=${encodeURIComponent(userId)}`);
+        if (res.ok) {
+          const userData = await res.json();
+          setUserData(userData);
+          
+          // Check access permissions
+          // Engineering department with Manager role OR IT department (any role)
+          const hasAccess = (
+            (userData.Department === "Engineering" && userData.Role === "Manager") ||
+            (userData.Department === "IT")
+          );
+          
+          if (!hasAccess) {
+            setAccessDenied(true);
+            setLoading(false);
+            return;
+          }
+          
+          // TODO: Add roles data fetching logic here
+          setLoading(false);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        setLoading(false);
+      }
+    };
+    
+    fetchUserData();
   }, [userId, router]);
 
   const searchedRoles = useMemo(() => {
@@ -115,6 +149,30 @@ export default function RolesPage() {
   useEffect(() => { setCurrentPage(1); }, [searchTerm, filteredRoles]);
 
   const isFiltered = filteredRoles.length !== roles.length;
+
+  if (accessDenied) {
+    return (
+      <div className="h-dvh flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md mx-4">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H9m3-6V6a3 3 0 00-3-3H6a3 3 0 00-3 3v3m12 0V6a3 3 0 00-3-3H9a3 3 0 00-3 3v3" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
+            <p className="text-gray-600 mb-4">
+              You don't have permission to access the Roles page. 
+              Only Engineering Managers and IT department staff can view this page.
+            </p>
+            <Button onClick={() => router.push("/dashboard")} className="w-full">
+              Return to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-dvh flex flex-col overflow-hidden">

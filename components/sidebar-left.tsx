@@ -38,6 +38,7 @@ type UserDetails = {
   Role: string;
   Email: string;
   profilePicture: string;
+  Department: string;
 };
 
 const NAV_ITEMS = [
@@ -81,6 +82,7 @@ export function SidebarLeft() {
           Role:           data.Role           ?? "",
           Email:          data.Email          ?? "",
           profilePicture: data.profilePicture ?? "",
+          Department:     data.Department     ?? "",
         });
       } catch (err) {
         if (!cancelled) {
@@ -96,6 +98,21 @@ export function SidebarLeft() {
     };
   }, [userId]);
 
+  // Filter NAV_ITEMS based on user permissions
+  const filteredNavItems = React.useMemo(() => {
+    return NAV_ITEMS.filter(item => {
+      // Show all items except Roles if user doesn't have access
+      if (item.label === "Roles") {
+        return user && (
+          // Engineering department with Manager role OR IT department (any role)
+          (user.Department === "Engineering" && user.Role === "Manager") ||
+          (user.Department === "IT")
+        );
+      }
+      return true;
+    });
+  }, [user]);
+
   /* ─────────────────────────────────────────────
      MOBILE — bottom nav bar
   ───────────────────────────────────────────── */
@@ -106,7 +123,7 @@ export function SidebarLeft() {
         style={{ bottom: 0, paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="flex items-center justify-around px-1 h-[62px]">
-          {NAV_ITEMS.map(({ href, icon: Icon, label, showBadge }) => {
+          {filteredNavItems.map(({ href, icon: Icon, label, showBadge }) => {
             const active = pathname === href;
             const badge  = showBadge ? unreadCount : 0;
 
@@ -187,7 +204,7 @@ export function SidebarLeft() {
       {/* CONTENT */}
       <SidebarContent className="px-2">
         <SidebarMenu>
-          {NAV_ITEMS.map(({ href, icon: Icon, label, showBadge }) => {
+          {filteredNavItems.map(({ href, icon: Icon, label, showBadge }) => {
             const badge = showBadge ? unreadCount : 0;
 
             return (
