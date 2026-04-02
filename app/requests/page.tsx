@@ -5,6 +5,7 @@ import { useUser } from "@/contexts/UserContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { AccessGuard } from "@/components/AccessGuard";
 import { supabase } from "@/utils/supabase";
 import {
   ChevronLeft,
@@ -235,7 +236,8 @@ export default function RequestsPage() {
   /* RENDER                                                       */
   /* ════════════════════════════════════════════════════════════ */
   return (
-    <div className="h-dvh flex flex-col overflow-hidden">
+    <AccessGuard accessKey="page:requests">
+      <div className="h-dvh flex flex-col overflow-hidden">
 
       {/* ── DESKTOP HEADER ── */}
       <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white/80 backdrop-blur-md border-b">
@@ -442,5 +444,6 @@ export default function RequestsPage() {
         />
       )}
     </div>
+  </AccessGuard>
   );
 }

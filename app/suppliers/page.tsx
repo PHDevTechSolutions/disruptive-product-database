@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { AccessGuard } from "@/components/AccessGuard";
 
 import AddSupplier from "@/components/add-supplier";
 import UploadSupplier from "@/components/upload-supplier";
@@ -193,8 +194,9 @@ export default function Suppliers() {
   }, [itemsPerPage, totalPages]);
 
   return (
-    // ↓ removed bg-gray-50 — transparent so wallpaper shows through
-    <div className="h-dvh flex flex-col overflow-hidden">
+    <AccessGuard accessKey="page:suppliers">
+      {/* ↓ removed bg-gray-50 — transparent so wallpaper shows through */}
+      <div className="h-dvh flex flex-col overflow-hidden">
 
       {/* ── DESKTOP HEADER — bg-white → bg-white/80 + backdrop-blur-md ── */}
       <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white/80 backdrop-blur-md border-b">
@@ -473,5 +475,6 @@ export default function Suppliers() {
         />
       )}
     </div>
+  </AccessGuard>
   );
 }

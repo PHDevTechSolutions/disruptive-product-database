@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useUser } from "@/contexts/UserContext";
+import { AccessGuard } from "@/components/AccessGuard";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
@@ -147,7 +148,8 @@ export default function ProductsPage() {
   const isFiltered = filteredProducts.length !== products.length;
 
   return (
-    <div className="h-dvh flex flex-col overflow-hidden">
+    <AccessGuard accessKey="page:products">
+      <div className="h-dvh flex flex-col overflow-hidden">
 
       {/* ── DESKTOP HEADER ── */}
       <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white/80 backdrop-blur-md border-b">
@@ -436,5 +438,6 @@ export default function ProductsPage() {
         />
       )}
     </div>
-  );
+  </AccessGuard>
+);
 }

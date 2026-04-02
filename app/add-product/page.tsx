@@ -8,6 +8,7 @@ import { useRef } from "react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { AccessGuard } from "@/components/AccessGuard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -412,8 +413,9 @@ export default function AddProductPage() {
   );
 
   return (
-<div className="h-screen overflow-hidden">
-  <div className="h-full overflow-y-auto px-6 pb-[140px]">
+  <AccessGuard accessKey="page:add-product">
+    <div className="h-screen overflow-hidden">
+      <div className="h-full overflow-y-auto px-6 pb-[140px]">
 
       {/* ── MOBILE STICKY HEADER ── */}
       <div className="md:hidden sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
@@ -747,5 +749,6 @@ export default function AddProductPage() {
       </div>
     </div>
     </div>
+  </AccessGuard>
   );
 }

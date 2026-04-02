@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { UserProvider } from "@/contexts/UserContext";
 import { WallpaperProvider } from "@/contexts/WallpaperContext";
+import { RoleAccessProvider } from "@/contexts/RoleAccessContext";
 import { Toaster } from "sonner";
 
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -37,10 +38,11 @@ export default function RootLayout({
         `}
       >
         <UserProvider>
-          <WallpaperProvider>
-            <SidebarProvider>
-              <LayoutShell>{children}</LayoutShell>
-            </SidebarProvider>
+          <RoleAccessProvider>
+            <WallpaperProvider>
+              <SidebarProvider>
+                <LayoutShell>{children}</LayoutShell>
+              </SidebarProvider>
 
             <Toaster
               position="top-right"
@@ -51,6 +53,7 @@ export default function RootLayout({
               }}
             />
           </WallpaperProvider>
+        </RoleAccessProvider>
         </UserProvider>
       </body>
     </html>

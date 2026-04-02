@@ -1,154 +1,178 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useUser } from "@/contexts/UserContext";
+import { useRoleAccess, AccessKey } from "@/contexts/RoleAccessContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SlidersHorizontal, X, Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChevronDown, ChevronUp, Search, ChevronLeft, ChevronRight, User, Building, Shield } from "lucide-react";
+
+interface User {
+  _id: string;
+  Name: string;
+  Email: string;
+  Department: string;
+  Role: string;
+  ReferenceID?: string;
+}
+
+interface UserWithAccess extends User {
+  access: Record<AccessKey, boolean>;
+  isEditable: boolean;
+}
 
 export default function RolesPage() {
   const router = useRouter();
-  const { userId } = useUser();
+  const { userId: currentUserId } = useUser();
+  const { toggleAccess, getUserAccess } = useRoleAccess();
 
-  const [roles, setRoles] = useState<any[]>([]);
-  const [filteredRoles, setFilteredRoles] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserWithAccess[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-  const [userData, setUserData] = useState<any>(null);
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [accessDenied, setAccessDenied] = useState(false);
+  const [loadingToggles, setLoadingToggles] = useState<Record<string, boolean>>({});
 
-  const [cardScale, setCardScale] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("roleCardScale");
-      return saved ? parseFloat(saved) : 1;
+  const itemsPerPage = 10;
+
+  const accessKeys: AccessKey[] = [
+    "page:requests",
+    "page:products",
+    "page:suppliers",
+    "page:roles",
+    "page:add-product",
+    "page:edit-product",
+  ];
+
+  const accessKeyLabels: Record<string, string> = {
+    "page:requests": "Requests Page",
+    "page:products": "Products Page",
+    "page:suppliers": "Suppliers Page",
+    "page:roles": "Roles Page",
+    "page:add-product": "Add Product Page",
+    "page:edit-product": "Edit Product Page",
+  };
+
+  useEffect(() => {
+    if (!currentUserId) {
+      router.push("/login");
+      return;
     }
-    return 1;
-  });
 
-  const gridRef = useRef<HTMLDivElement | null>(null);
-  const [itemsPerPage, setItemsPerPage] = useState(12);
-  const [columns, setColumns] = useState(6);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("roleCardScale");
-    if (saved) setCardScale(parseFloat(saved));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("roleCardScale", cardScale.toString());
-  }, [cardScale]);
-
-  useEffect(() => {
-    const updateGridPagination = () => {
-      if (!gridRef.current) return;
-
-      const containerWidth = gridRef.current.offsetWidth;
-
-      if (!containerWidth) return;
-
-      const cardMinWidth = 220 * cardScale;
-      const cols = Math.max(1, Math.floor(containerWidth / cardMinWidth));
-
-      setColumns(cols);
-      setItemsPerPage(cols * 4);
-    };
-
-    updateGridPagination();
-
-    const timeout = setTimeout(updateGridPagination, 50);
-
-    window.addEventListener("resize", updateGridPagination);
-
-    return () => {
-      window.removeEventListener("resize", updateGridPagination);
-      clearTimeout(timeout);
-    };
-  }, [cardScale]);
-
-  useEffect(() => {
-    const handleFocus = () => {
-      if (!gridRef.current) return;
-
-      const containerWidth = gridRef.current.offsetWidth;
-      if (!containerWidth) return;
-
-      const cardMinWidth = 220 * cardScale;
-      const cols = Math.max(1, Math.floor(containerWidth / cardMinWidth));
-
-      setColumns(cols);
-      setItemsPerPage(cols * 4);
-    };
-
-    window.addEventListener("focus", handleFocus);
-
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [cardScale]);
-
-  useEffect(() => {
-    if (!userId) { router.push("/login"); return; }
-    
-    // Fetch user data to check department and role
-    const fetchUserData = async () => {
+    const fetchCurrentUserData = async () => {
       try {
-        const res = await fetch(`/api/users?id=${encodeURIComponent(userId)}`);
-        if (res.ok) {
-          const userData = await res.json();
-          setUserData(userData);
-          
-          // Check access permissions
-          // Engineering department with Manager role OR IT department (any role)
-          const hasAccess = (
-            (userData.Department === "Engineering" && userData.Role === "Manager") ||
-            (userData.Department === "IT")
-          );
-          
-          if (!hasAccess) {
-            setAccessDenied(true);
-            setLoading(false);
-            return;
-          }
-          
-          // TODO: Add roles data fetching logic here
+        const res = await fetch(`/api/users?id=${encodeURIComponent(currentUserId)}`);
+        if (!res.ok) return;
+        const userData = await res.json();
+
+        const isEngineeringManager =
+          userData.Department === "Engineering" && userData.Role === "Manager";
+        const isITDepartment = userData.Department === "IT";
+
+        if (!isEngineeringManager && !isITDepartment) {
+          setAccessDenied(true);
           setLoading(false);
-        } else {
-          setLoading(false);
+          return;
         }
+
+        await fetchEngineeringUsers();
       } catch (error) {
-        console.error("Error fetching user data:", error);
+        console.error("Error fetching current user data:", error);
         setLoading(false);
       }
     };
-    
-    fetchUserData();
-  }, [userId, router]);
 
-  const searchedRoles = useMemo(() => {
-    if (!searchTerm.trim()) return filteredRoles;
+    const fetchEngineeringUsers = async () => {
+      try {
+        const res = await fetch(`/api/users?list=engineering-it&viewerId=${currentUserId}`);
+        if (!res.ok) return;
+        const usersData: User[] = await res.json();
+
+        const usersWithAccess = await Promise.all(
+          usersData
+            .filter((user) => user.Department === "Engineering")
+            .map(async (user) => {
+              const access = await getUserAccess(user._id);
+              const isEditable = !(user.Department === "Engineering" && user.Role === "Manager");
+              return {
+                ...user,
+                access: access || {},
+                isEditable,
+              };
+            })
+        );
+
+        setUsers(usersWithAccess);
+      } catch (error) {
+        console.error("Error fetching engineering users:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCurrentUserData();
+  }, [currentUserId, router, getUserAccess]);
+
+  const searchedUsers = useMemo(() => {
+    if (!searchTerm.trim()) return users;
     const lower = searchTerm.toLowerCase();
-    return filteredRoles.filter((role) =>
-      role.name?.toLowerCase().includes(lower) ||
-      role.description?.toLowerCase().includes(lower)
+    return users.filter(
+      (user) =>
+        user.Name?.toLowerCase().includes(lower) ||
+        user.Email?.toLowerCase().includes(lower) ||
+        user.Department?.toLowerCase().includes(lower) ||
+        user.Role?.toLowerCase().includes(lower)
     );
-  }, [searchTerm, filteredRoles]);
+  }, [searchTerm, users]);
 
-  const totalPages = Math.max(1, Math.ceil(searchedRoles.length / itemsPerPage));
+  const totalPages = Math.max(1, Math.ceil(searchedUsers.length / itemsPerPage));
 
-  const paginatedRoles = useMemo(() => {
+  const paginatedUsers = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return searchedRoles.slice(start, start + itemsPerPage);
-  }, [searchedRoles, currentPage, itemsPerPage]);
+    return searchedUsers.slice(start, start + itemsPerPage);
+  }, [searchedUsers, currentPage, itemsPerPage]);
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [totalPages, currentPage]);
 
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, filteredRoles]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
-  const isFiltered = filteredRoles.length !== roles.length;
+  const toggleUserExpansion = (userId: string) => {
+    const newExpanded = new Set(expandedUsers);
+    if (newExpanded.has(userId)) {
+      newExpanded.delete(userId);
+    } else {
+      newExpanded.add(userId);
+    }
+    setExpandedUsers(newExpanded);
+  };
+
+  const handleToggleAccess = async (userId: string, key: AccessKey, value: boolean) => {
+    const toggleId = `${userId}-${key}`;
+    setLoadingToggles((prev) => ({ ...prev, [toggleId]: true }));
+    try {
+      await toggleAccess(userId, key, value);
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user._id === userId
+            ? { ...user, access: { ...user.access, [key]: value } }
+            : user
+        )
+      );
+    } catch (error) {
+      console.error("Error toggling access:", error);
+    } finally {
+      setLoadingToggles((prev) => ({ ...prev, [toggleId]: false }));
+    }
+  };
 
   if (accessDenied) {
     return (
@@ -156,14 +180,12 @@ export default function RolesPage() {
         <div className="text-center max-w-md mx-4">
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H9m3-6V6a3 3 0 00-3-3H6a3 3 0 00-3 3v3m12 0V6a3 3 0 00-3-3H9a3 3 0 00-3 3v3" />
-              </svg>
+              <Shield className="w-8 h-8 text-red-600" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
             <p className="text-gray-600 mb-4">
-              You don't have permission to access the Roles page. 
-              Only Engineering Managers and IT department staff can view this page.
+              You don't have permission to access the Roles page. Only Engineering Managers and IT
+              department staff can view this page.
             </p>
             <Button onClick={() => router.push("/dashboard")} className="w-full">
               Return to Dashboard
@@ -175,195 +197,165 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="h-dvh flex flex-col overflow-hidden">
-
-      {/* ── DESKTOP HEADER ── */}
-      <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white/80 backdrop-blur-md border-b">
-        <SidebarTrigger />
+    <div className="h-dvh flex flex-col overflow-hidden bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b p-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Roles</h1>
-          <div className="flex gap-2">
-            <Button onClick={() => router.push("/add-role")}>+ Add Role</Button>
+          <div className="flex items-center gap-4">
+            <SidebarTrigger />
+            <h1 className="text-2xl font-semibold">User Access Management</h1>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Input
-            placeholder="Search role..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-md bg-white/70"
-          />
-          <div className="flex items-center gap-2 ml-auto text-sm text-gray-500">
-            <button onClick={() => setCardScale(p => Math.max(p - 0.1, 0.6))} className="text-lg font-bold px-1">−</button>
-            <span className="w-10 text-center text-xs">{(cardScale * 100).toFixed(0)}%</span>
-            <button onClick={() => setCardScale(p => Math.min(p + 0.1, 1.6))} className="text-lg font-bold px-1">+</button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── MOBILE HEADER ── */}
-      <div className="md:hidden shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 pt-5 pb-3">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-lg font-bold text-gray-900">Roles</h1>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push("/add-role")}
-              className="h-8 w-8 rounded-full bg-gray-900 text-white flex items-center justify-center"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 w-64"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            <Input
-              placeholder="Search roles..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-10 bg-white/70 border-gray-200 rounded-xl text-sm"
-            />
-          </div>
-          <button
-            onClick={() => setMobileFilterOpen(true)}
-            className="relative h-10 w-10 rounded-xl bg-gray-900 text-white flex items-center justify-center shrink-0"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            {isFiltered && (
-              <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 border-2 border-white" />
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            Manage access permissions for Engineering users
+          </p>
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span>{searchedUsers.length} users</span>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  className="h-8 w-8 rounded border flex items-center justify-center disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-sm font-medium">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  className="h-8 w-8 rounded border flex items-center justify-center disabled:opacity-40"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             )}
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-xs text-gray-400">{searchedRoles.length} roles</span>
-          <div className="flex items-center gap-2 bg-white/60 rounded-lg px-2.5 py-1">
-            <button onClick={() => setCardScale(p => Math.max(p - 0.1, 0.6))} className="text-gray-600 font-bold text-sm">−</button>
-            <span className="text-xs text-gray-500 w-7 text-center">{(cardScale * 100).toFixed(0)}%</span>
-            <button onClick={() => setCardScale(p => Math.min(p + 0.1, 1.6))} className="text-gray-600 font-bold text-sm">+</button>
           </div>
         </div>
       </div>
 
-      {/* ── MAIN CONTENT ── */}
-      <div className="flex flex-1 min-h-0 w-full overflow-hidden relative">
-
-        {/* ── ROLES GRID AREA ── */}
-        <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden">
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="h-7 w-7 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />
-            </div>
-          ) : (
-            <>
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-3 py-3 border-t bg-white/70 backdrop-blur-sm shrink-0 px-4">
-                  <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
-                    className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <span className="text-sm font-medium text-gray-600">{currentPage} / {totalPages}</span>
-                  <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
-                    className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-
-              <div className="flex-1 overflow-y-auto px-3 md:px-6 pt-3 pb-24 md:pb-4">
-                {paginatedRoles.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="h-14 w-14 rounded-full bg-white/60 flex items-center justify-center mb-3">
-                      <Search className="h-6 w-6 text-gray-300" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-600">No roles found</p>
-                    <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters</p>
-                  </div>
-                ) : (
-                  <div
-                    ref={gridRef}
-                    className="grid gap-3 md:gap-4 w-full"
-                    style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-                  >
-                    {/* TODO: Add role cards here */}
-                    <div className="text-center py-10 text-gray-400">
-                      Role cards will be displayed here
-                    </div>
-                  </div>
-                )}
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="h-8 w-8 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {paginatedUsers.length === 0 ? (
+              <div className="text-center py-12">
+                <User className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-600">No users found</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  {searchTerm ? "Try adjusting your search" : "No Engineering users found"}
+                </p>
               </div>
-            </>
-          )}
-        </div>
+            ) : (
+              paginatedUsers.map((user) => (
+                <Card key={user._id} className="overflow-hidden">
+                  <CardHeader
+                    className="cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
+                    onClick={() => toggleUserExpansion(user._id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                          <User className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{user.Name}</CardTitle>
+                          <p className="text-sm text-gray-600">{user.Email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-sm text-gray-500">
+                          <Building className="h-4 w-4 inline mr-1" />
+                          {user.Department} • {user.Role}
+                        </div>
+                        {expandedUsers.has(user._id) ? (
+                          <ChevronUp className="h-5 w-5 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 text-gray-400" />
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
 
+                  {expandedUsers.has(user._id) && (
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {accessKeys.map((key) => {
+                          const toggleId = `${user._id}-${key}`;
+                          const isLoading = loadingToggles[toggleId];
+                          const isChecked = user.access[key] ?? true;
 
-        {/* ── MOBILE FILTER — RIGHT SIDE DRAWER ── */}
-        <div
-          className={`
-            md:hidden absolute inset-0 z-30
-            bg-black/30 backdrop-blur-[1px]
-            transition-opacity duration-300
-            ${mobileFilterOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
-          `}
-          onClick={() => setMobileFilterOpen(false)}
-        />
+                          return (
+                            <div
+                              key={key}
+                              className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                                user.isEditable ? "cursor-pointer hover:bg-gray-50" : ""
+                              }`}
+                              onClick={() => {
+                                if (user.isEditable && !isLoading) {
+                                  handleToggleAccess(user._id, key, !isChecked);
+                                }
+                              }}
+                            >
+                              <div>
+                                <p className="font-medium text-sm">{accessKeyLabels[key]}</p>
+                                <p className="text-xs text-gray-500">{key}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {!user.isEditable ? (
+                                  <Shield className="h-4 w-4 text-green-600" />
+                                ) : isLoading ? (
+                                  <div className="h-4 w-4 rounded-full border-2 border-gray-300 border-t-blue-600 animate-spin" />
+                                ) : (
+                                  <Switch
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) =>
+                                      handleToggleAccess(user._id, key, checked)
+                                    }
+                                    disabled={!user.isEditable || isLoading}
+                                    className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-gray-300"
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
 
-        <div
-          className={`
-            md:hidden absolute top-0 right-0 bottom-0 z-40
-            w-[82%] flex flex-col
-            bg-white shadow-2xl
-            transition-transform duration-300 ease-in-out
-            ${mobileFilterOpen ? "translate-x-0" : "translate-x-full"}
-          `}
-        >
-          {/* Drawer header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
-            <div className="flex items-center gap-2">
-              <SlidersHorizontal className="h-4 w-4 text-gray-600" />
-              <h2 className="font-bold text-sm">Filters</h2>
-              {isFiltered && (
-                <span className="text-[10px] font-semibold bg-red-500 text-white rounded-full px-1.5 py-0.5 leading-none">
-                  ON
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => setMobileFilterOpen(false)}
-              className="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+                      {!user.isEditable && (
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-sm text-blue-800 flex items-center gap-2">
+                            <Shield className="h-4 w-4" />
+                            This user has full access and cannot be modified
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  )}
+                </Card>
+              ))
+            )}
           </div>
-
-          {/* Scrollable filter body */}
-          <div className="flex-1 overflow-y-auto">
-            {/* TODO: Add mobile role filtering component */}
-            <div className="text-center text-gray-400 py-10">
-              Mobile role filters will be displayed here
-            </div>
-          </div>
-
-          {/* Footer: results count + close */}
-          <div
-            className="px-3 py-3 border-t bg-white shrink-0"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
-          >
-            <button
-              onClick={() => setMobileFilterOpen(false)}
-              className="w-full h-10 rounded-xl bg-gray-900 text-white text-sm font-semibold"
-            >
-              Show {filteredRoles.length} Role{filteredRoles.length !== 1 ? "s" : ""}
-            </button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
