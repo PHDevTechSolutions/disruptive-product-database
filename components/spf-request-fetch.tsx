@@ -36,6 +36,8 @@ import SPFRequestFetchVersionHistory from "./spf-request-fetch-version-history";
 import SPFTimer from "@/components/spf-timer";
 import { useUser } from "@/contexts/UserContext";
 import MultipleSpecsDetected from "@/components/multiple-specs-detected";
+import { useRoleAccess } from "@/contexts/RoleAccessContext";
+
 
 /* ─────────────────────────────────────────────────────────────── */
 /* TYPES                                                           */
@@ -318,6 +320,28 @@ export default function SPFRequestFetch({
   processBy,
 }: SPFViewProps) {
   const { userId } = useUser();
+
+// ── ACCESS CONTROL ──
+const { hasAccess, subscribeToUserAccess } = useRoleAccess();
+const [canAddProduct, setCanAddProduct] = useState<boolean>(true);
+const [canEditProduct, setCanEditProduct] = useState<boolean>(true);
+
+// Initial check
+useEffect(() => {
+  hasAccess("page:add-product").then(setCanAddProduct);
+  hasAccess("page:edit-product").then(setCanEditProduct);
+}, [hasAccess]);
+
+// Real-time subscription — re-check whenever access changes
+useEffect(() => {
+  if (!userId) return;
+  const unsub = subscribeToUserAccess(userId, () => {
+    hasAccess("page:add-product").then(setCanAddProduct);
+    hasAccess("page:edit-product").then(setCanEditProduct);
+  });
+  return () => unsub();
+}, [userId, subscribeToUserAccess, hasAccess]);
+
   /* ── Dialog / data state ── */
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<SPFData | null>(null);
@@ -361,6 +385,7 @@ export default function SPFRequestFetch({
   const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
   const [pickerStep, setPickerStep] = useState<"list" | "confirm">("list");
   const [pendingProduct, setPendingProduct] = useState<any | null>(null);
+  
 
   /* ── MultipleSpecsDetected modal ── */
   const [showPipeModal, setShowPipeModal] = useState(false);
@@ -841,14 +866,16 @@ export default function SPFRequestFetch({
             >
               <Funnel size={14} />
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="h-8 text-xs rounded"
-              onClick={() => setOpenAddProduct(true)}
-            >
-              + Add
-            </Button>
+              {canAddProduct && (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 text-xs rounded"
+                  onClick={() => setOpenAddProduct(true)}
+                >
+                  + Add
+                </Button>
+              )}
           </div>
         </div>
 
@@ -1381,12 +1408,14 @@ export default function SPFRequestFetch({
           >
             <Funnel size={16} />
           </Button>
-          <Button
-            className="rounded-none p-6"
-            onClick={() => setOpenAddProduct(true)}
-          >
-            + Add Product
-          </Button>
+          {canAddProduct && (
+            <Button
+              className="rounded-none p-6"
+              onClick={() => setOpenAddProduct(true)}
+            >
+              + Add Product
+            </Button>
+          )}
         </div>
 
         {showTrash && (
@@ -1790,6 +1819,7 @@ export default function SPFRequestFetch({
 className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside-avoid mb-3 cursor-grab"
 >
   {/* 🔥 EDIT BUTTON */}
+{canEditProduct && (
   <button
     type="button"
     onClick={(e) => {
@@ -1801,6 +1831,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
   >
     <Pencil size={14} className="text-orange-500" />
   </button>
+)}
                 <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
                   {p.mainImage?.url ? (
                     <img
@@ -2679,7 +2710,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
       )}
 
       {/* ── Add Product sub-dialog (edit mode) ── */}
-      <Dialog open={openAddProduct} onOpenChange={setOpenAddProduct}>
+      <Dialog open={openAddProduct && canAddProduct} onOpenChange={setOpenAddProduct}>
         <DialogContent
           className={
             isMobile
@@ -2710,7 +2741,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
       </Dialog>
 
       {/* 🔥 EDIT PRODUCT MODAL */}
-<Dialog open={openEditProduct} onOpenChange={setOpenEditProduct}>
+<Dialog open={openEditProduct && canEditProduct} onOpenChange={setOpenEditProduct}>
   <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
     <DialogHeader>
       <DialogTitle>Edit Product</DialogTitle>

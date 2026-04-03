@@ -26,6 +26,7 @@ import { db } from "@/lib/firebase";
 import CardDetails from "@/components/spf/dialog/card-details";
 import SPFTimer from "@/components/spf-timer";
 import MultipleSpecsDetected from "@/components/multiple-specs-detected";
+import { useRoleAccess } from "@/contexts/RoleAccessContext";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* TYPES                                                           */
@@ -215,6 +216,28 @@ export default function SPFRequestCreate({
     item_photo: [],
   });
   const { userId } = useUser();
+  // ── ACCESS CONTROL ──
+// ── ACCESS CONTROL ──
+const { hasAccess, subscribeToUserAccess } = useRoleAccess();
+const [canAddProduct, setCanAddProduct] = useState<boolean>(true);
+const [canEditProduct, setCanEditProduct] = useState<boolean>(true);
+
+// Initial check
+useEffect(() => {
+  hasAccess("page:add-product").then(setCanAddProduct);
+  hasAccess("page:edit-product").then(setCanEditProduct);
+}, [hasAccess]);
+
+// Real-time subscription — re-check whenever access changes
+useEffect(() => {
+  if (!userId) return;
+  const unsub = subscribeToUserAccess(userId, () => {
+    hasAccess("page:add-product").then(setCanAddProduct);
+    hasAccess("page:edit-product").then(setCanEditProduct);
+  });
+  return () => unsub();
+}, [userId, subscribeToUserAccess, hasAccess]);
+
   /* ── Products ── */
   const [productOffers, setProductOffers] = useState<Record<number, any[]>>({});
   const [products, setProducts] = useState<any[]>([]);
@@ -539,14 +562,16 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
             >
               <Funnel size={14} />
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="h-8 text-xs rounded"
-              onClick={() => setOpenAddProduct(true)}
-            >
-              + Add
-            </Button>
+              {canAddProduct && (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 text-xs rounded"
+                  onClick={() => setOpenAddProduct(true)}
+                >
+                  + Add
+                </Button>
+              )}
           </div>
         </div>
 
@@ -1110,12 +1135,14 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
           >
             <Funnel size={16} />
           </Button>
-          <Button
-            className="rounded-none p-6"
-            onClick={() => setOpenAddProduct(true)}
-          >
-            + Add Product
-          </Button>
+          {canAddProduct && (
+            <Button
+              className="rounded-none p-6"
+              onClick={() => setOpenAddProduct(true)}
+            >
+              + Add Product
+            </Button>
+          )}
         </div>
 
         {showTrash && (
@@ -1589,6 +1616,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside-avoid mb-3 cursor-grab"
 >
   {/* 🔥 EDIT BUTTON */}
+{canEditProduct && (
   <button
     type="button"
     onClick={(e) => {
@@ -1600,6 +1628,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   >
     <Pencil size={14} className="text-orange-500" />
   </button>
+)}
                 <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
                   {p.mainImage?.url ? (
                     <img
@@ -1813,7 +1842,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
       )}
 
       {/* Add Product sub-dialog */}
-      <Dialog open={openAddProduct} onOpenChange={setOpenAddProduct}>
+      <Dialog open={openAddProduct && canAddProduct} onOpenChange={setOpenAddProduct}>
         <DialogContent
           className={
             isMobile
@@ -1844,7 +1873,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
       </Dialog>
 
       {/* 🔥 EDIT PRODUCT MODAL */}
-<Dialog open={openEditProduct} onOpenChange={setOpenEditProduct}>
+<Dialog open={openEditProduct && canEditProduct} onOpenChange={setOpenEditProduct}>
   <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
     <DialogHeader>
       <DialogTitle>Edit Product</DialogTitle>
