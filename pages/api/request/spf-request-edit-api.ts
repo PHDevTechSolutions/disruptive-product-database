@@ -133,6 +133,8 @@ export default async function handler(
     const rowLeadTimes:       string[] = [];
     const rowItemCodes:       string[] = [];
     const rowPriceValidities: string[] = [];
+    const rowDimensionalDrawings: string[] = [];
+    const rowIlluminanceDrawings: string[] = [];
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
@@ -154,6 +156,8 @@ export default async function handler(
       const leadTimes:       string[] = [];
       const itemCodes:       string[] = [];
       const priceValidities: string[] = [];
+      const dimensionalDrawings: string[] = [];
+      const illuminanceDrawings: string[] = [];
 
       const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
 
@@ -198,6 +202,8 @@ export default async function handler(
         leadTimes.push(p?.__leadTime      ?? "-");
 
         itemCodes.push(`${rowBase}-OPT-${optIdx + 1}`);
+        dimensionalDrawings.push(p?.dimensionalDrawing?.url || "-");
+        illuminanceDrawings.push(p?.illuminanceDrawing?.url || "-");
 
         const supplierId = String(p?.supplier?.supplierId || "");
         const cached     = supplierId ? supplierCache.get(supplierId) : undefined;
@@ -242,6 +248,8 @@ export default async function handler(
       rowLeadTimes.push(leadTimes.join(","));
       rowItemCodes.push(itemCodes.join(","));
       rowPriceValidities.push(priceValidities.join(","));
+      rowDimensionalDrawings.push(dimensionalDrawings.join(","));
+      rowIlluminanceDrawings.push(illuminanceDrawings.join(","));
     }
 
     /* ── Final strings ── */
@@ -261,6 +269,8 @@ export default async function handler(
     const finalSellingCosts    = rowSellingCosts.join(ROW_SEP);
     const finalLeadTimes       = rowLeadTimes.join(ROW_SEP);
     const finalPriceValidities = rowPriceValidities.join(ROW_SEP);
+    const finalDimensionalDrawings = rowDimensionalDrawings.join(ROW_SEP);
+    const finalIlluminanceDrawings = rowIlluminanceDrawings.join(ROW_SEP);
     const rowTdsBrands: string[] = [];
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
@@ -301,6 +311,8 @@ export default async function handler(
       final_selling_cost: finalSellingCosts,
       price_validity:     finalPriceValidities,
       tds: finalTds,
+      dimensional_drawing: finalDimensionalDrawings,
+      illuminance_drawing: finalIlluminanceDrawings,
 
       spf_creation_start_time: spf_creation_start_time ?? null,
       spf_creation_end_time:   spf_creation_end_time   ?? null,
@@ -339,6 +351,8 @@ export default async function handler(
         final_selling_cost: finalSellingCosts,
         proj_lead_time:     finalLeadTimes,
         price_validity:     finalPriceValidities,
+        dimensional_drawing: finalDimensionalDrawings,
+        illuminance_drawing: finalIlluminanceDrawings,
 
         status: "Pending For Procurement",
 

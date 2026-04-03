@@ -17,10 +17,28 @@ type Params = {
 };
 
 function convertDriveToThumbnail(url: string) {
-  if (!url.includes("drive.google.com")) return url;
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (match?.[1]) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
-  return url;
+  const cleaned = cleanImageUrl(url);
+  if (!cleaned) return "";
+  if (!cleaned.includes("drive.google.com")) return cleaned;
+  const matchByPath = cleaned.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const matchByQuery = cleaned.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  const fileId = matchByPath?.[1] || matchByQuery?.[1] || "";
+  if (fileId) return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+  return cleaned;
+}
+
+function cleanImageUrl(url?: string | null) {
+  if (!url) return "";
+  const trimmed = String(url).trim();
+  const unwrapped = trimmed.replace(/^[`"' ]+|[`"' ]+$/g, "");
+  return unwrapped.trim();
+}
+
+function resolveDrawingSource(source?: File | { url: string } | null): File | string | null {
+  if (!source) return null;
+  if (source instanceof File) return source;
+  const cleaned = cleanImageUrl(source.url);
+  return cleaned || null;
 }
 
 async function toBase64(src: string | File): Promise<string> {
@@ -31,9 +49,13 @@ async function toBase64(src: string | File): Promise<string> {
       r.readAsDataURL(src);
     });
   }
-  const converted = convertDriveToThumbnail(src);
+  const cleaned = cleanImageUrl(src);
+  if (!cleaned) throw new Error("Invalid image URL");
+  const converted = convertDriveToThumbnail(cleaned);
   const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
-  const blob = await fetch(proxyUrl).then((r) => r.blob());
+  const response = await fetch(proxyUrl);
+  if (!response.ok) throw new Error("Failed to load image");
+  const blob = await response.blob();
   return new Promise((resolve) => {
     const r = new FileReader();
     r.onloadend = () => resolve(r.result as string);
@@ -71,9 +93,10 @@ export async function generateTDSPdf({
   pdf.setLineWidth(1.5);
   pdf.rect(imageX, y, boxWidth, boxHeight);
 
-  if (mainImage?.url) {
+  const normalizedMainImageUrl = cleanImageUrl(mainImage?.url);
+  if (normalizedMainImageUrl) {
     try {
-      const imgData = await toBase64(mainImage.url);
+      const imgData = await toBase64(normalizedMainImageUrl);
       const img = new Image();
       img.src = imgData;
       await new Promise((r) => { img.onload = r; });
@@ -174,17 +197,17 @@ export async function generateTDSPdf({
   pdf.text("Dimensional Drawing",  startX + drawingW / 2,                     drawingY - 10, { align: "center" });
   pdf.text("Illuminance Level",    startX + drawingW + gapBetween + drawingW / 2, drawingY - 10, { align: "center" });
 
-  if (dimensionalDrawing) {
+  const dimensionalSource = resolveDrawingSource(dimensionalDrawing);
+  if (dimensionalSource) {
     try {
-      const src = dimensionalDrawing instanceof File ? dimensionalDrawing : dimensionalDrawing.url;
-      const img = await toBase64(src);
+      const img = await toBase64(dimensionalSource);
       pdf.addImage(img, "PNG", startX, drawingY, drawingW, drawingH);
     } catch {}
   }
-  if (illuminanceDrawing) {
+  const illuminanceSource = resolveDrawingSource(illuminanceDrawing);
+  if (illuminanceSource) {
     try {
-      const src = illuminanceDrawing instanceof File ? illuminanceDrawing : illuminanceDrawing.url;
-      const img = await toBase64(src);
+      const img = await toBase64(illuminanceSource);
       pdf.addImage(img, "PNG", startX + drawingW + gapBetween, drawingY, drawingW, drawingH);
     } catch {}
   }

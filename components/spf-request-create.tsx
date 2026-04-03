@@ -1555,8 +1555,8 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                                         itemCode: prod.productName || "",
                                                         mainImage: prod.mainImage,
                                                         technicalSpecifications: prod.technicalSpecifications,
-                                                        dimensionalDrawing: null,
-                                                        illuminanceDrawing: null,
+                                                        dimensionalDrawing: prod.dimensionalDrawing ?? null,
+                                                        illuminanceDrawing: prod.illuminanceDrawing ?? null,
                                                         hideEmptySpecs: true,
                                                       });
                                                     })

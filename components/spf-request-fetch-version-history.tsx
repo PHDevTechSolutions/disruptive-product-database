@@ -48,6 +48,8 @@ type VersionRecord = {
   final_subtotal?: string;
   item_code?: string;
   tds?: string;
+  dimensional_drawing?: string;
+  illuminance_drawing?: string;
 };
 
 type Props = {
@@ -328,6 +330,8 @@ function VersionDetail({
   const rowItemCodes = splitByRow(record.item_code);
   const rowPriceValidities = splitByRow(record.price_validity);
   const rowTdsBrands = splitByRow(record.tds);
+  const rowDimensionalDrawings = splitByRow(record.dimensional_drawing);
+  const rowIlluminanceDrawings = splitByRow(record.illuminance_drawing);
 
   // Previous version parsed values (for diff)
   const prevRowImages = splitByRow(prevRecord?.product_offer_image);
@@ -387,6 +391,8 @@ function VersionDetail({
         const prodItemCodes = rowItemCodes[rowIndex] ?? [];
         const prodPriceValidities = rowPriceValidities[rowIndex] ?? [];
         const prodTdsBrands = rowTdsBrands[rowIndex] ?? [];
+        const prodDimensionalDrawings = rowDimensionalDrawings[rowIndex] ?? [];
+        const prodIlluminanceDrawings = rowIlluminanceDrawings[rowIndex] ?? [];
 
         const hasProducts =
           prodImages.length > 0 &&
@@ -520,8 +526,14 @@ function VersionDetail({
                                           itemCode,
                                           mainImage: img && img !== "-" ? { url: img } : undefined,
                                           technicalSpecifications: techSpecs,
-                                          dimensionalDrawing: null,
-                                          illuminanceDrawing: null,
+                                          dimensionalDrawing: (() => {
+                                            const u = prodDimensionalDrawings[i];
+                                            return u && u !== "-" ? { url: u } : null;
+                                          })(),
+                                          illuminanceDrawing: (() => {
+                                            const u = prodIlluminanceDrawings[i];
+                                            return u && u !== "-" ? { url: u } : null;
+                                          })(),
                                           hideEmptySpecs: true,
                                         });
                                       })
@@ -662,8 +674,14 @@ function VersionDetail({
                                             itemCode,
                                             mainImage: img && img !== "-" ? { url: img } : undefined,
                                             technicalSpecifications: techSpecs,
-                                            dimensionalDrawing: null,
-                                            illuminanceDrawing: null,
+                                            dimensionalDrawing: (() => {
+                                              const u = prodDimensionalDrawings[i];
+                                              return u && u !== "-" ? { url: u } : null;
+                                            })(),
+                                            illuminanceDrawing: (() => {
+                                              const u = prodIlluminanceDrawings[i];
+                                              return u && u !== "-" ? { url: u } : null;
+                                            })(),
                                             hideEmptySpecs: true,
                                           });
                                         })

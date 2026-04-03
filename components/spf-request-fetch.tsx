@@ -74,7 +74,9 @@ type SPFData = {
   manager?: string;
   item_added_author?: string;
   price_validity?: string;
-  tds?: string; 
+  tds?: string;
+  dimensional_drawing?: string;
+  illuminance_drawing?: string;
 };
 
 type SPFRequestData = {
@@ -540,10 +542,11 @@ useEffect(() => {
     const rowLeadTimes = splitByRow(data.proj_lead_time);
     const rowItemCodes = splitByRow(data.item_code);
         const rowPriceValidities = splitByRow(data.price_validity);
+        const rowDimensionalEdit = splitByRow(data.dimensional_drawing);
+        const rowIlluminanceEdit = splitByRow(data.illuminance_drawing);
         const rowSpecs = splitSpecsByRow(
           data.product_offer_technical_specification,
         );
-
     const descs = (requestData.item_description || "")
       .split(",")
       .map((s) => s.trim());
@@ -617,6 +620,14 @@ useEffect(() => {
           __tdsBrand: (() => {
             const b = (rowTdsBrands[rowIndex] ?? [])[i];
             return b && b !== "-" ? b : "";
+          })(),
+          dimensionalDrawing: (() => {
+            const u = (rowDimensionalEdit[rowIndex] ?? [])[i];
+            return u && u !== "-" ? { url: u } : null;
+          })(),
+          illuminanceDrawing: (() => {
+            const u = (rowIlluminanceEdit[rowIndex] ?? [])[i];
+            return u && u !== "-" ? { url: u } : null;
           })(),
         };
       });
@@ -848,6 +859,8 @@ useEffect(() => {
   const rowItemCodes = splitByRow(data?.item_code);
   const rowPriceValidities = splitByRow(data?.price_validity);
   const rowTdsBrands = splitByRow(data?.tds);
+  const rowDimensionalDrawings = splitByRow(data?.dimensional_drawing);
+  const rowIlluminanceDrawings = splitByRow(data?.illuminance_drawing);
 
   const itemDescriptions: string[] = (requestData?.item_description || "")
     .split(",")
@@ -1764,8 +1777,8 @@ useEffect(() => {
                                                       itemCode: prod.productName || "",
                                                       mainImage: prod.mainImage,
                                                       technicalSpecifications: prod.technicalSpecifications,
-                                                      dimensionalDrawing: null,
-                                                      illuminanceDrawing: null,
+                                                      dimensionalDrawing: prod.dimensionalDrawing ?? null,
+                                                      illuminanceDrawing: prod.illuminanceDrawing ?? null,
                                                       hideEmptySpecs: true,
                                                     });
                                                   })
@@ -2277,18 +2290,18 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                           }),
                                         }));
                                         const img = (rowImages[rowIndex] ?? [])[i];
-                                        generateTDSPdf({
-                                          jsPDF,
-                                          autoTable,
-                                          brand: b,
-                                          productName: (rowItemCodes[rowIndex] ?? [])[i] || "",
-                                          itemCode: (rowItemCodes[rowIndex] ?? [])[i] || "",
-                                          mainImage: img && img !== "-" ? { url: img } : undefined,
-                                          technicalSpecifications: techSpecs,
-                                          dimensionalDrawing: null,
-                                          illuminanceDrawing: null,
-                                          hideEmptySpecs: true,
-                                        });
+                                                  generateTDSPdf({
+                                                    jsPDF,
+                                                    autoTable,
+                                                    brand: b,
+                                                    productName: (rowItemCodes[rowIndex] ?? [])[i] || "",
+                                                    itemCode: (rowItemCodes[rowIndex] ?? [])[i] || "",
+                                                    mainImage: img && img !== "-" ? { url: img } : undefined,
+                                                    technicalSpecifications: techSpecs,
+                                                    dimensionalDrawing: (() => { const u = (rowDimensionalDrawings?.[rowIndex] ?? [])[i]; return u && u !== "-" ? { url: u } : null; })(),
+                                                    illuminanceDrawing: (() => { const u = (rowIlluminanceDrawings?.[rowIndex] ?? [])[i]; return u && u !== "-" ? { url: u } : null; })(),
+                                                    hideEmptySpecs: true,
+                                                  });
                                       })
                                     );
                                   }}
@@ -2608,18 +2621,18 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                                     }),
                                                   }));
                                                   const img = (rowImages[rowIndex] ?? [])[i];
-                                                  generateTDSPdf({
-                                                    jsPDF,
-                                                    autoTable,
-                                                    brand: b,
-                                                    productName: (rowItemCodes[rowIndex] ?? [])[i] || "",
-                                                    itemCode: (rowItemCodes[rowIndex] ?? [])[i] || "",
-                                                    mainImage: img && img !== "-" ? { url: img } : undefined,
-                                                    technicalSpecifications: techSpecs,
-                                                    dimensionalDrawing: null,
-                                                    illuminanceDrawing: null,
-                                                    hideEmptySpecs: true,
-                                                  });
+                                                        generateTDSPdf({
+                                                          jsPDF,
+                                                          autoTable,
+                                                          brand: b,
+                                                          productName: (rowItemCodes[rowIndex] ?? [])[i] || "",
+                                                          itemCode: (rowItemCodes[rowIndex] ?? [])[i] || "",
+                                                          mainImage: img && img !== "-" ? { url: img } : undefined,
+                                                          technicalSpecifications: techSpecs,
+                                                          dimensionalDrawing: (() => { const u = (rowDimensionalDrawings?.[rowIndex] ?? [])[i]; return u && u !== "-" ? { url: u } : null; })(),
+                                                          illuminanceDrawing: (() => { const u = (rowIlluminanceDrawings?.[rowIndex] ?? [])[i]; return u && u !== "-" ? { url: u } : null; })(),
+                                                          hideEmptySpecs: true,
+                                                        });
                                                 })
                                               );
                                             }}
