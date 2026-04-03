@@ -37,6 +37,7 @@ import SPFTimer from "@/components/spf-timer";
 import { useUser } from "@/contexts/UserContext";
 import MultipleSpecsDetected from "@/components/multiple-specs-detected";
 import { useRoleAccess } from "@/contexts/RoleAccessContext";
+import { generateTDSPdf } from "@/lib/generateTDSPdf";
 
 
 /* ─────────────────────────────────────────────────────────────── */
@@ -73,6 +74,7 @@ type SPFData = {
   manager?: string;
   item_added_author?: string;
   price_validity?: string;
+  tds?: string; 
 };
 
 type SPFRequestData = {
@@ -612,6 +614,10 @@ useEffect(() => {
             if (!pv || pv === "-") return "";
             return pv;
           })(),
+          __tdsBrand: (() => {
+            const b = (rowTdsBrands[rowIndex] ?? [])[i];
+            return b && b !== "-" ? b : "";
+          })(),
         };
       });
     });
@@ -830,6 +836,7 @@ useEffect(() => {
   const rowFinalSubtotals = splitByRow(data?.final_subtotal);
   const rowItemCodes = splitByRow(data?.item_code);
   const rowPriceValidities = splitByRow(data?.price_validity);
+  const rowTdsBrands = splitByRow(data?.tds);
 
   const itemDescriptions: string[] = (requestData?.item_description || "")
     .split(",")
@@ -1095,9 +1102,31 @@ useEffect(() => {
                                   }}
                                 />
                               </div>
-                              <p className="text-[10px] text-muted-foreground">
-                                Pack: {length} × {width} × {height}
-                              </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] text-muted-foreground shrink-0">TDS Brand</span>
+                                  <select
+                                    className="border rounded px-2 py-0.5 text-xs flex-1"
+                                    value={prod.__tdsBrand ?? ""}
+                                    onChange={(e) => {
+                                      const brand = e.target.value;
+                                      setProductOffers((prev) => {
+                                        const copy = { ...prev };
+                                        const row = [...(copy[index] || [])];
+                                        row[i] = { ...row[i], __tdsBrand: brand };
+                                        copy[index] = row;
+                                        return copy;
+                                      });
+                                    }}
+                                  >
+                                    <option value="">-- Brand --</option>
+                                    {["Lit", "Lumera", "Ecoshift"].map((b) => (
+                                      <option key={b} value={b}>{b}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground">
+                                  Pack: {length} × {width} × {height}
+                                </p>
                               {factory !== "-" && (
                                 <p className="text-[10px] text-muted-foreground truncate">
                                   Factory: {factory}
@@ -1558,6 +1587,9 @@ useEffect(() => {
                                   <th className="border px-2 py-1 text-center whitespace-nowrap">
                                     Price Validity
                                   </th>
+                                  <th className="border px-2 py-1 text-center whitespace-nowrap">
+                                    TDS Brand
+                                  </th>
                                   <th className="border px-2 py-1 text-center">
                                     Technical Specifications
                                   </th>
@@ -1682,6 +1714,53 @@ useEffect(() => {
                                               });
                                             }}
                                           />
+                                        </td>
+                                        <td className="border px-2 py-1 text-center align-middle">
+                                          <select
+                                            className="border rounded px-1 py-0.5 text-xs w-full"
+                                            value={prod.__tdsBrand ?? ""}
+                                            onChange={(e) => {
+                                              const brand = e.target.value;
+                                              setProductOffers((prev) => {
+                                                const copy = { ...prev };
+                                                const row = [...(copy[index] || [])];
+                                                row[i] = { ...row[i], __tdsBrand: brand };
+                                                copy[index] = row;
+                                                return copy;
+                                              });
+                                            }}
+                                          >
+                                            <option value="">-- Brand --</option>
+                                            {["Lit", "Lumera", "Ecoshift"].map((b) => (
+                                              <option key={b} value={b}>{b}</option>
+                                            ))}
+                                          </select>
+                                          {prod.__tdsBrand && (
+                                            <button
+                                              type="button"
+                                              className="mt-1 text-[10px] text-green-600 underline"
+                                              onClick={() => {
+                                                import("jspdf").then(({ default: jsPDF }) =>
+                                                  import("jspdf-autotable").then(({ default: autoTable }) => {
+                                                    generateTDSPdf({
+                                                      jsPDF,
+                                                      autoTable,
+                                                      brand: prod.__tdsBrand,
+                                                      productName: prod.productName || "",
+                                                      itemCode: prod.productName || "",
+                                                      mainImage: prod.mainImage,
+                                                      technicalSpecifications: prod.technicalSpecifications,
+                                                      dimensionalDrawing: null,
+                                                      illuminanceDrawing: null,
+                                                      hideEmptySpecs: true,
+                                                    });
+                                                  })
+                                                );
+                                              }}
+                                            >
+                                              ⬇ Download TDS
+                                            </button>
+                                          )}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle">
                                           {prod.technicalSpecifications
@@ -2153,6 +2232,49 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                               </span>
                             </div>
                           </div>
+                          {(() => {
+                            const b = (rowTdsBrands[rowIndex] ?? [])[i];
+                            if (!b || b === "-" || b === "") return null;
+                            return (
+                              <div>
+                                <span className="text-gray-400 block">TDS</span>
+                                <button
+                                  type="button"
+                                  className="text-xs text-green-600 underline font-medium"
+                                  onClick={() => {
+                                    import("jspdf").then(({ default: jsPDF }) =>
+                                      import("jspdf-autotable").then(({ default: autoTable }) => {
+                                        const specs = (rowSpecs[rowIndex] ?? [])[i] ?? [];
+                                        const techSpecs = specs.map((g) => ({
+                                          title: g.title,
+                                          specs: g.specs.map((s) => {
+                                            const idx = s.indexOf(":");
+                                            if (idx === -1) return { specId: s, value: "" };
+                                            return { specId: s.slice(0, idx).trim(), value: s.slice(idx + 1).trim() };
+                                          }),
+                                        }));
+                                        const img = (rowImages[rowIndex] ?? [])[i];
+                                        generateTDSPdf({
+                                          jsPDF,
+                                          autoTable,
+                                          brand: b,
+                                          productName: (rowItemCodes[rowIndex] ?? [])[i] || "",
+                                          itemCode: (rowItemCodes[rowIndex] ?? [])[i] || "",
+                                          mainImage: img && img !== "-" ? { url: img } : undefined,
+                                          technicalSpecifications: techSpecs,
+                                          dimensionalDrawing: null,
+                                          illuminanceDrawing: null,
+                                          hideEmptySpecs: true,
+                                        });
+                                      })
+                                    );
+                                  }}
+                                >
+                                  {b} ⬇ Download TDS
+                                </button>
+                              </div>
+                            );
+                          })()}
                           {prodFactories[i] && prodFactories[i] !== "-" && (
                             <p className="text-[10px] text-gray-500 truncate">
                               <span className="text-gray-400">Factory: </span>
@@ -2362,6 +2484,9 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
                                       Price Validity
                                     </th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
+                                      TDS
+                                    </th>
                                     <th className="border px-2 py-1 text-center min-w-[200px]">
                                       Technical Specs
                                     </th>
@@ -2436,6 +2561,49 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                         const pv = (rowPriceValidities[rowIndex] ?? [])[i];
                                         if (!pv || pv === "-") return "-";
                                         try { return new Date(pv).toLocaleString("en-PH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return pv; }
+                                      })()}
+                                    </td>
+                                    <td className="border px-2 py-2 text-center align-middle whitespace-nowrap">
+                                      {(() => {
+                                        const b = (rowTdsBrands[rowIndex] ?? [])[i];
+                                        if (!b || b === "-" || b === "") return "-";
+                                        return (
+                                          <button
+                                            type="button"
+                                            className="text-[11px] text-green-600 underline font-medium"
+                                            onClick={() => {
+                                              import("jspdf").then(({ default: jsPDF }) =>
+                                                import("jspdf-autotable").then(({ default: autoTable }) => {
+                                                  // Reconstruct product data from row
+                                                  const specs = (rowSpecs[rowIndex] ?? [])[i] ?? [];
+                                                  const techSpecs = specs.map((g) => ({
+                                                    title: g.title,
+                                                    specs: g.specs.map((s) => {
+                                                      const idx = s.indexOf(":");
+                                                      if (idx === -1) return { specId: s, value: "" };
+                                                      return { specId: s.slice(0, idx).trim(), value: s.slice(idx + 1).trim() };
+                                                    }),
+                                                  }));
+                                                  const img = (rowImages[rowIndex] ?? [])[i];
+                                                  generateTDSPdf({
+                                                    jsPDF,
+                                                    autoTable,
+                                                    brand: b,
+                                                    productName: (rowItemCodes[rowIndex] ?? [])[i] || "",
+                                                    itemCode: (rowItemCodes[rowIndex] ?? [])[i] || "",
+                                                    mainImage: img && img !== "-" ? { url: img } : undefined,
+                                                    technicalSpecifications: techSpecs,
+                                                    dimensionalDrawing: null,
+                                                    illuminanceDrawing: null,
+                                                    hideEmptySpecs: true,
+                                                  });
+                                                })
+                                              );
+                                            }}
+                                          >
+                                            {b} ⬇ TDS
+                                          </button>
+                                        );
                                       })()}
                                     </td>
                                     <td className="border px-2 py-2 align-top">

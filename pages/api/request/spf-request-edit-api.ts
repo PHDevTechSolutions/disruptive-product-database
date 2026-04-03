@@ -261,6 +261,12 @@ export default async function handler(
     const finalSellingCosts    = rowSellingCosts.join(ROW_SEP);
     const finalLeadTimes       = rowLeadTimes.join(ROW_SEP);
     const finalPriceValidities = rowPriceValidities.join(ROW_SEP);
+    const rowTdsBrands: string[] = [];
+    for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+      const rowProducts = rowMap[rowIdx] || [];
+      rowTdsBrands.push(rowProducts.map((p: any) => p.__tdsBrand ?? "").join(","));
+    }
+    const finalTds = rowTdsBrands.join(ROW_SEP);
     const finalItemCode        = rowItemCodes.some((r) => r !== "" && r.length > 0)
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
@@ -294,6 +300,7 @@ export default async function handler(
       proj_lead_time:     finalLeadTimes,
       final_selling_cost: finalSellingCosts,
       price_validity:     finalPriceValidities,
+      tds: finalTds,
 
       spf_creation_start_time: spf_creation_start_time ?? null,
       spf_creation_end_time:   spf_creation_end_time   ?? null,

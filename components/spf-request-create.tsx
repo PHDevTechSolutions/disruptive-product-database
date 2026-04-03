@@ -27,6 +27,7 @@ import CardDetails from "@/components/spf/dialog/card-details";
 import SPFTimer from "@/components/spf-timer";
 import MultipleSpecsDetected from "@/components/multiple-specs-detected";
 import { useRoleAccess } from "@/contexts/RoleAccessContext";
+import { generateTDSPdf } from "@/lib/generateTDSPdf";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* TYPES                                                           */
@@ -824,6 +825,28 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                       }}
                                     />
                                   </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] text-muted-foreground shrink-0">TDS Brand</span>
+                                  <select
+                                    className="border rounded px-2 py-0.5 text-xs flex-1"
+                                    value={prod.__tdsBrand ?? ""}
+                                    onChange={(e) => {
+                                      const brand = e.target.value;
+                                      setProductOffers((prev) => {
+                                        const copy = { ...prev };
+                                        const row = [...(copy[index] || [])];
+                                        row[i] = { ...row[i], __tdsBrand: brand };
+                                        copy[index] = row;
+                                        return copy;
+                                      });
+                                    }}
+                                  >
+                                    <option value="">-- Brand --</option>
+                                    {["Lit", "Lumera", "Ecoshift"].map((b) => (
+                                      <option key={b} value={b}>{b}</option>
+                                    ))}
+                                  </select>
+                                </div>
                                 <p className="text-[10px] text-muted-foreground">
                                   Pack: {length} × {width} × {height}
                                 </p>
@@ -1343,6 +1366,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                     Price Validity
                                   </th>
                                   <th className="border px-2 py-1 text-center">
+                                    TDS Brand
+                                  </th>
+                                  <th className="border px-2 py-1 text-center">
                                     Technical Specifications
                                   </th>
                                   <th className="border px-2 py-1 text-center">
@@ -1477,6 +1503,55 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                                 });
                                               }}
                                             />
+                                          </td>
+                                          <td className="border px-2 py-1 text-center align-middle">
+                                            <select
+                                              className="border rounded px-1 py-0.5 text-xs w-full"
+                                              value={prod.__tdsBrand ?? ""}
+                                              onChange={(e) => {
+                                                const brand = e.target.value;
+                                                setProductOffers((prev) => {
+                                                  const copy = { ...prev };
+                                                  const row = [...(copy[index] || [])];
+                                                  row[i] = { ...row[i], __tdsBrand: brand };
+                                                  copy[index] = row;
+                                                  return copy;
+                                                });
+                                              }}
+                                            >
+                                              <option value="">-- Brand --</option>
+                                              {["Lit", "Lumera", "Ecoshift"].map((b) => (
+                                                <option key={b} value={b}>{b}</option>
+                                              ))}
+                                            </select>
+                                            {prod.__tdsBrand && (
+                                              <button
+                                                type="button"
+                                                className="mt-1 text-[10px] text-green-600 underline"
+                                                onClick={() => {
+                                                  const win = window.open("", "_blank");
+                                                  if (win) win.document.title = "Generating TDS...";
+                                                  import("jspdf").then(({ default: jsPDF }) =>
+                                                    import("jspdf-autotable").then(({ default: autoTable }) => {
+                                                      generateTDSPdf({
+                                                        jsPDF,
+                                                        autoTable,
+                                                        brand: prod.__tdsBrand,
+                                                        productName: prod.productName || "",
+                                                        itemCode: prod.productName || "",
+                                                        mainImage: prod.mainImage,
+                                                        technicalSpecifications: prod.technicalSpecifications,
+                                                        dimensionalDrawing: null,
+                                                        illuminanceDrawing: null,
+                                                        hideEmptySpecs: true,
+                                                      });
+                                                    })
+                                                  );
+                                                }}
+                                              >
+                                                ⬇ Download TDS
+                                              </button>
+                                            )}
                                           </td>
                                           <td className="border px-2 py-1 text-center align-middle">
                                             {prod.technicalSpecifications

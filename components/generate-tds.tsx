@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -41,6 +41,8 @@ type Props = {
   dimensionalDrawing?: { url: string };
   illuminanceDrawing?: { url: string };
   technicalSpecifications?: TechnicalSpecification[];
+  defaultBrand?: string;
+  onBrandChange?: (brand: string) => void;
 };
 
 export default function GenerateTDS({
@@ -50,8 +52,14 @@ export default function GenerateTDS({
   dimensionalDrawing,
   illuminanceDrawing,
   technicalSpecifications,
+  defaultBrand = "",
+  onBrandChange,
 }: Props) {
-  const [selectedBrand, setSelectedBrand] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState(defaultBrand);
+
+  useEffect(() => {
+    setSelectedBrand(defaultBrand);
+  }, [defaultBrand]);
   const [itemCode, setItemCode] = useState("");
   const [productName, setProductName] = useState("");
   const [hideEmptySpecs, setHideEmptySpecs] = useState(true);
@@ -397,7 +405,10 @@ export default function GenerateTDS({
                   type="radio"
                   value={brand}
                   checked={selectedBrand === brand}
-                  onChange={(e) => setSelectedBrand(e.target.value)}
+              onChange={(e) => {
+                setSelectedBrand(e.target.value);
+                onBrandChange?.(e.target.value);
+              }}
                   className="accent-gray-800"
                 />
                 <span className="text-sm">{brand}</span>

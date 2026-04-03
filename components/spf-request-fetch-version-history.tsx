@@ -11,6 +11,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/utils/supabase";
 import { History, ChevronDown, ChevronUp, Clock, User } from "lucide-react";
+import { generateTDSPdf } from "@/lib/generateTDSPdf";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* TYPES                                                           */
@@ -46,6 +47,7 @@ type VersionRecord = {
   final_unit_cost?: string;
   final_subtotal?: string;
   item_code?: string;
+  tds?: string;
 };
 
 type Props = {
@@ -323,8 +325,9 @@ function VersionDetail({
   const rowSellingCosts = splitByRow(record.final_selling_cost);
   const rowFinalUnitCosts = splitByRow(record.final_unit_cost);
   const rowFinalSubtotals = splitByRow(record.final_subtotal);
-const rowItemCodes = splitByRow(record.item_code);
+  const rowItemCodes = splitByRow(record.item_code);
   const rowPriceValidities = splitByRow(record.price_validity);
+  const rowTdsBrands = splitByRow(record.tds);
 
   // Previous version parsed values (for diff)
   const prevRowImages = splitByRow(prevRecord?.product_offer_image);
@@ -346,6 +349,8 @@ const rowItemCodes = splitByRow(record.item_code);
   const prevRowFinalSubtotals = splitByRow(prevRecord?.final_subtotal);
   const prevRowItemCodes = splitByRow(prevRecord?.item_code);
   const prevRowPriceValidities = splitByRow(prevRecord?.price_validity);
+  const prevRowTdsBrands = splitByRow(prevRecord?.tds);
+
 
   // Helper to get prev value safely (undefined = no prev = no highlight)
   const getPrev = (arr: string[][], rowIdx: number, i: number): string | undefined => {
@@ -381,6 +386,7 @@ const rowItemCodes = splitByRow(record.item_code);
         const prodFinalSubtotals = rowFinalSubtotals[rowIndex] ?? [];
         const prodItemCodes = rowItemCodes[rowIndex] ?? [];
         const prodPriceValidities = rowPriceValidities[rowIndex] ?? [];
+        const prodTdsBrands = rowTdsBrands[rowIndex] ?? [];
 
         const hasProducts =
           prodImages.length > 0 &&
@@ -476,6 +482,58 @@ const rowItemCodes = splitByRow(record.item_code);
                             try { return new Date(pv).toLocaleString("en-PH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return pv; }
                           })()}
                         />
+                        <div className={`${(() => { const b = prodTdsBrands[i]; const p = getPrev(prevRowTdsBrands, rowIndex, i); const changed = (b ?? "").trim() !== (p ?? "").trim(); return changed ? "bg-yellow-50 rounded px-1 py-0.5 border border-yellow-200" : ""; })()}`}>
+                          <span className="text-gray-400 block text-[10px]">TDS Brand</span>
+                          {(() => {
+                            const b = prodTdsBrands[i];
+                            const p = getPrev(prevRowTdsBrands, rowIndex, i);
+                            const changed = (b ?? "").trim() !== (p ?? "").trim();
+                            if (!b || b === "-" || b === "") return <p className="text-[10px]">-</p>;
+                            const img = prodImages[i];
+                            const specs = prodSpecs[i] ?? [];
+                            const techSpecs = specs.map((g) => ({
+                              title: g.title,
+                              specs: g.specs.map((s) => {
+                                const idx = s.indexOf(":");
+                                if (idx === -1) return { specId: s, value: "" };
+                                return { specId: s.slice(0, idx).trim(), value: s.slice(idx + 1).trim() };
+                              }),
+                            }));
+                            const itemCode = prodItemCodes[i] || "";
+                            return (
+                              <div className="flex flex-col gap-0.5">
+                                {changed && p !== undefined && (
+                                  <span className="text-[9px] text-yellow-700 font-semibold block leading-none mb-0.5">✎ changed</span>
+                                )}
+                                <p className="text-[10px] font-medium">{b}</p>
+                                <button
+                                  type="button"
+                                  className="text-[10px] text-green-600 underline font-medium text-left"
+                                  onClick={() => {
+                                    import("jspdf").then(({ default: jsPDF }) =>
+                                      import("jspdf-autotable").then(({ default: autoTable }) => {
+                                        generateTDSPdf({
+                                          jsPDF,
+                                          autoTable,
+                                          brand: b,
+                                          productName: itemCode,
+                                          itemCode,
+                                          mainImage: img && img !== "-" ? { url: img } : undefined,
+                                          technicalSpecifications: techSpecs,
+                                          dimensionalDrawing: null,
+                                          illuminanceDrawing: null,
+                                          hideEmptySpecs: true,
+                                        });
+                                      })
+                                    );
+                                  }}
+                                >
+                                  ⬇ Download TDS
+                                </button>
+                              </div>
+                            );
+                          })()}
+                        </div>
                         <DiffValue label="Factory" current={prodFactories[i]} previous={getPrev(prevRowFactories, rowIndex, i)} />
                         <DiffValue label="Port" current={prodPorts[i]} previous={getPrev(prevRowPorts, rowIndex, i)} />
                         <DiffValue label="Subtotal" current={prodSubtotals[i] ? `₱${Number(prodSubtotals[i] || 0).toLocaleString()}` : undefined} previous={getPrev(prevRowSubtotals, rowIndex, i) ? `₱${Number(getPrev(prevRowSubtotals, rowIndex, i) || 0).toLocaleString()}` : getPrev(prevRowSubtotals, rowIndex, i)} />
@@ -517,6 +575,7 @@ const rowItemCodes = splitByRow(record.item_code);
                       <th className="border px-2 py-1 text-center whitespace-nowrap">Image</th>
                       <th className="border px-2 py-1 text-center whitespace-nowrap">Qty</th>
                       <th className="border px-2 py-1 text-center whitespace-nowrap">Price Validity</th>
+                      <th className="border px-2 py-1 text-center whitespace-nowrap">TDS Brand</th>
                       <th className="border px-2 py-1 text-center min-w-[180px]">Technical Specs</th>
                       <th className="border px-2 py-1 text-center whitespace-nowrap">Unit Cost</th>
                       <th className="border px-2 py-1 text-center whitespace-nowrap">Qty/Per Carton</th>
@@ -569,6 +628,52 @@ const rowItemCodes = splitByRow(record.item_code);
                               const pv = prodPriceValidities[i];
                               if (!pv || pv === "-") return "-";
                               try { return new Date(pv).toLocaleString("en-PH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return pv; }
+                            })()}
+                          </DiffCell>
+                          <DiffCell current={prodTdsBrands[i]} previous={getPrev(prevRowTdsBrands, rowIndex, i)}>
+                            {(() => {
+                              const b = prodTdsBrands[i];
+                              if (!b || b === "-" || b === "") return "-";
+                              const img = prodImages[i];
+                              const specs = prodSpecs[i] ?? [];
+                              const techSpecs = specs.map((g) => ({
+                                title: g.title,
+                                specs: g.specs.map((s) => {
+                                  const idx = s.indexOf(":");
+                                  if (idx === -1) return { specId: s, value: "" };
+                                  return { specId: s.slice(0, idx).trim(), value: s.slice(idx + 1).trim() };
+                                }),
+                              }));
+                              const itemCode = prodItemCodes[i] || "";
+                              return (
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="font-medium text-[11px]">{b}</span>
+                                  <button
+                                    type="button"
+                                    className="text-[10px] text-green-600 underline font-medium whitespace-nowrap"
+                                    onClick={() => {
+                                      import("jspdf").then(({ default: jsPDF }) =>
+                                        import("jspdf-autotable").then(({ default: autoTable }) => {
+                                          generateTDSPdf({
+                                            jsPDF,
+                                            autoTable,
+                                            brand: b,
+                                            productName: itemCode,
+                                            itemCode,
+                                            mainImage: img && img !== "-" ? { url: img } : undefined,
+                                            technicalSpecifications: techSpecs,
+                                            dimensionalDrawing: null,
+                                            illuminanceDrawing: null,
+                                            hideEmptySpecs: true,
+                                          });
+                                        })
+                                      );
+                                    }}
+                                  >
+                                    ⬇ Download TDS
+                                  </button>
+                                </div>
+                              );
                             })()}
                           </DiffCell>
                           <td

@@ -254,6 +254,13 @@ export default async function handler(
       : (item_code ?? null);
 
     const initialStatus = "Pending For Procurement";
+    // ── TDS brands per product per row ──
+    const rowTdsBrands: string[] = [];
+    for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+      const rowProducts = rowMap[rowIdx] || [];
+      rowTdsBrands.push(rowProducts.map((p: any) => p.__tdsBrand ?? "").join(","));
+    }
+    const finalTds = rowTdsBrands.join(ROW_SEP);
 
     /* ── Check existing SPF ── */
     const { data: existing, error: checkError } = await supabase
@@ -297,6 +304,7 @@ export default async function handler(
           final_selling_cost: finalSellingCosts,
           proj_lead_time:     finalLeadTimes,
           price_validity:     finalPriceValidities,
+          tds: finalTds,
 
           status: initialStatus,
 
@@ -343,6 +351,7 @@ export default async function handler(
           proj_lead_time:     finalLeadTimes,
           final_selling_cost: finalSellingCosts,
           price_validity:     finalPriceValidities,
+          tds: finalTds,
 
           item_code: finalItemCode,
 
