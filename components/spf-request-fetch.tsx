@@ -764,6 +764,17 @@ useEffect(() => {
         toast.error(`Item row ${i + 1} has no product selected`);
         return;
       }
+      for (let j = 0; j < productOffers[i].length; j++) {
+        const prod = productOffers[i][j];
+        if (!prod.__priceValidity || prod.__priceValidity.trim() === "") {
+          toast.error(`Row ${i + 1}, Option ${j + 1}: Price Validity is required`);
+          return;
+        }
+        if (!prod.__tdsBrand || prod.__tdsBrand.trim() === "") {
+          toast.error(`Row ${i + 1}, Option ${j + 1}: TDS Brand is required`);
+          return;
+        }
+      }
     }
 
     try {
@@ -1393,6 +1404,9 @@ useEffect(() => {
               itemDescriptions.length === 0 ||
               itemDescriptions.some(
                 (_, i) => !productOffers[i] || productOffers[i].length === 0,
+              ) ||
+              Object.values(productOffers).flat().some(
+                (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim()
               )
             }
           >
@@ -2078,7 +2092,16 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
           </Button>
           {viewMode && (
             <Button
-              className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
+            className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
+              disabled={
+                itemDescriptions.length === 0 ||
+                itemDescriptions.some(
+                  (_, i) => !productOffers[i] || productOffers[i].length === 0,
+                ) ||
+                Object.values(productOffers).flat().some(
+                  (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim()
+                )
+              }
               onClick={handleSubmitEdit}
             >
               Save Changes

@@ -492,7 +492,18 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     for (let i = 0; i < totalRows; i++) {
       if (!productOffers[i] || productOffers[i].length === 0) {
         toast.error(`Item row ${i + 1} has no product selected`);
-        return; // ❌ STOP submit
+        return;
+      }
+      for (let j = 0; j < productOffers[i].length; j++) {
+        const prod = productOffers[i][j];
+        if (!prod.__priceValidity || prod.__priceValidity.trim() === "") {
+          toast.error(`Row ${i + 1}, Option ${j + 1}: Price Validity is required`);
+          return;
+        }
+        if (!prod.__tdsBrand || prod.__tdsBrand.trim() === "") {
+          toast.error(`Row ${i + 1}, Option ${j + 1}: TDS Brand is required`);
+          return;
+        }
       }
     }
 
@@ -1110,10 +1121,13 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
               type="button"
               className="flex-1 rounded"
               onClick={handleSubmit}
-              disabled={
+          disabled={
                 (formData.item_description?.length || 0) === 0 ||
                 formData.item_description?.some(
                   (_, i) => !productOffers[i] || productOffers[i].length === 0,
+                ) ||
+                Object.values(productOffers).flat().some(
+                  (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim()
                 )
               }
             >
@@ -1878,6 +1892,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                 (formData.item_description?.length || 0) === 0 ||
                 formData.item_description?.some(
                   (_, i) => !productOffers[i] || productOffers[i].length === 0,
+                ) ||
+                Object.values(productOffers).flat().some(
+                  (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim()
                 )
               }
             >
