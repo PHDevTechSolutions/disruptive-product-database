@@ -39,7 +39,8 @@ import { useUser } from "@/contexts/UserContext";
 export function NavUser({
   user,
   userId,
-  avatarOnly = false,        // ← new prop
+  avatarOnly = false,
+  notificationCount = 0,
 }: {
   user: {
     name: string;
@@ -49,6 +50,7 @@ export function NavUser({
   };
   userId: string;
   avatarOnly?: boolean;
+  notificationCount?: number;
 }) {
   const { isMobile } = useSidebar();
   const router = useRouter();
@@ -56,6 +58,7 @@ export function NavUser({
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const notificationLabel = notificationCount > 9 ? "9+" : `${notificationCount}`;
 
   const logLogoutActivity = async () => {
     try {
@@ -150,13 +153,18 @@ export function NavUser({
       {avatarOnly ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center justify-center focus:outline-none">
+            <button className="relative flex items-center justify-center focus:outline-none">
               <Avatar className="h-8 w-8 rounded-full ring-2 ring-gray-100 hover:ring-gray-300 transition-all">
                 <AvatarImage src={user.avatar} alt={user.name} />
                 <AvatarFallback className="rounded-full text-xs font-semibold bg-gray-200 text-gray-700">
                   {user.name?.charAt(0) ?? "U"}
                 </AvatarFallback>
               </Avatar>
+              {notificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center ring-2 ring-white shadow-sm">
+                  {notificationLabel}
+                </span>
+              )}
             </button>
           </DropdownMenuTrigger>
           {dropdownContent}
@@ -171,12 +179,19 @@ export function NavUser({
                   size="lg"
                   className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="rounded-lg">
-                      {user.name?.charAt(0) ?? "U"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <span className="relative shrink-0">
+                    <Avatar className="h-8 w-8 rounded-lg">
+                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarFallback className="rounded-lg">
+                        {user.name?.charAt(0) ?? "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    {notificationCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center ring-2 ring-white shadow-sm">
+                        {notificationLabel}
+                      </span>
+                    )}
+                  </span>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium capitalize">{user.name}</span>
                     {user.position && (

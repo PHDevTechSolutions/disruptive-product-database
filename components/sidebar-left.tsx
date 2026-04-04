@@ -175,8 +175,8 @@ export function SidebarLeft() {
                     strokeWidth={active ? 2.2 : 1.8}
                   />
                   {badge > 0 && (
-                    <span className="absolute -top-2 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-green-500 text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-white shadow-sm">
-                      {badge > 99 ? "99+" : badge}
+                    <span className="absolute -top-2 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white shadow-sm">
+                      {badge > 9 ? "9+" : badge}
                     </span>
                   )}
                 </span>
@@ -200,6 +200,7 @@ export function SidebarLeft() {
                 }}
                 userId={userId}
                 avatarOnly
+                notificationCount={unreadCount}
               />
             </div>
           )}
@@ -261,8 +262,8 @@ export function SidebarLeft() {
                     <span className="relative shrink-0">
                       <Icon className="h-4 w-4" />
                       {badge > 0 && state === "collapsed" && (
-                        <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-green-500 text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-white">
-                          {badge > 99 ? "99+" : badge}
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+                          {badge > 9 ? "9+" : badge}
                         </span>
                       )}
                     </span>
@@ -272,8 +273,8 @@ export function SidebarLeft() {
                       <>
                         <span className="flex-1">{label}</span>
                         {badge > 0 && (
-                          <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-green-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
-                            {badge > 99 ? "99+" : badge}
+                          <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
+                            {badge > 9 ? "9+" : badge}
                           </span>
                         )}
                       </>
@@ -310,6 +311,7 @@ export function SidebarLeft() {
                 avatar:   user.profilePicture || "/avatars/shadcn.jpg",
               }}
               userId={userId}
+              notificationCount={unreadCount}
             />
           </div>
         )}

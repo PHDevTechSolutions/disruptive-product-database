@@ -46,6 +46,8 @@ import { generateTDSPdf } from "@/lib/generateTDSPdf";
 type SPFViewProps = {
   spfNumber: string;
   processBy?: string;
+  onOpen?: () => void;
+  unreadCount?: number;
 };
 
 type SPFData = {
@@ -322,6 +324,8 @@ function MobileSpecsBlock({ groups }: { groups: SpecGroup[] }) {
 export default function SPFRequestFetch({
   spfNumber,
   processBy,
+  onOpen,
+  unreadCount = 0,
 }: SPFViewProps) {
   const { userId } = useUser();
 
@@ -2757,24 +2761,34 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
         <Button
           variant="outline"
           className="rounded-none p-6"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            onOpen?.();
+            setOpen(true);
+          }}
         >
           View
         </Button>
 
-        {data?.status && (
-          <span
-            className={`text-xs px-2 py-1 rounded uppercase ${
-              isApproved
-                ? "bg-green-100 text-green-700"
-                : isForRevision
-                  ? "bg-orange-100 text-orange-700"
-                  : "bg-yellow-100 text-yellow-700"
-            }`}
-          >
-            {getStatusLabel(data.status)}
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {data?.status && (
+            <span
+              className={`text-xs px-2 py-1 rounded uppercase ${
+                isApproved
+                  ? "bg-green-100 text-green-700"
+                  : isForRevision
+                    ? "bg-orange-100 text-orange-700"
+                    : "bg-yellow-100 text-yellow-700"
+              }`}
+            >
+              {getStatusLabel(data.status)}
+            </span>
+          )}
+          {unreadCount > 0 && (
+            <span className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_16px_rgba(239,68,68,0.75)] animate-pulse">
+              {unreadCount}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ── Main view dialog ── */}

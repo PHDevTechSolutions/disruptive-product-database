@@ -75,7 +75,7 @@ function useIsMobile(breakpoint = 768) {
 /* ─────────────────────────────────────────────────────────────── */
 export default function RequestsPage() {
   const { userId }            = useUser();
-  const { clearNotifications } = useNotifications();
+  const { markSPFRequestAsRead, getSPFRequestUnreadCount } = useNotifications();
   const isMobile              = useIsMobile();
 
   /* ── User ── */
@@ -98,11 +98,6 @@ export default function RequestsPage() {
   /* ── Dialog ── */
   const [openDialog, setOpenDialog]     = useState(false);
   const [selectedRow, setSelectedRow]   = useState<SPFRequest | null>(null);
-
-  /* ─────────────────────── */
-  /* Clear notifications     */
-  /* ─────────────────────── */
-  useEffect(() => { clearNotifications(); }, [clearNotifications]);
 
   /* ─────────────────────── */
   /* Fetch user              */
@@ -134,10 +129,36 @@ export default function RequestsPage() {
     if (!spfNumbers.length) { setCreatedSPFLoaded(true); return; }
     const { data: created } = await supabase
       .from("spf_creation")
-      .select("spf_number, status")
+      .select("id, spf_number, status, date_created, date_updated")
       .in("spf_number", spfNumbers);
     const map: Record<string, string> = {};
-    created?.forEach((c: any) => { map[c.spf_number] = c.status || "unknown"; });
+    const versionMap: Record<string, number> = {};
+    created?.forEach((c: any) => {
+      const spfNumber = typeof c?.spf_number === "string" ? c.spf_number : "";
+      if (!spfNumber) return;
+
+      const dateUpdatedMs =
+        typeof c?.date_updated === "string" || c?.date_updated instanceof Date
+          ? new Date(c.date_updated).getTime()
+          : Number.NaN;
+      const dateCreatedMs =
+        typeof c?.date_created === "string" || c?.date_created instanceof Date
+          ? new Date(c.date_created).getTime()
+          : Number.NaN;
+      const idMs = typeof c?.id === "number" ? c.id : Number.NaN;
+      const versionPoint = Number.isFinite(dateUpdatedMs)
+        ? dateUpdatedMs
+        : Number.isFinite(dateCreatedMs)
+          ? dateCreatedMs
+          : Number.isFinite(idMs)
+            ? idMs
+            : 0;
+      const previousVersion = versionMap[spfNumber] ?? Number.NEGATIVE_INFINITY;
+      if (versionPoint < previousVersion) return;
+
+      versionMap[spfNumber] = versionPoint;
+      map[spfNumber] = typeof c?.status === "string" ? c.status : "unknown";
+    });
     setCreatedSPF(map);
     setCreatedSPFLoaded(true);
   }, []);
@@ -222,6 +243,7 @@ export default function RequestsPage() {
   };
 
   const handleCreateFromRow = (rowData: SPFRequest) => {
+    markSPFRequestAsRead(rowData.spf_number);
     setSelectedRow(rowData);
     setOpenDialog(true);
   };
@@ -320,10 +342,21 @@ export default function RequestsPage() {
                   ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
                   : "-";
                 const spfStatus = createdSPF[req.spf_number];
+                const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);
+                const isUnreadRow = unreadCountForRow > 0;
 
                 return (
-                  <tr key={req.id} className="border-b hover:bg-white/60 align-middle">
-                    <td className="px-4 py-3 font-medium">{req.spf_number}</td>
+                  <tr key={req.id} className={`border-b hover:bg-white/60 align-middle ${isUnreadRow ? "bg-red-50/40 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.20)]" : ""}`}>
+                    <td className="px-4 py-3 font-medium">
+                      <div className="inline-flex items-center gap-2">
+                        <span>{req.spf_number}</span>
+                        {isUnreadRow && (
+                          <span className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_16px_rgba(239,68,68,0.75)] animate-pulse">
+                            {unreadCountForRow}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">{req.customer_name}</td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase">
@@ -343,7 +376,11 @@ export default function RequestsPage() {
                         )}
                         {spfStatus && (
                           <div className="flex items-center gap-2">
-                            <SPFRequestFetch spfNumber={req.spf_number} />
+                            <SPFRequestFetch
+                              spfNumber={req.spf_number}
+                              unreadCount={unreadCountForRow}
+                              onOpen={() => markSPFRequestAsRead(req.spf_number)}
+                            />
                           </div>
                         )}
                       </div>
@@ -376,11 +413,20 @@ export default function RequestsPage() {
               ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
               : "-";
             const spfStatus = createdSPF[req.spf_number];
+            const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);
+            const isUnreadRow = unreadCountForRow > 0;
 
             return (
-              <div key={req.id} className="border border-gray-200 rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm p-4 space-y-2">
+              <div key={req.id} className={`border rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm p-4 space-y-2 ${isUnreadRow ? "border-red-200 shadow-[0_0_16px_rgba(239,68,68,0.35)]" : "border-gray-200"}`}>
                 <div className="flex justify-between items-start">
-                  <p className="font-semibold text-sm">{req.spf_number}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-sm">{req.spf_number}</p>
+                    {isUnreadRow && (
+                      <span className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_16px_rgba(239,68,68,0.75)] animate-pulse">
+                        {unreadCountForRow}
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[10px] text-muted-foreground">{formattedDate}</span>
                 </div>
                 <p className="text-sm font-medium text-gray-800">{req.customer_name}</p>
@@ -398,7 +444,11 @@ export default function RequestsPage() {
                   )}
                   {spfStatus && (
                     <div className="flex-1">
-                      <SPFRequestFetch spfNumber={req.spf_number} />
+                      <SPFRequestFetch
+                        spfNumber={req.spf_number}
+                        unreadCount={unreadCountForRow}
+                        onOpen={() => markSPFRequestAsRead(req.spf_number)}
+                      />
                     </div>
                   )}
                 </div>
