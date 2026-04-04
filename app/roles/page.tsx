@@ -9,15 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronDown, ChevronUp, Search, ChevronLeft, ChevronRight, User, Building, Shield } from "lucide-react";
 
 interface User {
   _id: string;
-  Name: string;
+  Name?: string;
+  Firstname?: string;
+  Lastname?: string;
   Email: string;
   Department: string;
   Role: string;
   ReferenceID?: string;
+  profilePicture?: string;
 }
 
 interface UserWithAccess extends User {
@@ -56,6 +60,22 @@ export default function RolesPage() {
     "page:roles": "Roles Page",
     "page:add-product": "Add Product Page",
     "page:edit-product": "Edit Product Page",
+  };
+
+  const getDisplayName = (user: User) => {
+    const first = user.Firstname?.trim() ?? "";
+    const last = user.Lastname?.trim() ?? "";
+    const fullName = `${first} ${last}`.trim();
+    if (fullName) return fullName;
+    if (user.Name?.trim()) return user.Name.trim();
+    return user.Email || "Unknown User";
+  };
+
+  const getNameInitials = (name: string) => {
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return "U";
+    if (words.length === 1) return words[0].charAt(0).toUpperCase();
+    return `${words[0].charAt(0)}${words[1].charAt(0)}`.toUpperCase();
   };
 
   useEffect(() => {
@@ -123,6 +143,9 @@ export default function RolesPage() {
     const lower = searchTerm.toLowerCase();
     return users.filter(
       (user) =>
+        getDisplayName(user).toLowerCase().includes(lower) ||
+        user.Firstname?.toLowerCase().includes(lower) ||
+        user.Lastname?.toLowerCase().includes(lower) ||
         user.Name?.toLowerCase().includes(lower) ||
         user.Email?.toLowerCase().includes(lower) ||
         user.Department?.toLowerCase().includes(lower) ||
@@ -184,7 +207,7 @@ export default function RolesPage() {
             </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
             <p className="text-gray-600 mb-4">
-              You don't have permission to access the Roles page. Only Engineering Managers and IT
+              You do not have permission to access the Roles page. Only Engineering Managers and IT
               department staff can view this page.
             </p>
             <Button onClick={() => router.push("/dashboard")} className="w-full">
@@ -274,11 +297,14 @@ export default function RolesPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <User className="h-5 w-5 text-blue-600" />
-                        </div>
+                        <Avatar className="h-10 w-10 rounded-full">
+                          <AvatarImage src={user.profilePicture || ""} alt={getDisplayName(user)} />
+                          <AvatarFallback className="bg-blue-100 text-blue-700">
+                            {getNameInitials(getDisplayName(user))}
+                          </AvatarFallback>
+                        </Avatar>
                         <div>
-                          <CardTitle className="text-lg">{user.Name}</CardTitle>
+                          <CardTitle className="text-lg capitalize">{getDisplayName(user)}</CardTitle>
                           <p className="text-sm text-gray-600">{user.Email}</p>
                         </div>
                       </div>
