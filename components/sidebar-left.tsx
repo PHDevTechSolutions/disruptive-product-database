@@ -30,6 +30,7 @@ import {
 
 import { useUser } from "@/contexts/UserContext";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useRoleAccess, type AccessKey } from "@/contexts/RoleAccessContext";
 import { NavUser } from "@/components/nav-user";
 
 type UserDetails = {
@@ -41,22 +42,30 @@ type UserDetails = {
   Department: string;
 };
 
-const NAV_ITEMS = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard"  },
-  { href: "/products",  icon: Package,          label: "Products"   },
-  { href: "/suppliers", icon: Truck,             label: "Suppliers"  },
-  { href: "/requests",  icon: ClipboardList,     label: "Requests", showBadge: true },
-  { href: "/history",   icon: History,           label: "History"    },
-  { href: "/roles",     icon: User,              label: "Roles"      },
+const NAV_ITEMS: Array<{
+  href: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
+  label: string;
+  showBadge?: boolean;
+  accessKey?: AccessKey;
+}> = [
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/products", icon: Package, label: "Products", accessKey: "page:products" },
+  { href: "/suppliers", icon: Truck, label: "Suppliers", accessKey: "page:suppliers" },
+  { href: "/requests", icon: ClipboardList, label: "Requests", showBadge: true, accessKey: "page:requests" },
+  { href: "/history", icon: History, label: "History" },
+  { href: "/roles", icon: User, label: "Roles", accessKey: "page:roles" },
 ];
 
 export function SidebarLeft() {
   const { state, isMobile } = useSidebar();
   const { userId } = useUser();
   const { unreadCount } = useNotifications();
+  const { subscribeToUserAccess } = useRoleAccess();
   const pathname = usePathname();
 
   const [user, setUser] = React.useState<UserDetails | null>(null);
+  const [userAccess, setUserAccess] = React.useState<Record<string, boolean> | null>(null);
 
   React.useEffect(() => {
     if (!userId) return;
@@ -98,20 +107,41 @@ export function SidebarLeft() {
     };
   }, [userId]);
 
+  React.useEffect(() => {
+    if (!userId) {
+      setUserAccess(null);
+      return;
+    }
+
+    const unsub = subscribeToUserAccess(userId, (access) => {
+      setUserAccess(access);
+    });
+
+    return () => unsub();
+  }, [userId, subscribeToUserAccess]);
+
+  const hasFullAccess = React.useMemo(() => {
+    if (!user) return false;
+    return (
+      (user.Department === "Engineering" && user.Role === "Manager") ||
+      user.Department === "IT"
+    );
+  }, [user]);
+
   // Filter NAV_ITEMS based on user permissions
   const filteredNavItems = React.useMemo(() => {
-    return NAV_ITEMS.filter(item => {
-      // Show all items except Roles if user doesn't have access
-      if (item.label === "Roles") {
-        return user && (
-          // Engineering department with Manager role OR IT department (any role)
-          (user.Department === "Engineering" && user.Role === "Manager") ||
-          (user.Department === "IT")
-        );
+    return NAV_ITEMS.filter((item) => {
+      if (!item.accessKey || hasFullAccess) {
+        return true;
       }
-      return true;
+
+      if (!userAccess) {
+        return true;
+      }
+
+      return userAccess[item.accessKey] ?? true;
     });
-  }, [user]);
+  }, [hasFullAccess, userAccess]);
 
   /* ─────────────────────────────────────────────
      MOBILE — bottom nav bar
