@@ -117,17 +117,17 @@ export default function RolesPage() {
 
         const usersWithAccess = await Promise.all(
           usersData
-            .filter((user) => user.Department === "Engineering" || user.Department === "IT")
+          .filter((user) => {
+            if (user.Department !== "Engineering") return false;
+            if (user.Role === "Manager") return false;
+            return true;
+          })
             .map(async (user) => {
               const access = await getUserAccess(user._id);
-              const isProtectedManager =
-                (user.Department === "Engineering" && user.Role === "Manager") ||
-                (user.Department === "IT" && user.Role === "Manager");
-              const isEditable = !isProtectedManager;
               return {
                 ...user,
                 access: access || {},
-                isEditable,
+                isEditable: true,
               };
             })
         );
