@@ -47,7 +47,6 @@ type SPFViewProps = {
   spfNumber: string;
   processBy?: string;
   onOpen?: () => void;
-  unreadCount?: number;
 };
 
 type SPFData = {
@@ -325,7 +324,6 @@ export default function SPFRequestFetch({
   spfNumber,
   processBy,
   onOpen,
-  unreadCount = 0,
 }: SPFViewProps) {
   const { userId } = useUser();
 
@@ -2781,11 +2779,6 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
               }`}
             >
               {getStatusLabel(data.status)}
-            </span>
-          )}
-          {unreadCount > 0 && (
-            <span className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_16px_rgba(239,68,68,0.75)] animate-pulse">
-              {unreadCount}
             </span>
           )}
         </div>

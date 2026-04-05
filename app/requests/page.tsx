@@ -378,7 +378,6 @@ export default function RequestsPage() {
                           <div className="flex items-center gap-2">
                             <SPFRequestFetch
                               spfNumber={req.spf_number}
-                              unreadCount={unreadCountForRow}
                               onOpen={() => markSPFRequestAsRead(req.spf_number)}
                             />
                           </div>
@@ -446,7 +445,6 @@ export default function RequestsPage() {
                     <div className="flex-1">
                       <SPFRequestFetch
                         spfNumber={req.spf_number}
-                        unreadCount={unreadCountForRow}
                         onOpen={() => markSPFRequestAsRead(req.spf_number)}
                       />
                     </div>
