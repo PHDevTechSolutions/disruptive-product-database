@@ -60,6 +60,8 @@ const NAV_ITEMS: Array<{
   { href: "/roles", icon: User, label: "Roles", accessKey: "page:roles", onlyForEngineeringManagerOrIT: true },
 ];
 
+const BOTTOM_NAV_HREFS = new Set(["/for-approval", "/roles"]);
+
 export function SidebarLeft() {
   const { state, isMobile } = useSidebar();
   const { userId } = useUser();
@@ -149,6 +151,16 @@ export function SidebarLeft() {
       return userAccess[item.accessKey] ?? true;
     });
   }, [hasFullAccess, userAccess]);
+
+  const mainDesktopNavItems = React.useMemo(
+    () => filteredNavItems.filter((item) => !BOTTOM_NAV_HREFS.has(item.href)),
+    [filteredNavItems]
+  );
+
+  const bottomDesktopNavItems = React.useMemo(
+    () => filteredNavItems.filter((item) => BOTTOM_NAV_HREFS.has(item.href)),
+    [filteredNavItems]
+  );
 
   /* ─────────────────────────────────────────────
      MOBILE — bottom nav bar
@@ -240,9 +252,9 @@ export function SidebarLeft() {
       </SidebarHeader>
 
       {/* CONTENT */}
-      <SidebarContent className="px-2">
+      <SidebarContent className="px-2 flex flex-col">
         <SidebarMenu>
-          {filteredNavItems.map(({ href, icon: Icon, label, showBadge }) => {
+          {mainDesktopNavItems.map(({ href, icon: Icon, label, showBadge }) => {
             const badge = showBadge ? unreadCount : 0;
 
             return (
@@ -292,6 +304,57 @@ export function SidebarLeft() {
             );
           })}
         </SidebarMenu>
+        {bottomDesktopNavItems.length > 0 && (
+          <SidebarMenu className="mt-auto pt-2">
+            {bottomDesktopNavItems.map(({ href, icon: Icon, label, showBadge }) => {
+              const badge = showBadge ? unreadCount : 0;
+
+              return (
+                <SidebarMenuItem key={href}>
+                  <SidebarMenuButton
+                    asChild
+                    data-active={pathname === href}
+                    className="
+                      transition-all
+                      hover:bg-red-50
+                      hover:text-red-700
+                      hover:scale-[1.01]
+                      data-[active=true]:bg-gradient-to-r
+                      data-[active=true]:from-red-600
+                      data-[active=true]:to-red-700
+                      data-[active=true]:text-white
+                      data-[active=true]:shadow-md
+                      data-[active=true]:hover:from-red-700
+                      data-[active=true]:hover:to-red-800
+                    "
+                  >
+                    <Link href={href} className="relative flex items-center gap-2 w-full">
+                      <span className="relative shrink-0">
+                        <Icon className="h-4 w-4" />
+                        {badge > 0 && state === "collapsed" && (
+                          <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+                            {badge > 9 ? "9+" : badge}
+                          </span>
+                        )}
+                      </span>
+
+                      {state === "expanded" && (
+                        <>
+                          <span className="flex-1">{label}</span>
+                          {badge > 0 && (
+                            <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
+                              {badge > 9 ? "9+" : badge}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
+        )}
       </SidebarContent>
 
       <SidebarSeparator />
