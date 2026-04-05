@@ -341,10 +341,19 @@ export default function ForApprovalPage() {
               paginatedItems.map((item) => {
                 const dupHint = duplicateHint(item.payload);
                 const pending = item.status === "Pending";
+                const unreadCountForRow = pending ? 1 : 0;
+                const isUnreadRow = unreadCountForRow > 0;
                 return (
-                  <tr key={item.id} className="border-b hover:bg-white/60 align-top">
+                  <tr key={item.id} className={`border-b hover:bg-white/60 align-top ${isUnreadRow ? "bg-red-50/40 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.20)]" : ""}`}>
                     <td className="px-3 py-3">
-                      <div className="font-medium">{actionTitle(item.actionType)}</div>
+                      <div className="inline-flex items-center gap-2 font-medium">
+                        <span>{actionTitle(item.actionType)}</span>
+                        {isUnreadRow && (
+                          <span className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_16px_rgba(239,68,68,0.75)] animate-pulse">
+                            {unreadCountForRow}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground mt-0.5 break-all">
                         {item.summary || item.entityLabel}
                       </div>
@@ -435,12 +444,21 @@ export default function ForApprovalPage() {
           paginatedItems.map((item) => {
             const dupHint = duplicateHint(item.payload);
             const pending = item.status === "Pending";
+            const unreadCountForRow = pending ? 1 : 0;
+            const isUnreadRow = unreadCountForRow > 0;
             return (
               <div
                 key={item.id}
-                className="rounded-2xl border border-gray-200 bg-white/80 p-4 shadow-sm space-y-2"
+                className={`rounded-2xl border bg-white/80 p-4 shadow-sm space-y-2 ${isUnreadRow ? "border-red-200 shadow-[0_0_16px_rgba(239,68,68,0.35)]" : "border-gray-200"}`}
               >
-                <p className="text-sm font-semibold text-gray-900">{actionTitle(item.actionType)}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-gray-900">{actionTitle(item.actionType)}</p>
+                  {isUnreadRow && (
+                    <span className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_16px_rgba(239,68,68,0.75)] animate-pulse">
+                      {unreadCountForRow}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-600">{item.summary || item.entityLabel}</p>
                 {dupHint && (
                   <p className="text-[11px] text-amber-900 bg-amber-50 rounded px-2 py-1">{dupHint}</p>

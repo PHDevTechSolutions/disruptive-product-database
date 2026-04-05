@@ -6,6 +6,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 
 import {
   Sidebar,
@@ -33,6 +34,7 @@ import { useUser } from "@/contexts/UserContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useRoleAccess, type AccessKey } from "@/contexts/RoleAccessContext";
 import { NavUser } from "@/components/nav-user";
+import { db } from "@/lib/firebase";
 
 type UserDetails = {
   Firstname: string;
@@ -47,16 +49,16 @@ const NAV_ITEMS: Array<{
   href: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
   label: string;
-  showBadge?: boolean;
+  badgeKey?: "requests" | "forApproval";
   accessKey?: AccessKey;
   onlyForEngineeringManagerOrIT?: boolean;
 }> = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/products", icon: Package, label: "Products", accessKey: "page:products" },
   { href: "/suppliers", icon: Truck, label: "Suppliers", accessKey: "page:suppliers" },
-  { href: "/requests", icon: ClipboardList, label: "Requests", showBadge: true, accessKey: "page:requests" },
+  { href: "/requests", icon: ClipboardList, label: "Requests", badgeKey: "requests", accessKey: "page:requests" },
   { href: "/history", icon: History, label: "History" },
-  { href: "/for-approval", icon: ClipboardCheck, label: "For Approval", onlyForEngineeringManagerOrIT: true },
+  { href: "/for-approval", icon: ClipboardCheck, label: "For Approval", badgeKey: "forApproval", onlyForEngineeringManagerOrIT: true },
   { href: "/roles", icon: User, label: "Roles", accessKey: "page:roles", onlyForEngineeringManagerOrIT: true },
 ];
 
@@ -71,6 +73,7 @@ export function SidebarLeft() {
 
   const [user, setUser] = React.useState<UserDetails | null>(null);
   const [userAccess, setUserAccess] = React.useState<Record<string, boolean> | null>(null);
+  const [forApprovalCount, setForApprovalCount] = React.useState(0);
 
   React.useEffect(() => {
     if (!userId) return;
@@ -125,6 +128,20 @@ export function SidebarLeft() {
     return () => unsub();
   }, [userId, subscribeToUserAccess]);
 
+  React.useEffect(() => {
+    const q = query(collection(db, "forApprovals"), where("status", "==", "Pending"));
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        setForApprovalCount(snapshot.size);
+      },
+      () => {
+        setForApprovalCount(0);
+      }
+    );
+    return () => unsub();
+  }, []);
+
   const hasFullAccess = React.useMemo(() => {
     if (!user) return false;
     return (
@@ -172,9 +189,14 @@ export function SidebarLeft() {
         style={{ bottom: 0, paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="flex items-center justify-around px-1 h-[62px]">
-          {filteredNavItems.map(({ href, icon: Icon, label, showBadge }) => {
+          {filteredNavItems.map(({ href, icon: Icon, label, badgeKey }) => {
             const active = pathname === href;
-            const badge  = showBadge ? unreadCount : 0;
+            const badge =
+              badgeKey === "requests"
+                ? unreadCount
+                : badgeKey === "forApproval"
+                  ? forApprovalCount
+                  : 0;
 
             return (
               <Link
@@ -254,8 +276,13 @@ export function SidebarLeft() {
       {/* CONTENT */}
       <SidebarContent className="px-2 flex flex-col">
         <SidebarMenu>
-          {mainDesktopNavItems.map(({ href, icon: Icon, label, showBadge }) => {
-            const badge = showBadge ? unreadCount : 0;
+          {mainDesktopNavItems.map(({ href, icon: Icon, label, badgeKey }) => {
+            const badge =
+              badgeKey === "requests"
+                ? unreadCount
+                : badgeKey === "forApproval"
+                  ? forApprovalCount
+                  : 0;
 
             return (
               <SidebarMenuItem key={href}>
@@ -306,8 +333,13 @@ export function SidebarLeft() {
         </SidebarMenu>
         {bottomDesktopNavItems.length > 0 && (
           <SidebarMenu className="mt-auto pt-2">
-            {bottomDesktopNavItems.map(({ href, icon: Icon, label, showBadge }) => {
-              const badge = showBadge ? unreadCount : 0;
+            {bottomDesktopNavItems.map(({ href, icon: Icon, label, badgeKey }) => {
+              const badge =
+                badgeKey === "requests"
+                  ? unreadCount
+                  : badgeKey === "forApproval"
+                    ? forApprovalCount
+                    : 0;
 
               return (
                 <SidebarMenuItem key={href}>
