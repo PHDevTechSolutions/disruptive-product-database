@@ -51,6 +51,7 @@ export default function RolesPage() {
     "page:roles",
     "page:add-product",
     "page:edit-product",
+    "feature:approval-bypass",
   ];
 
   const accessKeyLabels: Record<string, string> = {
@@ -60,6 +61,7 @@ export default function RolesPage() {
     "page:roles": "Roles Page",
     "page:add-product": "Add Product Page",
     "page:edit-product": "Edit Product Page",
+    "feature:approval-bypass": "Bypass For Approval",
   };
 
   const getDisplayName = (user: User) => {
@@ -115,10 +117,13 @@ export default function RolesPage() {
 
         const usersWithAccess = await Promise.all(
           usersData
-            .filter((user) => user.Department === "Engineering")
+            .filter((user) => user.Department === "Engineering" || user.Department === "IT")
             .map(async (user) => {
               const access = await getUserAccess(user._id);
-              const isEditable = !(user.Department === "Engineering" && user.Role === "Manager");
+              const isProtectedManager =
+                (user.Department === "Engineering" && user.Role === "Manager") ||
+                (user.Department === "IT" && user.Role === "Manager");
+              const isEditable = !isProtectedManager;
               return {
                 ...user,
                 access: access || {},
@@ -243,7 +248,7 @@ export default function RolesPage() {
 
         <div className="mt-4 flex items-center justify-between">
           <p className="text-sm text-gray-600">
-            Manage access permissions for Engineering users
+            Manage access permissions for Engineering and IT users (bypass lets them skip For Approval on changes)
           </p>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span>{searchedUsers.length} users</span>
@@ -285,7 +290,7 @@ export default function RolesPage() {
                 <User className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-600">No users found</p>
                 <p className="text-sm text-gray-400 mt-1">
-                  {searchTerm ? "Try adjusting your search" : "No Engineering users found"}
+                  {searchTerm ? "Try adjusting your search" : "No Engineering or IT users found"}
                 </p>
               </div>
             ) : (

@@ -30,8 +30,18 @@ import { db } from "@/lib/firebase";
 import { toast } from "sonner";
 import { useUser } from "@/contexts/UserContext";
 import { logProductEvent, logProductUsageEvent, logProductFamilyEvent } from "@/lib/auditlogger";
+import {
+  createApprovalRequest,
+  getApprovalUserProfile,
+  shouldRequireApproval,
+} from "@/lib/for-approval";
+import {
+  buildExcelColumnsMapFromWorkbook,
+  type ParsedProductRow,
+} from "@/lib/product-bulk-insert-runner";
 
 import DuplicateCheckModal, { DuplicateRow } from "@/components/duplicate-check-modal";
+import RequestApprovalDialog from "@/components/request-approval-dialog";
 
 type Props = {
   iconOnly?: boolean;
@@ -47,28 +57,6 @@ type CategoryType = { id: string; name: string };
 type ProductFamily = { id: string; name: string; categoryTypeId: string };
 type Supplier = { supplierId: string; company: string; supplierBrand?: string };
 type TemplateSpec = { id: string; title: string; specs: { specId: string }[]; sortOrder?: number };
-
-type ParsedProductRow = {
-  usage: string;
-  family: string;
-  productClass: string;
-  pricePoint: string;
-  brandOrigin: string;
-  supplierBrand: string;
-  imageURL: string;
-  dimensionalURL: string;
-  illuminanceURL: string;
-  unitCost: string;
-  length: string;
-  width: string;
-  height: string;
-  pcsPerCarton: string;
-  factoryAddress: string;
-  portOfDischarge: string;
-  wsIndex: number;
-  rowIndex: number;
-  specValues: Record<string, string>;
-};
 
 const cleanExcelValue = (val: any) => {
   if (val === null || val === undefined) return "";
@@ -162,6 +150,17 @@ export default function UploadProduct({ iconOnly = false }: Props) {
   const [duplicateCheckOpen, setDuplicateCheckOpen] = useState(false);
   const [parsedRows, setParsedRows] = useState<ParsedProductRow[]>([]);
   const [nonDuplicateParsedRows, setNonDuplicateParsedRows] = useState<ParsedProductRow[]>([]);
+
+  const [requestApprovalOpen, setRequestApprovalOpen] = useState(false);
+  const [requestingApproval, setRequestingApproval] = useState(false);
+  const [approvalExcelColumns, setApprovalExcelColumns] = useState<Record<
+    string,
+    { title: string; specId: string; col: number }[]
+  > | null>(null);
+  const [approvalRowsPending, setApprovalRowsPending] = useState<ParsedProductRow[] | null>(null);
+  const [approvalFilename, setApprovalFilename] = useState("");
+  const [approvalDupSummary, setApprovalDupSummary] = useState("");
+  const [approvalAfterDuplicate, setApprovalAfterDuplicate] = useState(false);
 
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const cancelRef = React.useRef(false);
@@ -598,6 +597,7 @@ export default function UploadProduct({ iconOnly = false }: Props) {
     if (!file) return;
     cancelRef.current = false;
     setUploading(true);
+    setApprovalAfterDuplicate(false);
 
     try {
       const workbook = new ExcelJS.Workbook();
@@ -613,13 +613,41 @@ export default function UploadProduct({ iconOnly = false }: Props) {
         return;
       }
 
+      const excelColumnsByWsIndex = buildExcelColumnsMapFromWorkbook(workbook);
       const { dupeRows, nonDupes } = await checkForDuplicates(allRows);
+      const profile = userId ? await getApprovalUserProfile(userId) : null;
+      const needsApproval = shouldRequireApproval(profile);
 
       if (dupeRows.length === allRows.length) {
         toast.error("Upload blocked", {
           description: `All ${allRows.length} rows already exist in the system. Nothing to upload.`,
         });
         setUploading(false);
+        return;
+      }
+
+      if (needsApproval) {
+        if (!profile) {
+          toast.error("User profile not loaded");
+          setUploading(false);
+          return;
+        }
+        setUploading(false);
+        setApprovalExcelColumns(excelColumnsByWsIndex);
+        setApprovalFilename(file.name);
+        if (dupeRows.length > 0) {
+          setDuplicateRows(dupeRows);
+          setNonDuplicateParsedRows(nonDupes);
+          setApprovalAfterDuplicate(true);
+          setApprovalDupSummary(
+            `${dupeRows.length} duplicate row(s) vs database · ${nonDupes.length} new row(s) if you skip duplicates`,
+          );
+          setDuplicateCheckOpen(true);
+          return;
+        }
+        setApprovalRowsPending(allRows);
+        setApprovalDupSummary("No duplicates detected vs existing products.");
+        setRequestApprovalOpen(true);
         return;
       }
 
@@ -639,6 +667,52 @@ export default function UploadProduct({ iconOnly = false }: Props) {
     }
   };
 
+  const submitProductUploadForApproval = async (message: string) => {
+    if (!userId || !approvalRowsPending || !approvalExcelColumns) return;
+    setRequestingApproval(true);
+    try {
+      const profile = await getApprovalUserProfile(userId);
+      if (!profile) {
+        toast.error("User profile not loaded");
+        return;
+      }
+      const rows = approvalRowsPending;
+      await createApprovalRequest({
+        actionType: "product_upload",
+        entityLabel: approvalFilename,
+        requester: profile,
+        message,
+        summary: `Upload products: ${approvalFilename}`,
+        payload: {
+          filename: approvalFilename,
+          rows,
+          excelColumnsByWsIndex: approvalExcelColumns,
+          rowCount: rows.length,
+          duplicateSummary: approvalDupSummary || null,
+        },
+      });
+      await logProductEvent({
+        whatHappened: "Product For Approval Requested",
+        referenceID: profile.referenceID,
+        userId,
+        extra: { source: "excel_upload", filename: approvalFilename, rows: rows.length },
+      });
+      toast.success("Upload request sent for approval");
+      setRequestApprovalOpen(false);
+      setOpen(false);
+      setFile(null);
+      setApprovalRowsPending(null);
+      setApprovalExcelColumns(null);
+      setApprovalDupSummary("");
+      setApprovalAfterDuplicate(false);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to send approval request");
+    } finally {
+      setRequestingApproval(false);
+    }
+  };
+
   /* ----------------------------------------------------------------
    * Duplicate modal handlers
    * ---------------------------------------------------------------- */
@@ -649,6 +723,14 @@ export default function UploadProduct({ iconOnly = false }: Props) {
       return;
     }
     if (!file) return;
+
+    if (approvalAfterDuplicate) {
+      setApprovalAfterDuplicate(false);
+      setApprovalRowsPending(nonDuplicateParsedRows);
+      setRequestApprovalOpen(true);
+      return;
+    }
+
     setUploading(true);
     const workbook = new ExcelJS.Workbook();
     const buffer = await file.arrayBuffer();
@@ -659,6 +741,17 @@ export default function UploadProduct({ iconOnly = false }: Props) {
   const handleUploadAll = async () => {
     setDuplicateCheckOpen(false);
     if (!file) return;
+
+    if (approvalAfterDuplicate) {
+      setApprovalAfterDuplicate(false);
+      setApprovalDupSummary(
+        `${duplicateRows.length} row(s) overlap existing products (upload all rows was selected).`,
+      );
+      setApprovalRowsPending(parsedRows);
+      setRequestApprovalOpen(true);
+      return;
+    }
+
     setUploading(true);
     const workbook = new ExcelJS.Workbook();
     const buffer = await file.arrayBuffer();
@@ -935,6 +1028,29 @@ export default function UploadProduct({ iconOnly = false }: Props) {
         uploading={uploading}
         onSkipDuplicates={handleSkipDuplicates}
         onUploadAll={handleUploadAll}
+      />
+
+      <RequestApprovalDialog
+        open={requestApprovalOpen}
+        onOpenChange={(o) => {
+          setRequestApprovalOpen(o);
+          if (!o) {
+            setApprovalRowsPending(null);
+            setApprovalExcelColumns(null);
+            setApprovalDupSummary("");
+            setApprovalAfterDuplicate(false);
+          }
+        }}
+        actionLabel="Upload products (Excel)"
+        entityLabel={approvalFilename || "Excel file"}
+        detailLines={[
+          approvalDupSummary,
+          approvalRowsPending?.length
+            ? `${approvalRowsPending.length} product row(s) will be imported after approval.`
+            : "",
+        ].filter(Boolean)}
+        onConfirm={submitProductUploadForApproval}
+        loading={requestingApproval}
       />
     </>
   );

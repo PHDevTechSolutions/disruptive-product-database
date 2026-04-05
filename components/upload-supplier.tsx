@@ -34,6 +34,12 @@ import UploadSupplierWarning, {
 import DuplicateCheckModal, { DuplicateRow } from "@/components/duplicate-check-modal";
 
 import { logSupplierEvent } from "@/lib/auditlogger";
+import {
+  createApprovalRequest,
+  getApprovalUserProfile,
+  shouldRequireApproval,
+} from "@/lib/for-approval";
+import RequestApprovalDialog from "@/components/request-approval-dialog";
 
 /* ---------------- Types ---------------- */
 type UserDetails = {
@@ -150,7 +156,15 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
   const [duplicateCheckOpen, setDuplicateCheckOpen] = useState(false);
   const [nonDuplicateRows, setNonDuplicateRows] = useState<ExcelRow[]>([]);
 
+  const [requestApprovalOpen, setRequestApprovalOpen] = useState(false);
+  const [requestingApproval, setRequestingApproval] = useState(false);
+  const [approvalRowsPending, setApprovalRowsPending] = useState<ExcelRow[] | null>(null);
+  const [approvalFilename, setApprovalFilename] = useState("");
+  const [approvalDupSummary, setApprovalDupSummary] = useState("");
+  const [approvalAfterDuplicate, setApprovalAfterDuplicate] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingFileNameRef = useRef<string>("");
 
   useEffect(() => {
     if (!userId) return;
@@ -164,6 +178,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     try {
       if (!file) return;
       if (file.size === 0) { toast.error("File is empty"); return; }
+      pendingFileNameRef.current = file.name;
 
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: "array", cellDates: true, raw: false });
@@ -278,8 +293,12 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     if (!user?.ReferenceID) { toast.error("User reference not loaded"); return; }
 
     setLoading(true);
+    setApprovalAfterDuplicate(false);
+    setApprovalFilename(pendingFileNameRef.current || "suppliers.xlsx");
     try {
       const { dupeRows, nonDupes } = await runDuplicateCheck();
+      const profile = userId ? await getApprovalUserProfile(userId) : null;
+      const needsApproval = shouldRequireApproval(profile);
 
       // ✅ 100% DUPLICATE — block agad
       if (dupeRows.length === rows.length) {
@@ -287,6 +306,29 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           description: `All ${rows.length} rows already exist in the system. Nothing to upload.`,
         });
         setLoading(false);
+        return;
+      }
+
+      if (needsApproval) {
+        if (!profile) {
+          toast.error("User profile not loaded");
+          setLoading(false);
+          return;
+        }
+        setLoading(false);
+        if (dupeRows.length > 0) {
+          setDuplicateRows(dupeRows);
+          setNonDuplicateRows(nonDupes);
+          setApprovalAfterDuplicate(true);
+          setApprovalDupSummary(
+            `${dupeRows.length} duplicate company row(s) vs database · ${nonDupes.length} new row(s) if skipping duplicates`,
+          );
+          setDuplicateCheckOpen(true);
+          return;
+        }
+        setApprovalRowsPending(rows);
+        setApprovalDupSummary("No duplicate companies vs active suppliers.");
+        setRequestApprovalOpen(true);
         return;
       }
 
@@ -308,6 +350,51 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
     }
   };
 
+  const submitSupplierUploadForApproval = async (message: string) => {
+    if (!userId || !approvalRowsPending?.length) return;
+    setRequestingApproval(true);
+    try {
+      const profile = await getApprovalUserProfile(userId);
+      if (!profile) {
+        toast.error("User profile not loaded");
+        return;
+      }
+      const uploadRows = approvalRowsPending;
+      await createApprovalRequest({
+        actionType: "supplier_upload",
+        entityLabel: approvalFilename,
+        requester: profile,
+        message,
+        summary: `Upload suppliers: ${approvalFilename}`,
+        payload: {
+          filename: approvalFilename,
+          rows: uploadRows as Record<string, unknown>[],
+          rowCount: uploadRows.length,
+          duplicateSummary: approvalDupSummary || null,
+          overwriteConflicts: true,
+        },
+      });
+      await logSupplierEvent({
+        whatHappened: "Supplier For Approval Requested",
+        referenceID: profile.referenceID,
+        userId,
+        extra: { source: "excel_upload", filename: approvalFilename, rows: uploadRows.length },
+      });
+      toast.success("Upload request sent for approval");
+      setRequestApprovalOpen(false);
+      setRows([]);
+      setApprovalRowsPending(null);
+      setApprovalDupSummary("");
+      setApprovalAfterDuplicate(false);
+      onOpenChange(false);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to send approval request");
+    } finally {
+      setRequestingApproval(false);
+    }
+  };
+
   /* ----------------------------------------------------------------
    * Duplicate modal handlers
    * ---------------------------------------------------------------- */
@@ -317,12 +404,31 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
       toast.warning("Nothing to upload", { description: "All rows were duplicates." });
       return;
     }
+
+    if (approvalAfterDuplicate) {
+      setApprovalAfterDuplicate(false);
+      setApprovalRowsPending(nonDuplicateRows);
+      setRequestApprovalOpen(true);
+      return;
+    }
+
     setLoading(true);
     await performUpload(nonDuplicateRows);
   };
 
   const handleUploadAll = async () => {
     setDuplicateCheckOpen(false);
+
+    if (approvalAfterDuplicate) {
+      setApprovalAfterDuplicate(false);
+      setApprovalDupSummary(
+        `${duplicateRows.length} row(s) match existing companies (upload all was selected).`,
+      );
+      setApprovalRowsPending(rows);
+      setRequestApprovalOpen(true);
+      return;
+    }
+
     setLoading(true);
     await performUpload(rows);
   };
@@ -669,6 +775,28 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         uploading={loading}
         onSkipDuplicates={handleSkipDuplicates}
         onUploadAll={handleUploadAll}
+      />
+
+      <RequestApprovalDialog
+        open={requestApprovalOpen}
+        onOpenChange={(o) => {
+          setRequestApprovalOpen(o);
+          if (!o) {
+            setApprovalRowsPending(null);
+            setApprovalDupSummary("");
+            setApprovalAfterDuplicate(false);
+          }
+        }}
+        actionLabel="Upload suppliers (Excel)"
+        entityLabel={approvalFilename || "Excel file"}
+        detailLines={[
+          approvalDupSummary,
+          approvalRowsPending?.length
+            ? `${approvalRowsPending.length} supplier row(s) will be processed after approval (existing data conflicts will be overwritten when needed).`
+            : "",
+        ].filter(Boolean)}
+        onConfirm={submitSupplierUploadForApproval}
+        loading={requestingApproval}
       />
     </>
   );

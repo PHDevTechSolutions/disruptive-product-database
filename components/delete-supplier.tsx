@@ -28,6 +28,12 @@ import {
 } from "firebase/firestore";
 
 import { logSupplierEvent } from "@/lib/auditlogger"; // ✅ AUDIT
+import RequestApprovalDialog from "@/components/request-approval-dialog";
+import {
+  createApprovalRequest,
+  getApprovalUserProfile,
+  shouldRequireApproval,
+} from "@/lib/for-approval";
 
 /* ---------------- Types ---------------- */
 type UserDetails = {
@@ -53,6 +59,8 @@ function DeleteSupplier({ open, onOpenChange, supplier }: DeleteSupplierProps) {
   const { userId } = useUser();
   const [user, setUser] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(false);
+  const [requestApprovalOpen, setRequestApprovalOpen] = useState(false);
+  const [requestingApproval, setRequestingApproval] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -77,6 +85,13 @@ function DeleteSupplier({ open, onOpenChange, supplier }: DeleteSupplierProps) {
     try {
       if (!user?.ReferenceID) {
         toast.error("User reference not loaded");
+        return;
+      }
+
+      const profile = userId ? await getApprovalUserProfile(userId) : null;
+      const requiresApproval = shouldRequireApproval(profile);
+      if (requiresApproval) {
+        setRequestApprovalOpen(true);
         return;
       }
 
@@ -131,6 +146,46 @@ function DeleteSupplier({ open, onOpenChange, supplier }: DeleteSupplierProps) {
     }
   };
 
+  const handleRequestApproval = async (message: string) => {
+    try {
+      if (!userId) return;
+      setRequestingApproval(true);
+      const profile = await getApprovalUserProfile(userId);
+      if (!profile) {
+        toast.error("User profile not loaded");
+        return;
+      }
+      await createApprovalRequest({
+        actionType: "supplier_delete",
+        entityLabel: supplier.company,
+        requester: profile,
+        message,
+        summary: `Delete supplier: ${supplier.company}`,
+        payload: {
+          supplierId: supplier.id,
+          company: supplier.company,
+          supplierBrand: supplier.supplierBrand || "",
+        },
+      });
+      await logSupplierEvent({
+        whatHappened: "Supplier For Approval Requested",
+        supplierId: supplier.id,
+        company: supplier.company,
+        supplierBrand: supplier.supplierBrand,
+        referenceID: profile.referenceID,
+        userId,
+      });
+      toast.success("Request sent for approval");
+      setRequestApprovalOpen(false);
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Request approval failed:", error);
+      toast.error("Failed to send approval request");
+    } finally {
+      setRequestingApproval(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -171,6 +226,14 @@ function DeleteSupplier({ open, onOpenChange, supplier }: DeleteSupplierProps) {
           </Button>
         </DialogFooter>
       </DialogContent>
+      <RequestApprovalDialog
+        open={requestApprovalOpen}
+        onOpenChange={setRequestApprovalOpen}
+        actionLabel="Delete Supplier"
+        entityLabel={supplier.company}
+        onConfirm={handleRequestApproval}
+        loading={requestingApproval}
+      />
     </Dialog>
   );
 }

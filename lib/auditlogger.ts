@@ -22,7 +22,10 @@ export type SupplierEventPayload = {
     | "Supplier Edited"
     | "Supplier Deleted"
     | "Supplier Reactivated"
-    | "Supplier Bulk Upload";
+    | "Supplier Bulk Upload"
+    | "Supplier For Approval Requested"
+    | "Supplier For Approval Approved"
+    | "Supplier For Approval Rejected";
 
   supplierId?     : string;
   supplierbrandId?: string;
@@ -71,7 +74,10 @@ export type ProductEventPayload = {
     | "Product Added"
     | "Product Edited"
     | "Product Deleted"
-    | "Product Bulk Upload";
+    | "Product Bulk Upload"
+    | "Product For Approval Requested"
+    | "Product For Approval Approved"
+    | "Product For Approval Rejected";
 
   productId?          : string;
   productReferenceID? : string;

@@ -18,6 +18,12 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { logProductEvent } from "@/lib/auditlogger"; // ✅ AUDIT
+import RequestApprovalDialog from "@/components/request-approval-dialog";
+import {
+  createApprovalRequest,
+  getApprovalUserProfile,
+  shouldRequireApproval,
+} from "@/lib/for-approval";
 
 type Props = {
   productId: string;
@@ -41,6 +47,8 @@ export default function AddProductDeleteProductItem({
 
   const [open, setOpen] = useState(defaultOpen);
   const [deleting, setDeleting] = useState(false);
+  const [requestApprovalOpen, setRequestApprovalOpen] = useState(false);
+  const [requestingApproval, setRequestingApproval] = useState(false);
 
   /* ── Fetch ReferenceID of current user for audit log ── */
   useEffect(() => {
@@ -58,6 +66,12 @@ export default function AddProductDeleteProductItem({
 
   const handleSoftDelete = async () => {
     try {
+      const profile = userId ? await getApprovalUserProfile(userId) : null;
+      const requiresApproval = shouldRequireApproval(profile);
+      if (requiresApproval) {
+        setRequestApprovalOpen(true);
+        return;
+      }
       setDeleting(true);
 
       /* ── Fetch product data BEFORE deleting so we can log supplier + class ── */
@@ -99,6 +113,43 @@ export default function AddProductDeleteProductItem({
     }
   };
 
+  const handleRequestApproval = async (message: string) => {
+    try {
+      if (!userId) return;
+      setRequestingApproval(true);
+      const profile = await getApprovalUserProfile(userId);
+      if (!profile) {
+        toast.error("User profile not loaded");
+        return;
+      }
+      await createApprovalRequest({
+        actionType: "product_delete",
+        entityLabel: productName,
+        requester: profile,
+        message,
+        summary: `Delete product: ${productName}`,
+        payload: {
+          productId,
+          productName,
+        },
+      });
+      await logProductEvent({
+        whatHappened: "Product For Approval Requested",
+        productId,
+        referenceID: profile.referenceID,
+        userId,
+      });
+      toast.success("Request sent for approval");
+      setRequestApprovalOpen(false);
+      handleOpenChange(false);
+    } catch (error) {
+      console.error("Request approval failed:", error);
+      toast.error("Failed to send approval request");
+    } finally {
+      setRequestingApproval(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!defaultOpen && (
@@ -131,6 +182,14 @@ export default function AddProductDeleteProductItem({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <RequestApprovalDialog
+        open={requestApprovalOpen}
+        onOpenChange={setRequestApprovalOpen}
+        actionLabel="Delete Product"
+        entityLabel={productName}
+        onConfirm={handleRequestApproval}
+        loading={requestingApproval}
+      />
     </Dialog>
   );
 }

@@ -52,6 +52,12 @@ import {
 
 import { db } from "@/lib/firebase";
 import { logSupplierEvent } from "@/lib/auditlogger"; // ✅ AUDIT
+import RequestApprovalDialog from "@/components/request-approval-dialog";
+import {
+  createApprovalRequest,
+  getApprovalUserProfile,
+  shouldRequireApproval,
+} from "@/lib/for-approval";
 
 /* ─────────────────────────────────────────────
    Country display helpers
@@ -260,6 +266,8 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
   const [forteProducts, setForteProducts] = useState<string[]>([""]);
   const [products, setProducts] = useState<string[]>([""]);
   const [certificates, setCertificates] = useState<string[]>([""]);
+  const [requestApprovalOpen, setRequestApprovalOpen] = useState(false);
+  const [requestingApproval, setRequestingApproval] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -372,6 +380,14 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
         return;
       }
 
+      const profile = userId ? await getApprovalUserProfile(userId) : null;
+      const requiresApproval = shouldRequireApproval(profile);
+
+      if (requiresApproval) {
+        setRequestApprovalOpen(true);
+        return;
+      }
+
       const supplierData = {
         company,
         supplierBrand,
@@ -419,6 +435,55 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
     } catch (error) {
       console.error("Error saving supplier:", error);
       toast.error("Failed to save supplier");
+    }
+  };
+
+  const handleRequestApproval = async (message: string) => {
+    try {
+      if (!userId) return;
+      setRequestingApproval(true);
+      const profile = await getApprovalUserProfile(userId);
+      if (!profile) {
+        toast.error("User profile not loaded");
+        return;
+      }
+      await createApprovalRequest({
+        actionType: "supplier_add",
+        entityLabel: company.trim() || "New Supplier",
+        requester: profile,
+        message,
+        summary: `Add supplier: ${company.trim()}`,
+        payload: {
+          company: company.trim(),
+          supplierBrand: supplierBrand.trim(),
+          addresses: addresses.filter(Boolean),
+          emails: emails.filter(Boolean),
+          website: website.filter(Boolean),
+          contacts: contactNames.map((name, index) => ({
+            name,
+            phone: contactNumbers[index] ? contactNumbers[index].replace(/[^\d+]/g, "") : "",
+          })),
+          forteProducts: forteProducts.filter(Boolean),
+          products: products.filter(Boolean),
+          certificates: certificates.filter(Boolean),
+        },
+      });
+      await logSupplierEvent({
+        whatHappened: "Supplier For Approval Requested",
+        company: company.trim(),
+        supplierBrand: supplierBrand.trim(),
+        referenceID: profile.referenceID,
+        userId,
+      });
+      toast.success("Request sent for approval");
+      setRequestApprovalOpen(false);
+      resetForm();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Request approval failed:", error);
+      toast.error("Failed to send approval request");
+    } finally {
+      setRequestingApproval(false);
     }
   };
 
@@ -623,6 +688,14 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
           </Button>
         </SheetFooter>
       </SheetContent>
+      <RequestApprovalDialog
+        open={requestApprovalOpen}
+        onOpenChange={setRequestApprovalOpen}
+        actionLabel="Add Supplier"
+        entityLabel={company.trim() || "New Supplier"}
+        onConfirm={handleRequestApproval}
+        loading={requestingApproval}
+      />
     </Sheet>
   );
 }

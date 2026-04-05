@@ -8,6 +8,7 @@ import { useWallpaper } from "@/contexts/WallpaperContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { SidebarLeft } from "@/components/sidebar-left";
 import { SplashScreen } from "@/components/splash-screen";
+import ApprovalToastListener from "@/components/approval-toast-listener";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/components/ui/sidebar";
 
@@ -52,6 +53,7 @@ export default function LayoutShell({
 
   return (
     <NotificationProvider>
+      <ApprovalToastListener />
       <div className="relative flex min-h-svh w-full">
         {/* SidebarLeft handles both desktop (left sidebar) and mobile (bottom nav) */}
         {userId && !isLogin && <SidebarLeft />}

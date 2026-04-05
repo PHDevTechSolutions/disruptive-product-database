@@ -55,6 +55,12 @@ import AddProductEditSelectProduct from "@/components/add-product-edit-select-pr
 import AddProductDeleteProductType from "@/components/add-product-delete-select-category-type";
 import AddProductDeleteProduct from "@/components/add-product-delete-select-product";
 import AddProductDeleteTechnicalSpecification from "@/components/add-product-delete-technical-specification";
+import RequestApprovalDialog from "@/components/request-approval-dialog";
+import {
+  createApprovalRequest,
+  getApprovalUserProfile,
+  shouldRequireApproval,
+} from "@/lib/for-approval";
 
 type UserData = { Firstname: string; Lastname: string; Role: string; ReferenceID: string };
 type SpecRow = {
@@ -135,6 +141,8 @@ export default function AddProductPage() {
   const [selectedCategoryTypes, setSelectedCategoryTypes] = useState<SelectedCategoryType[]>([]);
   const [classificationSearch, setClassificationSearch] = useState("");
   const [categoryTypeSearch, setCategoryTypeSearch] = useState("");
+  const [requestApprovalOpen, setRequestApprovalOpen] = useState(false);
+  const [requestingApproval, setRequestingApproval] = useState(false);
 
   const dragIndex = useRef<number | null>(null);
   const dragRow = useRef<{ specIndex: number; rowIndex: number } | null>(null);
@@ -316,6 +324,13 @@ export default function AddProductPage() {
       if (!mainImage && !imageLink) { toast.error("Please upload an image or provide an image link"); return; }
       if (!selectedProductFamily) { toast.error("Please select product family"); setSaving(false); return; }
 
+      const profile = userId ? await getApprovalUserProfile(userId) : null;
+      const requiresApproval = shouldRequireApproval(profile);
+      if (requiresApproval) {
+        setRequestApprovalOpen(true);
+        return;
+      }
+
       const newProductReferenceID = await generateProductReferenceID();
       await syncSpecsToProductType();
 
@@ -380,6 +395,72 @@ export default function AddProductPage() {
       console.error(err);
       toast.error("Failed to save product");
     } finally { setSaving(false); }
+  };
+
+  const handleRequestApproval = async (message: string) => {
+    try {
+      if (!userId) return;
+      setRequestingApproval(true);
+      const profile = await getApprovalUserProfile(userId);
+      if (!profile) {
+        toast.error("User profile not loaded");
+        return;
+      }
+      await createApprovalRequest({
+        actionType: "product_add",
+        entityLabel: productClass || "New Product",
+        requester: profile,
+        message,
+        summary: `Add product: ${productClass || "Unspecified Class"}`,
+        payload: {
+          productClass,
+          pricePoint: noSupplier ? "ECONOMY" : pricePoint,
+          brandOrigin: noSupplier ? "CHINA" : brandOrigin,
+          supplier: noSupplier ? null : {
+            supplierId: selectedSupplier?.supplierId ?? null,
+            company: selectedSupplier?.company ?? "",
+            supplierBrand: selectedSupplierBrand?.supplierBrand || "",
+          },
+          categoryTypes: selectedCategoryTypes.map(c => ({ productUsageId: c.id, categoryTypeName: c.name })),
+          productFamily: selectedProductFamily ? { productFamilyId: selectedProductFamily.id, productFamilyName: selectedProductFamily.name } : null,
+          commercialDetails: {
+            unitCost: unitCost ? parseFloat(unitCost) : null,
+            packaging: {
+              length: packLength ? `${parseFloat(packLength)} cm` : null,
+              width: packWidth ? `${parseFloat(packWidth)} cm` : null,
+              height: packHeight ? `${parseFloat(packHeight)} cm` : null,
+            },
+            pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
+            factoryAddress: factoryAddress || "",
+            portOfDischarge: portOfDischarge || "",
+          },
+          mainImage: imageLink || null,
+          dimensionalDrawing: dimensionalLink || null,
+          illuminanceDrawing: illuminanceLink || null,
+          technicalSpecifications: technicalSpecs.filter(s => s.title.trim()).map(s => ({
+            technicalSpecificationId: s.id || "",
+            title: s.title,
+            specs: s.specs.filter(r => r.specId.trim()).map(r => ({ specId: r.specId.trim(), value: r.value?.trim() || "" })),
+          })),
+        },
+      });
+      await logProductEvent({
+        whatHappened: "Product For Approval Requested",
+        productClass,
+        pricePoint: noSupplier ? "ECONOMY" : pricePoint,
+        brandOrigin: noSupplier ? "CHINA" : brandOrigin,
+        referenceID: profile.referenceID,
+        userId,
+      });
+      toast.success("Request sent for approval");
+      setRequestApprovalOpen(false);
+      router.push("/products");
+    } catch (error) {
+      console.error("Request approval failed:", error);
+      toast.error("Failed to send approval request");
+    } finally {
+      setRequestingApproval(false);
+    }
   };
 
   const filteredCategoryTypes = React.useMemo(() => categoryTypes.filter(i => i.name.toLowerCase().includes(categoryTypeSearch.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name)), [categoryTypes, categoryTypeSearch]);
@@ -749,6 +830,14 @@ export default function AddProductPage() {
       </div>
     </div>
     </div>
+    <RequestApprovalDialog
+      open={requestApprovalOpen}
+      onOpenChange={setRequestApprovalOpen}
+      actionLabel="Add Product"
+      entityLabel={productClass || "New Product"}
+      onConfirm={handleRequestApproval}
+      loading={requestingApproval}
+    />
   </AccessGuard>
   );
 }

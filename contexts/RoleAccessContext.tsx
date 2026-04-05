@@ -20,6 +20,7 @@ export type AccessKey =
   | "page:roles"
   | "page:add-product"
   | "page:edit-product"
+  | "feature:approval-bypass"
   | "component:spf-request-create"
   | "component:spf-request-fetch"
   | "component:upload-product"
@@ -55,6 +56,7 @@ const defaultAccess: RoleAccess = {
   "page:roles": true,
   "page:add-product": true,
   "page:edit-product": true,
+  "feature:approval-bypass": false,
   "component:spf-request-create": true,
   "component:spf-request-fetch": true,
   "component:upload-product": true,
