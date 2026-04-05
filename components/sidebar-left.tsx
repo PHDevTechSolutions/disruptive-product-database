@@ -24,6 +24,7 @@ import {
   Package,
   Truck,
   History,
+  ClipboardCheck,
   ClipboardList,
   User,
 } from "lucide-react";
@@ -48,13 +49,15 @@ const NAV_ITEMS: Array<{
   label: string;
   showBadge?: boolean;
   accessKey?: AccessKey;
+  onlyForEngineeringManagerOrIT?: boolean;
 }> = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/products", icon: Package, label: "Products", accessKey: "page:products" },
   { href: "/suppliers", icon: Truck, label: "Suppliers", accessKey: "page:suppliers" },
   { href: "/requests", icon: ClipboardList, label: "Requests", showBadge: true, accessKey: "page:requests" },
   { href: "/history", icon: History, label: "History" },
-  { href: "/roles", icon: User, label: "Roles", accessKey: "page:roles" },
+  { href: "/for-approval", icon: ClipboardCheck, label: "For Approval", onlyForEngineeringManagerOrIT: true },
+  { href: "/roles", icon: User, label: "Roles", accessKey: "page:roles", onlyForEngineeringManagerOrIT: true },
 ];
 
 export function SidebarLeft() {
@@ -131,6 +134,10 @@ export function SidebarLeft() {
   // Filter NAV_ITEMS based on user permissions
   const filteredNavItems = React.useMemo(() => {
     return NAV_ITEMS.filter((item) => {
+      if (item.onlyForEngineeringManagerOrIT && !hasFullAccess) {
+        return false;
+      }
+
       if (!item.accessKey || hasFullAccess) {
         return true;
       }
