@@ -16,9 +16,14 @@ export const viewport = {
   viewportFit: "cover",
 };
 
-export const metadata: Metadata = {
-  title: "Espiron | Product Database",
-  description: "Aaron Espiritu",
+export const metadata = {
+  title: "Espiron Product Database",
+  description: "...",
+icons: {
+  icon: [
+    { url: "/espiron-logo.svg", type: "image/svg+xml" },
+  ],
+},
 };
 
 export default function RootLayout({
