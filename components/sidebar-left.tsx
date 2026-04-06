@@ -28,6 +28,8 @@ import {
   ClipboardCheck,
   ClipboardList,
   User,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
@@ -58,7 +60,7 @@ const NAV_ITEMS: Array<{
   { href: "/suppliers", icon: Truck, label: "Suppliers", accessKey: "page:suppliers" },
   { href: "/requests", icon: ClipboardList, label: "Requests", badgeKey: "requests", accessKey: "page:requests" },
   { href: "/history", icon: History, label: "History" },
-  { href: "/for-approval", icon: ClipboardCheck, label: "For Approval", badgeKey: "forApproval", onlyForEngineeringManagerOrIT: true },
+ { href: "/for-approval", icon: ClipboardCheck, label: "Approval", badgeKey: "forApproval", onlyForEngineeringManagerOrIT: true },
   { href: "/roles", icon: User, label: "Roles", accessKey: "page:roles", onlyForEngineeringManagerOrIT: true },
 ];
 
@@ -74,6 +76,8 @@ export function SidebarLeft() {
   const [user, setUser] = React.useState<UserDetails | null>(null);
   const [userAccess, setUserAccess] = React.useState<Record<string, boolean> | null>(null);
   const [forApprovalCount, setForApprovalCount] = React.useState(0);
+  const [navOffset, setNavOffset] = React.useState(0);
+  const VISIBLE_COUNT = 4;
 
   React.useEffect(() => {
     if (!userId) return;
@@ -183,13 +187,28 @@ export function SidebarLeft() {
      MOBILE — bottom nav bar
   ───────────────────────────────────────────── */
   if (isMobile) {
+    const visibleItems = filteredNavItems.slice(navOffset, navOffset + VISIBLE_COUNT);
+    const canPrev = navOffset > 0;
+    const canNext = navOffset + VISIBLE_COUNT < filteredNavItems.length;
+
     return (
       <div
         className="fixed left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-[0_-1px_12px_rgba(0,0,0,0.06)]"
         style={{ bottom: 0, paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="flex items-center justify-around px-1 h-[62px]">
-          {filteredNavItems.map(({ href, icon: Icon, label, badgeKey }) => {
+        <div className="flex items-center h-[62px] px-1">
+
+          {/* Left arrow */}
+          <button
+            onClick={() => setNavOffset((o) => Math.max(0, o - 1))}
+            disabled={!canPrev}
+            className="flex items-center justify-center w-6 h-full text-gray-400 disabled:opacity-0 shrink-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          {/* Visible nav items */}
+          {visibleItems.map(({ href, icon: Icon, label, badgeKey }) => {
             const active = pathname === href;
             const badge =
               badgeKey === "requests"
@@ -204,12 +223,9 @@ export function SidebarLeft() {
                 href={href}
                 className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full relative"
               >
-                {/* Active indicator top line */}
                 {active && (
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full bg-red-500" />
                 )}
-
-                {/* Icon + green badge */}
                 <span className="relative">
                   <Icon
                     className={`h-5 w-5 transition-colors ${active ? "text-red-600" : "text-gray-400"}`}
@@ -221,7 +237,6 @@ export function SidebarLeft() {
                     </span>
                   )}
                 </span>
-
                 <span className={`text-[10px] font-medium transition-colors ${active ? "text-red-600" : "text-gray-400"}`}>
                   {label}
                 </span>
@@ -229,9 +244,18 @@ export function SidebarLeft() {
             );
           })}
 
-          {/* Avatar only — no label */}
+          {/* Right arrow */}
+          <button
+            onClick={() => setNavOffset((o) => Math.min(filteredNavItems.length - VISIBLE_COUNT, o + 1))}
+            disabled={!canNext}
+            className="flex items-center justify-center w-6 h-full text-gray-400 disabled:opacity-0 shrink-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+
+          {/* Avatar */}
           {user && userId && (
-            <div className="flex items-center justify-center flex-1 h-full">
+            <div className="flex items-center justify-center w-10 h-full shrink-0">
               <NavUser
                 user={{
                   name:     `${user.Firstname} ${user.Lastname}`.trim() || "User",
