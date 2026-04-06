@@ -390,52 +390,61 @@ export default function ForApprovalPage() {
                         </div>
                       )}
                       {["supplier_edit", "supplier_delete", "supplier_add"].includes(item.actionType) && (
-  <details className="mt-2">
-    <summary className="text-xs text-blue-600 cursor-pointer select-none">
-      View field comparison
-    </summary>
-    <div className="mt-2">
-      <SupplierDiffTable
-        oldData={(item.payload.before ?? {}) as any}
-        newData={item.payload as any}
-      />
-    </div>
-  </details>
-)}
+                        <details className="mt-2">
+                          <summary className="text-xs text-blue-600 cursor-pointer select-none">
+                            View field comparison
+                          </summary>
+                          <div className="mt-2">
+                            <SupplierDiffTable
+                              oldData={(item.payload.before ?? {}) as any}
+                              newData={item.payload as any}
+                            />
+                          </div>
+                        </details>
+                      )}
 
-{["product_edit", "product_delete", "product_add"].includes(item.actionType) && (
-  <details className="mt-2">
-    <summary className="text-xs text-blue-600 cursor-pointer select-none">
-      View field comparison
-    </summary>
-    <div className="mt-2">
-      <ProductDiffTable
-        oldData={(item.payload.before ?? {}) as any}
-        newData={item.payload as any}
-      />
-    </div>
-  </details>
-)}
-{item.actionType === "product_upload" && Array.isArray(item.payload.rows) && (
-  <details className="mt-2">
-    <summary className="text-xs text-blue-600 cursor-pointer select-none">
-      View rows ({(item.payload.rows as unknown[]).length})
-    </summary>
-    <div className="mt-2">
-      <UploadProductDiffTable rows={item.payload.rows as any} />
-    </div>
-  </details>
-)}
-{item.actionType === "supplier_upload" && Array.isArray(item.payload.rows) && (
-  <details className="mt-2">
-    <summary className="text-xs text-blue-600 cursor-pointer select-none">
-      View rows ({(item.payload.rows as unknown[]).length})
-    </summary>
-    <div className="mt-2">
-      <UploadSupplierDiffTable rows={item.payload.rows as any} />
-    </div>
-  </details>
-)}
+                      {["product_edit", "product_delete", "product_add"].includes(item.actionType) && (
+                        <details className="mt-2">
+                          <summary className="text-xs text-blue-600 cursor-pointer select-none">
+                            View field comparison
+                          </summary>
+                          <div className="mt-2">
+                            <ProductDiffTable
+                              oldData={(item.payload.before ?? {}) as any}
+                              newData={item.payload as any}
+                            />
+                          </div>
+                        </details>
+                      )}
+
+                      {item.actionType === "product_upload" && Array.isArray(item.payload.rows) && (
+                        <details className="mt-2">
+                          <summary className="text-xs text-blue-600 cursor-pointer select-none">
+                            View rows ({(item.payload.rows as unknown[]).length})
+                          </summary>
+                          {/* Fixed-size box — scrolls both axes, never bleeds into the page */}
+                          <div
+                            className="mt-2"
+                            style={{ width: "min(680px, 60vw)", maxHeight: "280px", overflow: "auto" }}
+                          >
+                            <UploadProductDiffTable rows={item.payload.rows as any} />
+                          </div>
+                        </details>
+                      )}
+
+                      {item.actionType === "supplier_upload" && Array.isArray(item.payload.rows) && (
+                        <details className="mt-2">
+                          <summary className="text-xs text-blue-600 cursor-pointer select-none">
+                            View rows ({(item.payload.rows as unknown[]).length})
+                          </summary>
+                          <div
+                            className="mt-2"
+                            style={{ width: "min(680px, 60vw)", maxHeight: "280px", overflow: "auto" }}
+                          >
+                            <UploadSupplierDiffTable rows={item.payload.rows as any} />
+                          </div>
+                        </details>
+                      )}
                     </td>
                     <td className="px-3 py-3 text-xs text-muted-foreground max-w-[220px] whitespace-pre-wrap break-words">
                       {item.message || "—"}
@@ -539,32 +548,61 @@ export default function ForApprovalPage() {
                 )}
 
                 {["supplier_edit", "supplier_delete", "supplier_add"].includes(item.actionType) && (
-  <details className="mt-1">
-    <summary className="text-xs text-blue-600 cursor-pointer select-none">
-      View field comparison
-    </summary>
-    <div className="mt-2">
-      <SupplierDiffTable
-        oldData={(item.payload.before ?? {}) as any}
-        newData={item.payload as any}
-      />
-    </div>
-  </details>
-)}
+                  <details className="mt-1">
+                    <summary className="text-xs text-blue-600 cursor-pointer select-none">
+                      View field comparison
+                    </summary>
+                    <div className="mt-2">
+                      <SupplierDiffTable
+                        oldData={(item.payload.before ?? {}) as any}
+                        newData={item.payload as any}
+                      />
+                    </div>
+                  </details>
+                )}
 
-{["product_edit", "product_delete", "product_add"].includes(item.actionType) && (
-  <details className="mt-1">
-    <summary className="text-xs text-blue-600 cursor-pointer select-none">
-      View field comparison
-    </summary>
-    <div className="mt-2">
-      <ProductDiffTable
-        oldData={(item.payload.before ?? {}) as any}
-        newData={item.payload as any}
-      />
-    </div>
-  </details>
-)}
+                {["product_edit", "product_delete", "product_add"].includes(item.actionType) && (
+                  <details className="mt-1">
+                    <summary className="text-xs text-blue-600 cursor-pointer select-none">
+                      View field comparison
+                    </summary>
+                    <div className="mt-2">
+                      <ProductDiffTable
+                        oldData={(item.payload.before ?? {}) as any}
+                        newData={item.payload as any}
+                      />
+                    </div>
+                  </details>
+                )}
+
+                {item.actionType === "product_upload" && Array.isArray(item.payload.rows) && (
+                  <details className="mt-1">
+                    <summary className="text-xs text-blue-600 cursor-pointer select-none">
+                      View rows ({(item.payload.rows as unknown[]).length})
+                    </summary>
+                    <div
+                      className="mt-2"
+                      style={{ width: "100%", maxHeight: "260px", overflow: "auto" }}
+                    >
+                      <UploadProductDiffTable rows={item.payload.rows as any} />
+                    </div>
+                  </details>
+                )}
+
+                {item.actionType === "supplier_upload" && Array.isArray(item.payload.rows) && (
+                  <details className="mt-1">
+                    <summary className="text-xs text-blue-600 cursor-pointer select-none">
+                      View rows ({(item.payload.rows as unknown[]).length})
+                    </summary>
+                    <div
+                      className="mt-2"
+                      style={{ width: "100%", maxHeight: "260px", overflow: "auto" }}
+                    >
+                      <UploadSupplierDiffTable rows={item.payload.rows as any} />
+                    </div>
+                  </details>
+                )}
+
                 <p className="text-xs text-gray-500 whitespace-pre-wrap">{item.message || "—"}</p>
                 <p className="text-xs text-gray-500">{item.requesterName}</p>
                 <p className="text-xs text-gray-400">{formatWhen(item.createdAt)}</p>
