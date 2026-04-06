@@ -76,10 +76,20 @@ type ProductFamily = { id: string; name: string; productUsageId: string };
 type SelectedCategoryType = { id: string; name: string };
 
 const convertDriveToThumbnail = (url: string) => {
-  if (!url.includes("drive.google.com")) return url;
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (match?.[1]) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
-  return url;
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (trimmed.includes("drive.google.com")) {
+    const match = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (match?.[1]) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+  }
+  if (/^[a-zA-Z]:[\\/]/.test(trimmed)) {
+    return `file:///${encodeURI(trimmed.replace(/\\/g, "/"))}`;
+  }
+  if (/^\\\\[^\\]+\\[^\\]+/.test(trimmed)) {
+    const uncPath = trimmed.replace(/\\/g, "/").replace(/^\/+/, "");
+    return `file://${encodeURI(uncPath)}`;
+  }
+  return trimmed;
 };
 
 const emptySpecRow = (): SpecRow => ({
@@ -448,6 +458,9 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
         toast.error("User profile not loaded");
         return;
       }
+      const resolvedMainImage = imageLink || (mainImage ? (await uploadToCloudinary(mainImage)).secure_url : null);
+      const resolvedDimensionalDrawing = dimensionalLink || (dimensionalDrawing ? (await uploadToCloudinary(dimensionalDrawing)).secure_url : null);
+      const resolvedIlluminanceDrawing = illuminanceLink || (illuminanceDrawing ? (await uploadToCloudinary(illuminanceDrawing)).secure_url : null);
       await createApprovalRequest({
         actionType: "product_add",
         entityLabel: productClass || "New Product",
@@ -476,9 +489,9 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
             factoryAddress: factoryAddress || "",
             portOfDischarge: portOfDischarge || "",
           },
-          mainImage: imageLink || null,
-          dimensionalDrawing: dimensionalLink || null,
-          illuminanceDrawing: illuminanceLink || null,
+          mainImage: resolvedMainImage,
+          dimensionalDrawing: resolvedDimensionalDrawing,
+          illuminanceDrawing: resolvedIlluminanceDrawing,
           technicalSpecifications: technicalSpecs.filter(s => s.title.trim()).map(s => ({
             technicalSpecificationId: s.id || "",
             title: s.title,

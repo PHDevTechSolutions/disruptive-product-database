@@ -38,6 +38,23 @@ function getImageUrl(val: { url: string } | string | null | undefined): string {
   return val.url ?? "";
 }
 
+function resolveImagePreviewUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (trimmed.includes("drive.google.com")) {
+    const match = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (match?.[1]) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+  }
+  if (/^[a-zA-Z]:[\\/]/.test(trimmed)) {
+    return `file:///${encodeURI(trimmed.replace(/\\/g, "/"))}`;
+  }
+  if (/^\\\\[^\\]+\\[^\\]+/.test(trimmed)) {
+    const uncPath = trimmed.replace(/\\/g, "/").replace(/^\/+/, "");
+    return `file://${encodeURI(uncPath)}`;
+  }
+  return trimmed;
+}
+
 function packagingStr(d?: CommercialDetails) {
   const p = d?.packaging;
   if (!p?.length && !p?.width && !p?.height) return "";
@@ -125,18 +142,21 @@ function buildRows(o: ProductSnapshot, n: ProductSnapshot): FieldRow[] {
 
 function ImageCell({ url, changed }: { url: string; changed: boolean }) {
   if (!url || url === "—") return <span className="text-gray-400">—</span>;
+  const previewUrl = resolveImagePreviewUrl(url);
+  const isLocalPath = /^[a-zA-Z]:[\\/]/.test(url) || /^\\\\[^\\]+\\[^\\]+/.test(url);
 
   const isImage =
-    /\.(jpg|jpeg|png|gif|webp|svg)/i.test(url) ||
-    url.includes("drive.google.com/thumbnail") ||
-    url.includes("cloudinary.com") ||
-    url.includes("wikimedia.org");
+    /\.(jpg|jpeg|png|gif|webp|svg)/i.test(previewUrl) ||
+    previewUrl.includes("drive.google.com/thumbnail") ||
+    previewUrl.includes("cloudinary.com") ||
+    previewUrl.includes("wikimedia.org") ||
+    previewUrl.startsWith("file:///");
 
   return (
     <div className="space-y-1">
       {isImage && (
         <img
-          src={url}
+          src={previewUrl}
           alt=""
           className="w-24 h-16 object-contain rounded border border-gray-200 bg-white"
           onError={(e) => {
@@ -145,7 +165,7 @@ function ImageCell({ url, changed }: { url: string; changed: boolean }) {
         />
       )}
       <a
-        href={url}
+        href={previewUrl}
         target="_blank"
         rel="noopener noreferrer"
         className={`text-xs break-all underline ${
@@ -154,6 +174,9 @@ function ImageCell({ url, changed }: { url: string; changed: boolean }) {
       >
         {url.length > 60 ? url.slice(0, 60) + "…" : url}
       </a>
+      {isLocalPath && (
+        <p className="text-[10px] text-amber-700">Local path preview works only on the same device.</p>
+      )}
     </div>
   );
 }
@@ -164,8 +187,6 @@ export default function ProductDiffTable({ oldData, newData }: Props) {
   const rows = buildRows(oldData, newData);
   const changedCount = rows.filter((r) => r.old !== r.new).length;
   const imageFields = new Set(["Main image", "Dimensional drawing", "Illuminance level"]);
-
-  let lastSection = "";
 
   return (
     <div className="space-y-2">
@@ -181,8 +202,8 @@ export default function ProductDiffTable({ oldData, newData }: Props) {
           <tbody>
             {rows.map((r, i) => {
               const changed = r.old !== r.new;
-              const showSection = r.section !== lastSection;
-              lastSection = r.section;
+              const prevSection = i > 0 ? rows[i - 1].section : "";
+              const showSection = r.section !== prevSection;
               const isImg = imageFields.has(r.label);
 
               return (
