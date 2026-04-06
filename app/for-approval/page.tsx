@@ -37,7 +37,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import SupplierDiffTable from "@/components/supplier-diff-table";
 import ProductDiffTable from "@/components/product-diff-table";
-
+import UploadProductDiffTable from "@/components/upload-product-diff-table";
+import UploadSupplierDiffTable from "@/components/upload-supplier-diff-table";
 
 type RowDoc = {
   id: string;
@@ -412,6 +413,26 @@ export default function ForApprovalPage() {
         oldData={(item.payload.before ?? {}) as any}
         newData={item.payload as any}
       />
+    </div>
+  </details>
+)}
+{item.actionType === "product_upload" && Array.isArray(item.payload.rows) && (
+  <details className="mt-2">
+    <summary className="text-xs text-blue-600 cursor-pointer select-none">
+      View rows ({(item.payload.rows as unknown[]).length})
+    </summary>
+    <div className="mt-2">
+      <UploadProductDiffTable rows={item.payload.rows as any} />
+    </div>
+  </details>
+)}
+{item.actionType === "supplier_upload" && Array.isArray(item.payload.rows) && (
+  <details className="mt-2">
+    <summary className="text-xs text-blue-600 cursor-pointer select-none">
+      View rows ({(item.payload.rows as unknown[]).length})
+    </summary>
+    <div className="mt-2">
+      <UploadSupplierDiffTable rows={item.payload.rows as any} />
     </div>
   </details>
 )}
