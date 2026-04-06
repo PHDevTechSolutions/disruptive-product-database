@@ -35,6 +35,9 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import SupplierDiffTable from "@/components/supplier-diff-table";
+import ProductDiffTable from "@/components/product-diff-table";
+
 
 type RowDoc = {
   id: string;
@@ -385,6 +388,33 @@ export default function ForApprovalPage() {
                           {dupHint}
                         </div>
                       )}
+                      {["supplier_edit", "supplier_delete", "supplier_add"].includes(item.actionType) && (
+  <details className="mt-2">
+    <summary className="text-xs text-blue-600 cursor-pointer select-none">
+      View field comparison
+    </summary>
+    <div className="mt-2">
+      <SupplierDiffTable
+        oldData={(item.payload.before ?? {}) as any}
+        newData={item.payload as any}
+      />
+    </div>
+  </details>
+)}
+
+{["product_edit", "product_delete", "product_add"].includes(item.actionType) && (
+  <details className="mt-2">
+    <summary className="text-xs text-blue-600 cursor-pointer select-none">
+      View field comparison
+    </summary>
+    <div className="mt-2">
+      <ProductDiffTable
+        oldData={(item.payload.before ?? {}) as any}
+        newData={item.payload as any}
+      />
+    </div>
+  </details>
+)}
                     </td>
                     <td className="px-3 py-3 text-xs text-muted-foreground max-w-[220px] whitespace-pre-wrap break-words">
                       {item.message || "—"}
@@ -486,6 +516,34 @@ export default function ForApprovalPage() {
                 {dupHint && (
                   <p className="text-[11px] text-amber-900 bg-amber-50 rounded px-2 py-1">{dupHint}</p>
                 )}
+
+                {["supplier_edit", "supplier_delete", "supplier_add"].includes(item.actionType) && (
+  <details className="mt-1">
+    <summary className="text-xs text-blue-600 cursor-pointer select-none">
+      View field comparison
+    </summary>
+    <div className="mt-2">
+      <SupplierDiffTable
+        oldData={(item.payload.before ?? {}) as any}
+        newData={item.payload as any}
+      />
+    </div>
+  </details>
+)}
+
+{["product_edit", "product_delete", "product_add"].includes(item.actionType) && (
+  <details className="mt-1">
+    <summary className="text-xs text-blue-600 cursor-pointer select-none">
+      View field comparison
+    </summary>
+    <div className="mt-2">
+      <ProductDiffTable
+        oldData={(item.payload.before ?? {}) as any}
+        newData={item.payload as any}
+      />
+    </div>
+  </details>
+)}
                 <p className="text-xs text-gray-500 whitespace-pre-wrap">{item.message || "—"}</p>
                 <p className="text-xs text-gray-500">{item.requesterName}</p>
                 <p className="text-xs text-gray-400">{formatWhen(item.createdAt)}</p>

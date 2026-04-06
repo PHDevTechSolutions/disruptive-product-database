@@ -104,6 +104,30 @@ export function shouldRequireApproval(profile: ApprovalUserProfile | null): bool
 export async function createApprovalRequest(
   input: CreateApprovalRequestPayload,
 ): Promise<string> {
+
+  // Auto-fetch "before" snapshot for edit/delete actions
+  let beforeSnapshot: Record<string, any> | null = null;
+
+  if (
+    ["supplier_edit", "supplier_delete"].includes(input.actionType) &&
+    input.payload.supplierId
+  ) {
+    try {
+      const snap = await getDoc(doc(db, "suppliers", input.payload.supplierId as string));
+      if (snap.exists()) beforeSnapshot = snap.data();
+    } catch {}
+  }
+
+  if (
+    ["product_edit", "product_delete"].includes(input.actionType) &&
+    input.payload.productId
+  ) {
+    try {
+      const snap = await getDoc(doc(db, "products", input.payload.productId as string));
+      if (snap.exists()) beforeSnapshot = snap.data();
+    } catch {}
+  }
+
   const docRef = await addDoc(collection(db, "forApprovals"), {
     actionType: input.actionType,
     entityLabel: input.entityLabel,
@@ -114,7 +138,10 @@ export async function createApprovalRequest(
     requesterDepartment: input.requester.department || null,
     message: input.message.trim(),
     summary: input.summary.trim(),
-    payload: input.payload,
+    payload: {
+      ...input.payload,
+      ...(beforeSnapshot ? { before: beforeSnapshot } : {}),
+    },
     status: "Pending" as ApprovalStatus,
     reviewedByUserId: null,
     reviewedByReferenceID: null,
