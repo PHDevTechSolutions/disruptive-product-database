@@ -267,8 +267,8 @@ export function SidebarLeft() {
       {/* HEADER */}
       <SidebarHeader className="h-16 px-4 flex items-center">
         {state === "expanded" && (
-          <span className="text-md font-bold tracking-tight text-gray-900">
-            Espiron | Product Database
+          <span className="text-lg font-bold tracking-tight text-gray-900">
+            Product Database
           </span>
         )}
       </SidebarHeader>

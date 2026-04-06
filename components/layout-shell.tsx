@@ -30,8 +30,6 @@ export default function LayoutShell({
   useEffect(() => {
     if (!userId) return;
 
-
-
     const splashPlayed = sessionStorage.getItem("splashPlayed") === "true";
 
     if (!splashPlayed) {
@@ -41,22 +39,6 @@ export default function LayoutShell({
     setSplashChecked(true);
   }, [userId]);
 
-  useEffect(() => {
-    const titles: Record<string, string> = {
-      "/dashboard":    "Dashboard",
-      "/products":     "Products",
-      "/suppliers":    "Suppliers",
-      "/requests":     "Requests",
-      "/history":      "History",
-      "/for-approval": "For Approval",
-      "/roles":        "Roles",
-    };
-
-    const pageTitle = pathname ? titles[pathname] : null;
-    document.title = pageTitle
-      ? `${pageTitle} - Espiron | PD`
-      : "Espiron | PD";
-  }, [pathname]);
   function handleSplashDone() {
     sessionStorage.setItem("splashPlayed", "true");
     setShowSplash(false);
