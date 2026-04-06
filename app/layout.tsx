@@ -17,7 +17,7 @@ export const viewport = {
 };
 
 export const metadata = {
-  title: "Espiron Product Database",
+  title: "Espiron | Product Database",
   description: "...",
 icons: {
   icon: [
