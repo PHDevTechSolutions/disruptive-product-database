@@ -94,11 +94,11 @@ export function shouldRequireApproval(profile: ApprovalUserProfile | null): bool
   if (profile.bypassApproval) return false;
   const isEngineeringManager =
     profile.department === "Engineering" && profile.role === "Manager";
-  if (isEngineeringManager) return false;
+  const isIT = profile.department === "IT";
+  if (isEngineeringManager || isIT) return false;
   const isEngineeringNonManager =
     profile.department === "Engineering" && profile.role !== "Manager";
-  const isIT = profile.department === "IT";
-  return isEngineeringNonManager || isIT;
+  return isEngineeringNonManager;
 }
 
 export async function createApprovalRequest(
