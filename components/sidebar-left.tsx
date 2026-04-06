@@ -264,14 +264,57 @@ export function SidebarLeft() {
         border-border/50
       "
     >
-      {/* HEADER */}
-      <SidebarHeader className="h-16 px-4 flex items-center">
-        {state === "expanded" && (
-          <span className="text-base font-bold tracking-tight text-gray-900">
-            Espiron | Product Database
-          </span>
-        )}
-      </SidebarHeader>
+{/* HEADER */}
+<SidebarHeader className="h-16 px-3 flex items-center">
+  <div className="flex items-center gap-2.5 min-w-0">
+    {/* Logo mark — always visible, even when collapsed */}
+    <div className="shrink-0">
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 32 32"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        {/* Outer hexagon */}
+        <path
+          d="M16 2L28.1244 9V23L16 30L3.87564 23V9L16 2Z"
+          fill="url(#espironGrad)"
+        />
+        {/* Inner "E" mark built from bars */}
+        <rect x="10" y="10" width="10" height="2" rx="1" fill="white" opacity="0.95" />
+        <rect x="10" y="15" width="7.5" height="2" rx="1" fill="white" opacity="0.85" />
+        <rect x="10" y="20" width="10" height="2" rx="1" fill="white" opacity="0.95" />
+        <rect x="10" y="10" width="2" height="12" rx="1" fill="white" opacity="0.95" />
+        <defs>
+          <linearGradient id="espironGrad" x1="3.87564" y1="2" x2="28.1244" y2="30" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#ef4444" />
+            <stop offset="100%" stopColor="#b91c1c" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+
+    {/* Wordmark — only when expanded */}
+    {state === "expanded" && (
+      <div className="flex flex-col leading-none min-w-0">
+        <span
+          className="text-[13px] font-black tracking-widest uppercase text-gray-900 truncate"
+          style={{ letterSpacing: "0.12em" }}
+        >
+          Espiron
+        </span>
+        <span
+          className="text-[9px] font-semibold tracking-[0.18em] uppercase text-red-600 truncate"
+          style={{ letterSpacing: "0.2em" }}
+        >
+          Product Database
+        </span>
+      </div>
+    )}
+  </div>
+</SidebarHeader>
 
       {/* CONTENT */}
       <SidebarContent className="px-2 flex flex-col">
