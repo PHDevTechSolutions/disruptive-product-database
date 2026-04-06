@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   collection,
@@ -89,6 +89,9 @@ export default function ForApprovalPage() {
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [rejectRemarks, setRejectRemarks] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hasLoadedSnapshotRef = useRef(false);
+  const pendingIdsRef = useRef<Set<string>>(new Set());
 
   const itemsPerPage = 10;
 
@@ -121,6 +124,12 @@ export default function ForApprovalPage() {
 
   useEffect(() => {
     if (!userId || accessDenied || !reviewerProfile) return;
+    hasLoadedSnapshotRef.current = false;
+    pendingIdsRef.current = new Set();
+    if (!audioRef.current) {
+      audioRef.current = new Audio("/musics/notif-sound.mp3");
+      audioRef.current.preload = "auto";
+    }
     const q = query(collection(db, "forApprovals"), orderBy("createdAt", "desc"));
     return onSnapshot(
       q,
@@ -143,6 +152,20 @@ export default function ForApprovalPage() {
             payload: (x.payload as Record<string, unknown>) ?? {},
           };
         });
+        const nextPendingIds = new Set(next.filter((item) => item.status === "Pending").map((item) => item.id));
+        const newPendingCount = [...nextPendingIds].filter((id) => !pendingIdsRef.current.has(id)).length;
+        if (hasLoadedSnapshotRef.current && newPendingCount > 0) {
+          const audio = audioRef.current;
+          if (audio) {
+            audio.currentTime = 0;
+            void audio.play().catch(() => {});
+          }
+          toast.info(
+            newPendingCount === 1 ? "New approval request" : `${newPendingCount} new approval requests`,
+          );
+        }
+        pendingIdsRef.current = nextPendingIds;
+        hasLoadedSnapshotRef.current = true;
         setRows(next);
       },
       (err) => {
