@@ -60,7 +60,7 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
       className={`splash-clean ${closing ? "closing" : ""}`}
     >
       <Image
-        src="/images/disruptive-logo.png"
+        src="/espiron-logo.svg"
         alt="logo"
         width={140}
         height={140}
@@ -68,7 +68,20 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
         priority
       />
 
-      <h1 className="splash-clean-title">Product Database</h1>
+      <div className="flex flex-col items-center leading-none">
+        <span
+          className="text-[22px] font-black tracking-widest uppercase text-gray-900"
+          style={{ letterSpacing: "0.12em" }}
+        >
+          Espiron
+        </span>
+        <span
+          className="text-[14px] font-semibold tracking-[0.18em] uppercase text-red-600"
+          style={{ letterSpacing: "0.2em" }}
+        >
+          Product Database
+        </span>
+      </div>
 
       <p className="splash-clean-status">{slides[messageIndex]}</p>
 

@@ -47,6 +47,12 @@ import {
   EyeOff,
   ExternalLink,
 } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface ApiKey {
@@ -307,129 +313,266 @@ export default function APIManagementPage() {
         </Card>
       </div>
 
-      {/* API Keys Table */}
-      <Card className="mt-6">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <CardTitle>Active API Keys</CardTitle>
-            <CardDescription>Manage existing API keys and their permissions</CardDescription>
-          </div>
-          <Button onClick={() => { resetForm(); setIsGenerateDialogOpen(true); }} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            Generate New Key
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {apiKeys.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No API keys generated yet. Click &quot;Generate New Key&quot; to create one.
+        <Card className="mt-6">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle>Active API Keys</CardTitle>
+              <CardDescription>Manage existing API keys and their permissions</CardDescription>
             </div>
-          ) : (
-            <>
-              {/* Desktop Table */}
-              <div className="hidden md:block overflow-x-auto -mx-6 px-6">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-32">Name</TableHead>
-                      <TableHead className="w-40">Permissions</TableHead>
-                      <TableHead className="w-28">Usage</TableHead>
-                      <TableHead className="w-40">Last Used</TableHead>
-                      <TableHead className="w-40">Created</TableHead>
-                      <TableHead className="w-20">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {apiKeys.map((key) => (
-                      <TableRow key={key.keyId}>
-                        <TableCell>
+            <Button onClick={() => { resetForm(); setIsGenerateDialogOpen(true); }} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" />
+              Generate New Key
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {apiKeys.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No API keys generated yet. Click &quot;Generate New Key&quot; to create one.
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto -mx-6 px-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-32">Name</TableHead>
+                        <TableHead className="w-40">Permissions</TableHead>
+                        <TableHead className="w-28">Usage</TableHead>
+                        <TableHead className="w-40">Last Used</TableHead>
+                        <TableHead className="w-40">Created</TableHead>
+                        <TableHead className="w-20">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {apiKeys.map((key) => (
+                        <TableRow key={key.keyId}>
+                          <TableCell>
+                            <div className="font-medium">{key.name}</div>
+                            {key.description && (
+                              <div className="text-xs text-muted-foreground">{key.description}</div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {key.permissions.map((perm) => (
+                                <Badge key={perm} variant="secondary" className="text-xs whitespace-nowrap">
+                                  {perm}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">{key.usageCount} requests</TableCell>
+                          <TableCell className="whitespace-nowrap">{formatDate(key.lastUsedAt)}</TableCell>
+                          <TableCell className="whitespace-nowrap">{formatDate(key.createdAt)}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => {
+                                setSelectedKey(key);
+                                setIsRevokeDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="md:hidden space-y-3">
+                  {apiKeys.map((key) => (
+                    <div key={key.keyId} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
                           <div className="font-medium">{key.name}</div>
                           {key.description && (
                             <div className="text-xs text-muted-foreground">{key.description}</div>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {key.permissions.map((perm) => (
-                              <Badge key={perm} variant="secondary" className="text-xs whitespace-nowrap">
-                                {perm}
-                              </Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">{key.usageCount} requests</TableCell>
-                        <TableCell className="whitespace-nowrap">{formatDate(key.lastUsedAt)}</TableCell>
-                        <TableCell className="whitespace-nowrap">{formatDate(key.createdAt)}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => {
-                              setSelectedKey(key);
-                              setIsRevokeDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                          onClick={() => {
+                            setSelectedKey(key);
+                            setIsRevokeDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {key.permissions.map((perm) => (
+                          <Badge key={perm} variant="secondary" className="text-xs">
+                            {perm}
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Usage:</span>
+                          <div>{key.usageCount} requests</div>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Last Used:</span>
+                          <div>{formatDate(key.lastUsedAt)}</div>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground">Created:</span>
+                          <div>{formatDate(key.createdAt)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
-              {/* Mobile Cards */}
-              <div className="md:hidden space-y-3">
-                {apiKeys.map((key) => (
-                  <div key={key.keyId} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="font-medium">{key.name}</div>
-                        {key.description && (
-                          <div className="text-xs text-muted-foreground">{key.description}</div>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
-                        onClick={() => {
-                          setSelectedKey(key);
-                          setIsRevokeDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {key.permissions.map((perm) => (
-                        <Badge key={perm} variant="secondary" className="text-xs">
-                          {perm}
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Usage:</span>
-                        <div>{key.usageCount} requests</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Last Used:</span>
-                        <div>{formatDate(key.lastUsedAt)}</div>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-muted-foreground">Created:</span>
-                        <div>{formatDate(key.createdAt)}</div>
-                      </div>
+        {/* API Endpoint Guide */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ExternalLink className="h-5 w-5 text-blue-500" />
+              API Endpoint Guide
+            </CardTitle>
+            <CardDescription>
+              Learn how to use the API endpoints with your generated API keys
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="products">
+                <AccordionTrigger>GET /api/public-api?endpoint=products</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      List all products with optional filters. Requires <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">products:read</code> permission.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Query Params:</strong> productClass, brandOrigin, pricePoint, isActive, pageSize, pageToken
+                    </p>
+                    <div className="bg-gray-900 text-gray-100 p-3 rounded-lg text-xs font-mono overflow-x-auto">
+                      <p className="text-green-400">// Example Request</p>
+                      <p>curl -X GET \</p>
+                      <p>{'  '}https://your-domain.com/api/public-api?endpoint=products \</p>
+                      <p>{'  '}-H &quot;X-API-Key: YOUR_API_KEY&quot;</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="product-detail">
+                <AccordionTrigger>GET /api/public-api?endpoint=product-detail&id={'{id}'}</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Get a single product by ID. Requires <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">products:read</code> permission.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Query Params:</strong> id (required)
+                    </p>
+                    <div className="bg-gray-900 text-gray-100 p-3 rounded-lg text-xs font-mono overflow-x-auto">
+                      <p className="text-green-400">// Example Request</p>
+                      <p>curl -X GET \</p>
+                      <p>{'  '}https://your-domain.com/api/public-api?endpoint=product-detail&id=abc123 \</p>
+                      <p>{'  '}-H &quot;X-API-Key: YOUR_API_KEY&quot;</p>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="suppliers">
+                <AccordionTrigger>GET /api/public-api?endpoint=suppliers</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      List all suppliers. Requires <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">suppliers:read</code> permission.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Query Params:</strong> isActive, pageSize, pageToken
+                    </p>
+                    <div className="bg-gray-900 text-gray-100 p-3 rounded-lg text-xs font-mono overflow-x-auto">
+                      <p className="text-green-400">// Example Request</p>
+                      <p>curl -X GET \</p>
+                      <p>{'  '}https://your-domain.com/api/public-api?endpoint=suppliers \</p>
+                      <p>{'  '}-H &quot;X-API-Key: YOUR_API_KEY&quot;</p>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="supplier-detail">
+                <AccordionTrigger>GET /api/public-api?endpoint=supplier-detail&id={'{id}'}</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Get a single supplier by ID. Requires <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">suppliers:read</code> permission.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Query Params:</strong> id (required)
+                    </p>
+                    <div className="bg-gray-900 text-gray-100 p-3 rounded-lg text-xs font-mono overflow-x-auto">
+                      <p className="text-green-400">// Example Request</p>
+                      <p>curl -X GET \</p>
+                      <p>{'  '}https://your-domain.com/api/public-api?endpoint=supplier-detail&id=abc123 \</p>
+                      <p>{'  '}-H &quot;X-API-Key: YOUR_API_KEY&quot;</p>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="authentication">
+                <AccordionTrigger>Authentication</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      All API requests require authentication via the <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">X-API-Key</code> header.
+                    </p>
+                    <div className="bg-gray-900 text-gray-100 p-3 rounded-lg text-xs font-mono overflow-x-auto">
+                      <p className="text-green-400">// Header Format</p>
+                      <p>X-API-Key: esp_xxxxxxxxxxxxxxxx</p>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <p className="text-sm text-amber-800 font-medium">Important:</p>
+                      <ul className="text-xs text-amber-700 mt-1 list-disc list-inside">
+                        <li>Keep your API key secure and never share it publicly</li>
+                        <li>Include the X-API-Key header in every request</li>
+                        <li>API keys are tied to specific permissions</li>
+                        <li>Revoke compromised keys immediately</li>
+                      </ul>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="errors">
+                <AccordionTrigger>Error Handling</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      The API returns standard HTTP status codes and JSON error responses.
+                    </p>
+                    <div className="bg-gray-900 text-gray-100 p-3 rounded-lg text-xs font-mono overflow-x-auto">
+                      <p className="text-green-400">// 401 Unauthorized</p>
+                      <p>{'{'} error: &quot;API key required&quot; {'}'}</p>
+                    </div>
+                    <div className="bg-gray-900 text-gray-100 p-3 rounded-lg text-xs font-mono overflow-x-auto">
+                      <p className="text-green-400">// 403 Forbidden</p>
+                      <p>{'{'} error: &quot;Permission denied: products:read required&quot; {'}'}</p>
+                    </div>
+                    <div className="bg-gray-900 text-gray-100 p-3 rounded-lg text-xs font-mono overflow-x-auto">
+                      <p className="text-green-400">// 404 Not Found</p>
+                      <p>{'{'} error: &quot;Product not found&quot; {'}'}</p>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
 
       {/* Generate Key Dialog */}
       <Dialog
