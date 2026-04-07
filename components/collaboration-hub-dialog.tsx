@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const EngiConnectLogo = () => (
   <div className="flex items-center justify-center size-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg rotate-3">
@@ -85,6 +86,8 @@ export function CollaborationHubDialog({
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  
+  const { updateChatUnreadCount, markChatAsRead } = useNotifications();
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const unreadRef = useRef<HTMLDivElement>(null);
@@ -95,23 +98,64 @@ export function CollaborationHubDialog({
   const sentSound = useRef<HTMLAudioElement | null>(null);
   const receivedSound = useRef<HTMLAudioElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastReadMessageCount = useRef(0);
+  const chatNotifSound = useRef<HTMLAudioElement | null>(null);
 
-  // Fetch messages from Firebase
+  // Fetch messages from Firebase - always listen for notifications even when closed
   useEffect(() => {
-    if (!requestId || !open) return;
+    if (!requestId) return;
+    
+    // Initialize notification sound
+    if (!chatNotifSound.current) {
+      chatNotifSound.current = new Audio("/musics/notif-messege-sound.mp3");
+      chatNotifSound.current.preload = "auto";
+    }
     
     const docRef = doc(dbCollab, collectionName, requestId);
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        setMessages(data.messages || []);
+        const newMessages = data.messages || [];
+        
+        // Check if there are new messages from others while dialog is closed
+        if (!open && messages.length > 0 && newMessages.length > messages.length) {
+          const lastMsg = newMessages[newMessages.length - 1];
+          if (lastMsg.senderId !== currentUserId) {
+            // Play notification sound
+            chatNotifSound.current?.play().catch(() => {});
+          }
+        }
+        
+        setMessages(newMessages);
+        
+        // If dialog is closed, update unread count in notifications
+        if (!open && newMessages.length > 0) {
+          const unreadCount = newMessages.filter(
+            (msg: Message) => 
+              msg.senderId !== currentUserId && 
+              !msg.seenBy?.includes(currentUserId)
+          ).length;
+          
+          // Only update if there are actually unread messages
+          if (unreadCount > 0) {
+            updateChatUnreadCount(requestId, unreadCount);
+          }
+        }
       }
     }, (error) => {
       console.error("Error fetching messages:", error);
     });
 
     return () => unsubscribe();
-  }, [requestId, collectionName, open]);
+  }, [requestId, collectionName, open, currentUserId, updateChatUnreadCount, messages.length]);
+
+  // Mark chat as read when dialog opens
+  useEffect(() => {
+    if (open && requestId) {
+      markChatAsRead(requestId);
+      lastReadMessageCount.current = messages.length;
+    }
+  }, [open, requestId, markChatAsRead, messages.length]);
 
   useEffect(() => {
     sentSound.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
@@ -188,6 +232,11 @@ export function CollaborationHubDialog({
             });
             const docRef = doc(dbCollab, collectionName, requestId); 
             await updateDoc(docRef, { messages: updatedMessages });
+            
+            // Clear notification count for this chat since all messages are now seen
+            if (requestId) {
+              updateChatUnreadCount(requestId, 0);
+            }
           } catch (e) {
             console.error("Failed to update seen status", e);
           }
@@ -195,7 +244,7 @@ export function CollaborationHubDialog({
       };
       markAsSeen();
     }
-  }, [open, messages, currentUserId, requestId, collectionName]);
+  }, [open, messages, currentUserId, requestId, collectionName, updateChatUnreadCount]);
 
   const scrollToMessage = (msgId: string) => {
     const element = document.getElementById(`msg-${msgId}`);

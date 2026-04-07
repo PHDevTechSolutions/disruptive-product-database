@@ -28,23 +28,35 @@ function isCreationNotificationStatus(status: unknown): boolean {
 
 interface NotificationContextValue {
   unreadCount: number;
+  unreadChatCount: number;
   markSPFRequestAsRead: (spfNumber: string) => void;
   isSPFRequestUnread: (spfNumber: string) => boolean;
   getSPFRequestUnreadCount: (spfNumber: string) => number;
   clearNotifications: () => void;
+  // Chat message notification functions
+  markChatAsRead: (requestId: string) => void;
+  isChatUnread: (requestId: string) => boolean;
+  getChatUnreadCount: (requestId: string) => number;
+  updateChatUnreadCount: (requestId: string, count: number) => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue>({
   unreadCount: 0,
+  unreadChatCount: 0,
   markSPFRequestAsRead: () => {},
   isSPFRequestUnread: () => false,
   getSPFRequestUnreadCount: () => 0,
   clearNotifications: () => {},
+  markChatAsRead: () => {},
+  isChatUnread: () => false,
+  getChatUnreadCount: () => 0,
+  updateChatUnreadCount: () => {},
 });
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { userId } = useUser();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stopTimerRef = useRef<number | null>(null);
@@ -55,6 +67,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const unreadCountMapRef = useRef<Map<string, number>>(new Map());
   const latestCreationStatusRef = useRef<Map<string, string>>(new Map());
   const lastSeenCreationRef = useRef<Map<string, string>>(new Map());
+  // Chat notification tracking
+  const chatUnreadMapRef = useRef<Map<string, number>>(new Map());
+  const chatLastReadMapRef = useRef<Map<string, string>>(new Map());
 
   const getStorageKey = useCallback((uid: string) => `spf-notif-read-map:${uid}`, []);
   const getInitKey = useCallback((uid: string) => `spf-notif-init:${uid}`, []);
@@ -62,6 +77,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const getKnownSignatureKey = useCallback((uid: string) => `spf-notif-known-map:${uid}`, []);
   const getUnreadCountKey = useCallback((uid: string) => `spf-notif-unread-count-map:${uid}`, []);
   const getLastSeenCreationKey = useCallback((uid: string) => `spf-notif-last-seen-creation:${uid}`, []);
+  // Chat storage keys
+  const getChatUnreadKey = useCallback((uid: string) => `chat-notif-unread-map:${uid}`, []);
+  const getChatLastReadKey = useCallback((uid: string) => `chat-notif-last-read:${uid}`, []);
   const normalizeSPFNumber = useCallback((value: unknown) => {
     if (typeof value !== "string") return "";
     return value.trim().replace(/\s+/g, "").toUpperCase();
@@ -86,6 +104,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const payload = Object.fromEntries(map.entries());
     localStorage.setItem(getLastSeenCreationKey(uid), JSON.stringify(payload));
   }, [getLastSeenCreationKey]);
+
+  const persistChatUnreadMap = useCallback((uid: string, map: Map<string, number>) => {
+    const payload = Object.fromEntries(map.entries());
+    localStorage.setItem(getChatUnreadKey(uid), JSON.stringify(payload));
+  }, [getChatUnreadKey]);
 
   const applyEffectiveUnreadAggregates = useCallback(() => {
     const unreadSet = new Set<string>();
@@ -480,6 +503,44 @@ currentSignatureMap.set(
     return Math.max(delta, alertUnread ? 1 : 0);
   }, [normalizeSPFNumber]);
 
+  // Chat notification functions
+  const recalcChatUnreadTotal = useCallback(() => {
+    let total = 0;
+    chatUnreadMapRef.current.forEach((count) => {
+      total += count;
+    });
+    setUnreadChatCount(total);
+  }, []);
+
+  const markChatAsRead = useCallback((requestId: string) => {
+    if (!userId || !requestId) return;
+    chatUnreadMapRef.current.delete(requestId);
+    chatLastReadMapRef.current.set(requestId, new Date().toISOString());
+    persistChatUnreadMap(userId, chatUnreadMapRef.current);
+    recalcChatUnreadTotal();
+  }, [userId, persistChatUnreadMap, recalcChatUnreadTotal]);
+
+  const isChatUnread = useCallback((requestId: string) => {
+    if (!requestId) return false;
+    return (chatUnreadMapRef.current.get(requestId) ?? 0) > 0;
+  }, []);
+
+  const getChatUnreadCount = useCallback((requestId: string) => {
+    if (!requestId) return 0;
+    return chatUnreadMapRef.current.get(requestId) ?? 0;
+  }, []);
+
+  const updateChatUnreadCount = useCallback((requestId: string, count: number) => {
+    if (!userId || !requestId) return;
+    if (count <= 0) {
+      chatUnreadMapRef.current.delete(requestId);
+    } else {
+      chatUnreadMapRef.current.set(requestId, count);
+    }
+    persistChatUnreadMap(userId, chatUnreadMapRef.current);
+    recalcChatUnreadTotal();
+  }, [userId, persistChatUnreadMap, recalcChatUnreadTotal]);
+
   const clearNotifications = useCallback(() => {
     if (!userId) {
       unreadSPFRef.current = new Set();
@@ -507,7 +568,18 @@ currentSignatureMap.set(
   ]);
 
   return (
-    <NotificationContext.Provider value={{ unreadCount, markSPFRequestAsRead, isSPFRequestUnread, getSPFRequestUnreadCount, clearNotifications }}>
+    <NotificationContext.Provider value={{
+      unreadCount,
+      unreadChatCount,
+      markSPFRequestAsRead,
+      isSPFRequestUnread,
+      getSPFRequestUnreadCount,
+      clearNotifications,
+      markChatAsRead,
+      isChatUnread,
+      getChatUnreadCount,
+      updateChatUnreadCount,
+    }}>
       {children}
     </NotificationContext.Provider>
   );

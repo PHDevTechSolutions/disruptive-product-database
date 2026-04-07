@@ -5,6 +5,7 @@ import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CollaborationHubDialog } from "./collaboration-hub-dialog";
 import { useUser } from "@/contexts/UserContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { cn } from "@/lib/utils";
 
 interface CollaborationHubRowTriggerProps {
@@ -28,11 +29,15 @@ export function CollaborationHubRowTrigger({
 }: CollaborationHubRowTriggerProps) {
   const [open, setOpen] = useState(false);
   const { userId } = useUser();
+  const { getChatUnreadCount, markChatAsRead } = useNotifications();
   const [userData, setUserData] = useState<{
     userName: string;
     profilePicture?: string;
     userRole: string;
   } | null>(null);
+
+  const unreadCount = requestId ? getChatUnreadCount(requestId) : 0;
+  const hasUnread = unreadCount > 0;
 
   useEffect(() => {
     if (!userId) return;
@@ -44,7 +49,7 @@ export function CollaborationHubRowTrigger({
           const data = await res.json();
           setUserData({
             userName: `${data.Firstname || ""} ${data.Lastname || ""}`.trim(),
-            profilePicture: data.ProfilePicture || "",
+            profilePicture: data.profilePicture || "",
             userRole: data.Role || "User",
           });
         }
@@ -58,6 +63,18 @@ export function CollaborationHubRowTrigger({
 
   const handleOpen = () => {
     setOpen(true);
+    // Mark chat as read when opening
+    if (requestId) {
+      markChatAsRead(requestId);
+    }
+  };
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen && requestId) {
+      // Mark chat as read when closing too
+      markChatAsRead(requestId);
+    }
   };
 
   if (variant === "button") {
@@ -68,17 +85,23 @@ export function CollaborationHubRowTrigger({
           variant="outline"
           onClick={handleOpen}
           className={cn(
-            "h-9 px-3 rounded-xl flex items-center gap-1.5 border-blue-200 hover:bg-blue-50 hover:border-blue-300",
+            "h-9 px-3 rounded-xl flex items-center gap-1.5 border-blue-200 hover:bg-blue-50 hover:border-blue-300 relative",
+            hasUnread && "border-red-300 bg-red-50 hover:bg-red-100 hover:border-red-400",
             className
           )}
         >
-          <MessageSquare size={14} className="text-blue-600" />
+          <MessageSquare size={14} className={cn("text-blue-600", hasUnread && "text-red-600")} />
           <span className="text-xs font-medium">Chat</span>
+          {hasUnread && (
+            <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </Button>
         {userData && (
           <CollaborationHubDialog
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
             requestId={requestId}
             collectionName={collectionName}
             currentUserId={userId || ""}
@@ -100,17 +123,23 @@ export function CollaborationHubRowTrigger({
         variant="ghost"
         onClick={handleOpen}
         className={cn(
-          "h-8 w-8 rounded-full hover:bg-blue-50 hover:text-blue-600 transition-colors",
+          "h-8 w-8 rounded-full hover:bg-blue-50 hover:text-blue-600 transition-colors relative",
+          hasUnread && "text-red-500 hover:bg-red-50 hover:text-red-600",
           className
         )}
         title="Open collaboration chat"
       >
         <MessageSquare size={16} />
+        {hasUnread && (
+          <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 flex items-center justify-center text-[9px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_6px_rgba(239,68,68,0.6)] animate-pulse">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
       </Button>
       {userData && (
         <CollaborationHubDialog
           open={open}
-          onOpenChange={setOpen}
+          onOpenChange={handleOpenChange}
           requestId={requestId}
           collectionName={collectionName}
           currentUserId={userId || ""}

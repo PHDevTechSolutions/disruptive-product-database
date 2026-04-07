@@ -15,7 +15,7 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 function TitleUpdater({ pathname }: { pathname: string | null }) {
-  const { unreadCount } = useNotifications();
+  const { unreadCount, unreadChatCount } = useNotifications();
   const [forApprovalCount, setForApprovalCount] = useState(0);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ function TitleUpdater({ pathname }: { pathname: string | null }) {
     };
 
     const pageTitle = pathname ? titles[pathname] : null;
-    const totalNotifications = unreadCount + forApprovalCount;
+    const totalNotifications = unreadCount + unreadChatCount + forApprovalCount;
     
     if (pageTitle) {
       document.title = totalNotifications > 0 
@@ -56,7 +56,7 @@ function TitleUpdater({ pathname }: { pathname: string | null }) {
         ? `(${totalNotifications}) Espiron | PD`
         : "Espiron | PD";
     }
-  }, [pathname, unreadCount, forApprovalCount]);
+  }, [pathname, unreadCount, unreadChatCount, forApprovalCount]);
 
   return null;
 }

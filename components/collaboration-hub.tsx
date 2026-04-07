@@ -88,11 +88,14 @@ export function CollaborationHub({
   const prevStatus = useRef(status); // For System Messages detection
   const sentSound = useRef<HTMLAudioElement | null>(null);
   const receivedSound = useRef<HTMLAudioElement | null>(null);
+  const chatNotifSound = useRef<HTMLAudioElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     sentSound.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
     receivedSound.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
+    chatNotifSound.current = new Audio("/musics/notif-messege-sound.mp3");
+    chatNotifSound.current.preload = "auto";
     if (sentSound.current) sentSound.current.volume = 0.3;
     if (receivedSound.current) receivedSound.current.volume = 0.3;
   }, []);
@@ -244,8 +247,14 @@ export function CollaborationHub({
   useEffect(() => {
     if (messages.length > prevMessagesCount.current) {
       const lastMsg = messages[messages.length - 1];
-      if (lastMsg.senderId !== currentUserId && isOpen) {
-        receivedSound.current?.play().catch(() => {});
+      if (lastMsg.senderId !== currentUserId) {
+        if (isOpen) {
+          // Play soft received sound when chat is open
+          receivedSound.current?.play().catch(() => {});
+        } else {
+          // Play notification sound when chat is closed
+          chatNotifSound.current?.play().catch(() => {});
+        }
       }
     }
     prevMessagesCount.current = messages.length;
