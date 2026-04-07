@@ -101,7 +101,7 @@ const COL_MAP: Record<CollectionTab, string> = {
   productFamilies: "auditLogs_productFamilies",
   productUsages  : "auditLogs_productUsages",
 
-  // ✅ ADD THIS
+  // ADD THIS
   spfVersions    : "auditLogs_spfVersions",
 };
 
@@ -129,7 +129,7 @@ const ACTION_OPTIONS: Record<CollectionTab, string[]> = {
   productFamilies: ["Product Family Added", "Product Family Edited", "Product Family Deleted"],
   productUsages  : ["Product Usage Added", "Product Usage Edited", "Product Usage Deleted"],
 
-  // ✅ ADD THIS
+  // ADD THIS
   spfVersions: ["SPF Created", "SPF Version Created", "SPF Updated"],
 };
 
@@ -304,6 +304,122 @@ function MobileCard({
 }
 
 /* ─────────────────────────────────────────────
+   TabLayout Component (outside HistoryPage to prevent focus loss)
+───────────────────────────────────────────── */
+interface TabLayoutProps {
+  tab: CollectionTab;
+  searchPlaceholder: string;
+  mobileCards: React.ReactNode;
+  tableHeaders: React.ReactNode;
+  tableRows: React.ReactNode;
+  tabState: TabState;
+  filteredCount: number;
+  fetching: boolean;
+  onSearchChange: (value: string) => void;
+  onActionFilterChange: (value: string) => void;
+  onFirstPage: () => void;
+  onNextPage: () => void;
+  actionOptions: string[];
+}
+
+function TabLayout({
+  tab,
+  searchPlaceholder,
+  mobileCards,
+  tableHeaders,
+  tableRows,
+  tabState,
+  filteredCount,
+  fetching,
+  onSearchChange,
+  onActionFilterChange,
+  onFirstPage,
+  onNextPage,
+  actionOptions,
+}: TabLayoutProps) {
+  const { search, actionFilter, page, hasMore } = tabState;
+  
+  return (
+    <div className="h-dvh flex flex-col overflow-hidden -mx-4 md:-mx-6 -mt-4 md:-mt-6">
+
+      {/* ── Toolbar ── */}
+      <div className="shrink-0 bg-white/80 backdrop-blur-md border-b px-4 md:px-6 pt-4 pb-3 space-y-3">
+        {/* search + filter row */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full h-9 pl-9 pr-3 bg-white/70 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-gray-300"
+            />
+          </div>
+          <Select value={actionFilter} onValueChange={onActionFilterChange}>
+            <SelectTrigger className="h-9 w-44 bg-white/70">
+              <SelectValue placeholder="All actions" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Actions</SelectItem>
+              {actionOptions.map((a) => (
+                <SelectItem key={a} value={a}>{a}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {/* pagination info */}
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-500">
+            Page {page} · {filteredCount} record{filteredCount !== 1 ? "s" : ""} on page
+          </span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" disabled={page === 1 || fetching}
+              onClick={onFirstPage}>
+              <ChevronLeft className="h-3.5 w-3.5 mr-1" /> First
+            </Button>
+            <Button size="sm" variant="outline" disabled={!hasMore || fetching}
+              onClick={onNextPage}>
+              Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Desktop table — thead sticky inside this scroll container ── */}
+      <div className="hidden md:block flex-1 min-h-0 overflow-auto bg-white/60 backdrop-blur-sm">
+        <table className="w-full text-sm border-collapse">
+          <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">
+            <tr>{tableHeaders}</tr>
+          </thead>
+          <tbody>
+            {fetching ? (
+              <tr><td colSpan={99} className="text-center py-10 text-muted-foreground">Loading…</td></tr>
+            ) : filteredCount === 0 ? (
+              <tr><td colSpan={99} className="text-center py-10 text-muted-foreground">No audit logs found.</td></tr>
+            ) : tableRows}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Mobile cards ── */}
+      <div className="md:hidden flex-1 overflow-y-auto px-3 pt-3 pb-28 space-y-3 min-h-0">
+        {fetching ? (
+          <div className="flex justify-center py-16">
+            <div className="h-7 w-7 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />
+          </div>
+        ) : filteredCount === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Search className="h-8 w-8 text-gray-300 mb-3" />
+            <p className="text-sm font-medium text-gray-600">No audit logs found</p>
+          </div>
+        ) : mobileCards}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Main Page
 ───────────────────────────────────────────── */
 export default function HistoryPage() {
@@ -462,100 +578,7 @@ export default function HistoryPage() {
   );
 
   /* ── Reusable tab layout: toolbar + table/cards + pagination ── */
-  const TabLayout = ({
-    tab,
-    searchPlaceholder,
-    mobileCards,
-    tableHeaders,
-    tableRows,
-  }: {
-    tab: CollectionTab;
-    searchPlaceholder: string;
-    mobileCards: React.ReactNode;
-    tableHeaders: React.ReactNode;
-    tableRows: React.ReactNode;
-  }) => {
-    const s = tabStates[tab];
-    const count = filtered(tab).length;
-    return (
-      <div className="h-dvh flex flex-col overflow-hidden -mx-4 md:-mx-6 -mt-4 md:-mt-6">
-
-        {/* ── Toolbar ── */}
-        <div className="shrink-0 bg-white/80 backdrop-blur-md border-b px-4 md:px-6 pt-4 pb-3 space-y-3">
-          {/* search + filter row */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              <input
-                type="text"
-                placeholder={searchPlaceholder}
-                value={s.search}
-                onChange={(e) => updateTab(tab, { search: e.target.value })}
-                className="w-full h-9 pl-9 pr-3 bg-white/70 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-gray-300"
-              />
-            </div>
-            <Select value={s.actionFilter} onValueChange={(v) => updateTab(tab, { actionFilter: v })}>
-              <SelectTrigger className="h-9 w-44 bg-white/70">
-                <SelectValue placeholder="All actions" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Actions</SelectItem>
-                {ACTION_OPTIONS[tab].map((a) => (
-                  <SelectItem key={a} value={a}>{a}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {/* pagination info */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">
-              Page {s.page} · {count} record{count !== 1 ? "s" : ""} on page
-            </span>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" disabled={s.page === 1 || fetching}
-                onClick={() => { updateTab(tab, { cursor: null, page: 1 }); loadTab(tab, s.actionFilter); }}>
-                <ChevronLeft className="h-3.5 w-3.5 mr-1" /> First
-              </Button>
-              <Button size="sm" variant="outline" disabled={!s.hasMore || fetching}
-                onClick={() => loadNextPage(tab)}>
-                Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Desktop table — thead sticky inside this scroll container ── */}
-        <div className="hidden md:block flex-1 min-h-0 overflow-auto bg-white/60 backdrop-blur-sm">
-          <table className="w-full text-sm border-collapse">
-            <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">
-              <tr>{tableHeaders}</tr>
-            </thead>
-            <tbody>
-              {fetching ? (
-                <tr><td colSpan={99} className="text-center py-10 text-muted-foreground">Loading…</td></tr>
-              ) : filtered(tab).length === 0 ? (
-                <tr><td colSpan={99} className="text-center py-10 text-muted-foreground">No audit logs found.</td></tr>
-              ) : tableRows}
-            </tbody>
-          </table>
-        </div>
-
-        {/* ── Mobile cards ── */}
-        <div className="md:hidden flex-1 overflow-y-auto px-3 pt-3 pb-28 space-y-3 min-h-0">
-          {fetching ? (
-            <div className="flex justify-center py-16">
-              <div className="h-7 w-7 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />
-            </div>
-          ) : filtered(tab).length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <Search className="h-8 w-8 text-gray-300 mb-3" />
-              <p className="text-sm font-medium text-gray-600">No audit logs found</p>
-            </div>
-          ) : mobileCards}
-        </div>
-      </div>
-    );
-  };
+  // TabLayout is now defined outside HistoryPage to prevent input focus loss
 
   if (loading) return null;
 
@@ -673,6 +696,14 @@ export default function HistoryPage() {
                   onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
                 />
               ))}</>}
+              tabState={tabStates.suppliers}
+              filteredCount={filtered("suppliers").length}
+              fetching={fetching}
+              onSearchChange={(value) => updateTab("suppliers", { search: value })}
+              onActionFilterChange={(value) => updateTab("suppliers", { actionFilter: value })}
+              onFirstPage={() => { updateTab("suppliers", { cursor: null, page: 1 }); loadTab("suppliers", tabStates.suppliers.actionFilter); }}
+              onNextPage={() => loadNextPage("suppliers")}
+              actionOptions={ACTION_OPTIONS.suppliers}
             />
           </TabsContent>
 
@@ -764,6 +795,14 @@ export default function HistoryPage() {
                   </>}
                 />
               ))}</>}
+              tabState={tabStates.products}
+              filteredCount={filtered("products").length}
+              fetching={fetching}
+              onSearchChange={(value) => updateTab("products", { search: value })}
+              onActionFilterChange={(value) => updateTab("products", { actionFilter: value })}
+              onFirstPage={() => { updateTab("products", { cursor: null, page: 1 }); loadTab("products", tabStates.products.actionFilter); }}
+              onNextPage={() => loadNextPage("products")}
+              actionOptions={ACTION_OPTIONS.products}
             />
           </TabsContent>
 
@@ -794,6 +833,14 @@ export default function HistoryPage() {
                   onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
                 />
               ))}</>}
+              tabState={tabStates.productFamilies}
+              filteredCount={filtered("productFamilies").length}
+              fetching={fetching}
+              onSearchChange={(value) => updateTab("productFamilies", { search: value })}
+              onActionFilterChange={(value) => updateTab("productFamilies", { actionFilter: value })}
+              onFirstPage={() => { updateTab("productFamilies", { cursor: null, page: 1 }); loadTab("productFamilies", tabStates.productFamilies.actionFilter); }}
+              onNextPage={() => loadNextPage("productFamilies")}
+              actionOptions={ACTION_OPTIONS.productFamilies}
             />
           </TabsContent>
 
@@ -824,6 +871,14 @@ export default function HistoryPage() {
                   onEye={() => { setSelectedLog(log); setDetailOpen(true); }}
                 />
               ))}</>}
+              tabState={tabStates.productUsages}
+              filteredCount={filtered("productUsages").length}
+              fetching={fetching}
+              onSearchChange={(value) => updateTab("productUsages", { search: value })}
+              onActionFilterChange={(value) => updateTab("productUsages", { actionFilter: value })}
+              onFirstPage={() => { updateTab("productUsages", { cursor: null, page: 1 }); loadTab("productUsages", tabStates.productUsages.actionFilter); }}
+              onNextPage={() => loadNextPage("productUsages")}
+              actionOptions={ACTION_OPTIONS.productUsages}
             />
           </TabsContent>
 
@@ -863,6 +918,14 @@ export default function HistoryPage() {
                   />
                 ))}
               </>}
+              tabState={tabStates.spfVersions}
+              filteredCount={filtered("spfVersions").length}
+              fetching={fetching}
+              onSearchChange={(value) => updateTab("spfVersions", { search: value })}
+              onActionFilterChange={(value) => updateTab("spfVersions", { actionFilter: value })}
+              onFirstPage={() => { updateTab("spfVersions", { cursor: null, page: 1 }); loadTab("spfVersions", tabStates.spfVersions.actionFilter); }}
+              onNextPage={() => loadNextPage("spfVersions")}
+              actionOptions={ACTION_OPTIONS.spfVersions}
             />
           </TabsContent>
 
