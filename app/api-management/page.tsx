@@ -47,6 +47,7 @@ import {
   EyeOff,
   ExternalLink,
 } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface ApiKey {
   keyId: string;
@@ -248,23 +249,20 @@ export default function APIManagementPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="h-dvh flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Key className="h-6 w-6" />
-            API Key Management
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Generate and manage API keys for third-party integrations
-          </p>
+      <div className="flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white/80 backdrop-blur-md border-b">
+        <SidebarTrigger />
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold">API Key Management</h1>
         </div>
-        <Button onClick={() => { resetForm(); setIsGenerateDialogOpen(true); }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Generate New Key
-        </Button>
+        <p className="text-muted-foreground text-sm">
+          Generate and manage API keys for third-party integrations
+        </p>
       </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-6">
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -310,10 +308,16 @@ export default function APIManagementPage() {
       </div>
 
       {/* API Keys Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Active API Keys</CardTitle>
-          <CardDescription>Manage existing API keys and their permissions</CardDescription>
+      <Card className="mt-6">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <CardTitle>Active API Keys</CardTitle>
+            <CardDescription>Manage existing API keys and their permissions</CardDescription>
+          </div>
+          <Button onClick={() => { resetForm(); setIsGenerateDialogOpen(true); }} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            Generate New Key
+          </Button>
         </CardHeader>
         <CardContent>
           {apiKeys.length === 0 ? (
@@ -321,43 +325,75 @@ export default function APIManagementPage() {
               No API keys generated yet. Click &quot;Generate New Key&quot; to create one.
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Usage</TableHead>
-                  <TableHead>Last Used</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto -mx-6 px-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-32">Name</TableHead>
+                      <TableHead className="w-40">Permissions</TableHead>
+                      <TableHead className="w-28">Usage</TableHead>
+                      <TableHead className="w-40">Last Used</TableHead>
+                      <TableHead className="w-40">Created</TableHead>
+                      <TableHead className="w-20">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {apiKeys.map((key) => (
+                      <TableRow key={key.keyId}>
+                        <TableCell>
+                          <div className="font-medium">{key.name}</div>
+                          {key.description && (
+                            <div className="text-xs text-muted-foreground">{key.description}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {key.permissions.map((perm) => (
+                              <Badge key={perm} variant="secondary" className="text-xs whitespace-nowrap">
+                                {perm}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{key.usageCount} requests</TableCell>
+                        <TableCell className="whitespace-nowrap">{formatDate(key.lastUsedAt)}</TableCell>
+                        <TableCell className="whitespace-nowrap">{formatDate(key.createdAt)}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => {
+                              setSelectedKey(key);
+                              setIsRevokeDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden space-y-3">
                 {apiKeys.map((key) => (
-                  <TableRow key={key.keyId}>
-                    <TableCell>
-                      <div className="font-medium">{key.name}</div>
-                      {key.description && (
-                        <div className="text-xs text-muted-foreground">{key.description}</div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {key.permissions.map((perm) => (
-                          <Badge key={perm} variant="secondary" className="text-xs">
-                            {perm}
-                          </Badge>
-                        ))}
+                  <div key={key.keyId} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-medium">{key.name}</div>
+                        {key.description && (
+                          <div className="text-xs text-muted-foreground">{key.description}</div>
+                        )}
                       </div>
-                    </TableCell>
-                    <TableCell>{key.usageCount} requests</TableCell>
-                    <TableCell>{formatDate(key.lastUsedAt)}</TableCell>
-                    <TableCell>{formatDate(key.createdAt)}</TableCell>
-                    <TableCell>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-red-600 hover:text-red-700"
+                        className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
                         onClick={() => {
                           setSelectedKey(key);
                           setIsRevokeDialogOpen(true);
@@ -365,11 +401,32 @@ export default function APIManagementPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {key.permissions.map((perm) => (
+                        <Badge key={perm} variant="secondary" className="text-xs">
+                          {perm}
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Usage:</span>
+                        <div>{key.usageCount} requests</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Last Used:</span>
+                        <div>{formatDate(key.lastUsedAt)}</div>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Created:</span>
+                        <div>{formatDate(key.createdAt)}</div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -549,6 +606,7 @@ export default function APIManagementPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
     </div>
   );
 }
