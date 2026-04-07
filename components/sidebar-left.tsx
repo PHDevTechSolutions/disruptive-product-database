@@ -297,7 +297,10 @@ export function SidebarLeft() {
     >
 {/* HEADER */}
 <SidebarHeader className="h-16 px-3 flex items-center">
-  <div className="flex items-center gap-2.5 min-w-0">
+  <Link 
+    href="/dashboard" 
+    className="flex items-center gap-2.5 min-w-0 cursor-pointer"
+  >
     {/* Logo mark — always visible, even when collapsed */}
     <div className="shrink-0">
       <svg
@@ -344,7 +347,7 @@ export function SidebarLeft() {
         </span>
       </div>
     )}
-  </div>
+  </Link>
 </SidebarHeader>
 
       {/* CONTENT */}
