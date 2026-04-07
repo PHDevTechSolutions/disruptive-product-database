@@ -30,6 +30,7 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
+  Key,
 } from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
@@ -54,6 +55,7 @@ const NAV_ITEMS: Array<{
   badgeKey?: "requests" | "forApproval";
   accessKey?: AccessKey;
   onlyForEngineeringManagerOrIT?: boolean;
+  onlyForIT?: boolean;
 }> = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/products", icon: Package, label: "Products", accessKey: "page:products" },
@@ -62,9 +64,10 @@ const NAV_ITEMS: Array<{
   { href: "/history", icon: History, label: "History" },
  { href: "/for-approval", icon: ClipboardCheck, label: "Approval", badgeKey: "forApproval", onlyForEngineeringManagerOrIT: true },
   { href: "/roles", icon: User, label: "Roles", accessKey: "page:roles", onlyForEngineeringManagerOrIT: true },
+  { href: "/api-management", icon: Key, label: "API Keys", onlyForIT: true },
 ];
 
-const BOTTOM_NAV_HREFS = new Set(["/for-approval", "/roles"]);
+const BOTTOM_NAV_HREFS = new Set(["/for-approval", "/roles", "/api-management"]);
 
 export function SidebarLeft() {
   const { state, isMobile } = useSidebar();
@@ -161,6 +164,10 @@ export function SidebarLeft() {
         return false;
       }
 
+      if (item.onlyForIT && user?.Department !== "IT") {
+        return false;
+      }
+
       if (!item.accessKey || hasFullAccess) {
         return true;
       }
@@ -171,7 +178,7 @@ export function SidebarLeft() {
 
       return userAccess[item.accessKey] ?? true;
     });
-  }, [hasFullAccess, userAccess]);
+  }, [hasFullAccess, userAccess, user]);
 
   const mainDesktopNavItems = React.useMemo(
     () => filteredNavItems.filter((item) => !BOTTOM_NAV_HREFS.has(item.href)),

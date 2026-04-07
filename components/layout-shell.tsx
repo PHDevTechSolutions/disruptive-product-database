@@ -50,6 +50,7 @@ export default function LayoutShell({
       "/history":      "History",
       "/for-approval": "For Approval",
       "/roles":        "Roles",
+      "/api-management": "API Management",
     };
 
     const pageTitle = pathname ? titles[pathname] : null;
