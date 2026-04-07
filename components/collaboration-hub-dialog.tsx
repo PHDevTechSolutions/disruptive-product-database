@@ -394,7 +394,7 @@ export function CollaborationHubDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full max-w-2xl h-[600px] p-0 border-none shadow-2xl rounded-[24px] overflow-hidden">
         <DialogTitle className="sr-only">{title} - Collaboration Hub</DialogTitle>
-        <div className="flex flex-col h-full bg-[#f8fafc] relative">
+        <div className="flex flex-col h-full bg-[#f8fafc] relative overflow-hidden">
           
           {/* Header */}
           <div className="p-5 bg-slate-900 text-white shrink-0 rounded-t-[24px]">
@@ -430,12 +430,12 @@ export function CollaborationHubDialog({
           </div>
 
           {/* Messages Area */}
-          <div 
-            ref={scrollRef} 
-            onScroll={handleScroll} 
-            onClick={() => setActiveMessageId(null)} 
-            className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f1f5f9]/50 scroll-smooth"
-          >
+            <div 
+              ref={scrollRef} 
+              onScroll={handleScroll} 
+              onClick={() => setActiveMessageId(null)} 
+              className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-[#f1f5f9]/50 scroll-smooth"
+            >
             {filteredMessages.map((msg, i) => {
               // FEATURE: SYSTEM MESSAGE RENDER
               if (msg.isSystem) {
