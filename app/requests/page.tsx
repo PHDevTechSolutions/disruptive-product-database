@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import SPFRequestFetch from "@/components/spf-request-fetch";
 import SPFRequestCreate, { type SPFRequest } from "@/components/spf-request-create";
+import { CollaborationHubRowTrigger } from "@/components/collaboration-hub-row-trigger";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* STATUS LABEL MAPPING                                            */
@@ -88,6 +89,7 @@ export default function RequestsPage() {
   const [fetchError, setFetchError]           = useState<string | null>(null);
   const [loadingPage, setLoadingPage]         = useState(false);
   const [createdSPF, setCreatedSPF]           = useState<Record<string, string>>({});
+  const [createdSPFIds, setCreatedSPFIds]    = useState<Record<string, number>>({});
   const [createdSPFLoaded, setCreatedSPFLoaded] = useState(false);
 
   /* ── Search / pagination ── */
@@ -132,6 +134,7 @@ export default function RequestsPage() {
       .select("id, spf_number, status, date_created, date_updated")
       .in("spf_number", spfNumbers);
     const map: Record<string, string> = {};
+    const idMap: Record<string, number> = {}; // spf_number -> supabase id
     const versionMap: Record<string, number> = {};
     created?.forEach((c: any) => {
       const spfNumber = typeof c?.spf_number === "string" ? c.spf_number : "";
@@ -158,8 +161,10 @@ export default function RequestsPage() {
 
       versionMap[spfNumber] = versionPoint;
       map[spfNumber] = typeof c?.status === "string" ? c.status : "unknown";
+      idMap[spfNumber] = typeof c?.id === "number" ? c.id : 0;
     });
     setCreatedSPF(map);
+    setCreatedSPFIds(idMap);
     setCreatedSPFLoaded(true);
   }, []);
 
@@ -369,6 +374,11 @@ export default function RequestsPage() {
                     <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formattedDate}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 flex-wrap items-center">
+                        <CollaborationHubRowTrigger
+                          requestId={String(createdSPFIds[req.spf_number] || "")}
+                          spfNumber={req.spf_number}
+                          status={spfStatus}
+                        />
                         {!isProcurementStatus(req.spf_number) && (
                           <Button className="rounded-none h-9 px-4" variant="outline" onClick={() => handleCreateFromRow(req)}>
                             Create
@@ -435,7 +445,12 @@ export default function RequestsPage() {
                 <div>
                   <StatusBadge status={req.status} />
                 </div>
-                <div className="flex gap-2 pt-1 flex-wrap">
+                <div className="flex gap-2 pt-1 flex-wrap items-center">
+                  <CollaborationHubRowTrigger
+                    requestId={String(createdSPFIds[req.spf_number] || "")}
+                    spfNumber={req.spf_number}
+                    status={spfStatus}
+                  />
                   {!isProcurementStatus(req.spf_number) && (
                     <Button size="sm" className="rounded-xl flex-1 h-9" variant="outline" onClick={() => handleCreateFromRow(req)}>
                       Create

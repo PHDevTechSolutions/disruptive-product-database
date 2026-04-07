@@ -45,6 +45,28 @@ const firebaseConfigLogs = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_LOGS,
 };
 
+
+
+/* =================================
+   LOGS FIREBASE COLLAB
+================================= */
+
+const firebaseConfigCollab = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY_COLLAB,
+
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN_COLLAB,
+
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID_COLLAB,
+
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET_COLLAB,
+
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID_COLLAB,
+
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID_COLLAB,
+
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_COLLAB,
+};
+
 /* =================================
    INITIALIZE MAIN APP
 ================================= */
@@ -66,6 +88,16 @@ const logsApp = getApps().find((a) => a.name === "logs")
 const dbLogs = getFirestore(logsApp);
 
 /* =================================
+   INITIALIZE COLLAB APP
+================================= */
+
+const collabApp = getApps().find((a) => a.name === "collab")
+  ? getApp("collab")
+  : initializeApp(firebaseConfigCollab, "collab");
+
+const dbCollab = getFirestore(collabApp);
+
+/* =================================
    ANALYTICS
 ================================= */
 
@@ -81,4 +113,4 @@ if (typeof window !== "undefined") {
    EXPORTS
 ================================= */
 
-export { app, db, dbLogs, storage, analytics };
+export { app, db, dbLogs, dbCollab, storage, analytics };
