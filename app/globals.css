@@ -547,6 +547,10 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+
+  button {
+    cursor: pointer;
+  }
 }
 
 @layer base {
