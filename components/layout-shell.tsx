@@ -5,12 +5,61 @@
 import { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useWallpaper } from "@/contexts/WallpaperContext";
-import { NotificationProvider } from "@/contexts/NotificationContext";
+import { NotificationProvider, useNotifications } from "@/contexts/NotificationContext";
 import { SidebarLeft } from "@/components/sidebar-left";
 import { SplashScreen } from "@/components/splash-screen";
 import ApprovalToastListener from "@/components/approval-toast-listener";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/components/ui/sidebar";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+function TitleUpdater({ pathname }: { pathname: string | null }) {
+  const { unreadCount } = useNotifications();
+  const [forApprovalCount, setForApprovalCount] = useState(0);
+
+  useEffect(() => {
+    const q = query(collection(db, "forApprovals"), where("status", "==", "Pending"));
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        setForApprovalCount(snapshot.size);
+      },
+      () => {
+        setForApprovalCount(0);
+      }
+    );
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const titles: Record<string, string> = {
+      "/dashboard":    "Dashboard",
+      "/products":     "Products",
+      "/suppliers":    "Suppliers",
+      "/requests":     "Requests",
+      "/history":      "History",
+      "/for-approval": "For Approval",
+      "/roles":        "Roles",
+      "/api-management": "API Management",
+    };
+
+    const pageTitle = pathname ? titles[pathname] : null;
+    const totalNotifications = unreadCount + forApprovalCount;
+    
+    if (pageTitle) {
+      document.title = totalNotifications > 0 
+        ? `(${totalNotifications}) ${pageTitle} - Espiron | PD`
+        : `${pageTitle} - Espiron | PD`;
+    } else {
+      document.title = totalNotifications > 0
+        ? `(${totalNotifications}) Espiron | PD`
+        : "Espiron | PD";
+    }
+  }, [pathname, unreadCount, forApprovalCount]);
+
+  return null;
+}
 
 export default function LayoutShell({
   children,
@@ -30,8 +79,6 @@ export default function LayoutShell({
   useEffect(() => {
     if (!userId) return;
 
-
-
     const splashPlayed = sessionStorage.getItem("splashPlayed") === "true";
 
     if (!splashPlayed) {
@@ -41,23 +88,6 @@ export default function LayoutShell({
     setSplashChecked(true);
   }, [userId]);
 
-  useEffect(() => {
-    const titles: Record<string, string> = {
-      "/dashboard":    "Dashboard",
-      "/products":     "Products",
-      "/suppliers":    "Suppliers",
-      "/requests":     "Requests",
-      "/history":      "History",
-      "/for-approval": "For Approval",
-      "/roles":        "Roles",
-      "/api-management": "API Management",
-    };
-
-    const pageTitle = pathname ? titles[pathname] : null;
-    document.title = pageTitle
-      ? `${pageTitle} - Espiron | PD`
-      : "Espiron | PD";
-  }, [pathname]);
   function handleSplashDone() {
     sessionStorage.setItem("splashPlayed", "true");
     setShowSplash(false);
@@ -72,6 +102,7 @@ export default function LayoutShell({
 
   return (
     <NotificationProvider>
+      <TitleUpdater pathname={pathname} />
       <ApprovalToastListener />
       <div className="relative flex min-h-svh w-full">
         {/* SidebarLeft handles both desktop (left sidebar) and mobile (bottom nav) */}
