@@ -85,17 +85,38 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <SidebarTrigger className="hidden md:flex" />
+    <div className="h-dvh flex flex-col overflow-hidden">
+      {/* ── DESKTOP HEADER ── */}
+      <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white/80 backdrop-blur-md border-b">
+        <SidebarTrigger />
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">
+            {loading ? "Loading..." : user ? (
+              <>
+                Welcome, {user.Firstname} {user.Lastname}
+                <span className="ml-2 text-sm font-normal text-muted-foreground">({user.Role})</span>
+              </>
+            ) : "Welcome"}
+          </h1>
+        </div>
+      </div>
 
-      <h1 className="text-2xl font-bold">
-        {loading ? "Loading..." : user ? (
-          <>
-            Welcome, {user.Firstname} {user.Lastname}
-            <span className="ml-2 text-sm font-normal text-muted-foreground">({user.Role})</span>
-          </>
-        ) : "Welcome"}
-      </h1>
+      {/* ── MOBILE HEADER ── */}
+      <div className="md:hidden shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 pt-5 pb-3">
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold text-gray-900">
+            {loading ? "Loading..." : user ? (
+              <>
+                Welcome, {user.Firstname} {user.Lastname}
+                <span className="ml-2 text-xs font-normal text-muted-foreground">({user.Role})</span>
+              </>
+            ) : "Welcome"}
+          </h1>
+        </div>
+      </div>
+
+      {/* ── CONTENT ── */}
+      <div className="flex-1 overflow-auto p-6 space-y-6">
 
       {/* Metric cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -154,6 +175,7 @@ export default function Dashboard() {
           onClose={() => setThemeOpen(false)}
         />
       )}
+      </div>
     </div>
   );
 }
