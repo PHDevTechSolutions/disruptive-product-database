@@ -227,26 +227,26 @@ export default function RolesPage() {
   return (
     <div className="h-dvh flex flex-col overflow-hidden bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <div className="bg-white border-b p-4 md:p-6">
+        {/* Mobile: Title on top, search below */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-3">
             <SidebarTrigger />
-            <h1 className="text-2xl font-semibold">User Access Management</h1>
+            <h1 className="text-xl md:text-2xl font-semibold">User Access Management</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search users..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 w-64"
-              />
-            </div>
+          <div className="relative w-full md:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 w-full md:w-64"
+            />
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between">
+        {/* Mobile: Stack description and pagination */}
+        <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <p className="text-sm text-gray-600">
             Manage access permissions for Engineering and IT users (bypass lets them skip For Approval on changes)
           </p>
@@ -278,7 +278,7 @@ export default function RolesPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 md:p-6">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="h-8 w-8 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />
@@ -297,31 +297,32 @@ export default function RolesPage() {
               paginatedUsers.map((user) => (
                 <Card key={user._id} className="overflow-hidden">
                   <CardHeader
-                    className="cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className="cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors p-4 md:p-6"
                     onClick={() => toggleUserExpansion(user._id)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-10 w-10 rounded-full">
+                    {/* Mobile: Stack layout, Desktop: Row layout */}
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 rounded-full shrink-0">
                           <AvatarImage src={user.profilePicture || ""} alt={getDisplayName(user)} />
                           <AvatarFallback className="bg-blue-100 text-blue-700">
                             {getNameInitials(getDisplayName(user))}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <CardTitle className="text-lg capitalize">{getDisplayName(user)}</CardTitle>
-                          <p className="text-sm text-gray-600">{user.Email}</p>
+                        <div className="min-w-0">
+                          <CardTitle className="text-base md:text-lg capitalize truncate">{getDisplayName(user)}</CardTitle>
+                          <p className="text-xs md:text-sm text-gray-600 truncate">{user.Email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-sm text-gray-500">
+                      <div className="flex items-center justify-between md:justify-end gap-2 md:gap-4">
+                        <div className="text-xs md:text-sm text-gray-500">
                           <Building className="h-4 w-4 inline mr-1" />
                           {user.Department} • {user.Role}
                         </div>
                         {expandedUsers.has(user._id) ? (
-                          <ChevronUp className="h-5 w-5 text-gray-400" />
+                          <ChevronUp className="h-5 w-5 text-gray-400 shrink-0" />
                         ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
+                          <ChevronDown className="h-5 w-5 text-gray-400 shrink-0" />
                         )}
                       </div>
                     </div>
