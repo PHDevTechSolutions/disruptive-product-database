@@ -121,6 +121,8 @@ export default async function handler(
     const rowPriceValidities: string[] = [];
     const rowDimensionalDrawings: string[] = [];
     const rowIlluminanceDrawings: string[] = [];
+    const rowOriginalSpecs:      string[] = [];
+    const rowProductRefIDs:      string[] = [];
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
@@ -144,6 +146,7 @@ export default async function handler(
       const priceValidities: string[] = [];
       const dimensionalDrawings: string[] = [];
       const illuminanceDrawings: string[] = [];
+      const productRefIDs: string[] = [];
 
       const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
 
@@ -212,6 +215,29 @@ export default async function handler(
         } else {
           specs.push("-");
         }
+
+        /* ── Original tech specs (for editing later) ── */
+        const origSpecs = p?.__originalTechnicalSpecifications || p?.technicalSpecifications;
+        if (origSpecs?.length) {
+          const groupedOrig = origSpecs
+            .map((g: any) => {
+              const title     = (g.title || "").trim();
+              const specLines = (g.specs || [])
+                .filter((s: any) => s.value && s.value.trim() !== "")
+                .map((s: any) => `${s.specId}: ${s.value.trim()}`)
+                .join(";;");
+              if (!specLines) return null;
+              return title ? `${title}~~${specLines}` : specLines;
+            })
+            .filter(Boolean)
+            .join("@@");
+          rowOriginalSpecs.push(groupedOrig || "-");
+        } else {
+          rowOriginalSpecs.push("-");
+        }
+
+        /* ── Product Reference ID for syncing ── */
+        productRefIDs.push(p?.productReferenceID || p?.id || "-");
       }
 
       if (rowProducts.length === 0) {
@@ -240,6 +266,13 @@ export default async function handler(
       rowPriceValidities.push(priceValidities.join(","));
       rowDimensionalDrawings.push(dimensionalDrawings.join(","));
       rowIlluminanceDrawings.push(illuminanceDrawings.join(","));
+      rowProductRefIDs.push(productRefIDs.join(","));
+    }
+
+    // Fill arrays for empty rows
+    for (let i = rowOriginalSpecs.length; i < rowCount; i++) {
+      rowOriginalSpecs.push("-");
+      rowProductRefIDs.push("-");
     }
 
     /* ── Final strings ── */
@@ -261,6 +294,8 @@ export default async function handler(
     const finalPriceValidities = rowPriceValidities.join(ROW_SEP);
     const finalDimensionalDrawings = rowDimensionalDrawings.join(ROW_SEP);
     const finalIlluminanceDrawings = rowIlluminanceDrawings.join(ROW_SEP);
+    const finalOriginalSpecs       = rowOriginalSpecs.join(ROW_SEP);
+    const finalProductRefIDs       = rowProductRefIDs.join(ROW_SEP);
     const finalItemCode        = rowItemCodes.some((r) => r !== "-" && r !== "")
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
@@ -306,6 +341,8 @@ export default async function handler(
           product_offer_image:                   finalImages,
           product_offer_qty:                     finalQtys,
           product_offer_technical_specification: finalSpecs,
+          original_technical_specification:        finalOriginalSpecs,
+          product_reference_id:                    finalProductRefIDs,
           product_offer_unit_cost:               finalUnitCosts,
           product_offer_pcs_per_carton:          finalPcsPerCarton,
           product_offer_packaging_details:       finalPackaging,
@@ -351,6 +388,8 @@ export default async function handler(
           product_offer_image:                   finalImages,
           product_offer_qty:                     finalQtys,
           product_offer_technical_specification: finalSpecs,
+          original_technical_specification:        finalOriginalSpecs,
+          product_reference_id:                    finalProductRefIDs,
           product_offer_unit_cost:               finalUnitCosts,
           product_offer_pcs_per_carton:          finalPcsPerCarton,
           product_offer_packaging_details:       finalPackaging,
@@ -389,6 +428,8 @@ export default async function handler(
           spf_creation_start_time: spf_creation_start_time ?? existing?.spf_creation_start_time ?? null,
           spf_creation_end_time:   spf_creation_end_time   ?? existing?.spf_creation_end_time   ?? null,
           date_updated: new Date().toISOString(),
+          original_technical_specification: finalOriginalSpecs,
+          product_reference_id: finalProductRefIDs,
         })
         .eq("spf_number", spf_number);
     }

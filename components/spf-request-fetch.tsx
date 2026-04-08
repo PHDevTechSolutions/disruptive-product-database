@@ -26,7 +26,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import FilteringComponent from "@/components/filtering-component-v2";
 import AddProductComponent from "@/components/add-product-component";
@@ -38,6 +38,7 @@ import { useUser } from "@/contexts/UserContext";
 import MultipleSpecsDetected from "@/components/multiple-specs-detected";
 import { useRoleAccess } from "@/contexts/RoleAccessContext";
 import { generateTDSPdf } from "@/lib/generateTDSPdf";
+import RevisionTypeSelector, { RevisionType } from "@/components/revision-type-selector";
 
 
 /* ─────────────────────────────────────────────────────────────── */
@@ -57,6 +58,8 @@ type SPFData = {
   product_offer_image: string;
   product_offer_qty: string;
   product_offer_technical_specification: string;
+  original_technical_specification?: string;
+  product_reference_id?: string;
   product_offer_unit_cost: string;
   product_offer_pcs_per_carton?: string;
   product_offer_packaging_details: string;
@@ -367,8 +370,12 @@ useEffect(() => {
 
   /* ── Edit mode state ── */
   const [editMode, setEditMode] = useState(false);
+  const [revisionType, setRevisionType] = useState<RevisionType | null>(null);
+  const [showRevisionSelector, setShowRevisionSelector] = useState(false);
   const [viewMode, setViewMode] = useState(false);
   const [productOffers, setProductOffers] = useState<Record<number, any[]>>({});
+  const [originalQuantities, setOriginalQuantities] = useState<Record<string, number>>({});
+  const [originalUnitCosts, setOriginalUnitCosts] = useState<Record<string, number>>({});
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -527,8 +534,20 @@ useEffect(() => {
     fetchStatus();
   }, [spfNumber]);
 
+  /* ── Handle revision type selection ── */
+  const handleRevisionTypeSelect = (type: RevisionType) => {
+    setRevisionType(type);
+    setShowRevisionSelector(false);
+    setOpen(false);
+    setTimeout(() => {
+      enterEditMode(type);
+      setEditMode(true);
+      setOpen(true);
+    }, 50);
+  };
+
   /* ── Enter edit mode ── */
-  const enterEditMode = () => {
+  const enterEditMode = (type: RevisionType) => {
     if (!data || !requestData) return;
 
     const rowImages = splitByRow(data.product_offer_image);
@@ -546,14 +565,20 @@ useEffect(() => {
         const rowPriceValidities = splitByRow(data.price_validity);
         const rowDimensionalEdit = splitByRow(data.dimensional_drawing);
         const rowIlluminanceEdit = splitByRow(data.illuminance_drawing);
+        const rowTdsBrands = splitByRow(data.tds);
         const rowSpecs = splitSpecsByRow(
           data.product_offer_technical_specification,
         );
+        const rowOriginalSpecs = splitSpecsByRow(
+          data.original_technical_specification,
+        );
+        const rowProductRefIDs = splitByRow(data.product_reference_id);
     const descs = (requestData.item_description || "")
       .split(",")
       .map((s) => s.trim());
 
     const initialOffers: Record<number, any[]> = {};
+    const origQtys: Record<string, number> = {};
 
     descs.forEach((_, rowIndex) => {
       const imgs = rowImages[rowIndex] ?? [];
@@ -578,6 +603,9 @@ useEffect(() => {
         const [length, width, height] = (packs[i] || "- x - x -")
           .split(" x ")
           .map((v) => v.trim());
+        const originalQty = Number(qtys[i] || 1);
+        // Store original quantity with key format "rowIndex_optionIndex"
+        origQtys[`${rowIndex}_${i}`] = originalQty;
         return {
           __isExisting: true,
           __sellingCost: selling[i] ?? "-",
@@ -608,7 +636,57 @@ useEffect(() => {
               }),
             }),
           ),
-          qty: Number(qtys[i] || 1),
+          // Store original specs from Supabase for editing multiple specs later
+          // Merge ALL versions' specs with | so hasMultipleSpecValues can detect multiple versions
+          __originalTechnicalSpecifications: (() => {
+            const allVersions = rowOriginalSpecs[rowIndex] ?? [];
+            if (allVersions.length === 0) return [];
+            if (allVersions.length === 1) {
+              // Single version - just parse normally
+              return (allVersions[0] ?? []).map((group) => ({
+                title: group.title,
+                specs: group.specs.map((spec) => {
+                  const colonIdx = spec.indexOf(":");
+                  if (colonIdx === -1) return { specId: spec, value: "" };
+                  return {
+                    specId: spec.slice(0, colonIdx).trim(),
+                    value: spec.slice(colonIdx + 1).trim(),
+                  };
+                }),
+              }));
+            }
+            // Multiple versions - merge all version values with |
+            const mergedGroups = new Map<string, Map<string, string[]>>();
+            allVersions.forEach((version) => {
+              version.forEach((group) => {
+                if (!mergedGroups.has(group.title)) {
+                  mergedGroups.set(group.title, new Map());
+                }
+                const specMap = mergedGroups.get(group.title)!;
+                group.specs.forEach((spec) => {
+                  const colonIdx = spec.indexOf(":");
+                  if (colonIdx === -1) return;
+                  const specId = spec.slice(0, colonIdx).trim();
+                  const value = spec.slice(colonIdx + 1).trim();
+                  if (!specMap.has(specId)) {
+                    specMap.set(specId, []);
+                  }
+                  specMap.get(specId)!.push(value);
+                });
+              });
+            });
+            return Array.from(mergedGroups.entries()).map(([title, specMap]) => ({
+              title,
+              specs: Array.from(specMap.entries()).map(([specId, values]) => ({
+                specId,
+                value: values.join(" | "),
+              })),
+            }));
+          })(),
+          // Store product reference ID for syncing to SPF records
+          productReferenceID: (rowProductRefIDs[rowIndex]?.[i] ?? "-") !== "-" ? rowProductRefIDs[rowIndex][i] : null,
+          qty: originalQty,
+          __originalQty: originalQty,
           __priceValidity: (() => {
             const pv = (rowPriceValidities[rowIndex] ?? [])[i];
             if (!pv || pv === "-") return "";
@@ -635,8 +713,52 @@ useEffect(() => {
       });
     });
 
+    // Store original unit costs for price update validation
+    const origCosts: Record<string, number> = {};
+    descs.forEach((_, rowIndex) => {
+      const costs = rowUnitCosts[rowIndex] ?? [];
+      costs.forEach((cost: string, i: number) => {
+        const originalCost = Number(cost) || 0;
+        origCosts[`${rowIndex}_${i}`] = originalCost;
+      });
+    });
+
     setProductOffers(initialOffers);
-    fetchProducts();
+    setOriginalQuantities(origQtys);
+    setOriginalUnitCosts(origCosts);
+    
+    // Only fetch products if needed based on revision type
+    if (type === "specs" || type === "both") {
+      fetchProducts();
+    }
+    
+    // For existing products without original specs stored, fetch from Firebase
+    const enrichProductsWithOriginalSpecs = async () => {
+      const updatedOffers: Record<number, any[]> = {};
+      for (const [rowIdx, products] of Object.entries(initialOffers)) {
+        const rowIndex = parseInt(rowIdx);
+        updatedOffers[rowIndex] = await Promise.all(
+          products.map(async (prod) => {
+            if (!prod.__isExisting) return prod;
+            // Skip if already has original specs from Supabase
+            if (prod.__originalTechnicalSpecifications?.length > 0) return prod;
+            const originalSpecs = await fetchOriginalProductSpecs(prod.productName);
+            if (originalSpecs) {
+              return { 
+                ...prod, 
+                __originalTechnicalSpecifications: originalSpecs 
+              };
+            }
+            return prod;
+          })
+        );
+      }
+      setProductOffers(updatedOffers);
+    };
+    
+    // Run enrichment after initial load
+    setTimeout(() => enrichProductsWithOriginalSpecs(), 0);
+    
     setEditMode(true);
     setViewMode(false);
     setActiveTab("items");
@@ -671,7 +793,35 @@ useEffect(() => {
         };
       }),
     }));
-    return { ...product, technicalSpecifications: frozenSpecs };
+    // Preserve __originalTechnicalSpecifications if it exists
+    const originalSpecs = product.__originalTechnicalSpecifications || product.technicalSpecifications;
+    return { 
+      ...product, 
+      technicalSpecifications: frozenSpecs,
+      __originalTechnicalSpecifications: originalSpecs,
+    };
+  };
+
+  /* ── Fetch original product specs by item code ── */
+  const fetchOriginalProductSpecs = async (itemCode: string): Promise<any[] | null> => {
+    if (!itemCode || itemCode === "-" || itemCode.startsWith("Option ")) return null;
+    try {
+      const q = query(
+        collection(db, "products"),
+        where("productName", "==", itemCode),
+        where("isActive", "==", true),
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const product = snap.docs[0].data();
+        return product.technicalSpecifications || null;
+      }
+      return null;
+    } catch (e) {
+      console.error("Failed to fetch original product specs:", e);
+      return null;
+    }
   };
 
   /* ── Add product to a row (shared logic after pipe check) ── */
@@ -680,7 +830,12 @@ useEffect(() => {
       const copy = { ...prev };
       copy[rowIndex] = [
         ...(copy[rowIndex] || []),
-        { ...product, qty: product.qty ?? 1 },
+        { 
+          ...product, 
+          qty: product.qty ?? 1,
+          // Store original specs for editing later
+          __originalTechnicalSpecifications: product.__originalTechnicalSpecifications || product.technicalSpecifications,
+        },
       ];
       return copy;
     });
@@ -715,7 +870,12 @@ useEffect(() => {
       setActiveTab("items");
       return;
     }
-    const frozen = freezeSpecs(product);
+    // Store original specs before freezing
+    const productWithOriginalSpecs = {
+      ...product,
+      __originalTechnicalSpecifications: product.technicalSpecifications,
+    };
+    const frozen = freezeSpecs(productWithOriginalSpecs);
     if (hasMultipleSpecValues(frozen)) {
       // Capture activeRowIndex into pendingPipeRowIndex BEFORE any state update
       const rowIdx = activeRowIndex;
@@ -793,7 +953,14 @@ useEffect(() => {
     try {
       const allProducts = Object.entries(productOffers).flatMap(
         ([rowIndex, prods]) =>
-          prods.map((p) => ({ ...p, __rowIndex: Number(rowIndex) })),
+          prods.map((p) => ({ 
+            ...p, 
+            __rowIndex: Number(rowIndex),
+            // Include original specs for later editing
+            __originalTechnicalSpecifications: p.__originalTechnicalSpecifications || p.technicalSpecifications,
+            // Include product reference ID for syncing changes from Firebase
+            productReferenceID: p.productReferenceID || p.id || null,
+          })),
       );
 
       const res = await fetch("/api/request/spf-request-edit-api", {
@@ -874,13 +1041,34 @@ useEffect(() => {
   /* ════════════════════════════════════════════════════════════ */
   /* EDIT MODE — MOBILE                                          */
   /* ════════════════════════════════════════════════════════════ */
-  const renderEditMobile = () => (
+  const renderEditMobile = () => {
+    // Determine which tabs to show based on revision type
+    const showProductsTab = revisionType === "specs" || revisionType === "both";
+    const tabs = showProductsTab 
+      ? (["details", "items", "products"] as const)
+      : (["details", "items"] as const);
+    
+    // Get revision type display label
+    const getRevisionLabel = () => {
+      switch (revisionType) {
+        case "price": return { label: "Price Update", color: "bg-green-100 text-green-700 border-green-200" };
+        case "specs": return { label: "Specs & Qty", color: "bg-blue-100 text-blue-700 border-blue-200" };
+        case "both": return { label: "Full Edit", color: "bg-orange-100 text-orange-700 border-orange-200" };
+        default: return { label: "Edit", color: "bg-gray-100 text-gray-700 border-gray-200" };
+      }
+    };
+    const revisionBadge = getRevisionLabel();
+
+    return (
     <>
       <DialogHeader className="px-4 pt-4 pb-2 border-b shrink-0">
         <div className="flex items-center justify-between gap-2">
           <DialogTitle className="text-sm font-semibold truncate flex items-center gap-2">
             <Pencil size={14} className="text-orange-500" />
             Edit {spfNumber}
+            <span className={`text-[9px] px-2 py-0.5 rounded border ${revisionBadge.color}`}>
+              {revisionBadge.label}
+            </span>
           </DialogTitle>
           <div className="flex items-center gap-1 shrink-0">
             <input
@@ -899,22 +1087,22 @@ useEffect(() => {
             >
               <Funnel size={14} />
             </Button>
-              {canAddProduct && (
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-8 text-xs rounded"
-                  onClick={() => setOpenAddProduct(true)}
-                >
-                  + Add
-                </Button>
-              )}
+            {showProductsTab && canAddProduct && (
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 text-xs rounded"
+                onClick={() => setOpenAddProduct(true)}
+              >
+                + Add
+              </Button>
+            )}
           </div>
         </div>
 
         {/* Tabs */}
         <div className="flex mt-2 border rounded overflow-hidden text-xs font-medium">
-          {(["details", "items", "products"] as const).map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab}
               type="button"
@@ -930,7 +1118,7 @@ useEffect(() => {
           ))}
         </div>
 
-        {activeTab === "products" && (
+        {showProductsTab && activeTab === "products" && (
           <div
             className={`mt-1 text-[11px] px-2 py-1 rounded ${
               activeRowIndex !== null
@@ -1088,27 +1276,67 @@ useEffect(() => {
                                 <span className="text-[10px] text-muted-foreground">
                                   Qty
                                 </span>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  className="border rounded px-2 py-0.5 text-xs w-16"
-                                  value={prod.qty || 1}
-                                  onChange={(e) => {
-                                    let qty = Number(e.target.value);
-                                    if (qty < 1) qty = 1;
-                                    setProductOffers((prev) => {
-                                      const copy = { ...prev };
-                                      const row = [...(copy[index] || [])];
-                                      row[i] = { ...row[i], qty };
-                                      copy[index] = row;
-                                      return copy;
-                                    });
-                                  }}
-                                />
-                                <span className="text-[10px] text-muted-foreground ml-auto">
-                                  Unit: {unitCost}
-                                </span>
+                                {revisionType === "price" ? (
+                                  // Price update: Qty not editable, show as read-only
+                                  <span className="text-xs font-medium">{prod.qty || 1}</span>
+                                ) : (
+                                  // Specs or Both: Qty editable with validation
+                                  <input
+                                    type="number"
+                                    min={getMinQty(index, i)}
+                                    className="border rounded px-2 py-0.5 text-xs w-16"
+                                    value={prod.qty || 1}
+                                    onChange={(e) => {
+                                      const minQty = getMinQty(index, i);
+                                      let qty = Number(e.target.value);
+                                      if (qty < minQty) qty = minQty;
+                                      setProductOffers((prev) => {
+                                        const copy = { ...prev };
+                                        const row = [...(copy[index] || [])];
+                                        row[i] = { ...row[i], qty };
+                                        copy[index] = row;
+                                        return copy;
+                                      });
+                                    }}
+                                  />
+                                )}
                               </div>
+                              {/* Unit Cost - editable for price/both, read-only for specs */}
+                              {revisionType === "specs" ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-muted-foreground">Unit Cost</span>
+                                  <span className="text-xs font-medium">{unitCost}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-muted-foreground">Unit Cost</span>
+                                  <input
+                                    type="number"
+                                    min={getMinUnitCost(index, i)}
+                                    step="0.01"
+                                    className="border rounded px-2 py-0.5 text-xs w-20"
+                                    value={prod?.commercialDetails?.unitCost || "0"}
+                                    onChange={(e) => {
+                                      const minCost = getMinUnitCost(index, i);
+                                      let cost = Number(e.target.value);
+                                      if (cost < minCost) cost = minCost;
+                                      setProductOffers((prev) => {
+                                        const copy = { ...prev };
+                                        const row = [...(copy[index] || [])];
+                                        row[i] = { 
+                                          ...row[i], 
+                                          commercialDetails: {
+                                            ...row[i].commercialDetails,
+                                            unitCost: cost.toString()
+                                          }
+                                        };
+                                        copy[index] = row;
+                                        return copy;
+                                      });
+                                    }}
+                                  />
+                                </div>
+                              )}
                               <div className="flex items-center gap-2 mt-1">
                                 <span className="text-[10px] text-muted-foreground shrink-0">
                                   Price Validity
@@ -1175,6 +1403,18 @@ useEffect(() => {
                               <InlineSpecs
                                 specs={prod.technicalSpecifications ?? []}
                               />
+                              {/* Edit Specs Button for mobile - show when product has multiple spec values */}
+                              {hasMultipleSpecValues({ 
+                                technicalSpecifications: prod.__originalTechnicalSpecifications || prod.technicalSpecifications 
+                              }) && (
+                                <button
+                                  type="button"
+                                  onClick={() => openSpecsRevision(index, i)}
+                                  className="mt-2 px-2 py-1 text-[10px] bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 w-full"
+                                >
+                                  Edit Specs
+                                </button>
+                              )}
                             </div>
                             <button
                               type="button"
@@ -1435,20 +1675,38 @@ useEffect(() => {
         open={showPipeModal}
         onClose={handlePipeClose}
         product={pendingPipeProduct}
-        onConfirm={handlePipeConfirm}
+        onConfirm={pendingPipeOptionIndex !== null ? handleSpecsRevisionConfirm : handlePipeConfirm}
       />
     </>
   );
+};
 
   /* ════════════════════════════════════════════════════════════ */
   /* EDIT MODE — DESKTOP                                         */
   /* ════════════════════════════════════════════════════════════ */
-  const renderEditDesktop = () => (
+  const renderEditDesktop = () => {
+    // Get revision type display label
+    const getRevisionLabel = () => {
+      switch (revisionType) {
+        case "price": return { label: "Price Update", color: "bg-green-100 text-green-700 border-green-200" };
+        case "specs": return { label: "Specs & Qty", color: "bg-blue-100 text-blue-700 border-blue-200" };
+        case "both": return { label: "Full Edit", color: "bg-orange-100 text-orange-700 border-orange-200" };
+        default: return { label: "Edit", color: "bg-gray-100 text-gray-700 border-gray-200" };
+      }
+    };
+    const revisionBadge = getRevisionLabel();
+    // Hide right product panel for price-only mode
+    const showRightPanel = revisionType === "specs" || revisionType === "both";
+
+    return (
     <>
       <DialogHeader className="w-full mb-4 relative">
         <DialogTitle className="text-center w-full flex items-center justify-center gap-2">
           <Pencil size={16} className="text-orange-500" />
           Edit SPF — {spfNumber}
+          <span className={`text-xs px-2 py-0.5 rounded border ${revisionBadge.color}`}>
+            {revisionBadge.label}
+          </span>
         </DialogTitle>
         <div className="absolute right-0 top-0 flex gap-2 items-center">
           <input
@@ -1466,7 +1724,7 @@ useEffect(() => {
           >
             <Funnel size={16} />
           </Button>
-          {canAddProduct && (
+          {showRightPanel && canAddProduct && (
             <Button
               className="rounded-none p-6"
               onClick={() => setOpenAddProduct(true)}
@@ -1482,6 +1740,13 @@ useEffect(() => {
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => {
                 if (!draggedProduct) return;
+                // Prevent deletion of existing products
+                if (draggedProduct.__isExisting) {
+                  toast.error("Cannot delete existing products that were already in the SPF. You can only delete newly added products.");
+                  setDraggedProduct(null);
+                  setShowTrash(false);
+                  return;
+                }
                 if (draggedProduct.__fromRow !== undefined) {
                   setProductOffers((prev) => {
                     const copy = { ...prev };
@@ -1669,9 +1934,13 @@ useEffect(() => {
                                     return (
                                       <tr
                                         key={i}
-                                        draggable
-                                        className="cursor-grab active:cursor-grabbing"
+                                        draggable={!prod.__isExisting}
+                                        className={`${prod.__isExisting ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
                                         onDragStart={(e) => {
+                                          if (prod.__isExisting) {
+                                            e.preventDefault();
+                                            return;
+                                          }
                                           e.dataTransfer.setData(
                                             "text/plain",
                                             "dragging",
@@ -1708,32 +1977,41 @@ useEffect(() => {
                                           )}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle">
-                                          <input
-                                            type="number"
-                                            min={1}
-                                            className="w-full border px-1 text-xs"
-                                            value={prod.qty ?? 1}
-                                            onChange={(e) => {
-                                              let qty = Number(e.target.value);
-                                              if (qty < 1) qty = 1;
-                                              setProductOffers((prev) => {
-                                                const copy = { ...prev };
-                                                const row = [
-                                                  ...(copy[index] || []),
-                                                ];
-                                                row[i] = { ...row[i], qty };
-                                                copy[index] = row;
-                                                return copy;
-                                              });
-                                            }}
-                                          />
+                                          {revisionType === "price" ? (
+                                            // Price update: Qty not editable, show as read-only
+                                            <span className="text-xs">{prod.qty ?? 1}</span>
+                                          ) : (
+                                            // Specs or Both: Qty editable with validation
+                                            <input
+                                              type="number"
+                                              min={getMinQty(index, i)}
+                                              className="w-full border px-1 text-xs"
+                                              value={prod.qty ?? 1}
+                                              onChange={(e) => {
+                                                const minQty = getMinQty(index, i);
+                                                let qty = Number(e.target.value);
+                                                if (qty < minQty) qty = minQty;
+                                                setProductOffers((prev) => {
+                                                  const copy = { ...prev };
+                                                  const row = [
+                                                    ...(copy[index] || []),
+                                                  ];
+                                                  row[i] = { ...row[i], qty };
+                                                  copy[index] = row;
+                                                  return copy;
+                                                });
+                                              }}
+                                            />
+                                          )}
                                         </td>
                                                     <td className="border px-2 py-1 text-center align-middle">
                                           <input
                                             type="datetime-local"
-                                            className="border px-1 py-0.5 text-xs w-full"
+                                            className={`border px-1 py-0.5 text-xs w-full ${prod.__isExisting ? "bg-gray-100 cursor-not-allowed" : ""}`}
                                             value={prod.__priceValidity ?? ""}
-                                            onChange={(e) => {
+                                            disabled={prod.__isExisting}
+                                            title={prod.__isExisting ? "Price validity cannot be edited for existing products" : "Price validity"}
+                                            onChange={prod.__isExisting ? undefined : (e) => {
                                               setProductOffers((prev) => {
                                                 const copy = { ...prev };
                                                 const row = [...(copy[index] || [])];
@@ -1819,9 +2097,51 @@ useEffect(() => {
                                                 </div>
                                               </div>
                                             ))}
+                                          {/* Edit Specs Button - show when product has multiple spec values */}
+                                          {hasMultipleSpecValues({ 
+                                            technicalSpecifications: prod.__originalTechnicalSpecifications || prod.technicalSpecifications 
+                                          }) && (
+                                            <button
+                                              type="button"
+                                              onClick={() => openSpecsRevision(index, i)}
+                                              className="mt-2 px-2 py-1 text-[10px] bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100"
+                                            >
+                                              Edit Specs
+                                            </button>
+                                          )}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle">
-                                          {unitCost}
+                                          {revisionType === "specs" ? (
+                                            // Specs update: Unit Cost not editable, show as read-only
+                                            <span className="text-xs">{unitCost}</span>
+                                          ) : (
+                                            // Price or Both: Unit Cost editable with validation
+                                            <input
+                                              type="number"
+                                              min={getMinUnitCost(index, i)}
+                                              step="0.01"
+                                              className="w-full border px-1 text-xs"
+                                              value={prod?.commercialDetails?.unitCost || "0"}
+                                              onChange={(e) => {
+                                                const minCost = getMinUnitCost(index, i);
+                                                let cost = Number(e.target.value);
+                                                if (cost < minCost) cost = minCost;
+                                                setProductOffers((prev) => {
+                                                  const copy = { ...prev };
+                                                  const row = [...(copy[index] || [])];
+                                                  row[i] = { 
+                                                    ...row[i], 
+                                                    commercialDetails: {
+                                                      ...row[i].commercialDetails,
+                                                      unitCost: cost.toString()
+                                                    }
+                                                  };
+                                                  copy[index] = row;
+                                                  return copy;
+                                                });
+                                              }}
+                                            />
+                                          )}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle">
                                           {prod?.commercialDetails
@@ -1917,7 +2237,11 @@ useEffect(() => {
                 key={p.id}
                 draggable
                 onDragStart={() => {
-                  setDraggedProduct({ ...p, __fromRow: undefined });
+                  setDraggedProduct({ 
+                    ...p, 
+                    __fromRow: undefined,
+                    __originalTechnicalSpecifications: p.technicalSpecifications,
+                  });
                   setShowTrash(true);
                 }}
                 onDragEnd={() => {
@@ -2126,6 +2450,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
       </DialogFooter>
     </>
   );
+};
 
   /* ════════════════════════════════════════════════════════════ */
   /* VIEW MODE — MOBILE                                          */
@@ -2749,11 +3074,87 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
     </Card>
   );
 
+  /* ── Check if quantity is valid (not below original) ── */
+  const isQtyValid = (rowIndex: number, optionIndex: number, qty: number): boolean => {
+    const key = `${rowIndex}_${optionIndex}`;
+    const originalQty = originalQuantities[key] ?? 1;
+    return qty >= originalQty;
+  };
+
+  /* ── Get minimum quantity for an option ── */
+  const getMinQty = (rowIndex: number, optionIndex: number): number => {
+    const key = `${rowIndex}_${optionIndex}`;
+    return originalQuantities[key] ?? 1;
+  };
+
+  /* ── Get minimum unit cost for an option (for price update validation) ── */
+  const getMinUnitCost = (rowIndex: number, optionIndex: number): number => {
+    const key = `${rowIndex}_${optionIndex}`;
+    return originalUnitCosts[key] ?? 0;
+  };
+
+  /* ── Open specs revision modal for a product ── */
+  const openSpecsRevision = (rowIndex: number, optionIndex: number) => {
+    const product = productOffers[rowIndex]?.[optionIndex];
+    if (!product) return;
+    
+    // Use original specs if available, otherwise current specs
+    const specsToUse = product.__originalTechnicalSpecifications || product.technicalSpecifications;
+    const productWithOriginalSpecs = {
+      ...product,
+      technicalSpecifications: specsToUse,
+    };
+    
+    // Create a frozen copy of the product specs for revision
+    const frozen = freezeSpecs(productWithOriginalSpecs);
+    if (hasMultipleSpecValues(frozen)) {
+      setPendingPipeProduct(frozen);
+      setPendingPipeRowIndex(rowIndex);
+      setPendingPipeOptionIndex(optionIndex);
+      setShowPipeModal(true);
+    } else {
+      toast.info("No multiple specification values detected for this product.");
+    }
+  };
+
+  /* ── Handle specs revision confirmation ── */
+  const [pendingPipeOptionIndex, setPendingPipeOptionIndex] = useState<number | null>(null);
+  
+  const handleSpecsRevisionConfirm = (filteredProduct: any) => {
+    if (pendingPipeRowIndex === null || pendingPipeOptionIndex === null) return;
+    
+    // Update the product with revised specs
+    setProductOffers((prev) => {
+      const copy = { ...prev };
+      const row = [...(copy[pendingPipeRowIndex] || [])];
+      row[pendingPipeOptionIndex] = { 
+        ...row[pendingPipeOptionIndex], 
+        technicalSpecifications: filteredProduct.technicalSpecifications,
+        __specsRevised: true
+      };
+      copy[pendingPipeRowIndex] = row;
+      return copy;
+    });
+    
+    toast.success("Product specifications updated!");
+    setPendingPipeProduct(null);
+    setPendingPipeRowIndex(null);
+    setPendingPipeOptionIndex(null);
+    setShowPipeModal(false);
+  };
+
   /* ════════════════════════════════════════════════════════════ */
   /* DIALOG WRAPPER                                              */
   /* ════════════════════════════════════════════════════════════ */
   return (
     <>
+      {/* ── Revision Type Selector ── */}
+      <RevisionTypeSelector
+        open={showRevisionSelector}
+        onOpenChange={setShowRevisionSelector}
+        onSelect={handleRevisionTypeSelect}
+        spfNumber={spfNumber}
+      />
       {/* ── Trigger button + status badge ── */}
       <div className="flex items-center gap-2">
         <Button
@@ -2854,10 +3255,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                   variant="outline"
                   className="gap-1.5 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
                   onClick={() => {
-                    setOpen(false);
-                    enterEditMode();
-                    setEditMode(true);
-                    setTimeout(() => setOpen(true), 50);
+                    setShowRevisionSelector(true);
                   }}
                 >
                   <Pencil size={12} />
@@ -2916,7 +3314,17 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
           open={showPipeModal}
           onClose={handlePipeClose}
           product={pendingPipeProduct}
-          onConfirm={handlePipeConfirm}
+          onConfirm={pendingPipeOptionIndex !== null ? handleSpecsRevisionConfirm : handlePipeConfirm}
+        />
+      )}
+
+      {/* ── Mobile MultipleSpecsDetected ── */}
+      {isMobile && (
+        <MultipleSpecsDetected
+          open={showPipeModal}
+          onClose={handlePipeClose}
+          product={pendingPipeProduct}
+          onConfirm={pendingPipeOptionIndex !== null ? handleSpecsRevisionConfirm : handlePipeConfirm}
         />
       )}
 

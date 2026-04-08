@@ -287,6 +287,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [pendingPipeRowIndex, setPendingPipeRowIndex] = useState<number | null>(
     null,
   );
+  // For editing specs of existing products in product offers
+  const [pendingPipeOptionIndex, setPendingPipeOptionIndex] = useState<number | null>(null);
+  const [isEditingSpecs, setIsEditingSpecs] = useState(false);
 
   /* ── Sync formData when rowData changes ── */
   useEffect(() => {
@@ -391,7 +394,13 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
         };
       }),
     }));
-    return { ...product, technicalSpecifications: frozenSpecs };
+    // Preserve __originalTechnicalSpecifications if it exists
+    const originalSpecs = product.__originalTechnicalSpecifications || product.technicalSpecifications;
+    return { 
+      ...product, 
+      technicalSpecifications: frozenSpecs,
+      __originalTechnicalSpecifications: originalSpecs,
+    };
   };
 
   /* ── Add product to a row (shared logic after pipe check) ── */
@@ -400,7 +409,12 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
       const copy = { ...prev };
       copy[rowIndex] = [
         ...(copy[rowIndex] || []),
-        { ...product, qty: product.qty ?? 1 },
+        { 
+          ...product, 
+          qty: product.qty ?? 1,
+          // Store original specs for editing later
+          __originalTechnicalSpecifications: product.__originalTechnicalSpecifications || product.technicalSpecifications,
+        },
       ];
       return copy;
     });
@@ -435,8 +449,13 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
       setActiveTab("items");
       return;
     }
+    // Store original specs before freezing
+    const productWithOriginalSpecs = {
+      ...product,
+      __originalTechnicalSpecifications: product.technicalSpecifications,
+    };
     // Check pipe before showing confirm sheet
-    const frozen = freezeSpecs(product);
+    const frozen = freezeSpecs(productWithOriginalSpecs);
     if (hasMultipleSpecValues(frozen)) {
       // Store row index in a local var so pipe modal has it
       setPendingPipeProduct(frozen);
@@ -476,9 +495,61 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     setPickerStep("list");
   };
 
+  /* ── Open specs revision modal for a product in product offers ── */
+  const openSpecsRevision = (rowIndex: number, optionIndex: number) => {
+    const product = productOffers[rowIndex]?.[optionIndex];
+    if (!product) return;
+
+    // Use original specs if available, otherwise current specs
+    const specsToUse = product.__originalTechnicalSpecifications || product.technicalSpecifications;
+    const productWithOriginalSpecs = {
+      ...product,
+      technicalSpecifications: specsToUse,
+    };
+
+    // Create a frozen copy of the product specs for revision
+    const frozen = freezeSpecs(productWithOriginalSpecs);
+    if (hasMultipleSpecValues(frozen)) {
+      setPendingPipeProduct(frozen);
+      setPendingPipeRowIndex(rowIndex);
+      setPendingPipeOptionIndex(optionIndex);
+      setIsEditingSpecs(true);
+      setShowPipeModal(true);
+    } else {
+      toast.info("No multiple specification values detected for this product.");
+    }
+  };
+
+  /* ── Handle specs revision confirmation ── */
+  const handleSpecsRevisionConfirm = (filteredProduct: any) => {
+    if (pendingPipeRowIndex === null || pendingPipeOptionIndex === null) return;
+
+    // Update the product with revised specs
+    setProductOffers((prev) => {
+      const copy = { ...prev };
+      const row = [...(copy[pendingPipeRowIndex] || [])];
+      row[pendingPipeOptionIndex] = {
+        ...row[pendingPipeOptionIndex],
+        technicalSpecifications: filteredProduct.technicalSpecifications,
+        __specsRevised: true,
+      };
+      copy[pendingPipeRowIndex] = row;
+      return copy;
+    });
+
+    toast.success("Product specifications updated!");
+    setPendingPipeProduct(null);
+    setPendingPipeRowIndex(null);
+    setPendingPipeOptionIndex(null);
+    setIsEditingSpecs(false);
+    setShowPipeModal(false);
+  };
+
   const handlePipeClose = () => {
     setPendingPipeProduct(null);
     setPendingPipeRowIndex(null);
+    setPendingPipeOptionIndex(null);
+    setIsEditingSpecs(false);
     setShowPipeModal(false);
     setDraggedProduct(null);
     setShowTrash(false);
@@ -514,7 +585,14 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     try {
       const allProducts = Object.entries(productOffers).flatMap(
         ([rowIndex, prods]) =>
-          prods.map((p) => ({ ...p, __rowIndex: Number(rowIndex) })),
+          prods.map((p) => ({ 
+            ...p, 
+            __rowIndex: Number(rowIndex),
+            // Include original specs for later editing
+            __originalTechnicalSpecifications: p.__originalTechnicalSpecifications || p.technicalSpecifications,
+            // Include product reference ID for syncing changes from Firebase
+            productReferenceID: p.productReferenceID || p.id || null,
+          })),
       );
 
       const res = await fetch("/api/request/spf-request-create-api", {
@@ -883,6 +961,18 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                 <InlineSpecs
                                   specs={prod.technicalSpecifications ?? []}
                                 />
+                                {/* Edit Specs Button for mobile */}
+                                {hasMultipleSpecValues({ 
+                                  technicalSpecifications: prod.__originalTechnicalSpecifications || prod.technicalSpecifications 
+                                }) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openSpecsRevision(index, i)}
+                                    className="mt-2 px-2 py-1 text-[10px] bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 w-full"
+                                  >
+                                    Edit Specs
+                                  </button>
+                                )}
                               </div>
                               <button
                                 type="button"
@@ -1142,7 +1232,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
         open={showPipeModal}
         onClose={handlePipeClose}
         product={pendingPipeProduct}
-        onConfirm={handlePipeConfirm}
+        onConfirm={isEditingSpecs ? handleSpecsRevisionConfirm : handlePipeConfirm}
       />
     </>
   );
@@ -1595,6 +1685,18 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                                 </div>
                                               </div>
                                             ))}
+                                            {/* Edit Specs Button - show when product has multiple spec values */}
+                                            {hasMultipleSpecValues({ 
+                                              technicalSpecifications: prod.__originalTechnicalSpecifications || prod.technicalSpecifications 
+                                            }) && (
+                                              <button
+                                                type="button"
+                                                onClick={() => openSpecsRevision(index, i)}
+                                                className="mt-2 px-2 py-1 text-[10px] bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100"
+                                              >
+                                                Edit Specs
+                                              </button>
+                                            )}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle">
                                           {unitCost}
@@ -1695,7 +1797,11 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   key={p.id}
   draggable
   onDragStart={() => {
-    setDraggedProduct({ ...p, __fromRow: undefined });
+    setDraggedProduct({ 
+      ...p, 
+      __fromRow: undefined,
+      __originalTechnicalSpecifications: p.technicalSpecifications,
+    });
     setShowTrash(true);
   }}
   onDragEnd={() => {
@@ -1929,7 +2035,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
           open={showPipeModal}
           onClose={handlePipeClose}
           product={pendingPipeProduct}
-          onConfirm={handlePipeConfirm}
+          onConfirm={isEditingSpecs ? handleSpecsRevisionConfirm : handlePipeConfirm}
         />
       )}
 

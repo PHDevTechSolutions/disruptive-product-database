@@ -147,6 +147,7 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
   const [technicalSpecs, setTechnicalSpecs] = useState<TechnicalSpecification[]>([]);
   const [productFamilySearch, setProductFamilySearch] = useState("");
   const [newProductType, setNewProductType] = useState("");
+  const [productReferenceID, setProductReferenceID] = useState<string | null>(null);
   const [selectedCategoryTypes, setSelectedCategoryTypes] = useState<SelectedCategoryType[]>([]);
   const [classificationSearch, setClassificationSearch] = useState("");
   const [categoryTypeSearch, setCategoryTypeSearch] = useState("");
@@ -220,6 +221,8 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
             .sort((a: TechnicalSpecification, b: TechnicalSpecification) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999))
         );
       }
+      // Store product reference ID for syncing to SPF records
+      setProductReferenceID(data.productReferenceID || null);
     });
     return () => unsub();
   }, [productId]);
@@ -459,6 +462,7 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
       await logProductEvent({
         whatHappened: "Product Edited",
         productId: productId,
+        productReferenceID: productReferenceID ?? undefined,
         productClass,
         pricePoint: noSupplier ? "ECONOMY" : pricePoint,
         brandOrigin: noSupplier ? "CHINA" : brandOrigin,
@@ -482,6 +486,52 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
         referenceID: user?.ReferenceID,
         userId: userId ?? undefined,
       });
+
+      // Sync changes to SPF records in Supabase
+      if (productReferenceID) {
+        try {
+          const syncRes = await fetch("/api/request/sync-product-to-spf-api", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              productReferenceID,
+              technicalSpecifications: technicalSpecs.filter(s => s.title.trim()).map(s => ({
+                technicalSpecificationId: s.id || "",
+                title: s.title,
+                specs: s.specs.filter(r => r.specId.trim()).map(r => ({ specId: r.specId.trim(), value: r.value?.trim() || "" })),
+              })),
+              mainImage: imageLink ? { url: imageLink } : null,
+              supplier: noSupplier ? null : {
+                supplierId: selectedSupplier?.supplierId,
+                company: selectedSupplier?.company,
+                supplierBrand: selectedSupplierBrand?.supplierBrand || "",
+              },
+              commercialDetails: {
+                unitCost: unitCost ? parseFloat(unitCost) : null,
+                packaging: { 
+                  length: packLength ? `${parseFloat(packLength)} cm` : null, 
+                  width: packWidth ? `${parseFloat(packWidth)} cm` : null, 
+                  height: packHeight ? `${parseFloat(packHeight)} cm` : null 
+                },
+                pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
+                factoryAddress: factoryAddress || "",
+                portOfDischarge: portOfDischarge || "",
+              },
+              productClass,
+            }),
+          });
+          
+          if (syncRes.ok) {
+            const syncData = await syncRes.json();
+            console.log("Synced to SPF records:", syncData);
+          } else {
+            console.error("Failed to sync to SPF records:", await syncRes.text());
+          }
+        } catch (syncErr) {
+          console.error("Error syncing to SPF records:", syncErr);
+          // Don't block the save if sync fails
+        }
+      }
 
       toast.success("Product saved successfully");
       if (onClose) onClose();
