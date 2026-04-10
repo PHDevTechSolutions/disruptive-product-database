@@ -409,6 +409,10 @@ useEffect(() => {
     null,
   );
 
+  /* ── Row Selection modal ── */
+  const [showRowSelectModal, setShowRowSelectModal] = useState(false);
+  const [pendingRowSelectProduct, setPendingRowSelectProduct] = useState<any | null>(null);
+
   useEffect(() => {
     if (!open) return;
     const start = new Date().toISOString();
@@ -920,6 +924,48 @@ useEffect(() => {
     setShowPipeModal(false);
     setDraggedProduct(null);
     setShowTrash(false);
+  };
+
+  /* ── Add Button Click Handler ── */
+  const handleAddButtonClick = (product: any) => {
+    const itemCount = itemDescriptions.length || 0;
+
+    if (itemCount === 0) {
+      toast.error("No items available. Please add items first.");
+      return;
+    }
+
+    if (itemCount === 1) {
+      // If only 1 item, add directly to row 0
+      const productWithOriginalSpecs = {
+        ...product,
+        __originalTechnicalSpecifications: product.technicalSpecifications,
+      };
+      tryAddProduct(0, productWithOriginalSpecs);
+    } else {
+      // If multiple items, show row selection dialog
+      const productWithOriginalSpecs = {
+        ...product,
+        __originalTechnicalSpecifications: product.technicalSpecifications,
+      };
+      setPendingRowSelectProduct(productWithOriginalSpecs);
+      setShowRowSelectModal(true);
+    }
+  };
+
+  /* ── Row Selection Confirm ── */
+  const handleRowSelectConfirm = (selectedRowIndex: number) => {
+    if (pendingRowSelectProduct === null) return;
+    tryAddProduct(selectedRowIndex, pendingRowSelectProduct);
+    toast.success(`Product added to row ${selectedRowIndex + 1}!`);
+    setShowRowSelectModal(false);
+    setPendingRowSelectProduct(null);
+  };
+
+  /* ── Row Selection Cancel ── */
+  const handleRowSelectCancel = () => {
+    setShowRowSelectModal(false);
+    setPendingRowSelectProduct(null);
   };
 
   /* ── Submit edit ── */
@@ -2250,6 +2296,19 @@ useEffect(() => {
                 }}
 className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside-avoid mb-3 cursor-grab"
 >
+  {/* 🔥 ADD BUTTON - Top Left */}
+  <button
+    type="button"
+    onClick={(e) => {
+      e.stopPropagation();
+      handleAddButtonClick(p);
+    }}
+    className="absolute top-2 left-2 z-10 bg-white border rounded-full p-1 hover:bg-gray-100 shadow"
+    title="Add to row"
+  >
+    <Plus size={14} className="text-green-600" />
+  </button>
+
   {/* 🔥 EDIT BUTTON */}
 {canEditProduct && (
   <button
@@ -3358,29 +3417,71 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
       </Dialog>
 
       {/* 🔥 EDIT PRODUCT MODAL */}
-<Dialog open={openEditProduct && canEditProduct} onOpenChange={setOpenEditProduct}>
-  <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-    <DialogHeader>
-      <DialogTitle>Edit Product</DialogTitle>
-    </DialogHeader>
+      <Dialog open={openEditProduct && canEditProduct} onOpenChange={setOpenEditProduct}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Product</DialogTitle>
+          </DialogHeader>
 
-    {selectedProduct?.id && (
-      <EditProductComponent
-        productId={selectedProduct.id}
-        onClose={() => setOpenEditProduct(false)}
-      />
-    )}
+          {selectedProduct?.id && (
+            <EditProductComponent
+              productId={selectedProduct.id}
+              onClose={() => setOpenEditProduct(false)}
+            />
+          )}
 
-    <DialogFooter>
-      <Button
-        variant="outline"
-        onClick={() => setOpenEditProduct(false)}
-      >
-        Close
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOpenEditProduct(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 🔥 ROW SELECTION DIALOG */}
+      <Dialog open={showRowSelectModal} onOpenChange={setShowRowSelectModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Row to Add Product</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Choose which item row to add the product to:
+            </p>
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {itemDescriptions.map((desc, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => handleRowSelectConfirm(index)}
+                  className="w-full flex items-center gap-3 p-3 border rounded-lg hover:bg-accent hover:border-primary transition-colors text-left"
+                >
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {spfNumber}-{String(index + 1).padStart(3, "0")}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">
+                      {desc?.replace(/\|/g, " · ") || "No description"}
+                    </p>
+                  </div>
+                  <Plus size={16} className="text-green-600 flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleRowSelectCancel}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
