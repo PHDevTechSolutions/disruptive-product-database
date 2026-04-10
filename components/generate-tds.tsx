@@ -281,82 +281,142 @@ export default function GenerateTDS({
     });
 
     /* ================= DRAWINGS ================= */
-    const tableEndY = (pdf as any).lastAutoTable.finalY;
-    const drawingY = tableEndY + 35 * scaleFactor;
-    const drawingWidth = 190 * scaleFactor;
-    const drawingHeight = 95 * scaleFactor;
-    const gapBetween = 60 * scaleFactor;
-    const totalWidth = drawingWidth * 2 + gapBetween;
-    const startX = (pageWidth - totalWidth) / 2;
-
-    pdf.setFontSize(11 * scaleFactor);
-    pdf.setFont("helvetica", "bold");
-
-    pdf.text("Dimensional Drawing", startX + drawingWidth / 2, drawingY - 10, { align: "center" });
-    pdf.text(
-      "Illuminance Level",
-      startX + drawingWidth + gapBetween + drawingWidth / 2,
-      drawingY - 10,
-      { align: "center" },
-    );
-
     const dimensionalSource = uploadedDimensionalDrawing || dimensionalDrawing;
-    if (dimensionalSource) {
-      let img: string;
-      if (dimensionalSource instanceof File) {
-        img = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(dimensionalSource);
-        });
-      } else {
-        const converted = convertDriveToThumbnail(dimensionalSource.url);
-        const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
-        img = await fetch(proxyUrl)
-          .then((r) => r.blob())
-          .then(
-            (blob) =>
-              new Promise<string>((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.readAsDataURL(blob);
-              }),
-          );
-      }
-      pdf.addImage(img, "PNG", startX, drawingY, drawingWidth, drawingHeight);
-    }
-
     const illuminanceSource = uploadedIlluminanceLevel || illuminanceDrawing;
-    if (illuminanceSource) {
-      let img2: string;
-      if (illuminanceSource instanceof File) {
-        img2 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(illuminanceSource);
-        });
-      } else {
-        const converted = convertDriveToThumbnail(illuminanceSource.url);
-        const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
-        img2 = await fetch(proxyUrl)
-          .then((r) => r.blob())
-          .then(
-            (blob) =>
-              new Promise<string>((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.readAsDataURL(blob);
-              }),
-          );
+
+    // Only show drawings section if at least one exists
+    if (dimensionalSource || illuminanceSource) {
+      const tableEndY = (pdf as any).lastAutoTable.finalY;
+      const drawingY = tableEndY + 35 * scaleFactor;
+      const drawingWidth = 190 * scaleFactor;
+      const drawingHeight = 95 * scaleFactor;
+      const gapBetween = 60 * scaleFactor;
+
+      pdf.setFontSize(11 * scaleFactor);
+      pdf.setFont("helvetica", "bold");
+
+      const hasBoth = dimensionalSource && illuminanceSource;
+
+      if (hasBoth) {
+        // Side by side
+        const totalWidth = drawingWidth * 2 + gapBetween;
+        const startX = (pageWidth - totalWidth) / 2;
+
+        pdf.text("Dimensional Drawing", startX + drawingWidth / 2, drawingY - 10, { align: "center" });
+        pdf.text(
+          "Illuminance Level",
+          startX + drawingWidth + gapBetween + drawingWidth / 2,
+          drawingY - 10,
+          { align: "center" },
+        );
+
+        let img: string;
+        if (dimensionalSource instanceof File) {
+          img = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(dimensionalSource);
+          });
+        } else {
+          const converted = convertDriveToThumbnail(dimensionalSource.url);
+          const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
+          img = await fetch(proxyUrl)
+            .then((r) => r.blob())
+            .then(
+              (blob) =>
+                new Promise<string>((resolve) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.readAsDataURL(blob);
+                }),
+            );
+        }
+        pdf.addImage(img, "PNG", startX, drawingY, drawingWidth, drawingHeight);
+
+        let img2: string;
+        if (illuminanceSource instanceof File) {
+          img2 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(illuminanceSource);
+          });
+        } else {
+          const converted = convertDriveToThumbnail(illuminanceSource.url);
+          const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
+          img2 = await fetch(proxyUrl)
+            .then((r) => r.blob())
+            .then(
+              (blob) =>
+                new Promise<string>((resolve) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.readAsDataURL(blob);
+                }),
+            );
+        }
+        pdf.addImage(
+          img2,
+          "PNG",
+          startX + drawingWidth + gapBetween,
+          drawingY,
+          drawingWidth,
+          drawingHeight,
+        );
+      } else if (dimensionalSource) {
+        // Only dimensional - center it
+        const startX = (pageWidth - drawingWidth) / 2;
+        pdf.text("Dimensional Drawing", startX + drawingWidth / 2, drawingY - 10, { align: "center" });
+
+        let img: string;
+        if (dimensionalSource instanceof File) {
+          img = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(dimensionalSource);
+          });
+        } else {
+          const converted = convertDriveToThumbnail(dimensionalSource.url);
+          const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
+          img = await fetch(proxyUrl)
+            .then((r) => r.blob())
+            .then(
+              (blob) =>
+                new Promise<string>((resolve) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.readAsDataURL(blob);
+                }),
+            );
+        }
+        pdf.addImage(img, "PNG", startX, drawingY, drawingWidth, drawingHeight);
+      } else if (illuminanceSource) {
+        // Only illuminance - center it
+        const startX = (pageWidth - drawingWidth) / 2;
+        pdf.text("Illuminance Level", startX + drawingWidth / 2, drawingY - 10, { align: "center" });
+
+        let img: string;
+        if (illuminanceSource instanceof File) {
+          img = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(illuminanceSource);
+          });
+        } else {
+          const converted = convertDriveToThumbnail(illuminanceSource.url);
+          const proxyUrl = `/api/gdrive-image?url=${encodeURIComponent(converted)}`;
+          img = await fetch(proxyUrl)
+            .then((r) => r.blob())
+            .then(
+              (blob) =>
+                new Promise<string>((resolve) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.readAsDataURL(blob);
+                }),
+            );
+        }
+        pdf.addImage(img, "PNG", startX, drawingY, drawingWidth, drawingHeight);
       }
-      pdf.addImage(
-        img2,
-        "PNG",
-        startX + drawingWidth + gapBetween,
-        drawingY,
-        drawingWidth,
-        drawingHeight,
-      );
     }
 
     /* ================= FOOTER ================= */

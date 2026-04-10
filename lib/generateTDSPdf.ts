@@ -185,31 +185,57 @@ export async function generateTDSPdf({
   });
 
   // ── Drawings ──
-  const tableEndY  = (pdf as any).lastAutoTable.finalY;
-  const drawingY   = tableEndY + 35;
-  const drawingW   = 190, drawingH = 95;
-  const gapBetween = 60;
-  const totalW     = drawingW * 2 + gapBetween;
-  const startX     = (pageWidth - totalW) / 2;
-
-  pdf.setFontSize(11);
-  pdf.setFont("helvetica", "bold");
-  pdf.text("Dimensional Drawing",  startX + drawingW / 2,                     drawingY - 10, { align: "center" });
-  pdf.text("Illuminance Level",    startX + drawingW + gapBetween + drawingW / 2, drawingY - 10, { align: "center" });
-
   const dimensionalSource = resolveDrawingSource(dimensionalDrawing);
-  if (dimensionalSource) {
-    try {
-      const img = await toBase64(dimensionalSource);
-      pdf.addImage(img, "PNG", startX, drawingY, drawingW, drawingH);
-    } catch {}
-  }
   const illuminanceSource = resolveDrawingSource(illuminanceDrawing);
-  if (illuminanceSource) {
-    try {
-      const img = await toBase64(illuminanceSource);
-      pdf.addImage(img, "PNG", startX + drawingW + gapBetween, drawingY, drawingW, drawingH);
-    } catch {}
+
+  // Only show drawings section if at least one exists
+  if (dimensionalSource || illuminanceSource) {
+    const tableEndY  = (pdf as any).lastAutoTable.finalY;
+    const drawingY   = tableEndY + 35;
+    const drawingW   = 190, drawingH = 95;
+    const gapBetween = 60;
+
+    pdf.setFontSize(11);
+    pdf.setFont("helvetica", "bold");
+
+    const hasBoth = dimensionalSource && illuminanceSource;
+
+    if (hasBoth) {
+      // Side by side
+      const totalW = drawingW * 2 + gapBetween;
+      const startX = (pageWidth - totalW) / 2;
+
+      pdf.text("Dimensional Drawing",  startX + drawingW / 2,                     drawingY - 10, { align: "center" });
+      pdf.text("Illuminance Level",    startX + drawingW + gapBetween + drawingW / 2, drawingY - 10, { align: "center" });
+
+      try {
+        const img = await toBase64(dimensionalSource);
+        pdf.addImage(img, "PNG", startX, drawingY, drawingW, drawingH);
+      } catch {}
+
+      try {
+        const img = await toBase64(illuminanceSource);
+        pdf.addImage(img, "PNG", startX + drawingW + gapBetween, drawingY, drawingW, drawingH);
+      } catch {}
+    } else if (dimensionalSource) {
+      // Only dimensional - center it
+      const startX = (pageWidth - drawingW) / 2;
+      pdf.text("Dimensional Drawing", startX + drawingW / 2, drawingY - 10, { align: "center" });
+
+      try {
+        const img = await toBase64(dimensionalSource);
+        pdf.addImage(img, "PNG", startX, drawingY, drawingW, drawingH);
+      } catch {}
+    } else {
+      // Only illuminance - center it
+      const startX = (pageWidth - drawingW) / 2;
+      pdf.text("Illuminance Level", startX + drawingW / 2, drawingY - 10, { align: "center" });
+
+      try {
+        const img = await toBase64(illuminanceSource!);
+        pdf.addImage(img, "PNG", startX, drawingY, drawingW, drawingH);
+      } catch {}
+    }
   }
 
   // ── Footer ──
