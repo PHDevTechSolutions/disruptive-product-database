@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import {
   Dialog,
@@ -28,6 +28,28 @@ export default function MultipleSpecsDetected({
   const [selectedSpecs, setSelectedSpecs] = useState<Record<string, string>>(
     {}
   );
+
+  // Pre-populate selectedSpecs from product's current spec values when dialog opens
+  // Only for specs with multiple values (pipe specs)
+  useEffect(() => {
+    if (open && product?.technicalSpecifications) {
+      const currentSpecs: Record<string, string> = {};
+      product.technicalSpecifications.forEach((group: any) => {
+        group.specs?.forEach((spec: any) => {
+          const values = (spec.value || "")
+            .split("|")
+            .map((v: string) => v.trim())
+            .filter(Boolean);
+          // Only pre-populate if this spec has multiple values (pipe spec)
+          // Single values don't need selection
+          if (values.length > 1) {
+            currentSpecs[spec.specId] = values[0];
+          }
+        });
+      });
+      setSelectedSpecs(currentSpecs);
+    }
+  }, [open, product]);
 
   if (!product) return null;
 
