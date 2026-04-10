@@ -35,7 +35,18 @@ const ALLOWED_STATUSES = [
   "Approved By TSM",
   "Approved by Sales Head",
   "Approved By Sales Head",
+  "Endorsed by Sales Head",
+  "Endorsed By Sales Head",
 ];
+
+// Case-insensitive check helper
+function isAllowedStatus(status: string | undefined): boolean {
+  if (!status) return false;
+  const normalizedStatus = status.toLowerCase().trim();
+  return ALLOWED_STATUSES.some(
+    (allowed) => allowed.toLowerCase().trim() === normalizedStatus
+  );
+}
 
 /* ─────────────────────────────────────────────────────────────── */
 /* STATUS BADGE                                                     */
@@ -183,7 +194,7 @@ export default function RequestsPage() {
       const data = await res.json();
 
       const mapped = (data.requests || [])
-        .filter((r: any) => ALLOWED_STATUSES.includes(r.status ?? ""))
+        .filter((r: any) => isAllowedStatus(r.status))
         .map((r: any) => ({
           ...r,
           date_created: r.date_created
