@@ -411,7 +411,7 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
     } catch { await updateDoc(doc(db, "products", pid), { mediaStatus: "failed" }); }
   };
 
-  const handleSaveProduct = async () => {
+const handleSaveProduct = async () => {
     if (saving) return;
     try {
       setSaving(true);
@@ -431,7 +431,21 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
       await syncTemplateChangesToFamily();
 
       await updateDoc(productRef, {
-        mainImage: imageLink ? { name: "external-image", url: imageLink, publicId: null } : undefined,
+        mainImage: mainImage
+          ? null
+          : imageLink
+          ? { name: "external-image", url: imageLink, publicId: null }
+          : null,
+        dimensionalDrawing: dimensionalDrawing
+          ? null
+          : dimensionalLink
+          ? { name: "external-image", url: dimensionalLink, publicId: null }
+          : null,
+        illuminanceDrawing: illuminanceDrawing
+          ? null
+          : illuminanceLink
+          ? { name: "external-image", url: illuminanceLink, publicId: null }
+          : null,
         pricePoint: noSupplier ? "ECONOMY" : pricePoint,
         brandOrigin: noSupplier ? "CHINA" : brandOrigin,
         productClass,
@@ -507,7 +521,21 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
                 title: s.title,
                 specs: s.specs.filter(r => r.specId.trim()).map(r => ({ specId: r.specId.trim(), value: r.value?.trim() || "" })),
               })),
-              mainImage: imageLink ? { url: imageLink } : null,
+              mainImage: mainImage
+                ? null
+                : imageLink
+                ? { url: imageLink }
+                : null,
+              dimensionalDrawing: dimensionalDrawing
+                ? null
+                : dimensionalLink
+                ? { url: dimensionalLink }
+                : null,
+              illuminanceDrawing: illuminanceDrawing
+                ? null
+                : illuminanceLink
+                ? { url: illuminanceLink }
+                : null,
               supplier: noSupplier ? null : {
                 supplierId: selectedSupplier?.supplierId,
                 company: selectedSupplier?.company,
@@ -515,10 +543,10 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
               },
               commercialDetails: {
                 unitCost: unitCost ? parseFloat(unitCost) : null,
-                packaging: { 
-                  length: packLength ? `${parseFloat(packLength)} cm` : null, 
-                  width: packWidth ? `${parseFloat(packWidth)} cm` : null, 
-                  height: packHeight ? `${parseFloat(packHeight)} cm` : null 
+                packaging: {
+                  length: packLength ? `${parseFloat(packLength)} cm` : null,
+                  width: packWidth ? `${parseFloat(packWidth)} cm` : null,
+                  height: packHeight ? `${parseFloat(packHeight)} cm` : null,
                 },
                 pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
                 factoryAddress: factoryAddress || "",
@@ -527,7 +555,7 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
               productClass,
             }),
           });
-          
+
           if (syncRes.ok) {
             const syncData = await syncRes.json();
             console.log("Synced to SPF records:", syncData);
@@ -536,7 +564,6 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
           }
         } catch (syncErr) {
           console.error("Error syncing to SPF records:", syncErr);
-          // Don't block the save if sync fails
         }
       }
 

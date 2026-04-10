@@ -401,7 +401,7 @@ export default function EditProductPage() {
   };
 
   /* ---------------- Save ---------------- */
-  const handleSaveProduct = async () => {
+const handleSaveProduct = async () => {
     if (saving) return;
     try {
       setSaving(true);
@@ -421,7 +421,21 @@ export default function EditProductPage() {
       await syncTemplateChangesToFamily();
 
       await updateDoc(productRef, {
-        mainImage: imageLink ? { name: "external-image", url: imageLink, publicId: null } : undefined,
+        mainImage: mainImage
+          ? null
+          : imageLink
+          ? { name: "external-image", url: imageLink, publicId: null }
+          : null,
+        dimensionalDrawing: dimensionalDrawing
+          ? null
+          : dimensionalLink
+          ? { name: "external-image", url: dimensionalLink, publicId: null }
+          : null,
+        illuminanceDrawing: illuminanceDrawing
+          ? null
+          : illuminanceLink
+          ? { name: "external-image", url: illuminanceLink, publicId: null }
+          : null,
         pricePoint: noSupplier ? "ECONOMY" : pricePoint,
         brandOrigin: noSupplier ? "CHINA" : brandOrigin,
         productClass,
@@ -458,30 +472,30 @@ export default function EditProductPage() {
 
       // ✅ AUDIT LOG
       await logProductEvent({
-        whatHappened      : "Product Edited",
-        productId         : productId!,
+        whatHappened: "Product Edited",
+        productId: productId!,
         productClass,
-        pricePoint        : noSupplier ? "ECONOMY" : pricePoint,
-        brandOrigin       : noSupplier ? "CHINA" : brandOrigin,
-        supplier          : noSupplier ? null : {
-          supplierId   : selectedSupplier!.supplierId,
-          company      : selectedSupplier!.company,
+        pricePoint: noSupplier ? "ECONOMY" : pricePoint,
+        brandOrigin: noSupplier ? "CHINA" : brandOrigin,
+        supplier: noSupplier ? null : {
+          supplierId: selectedSupplier!.supplierId,
+          company: selectedSupplier!.company,
           supplierBrand: selectedSupplierBrand?.supplierBrand || "",
         },
-        categoryTypes : selectedCategoryTypes.map(c => ({ productUsageId: c.id, categoryTypeName: c.name })),
+        categoryTypes: selectedCategoryTypes.map(c => ({ productUsageId: c.id, categoryTypeName: c.name })),
         productFamilies: selectedProductFamily
           ? [{ productFamilyId: selectedProductFamily.id, productFamilyName: selectedProductFamily.name }]
           : [],
-        mainImage          : imageLink ? { url: imageLink } : null,
-        dimensionalDrawing : dimensionalLink ? { url: dimensionalLink } : null,
-        illuminanceDrawing : illuminanceLink ? { url: illuminanceLink } : null,
+        mainImage: imageLink ? { url: imageLink } : null,
+        dimensionalDrawing: dimensionalLink ? { url: dimensionalLink } : null,
+        illuminanceDrawing: illuminanceLink ? { url: illuminanceLink } : null,
         technicalSpecifications: technicalSpecs.filter(s => s.title.trim()).map(s => ({
           technicalSpecificationId: s.id || "",
           title: s.title,
           specs: s.specs.filter(r => r.specId.trim()).map(r => ({ specId: r.specId.trim(), value: r.value?.trim() || "" })),
         })),
         referenceID: user?.ReferenceID,
-        userId     : userId ?? undefined,
+        userId: userId ?? undefined,
       });
 
       toast.success("Product saved successfully");
