@@ -20,10 +20,10 @@ import {
 } from "@/components/ui/dialog";
 import { useNotifications } from "@/contexts/NotificationContext";
 
-const EngiConnectLogo = () => (
-  <div className="flex items-center justify-center size-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg rotate-3">
+const EspironLogo = () => (
+  <div className="flex items-center justify-center size-9 bg-linear-to-br from-[#be2d2d] to-[#5f2828] rounded-xl shadow-lg">
     <div className="relative flex items-center justify-center size-full">
-      <Activity size={18} className="text-white animate-pulse" />
+      <MessageSquare size={18} className="text-white" />
       <div className="absolute inset-0 border-2 border-white/20 rounded-xl scale-90" />
     </div>
   </div>
@@ -254,9 +254,9 @@ export function CollaborationHubDialog({
     const element = document.getElementById(`msg-${msgId}`);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "center" });
-      element.classList.add("ring-2", "ring-blue-400", "ring-offset-2", "rounded-xl");
+      element.classList.add("ring-2", "ring-[#dc8c28]", "ring-offset-2", "rounded-xl");
       setTimeout(() => {
-        element.classList.remove("ring-2", "ring-blue-400", "ring-offset-2", "rounded-xl");
+        element.classList.remove("ring-2", "ring-[#dc8c28]", "ring-offset-2", "rounded-xl");
       }, 2000);
     } else {
       toast.error("Message not found in history");
@@ -291,7 +291,7 @@ export function CollaborationHubDialog({
         return (
           <span key={i} className={cn(
             "font-black px-1.5 py-0.5 rounded-md",
-            isMe ? "bg-yellow-400 text-slate-900" : "bg-blue-500/20 text-blue-100"
+            isMe ? "bg-[#dc8c28] text-white" : "bg-[#be2d2d]/20 text-[#be2d2d]"
           )}>
             {part}
           </span>
@@ -450,23 +450,25 @@ export function CollaborationHubDialog({
         <div className="flex flex-col h-full bg-[#f8fafc] relative overflow-hidden">
           
           {/* Header */}
-          <div className="p-5 bg-slate-900 text-white shrink-0 rounded-t-[24px]">
+          <div className="p-5 bg-linear-to-r from-[#4d2121] to-[#5f2828] text-white shrink-0 rounded-t-[24px]">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <EngiConnectLogo />
+                <EspironLogo />
                 <div>
-                  <h3 className="text-sm font-bold tracking-tight text-white uppercase">{title}</h3>
+                  <h3 className="text-base font-bold tracking-tight text-white">{spfNumber}</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className="size-1.5 bg-green-400 rounded-full animate-pulse" />
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Online</p>
+                    <p className="text-[10px] text-white/70 font-medium uppercase tracking-wider">Online</p>
+                    <span className="text-[10px] text-white/50">•</span>
+                    <p className="text-[10px] text-white/70 font-medium">{title}</p>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-400 hover:text-white rounded-full" onClick={() => setIsSearching(!isSearching)}>
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={() => setIsSearching(!isSearching)}>
                   <Search size={18} />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-400 hover:text-white rounded-full" onClick={() => onOpenChange(false)}>
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={() => onOpenChange(false)}>
                   <X size={20} />
                 </Button>
               </div>
@@ -474,7 +476,7 @@ export function CollaborationHubDialog({
             {isSearching && (
               <input
                 autoFocus
-                className="w-full bg-white/10 border-none rounded-xl px-4 py-2 text-xs text-white placeholder:text-slate-500 outline-none ring-1 ring-white/20 focus:ring-blue-500 mt-3"
+                className="w-full bg-white/10 border-none rounded-xl px-4 py-2 text-xs text-white placeholder:text-white/40 outline-none ring-1 ring-white/20 focus:ring-[#dc8c28] mt-3"
                 placeholder="Search project history..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -510,7 +512,7 @@ export function CollaborationHubDialog({
                 <React.Fragment key={msg.id}>
                   {isFirstUnread && (
                     <div ref={unreadRef} className="flex items-center justify-center my-6">
-                      <span className="px-4 py-1 bg-blue-100 text-blue-600 text-[9px] font-black uppercase rounded-full border border-blue-200">
+                      <span className="px-4 py-1 bg-[#be2d2d]/10 text-[#be2d2d] text-[9px] font-black uppercase rounded-full border border-[#be2d2d]/20">
                         New Messages Below
                       </span>
                     </div>
@@ -522,7 +524,7 @@ export function CollaborationHubDialog({
                   >
                     <Avatar className="h-9 w-9 shrink-0 self-end border-2 border-white shadow-sm">
                       <AvatarImage src={isMe ? profilePicture : msg.senderImage} className="object-cover" />
-                      <AvatarFallback className="bg-blue-600 text-[10px] text-white">{(msg.senderName || "U").charAt(0)}</AvatarFallback>
+                      <AvatarFallback className="bg-[#be2d2d] text-[10px] text-white">{(msg.senderName || "U").charAt(0)}</AvatarFallback>
                     </Avatar>
 
                     <div className={cn("flex flex-col gap-1 max-w-[75%]", isMe ? "items-end" : "items-start")}>
@@ -534,17 +536,17 @@ export function CollaborationHubDialog({
                         }}
                         className={cn(
                           "px-4 py-2.5 text-[13px] shadow-sm relative transition-all duration-300 cursor-pointer touch-manipulation",
-                          isMe ? "bg-blue-600 text-white rounded-2xl rounded-br-none" : "bg-white text-slate-800 rounded-2xl rounded-bl-none",
+                          isMe ? "bg-[#be2d2d] text-white rounded-2xl rounded-br-none" : "bg-white text-slate-800 rounded-2xl rounded-bl-none",
                           msg.isResolved && "opacity-60 grayscale-[0.5]",
-                          isActive && "ring-2 ring-blue-400 ring-offset-1"
+                          isActive && "ring-2 ring-[#dc8c28] ring-offset-1"
                         )}
                       >
                         <div className={cn(
-                          "absolute -top-10 flex items-center gap-1 transition-all z-20 bg-white shadow-xl rounded-full p-1 border border-slate-100",
+                          "absolute top-full mt-2 flex items-center gap-1 transition-all z-20 bg-white shadow-xl rounded-full p-1 border border-slate-100",
                           (isActive) ? "opacity-100 scale-100 visible" : "opacity-0 scale-95 invisible group-hover:opacity-100 group-hover:scale-100 group-hover:visible",
                           isMe ? "right-0" : "left-0"
                         )}>
-                          <button onClick={(e) => { e.stopPropagation(); toggleReaction(msg.id, "👍"); }} className="p-1.5 hover:bg-slate-50 rounded-full transition-colors"><ThumbsUp size={14} className="text-blue-500" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); toggleReaction(msg.id, "👍"); }} className="p-1.5 hover:bg-slate-50 rounded-full transition-colors"><ThumbsUp size={14} className="text-[#be2d2d]" /></button>
                           <button onClick={(e) => { e.stopPropagation(); toggleReaction(msg.id, "❤️"); }} className="p-1.5 hover:bg-slate-50 rounded-full transition-colors"><Heart size={14} className="text-red-500" /></button>
                           <button onClick={(e) => { e.stopPropagation(); toggleReaction(msg.id, "😊"); }} className="p-1.5 hover:bg-slate-50 rounded-full transition-colors"><Smile size={14} className="text-yellow-500" /></button>
                           <div className="w-px h-4 bg-slate-200 mx-1" />
@@ -594,7 +596,7 @@ export function CollaborationHubDialog({
                           </div>
                         )}
 
-                        <div className={cn("flex items-center justify-end gap-1 text-[9px] mt-1 opacity-60 font-medium", isMe ? "text-blue-100" : "text-slate-400")}>
+                        <div className={cn("flex items-center justify-end gap-1 text-[9px] mt-1 opacity-60 font-medium", isMe ? "text-white/80" : "text-slate-400")}>
                           {new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           {isMe && seenByOthers.length > 0 && (
                             <div className="flex items-center gap-0.5 ml-1">
@@ -615,7 +617,7 @@ export function CollaborationHubDialog({
           {showScrollButton && (
             <button 
               onClick={() => scrollToBottom()}
-              className="absolute bottom-28 right-6 h-11 w-11 bg-white border border-slate-200 rounded-full shadow-2xl flex items-center justify-center text-blue-600 hover:scale-110 transition-all z-[60] animate-in fade-in zoom-in"
+              className="absolute bottom-28 right-6 h-11 w-11 bg-white border border-slate-200 rounded-full shadow-2xl flex items-center justify-center text-[#be2d2d] hover:scale-110 transition-all z-[60] animate-in fade-in zoom-in"
             >
               <ChevronDown size={20} />
               {unreadCount > 0 && (
@@ -636,11 +638,11 @@ export function CollaborationHubDialog({
             )}
 
             {replyingTo && (
-              <div className="mb-3 p-2 bg-blue-50 rounded-xl flex items-center justify-between border-l-4 border-blue-500 animate-in slide-in-from-bottom-2">
+              <div className="mb-3 p-2 bg-[#be2d2d]/5 rounded-xl flex items-center justify-between border-l-4 border-[#be2d2d] animate-in slide-in-from-bottom-2">
                 <div className="flex items-center gap-2 overflow-hidden text-[11px]">
-                  <CornerDownRight size={14} className="text-blue-500 shrink-0" />
+                  <CornerDownRight size={14} className="text-[#be2d2d] shrink-0" />
                   <div className="truncate">
-                    <span className="font-bold text-blue-600">Reply to {replyingTo.senderName}</span>
+                    <span className="font-bold text-[#be2d2d]">Reply to {replyingTo.senderName}</span>
                     <p className="truncate text-slate-500 italic">"{replyingTo.text}"</p>
                   </div>
                 </div>
@@ -651,11 +653,11 @@ export function CollaborationHubDialog({
             {status !== "APPROVED" && status !== "FINALIZED" ? (
               <div className="flex items-center gap-3">
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
-                <Button size="icon" variant="ghost" disabled={isSending} onClick={() => fileInputRef.current?.click()} className="h-11 w-11 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors">
+                <Button size="icon" variant="ghost" disabled={isSending} onClick={() => fileInputRef.current?.click()} className="h-11 w-11 text-slate-400 hover:text-[#be2d2d] hover:bg-[#be2d2d]/10 rounded-2xl transition-colors">
                   <ImagePlus size={20} />
                 </Button>
                 <input 
-                  className="flex-1 bg-slate-100 rounded-2xl px-5 py-3.5 text-sm outline-none border-none focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-400" 
+                  className="flex-1 bg-slate-100 rounded-2xl px-5 py-3.5 text-sm outline-none border-none focus:ring-2 focus:ring-[#be2d2d]/20 transition-all placeholder:text-slate-400" 
                   placeholder={isSending ? "Syncing..." : "Type your message..."} 
                   value={chatMessage} 
                   disabled={isSending}
@@ -666,7 +668,7 @@ export function CollaborationHubDialog({
                   size="icon" 
                   onClick={() => sendChat()} 
                   disabled={!chatMessage.trim() || isSending} 
-                  className="bg-blue-600 hover:bg-blue-700 h-11 w-11 rounded-2xl shadow-lg transition-all active:scale-95"
+                  className="bg-[#be2d2d] hover:bg-[#8c2323] h-11 w-11 rounded-2xl shadow-lg transition-all active:scale-95"
                 >
                   {isSending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
                 </Button>
