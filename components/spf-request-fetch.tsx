@@ -3156,10 +3156,10 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
         spfNumber={spfNumber}
       />
       {/* ── Trigger button + status badge ── */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap">
         <Button
           variant="outline"
-          className="rounded-none p-6"
+          className="rounded-none px-4 py-2 h-9 shrink-0"
           onClick={() => {
             onOpen?.();
             setOpen(true);
@@ -3168,21 +3168,19 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
           View
         </Button>
 
-        <div className="flex items-center gap-1.5">
-          {data?.status && (
-            <span
-              className={`text-xs px-2 py-1 rounded uppercase ${
-                isApproved
-                  ? "bg-green-100 text-green-700"
-                  : isForRevision
-                    ? "bg-orange-100 text-orange-700"
-                    : "bg-yellow-100 text-yellow-700"
-              }`}
-            >
-              {getStatusLabel(data.status)}
-            </span>
-          )}
-        </div>
+        {data?.status && (
+          <span
+            className={`text-xs px-2 py-1 rounded uppercase shrink-0 ${
+              isApproved
+                ? "bg-green-100 text-green-700"
+                : isForRevision
+                  ? "bg-orange-100 text-orange-700"
+                  : "bg-yellow-100 text-yellow-700"
+            }`}
+          >
+            {getStatusLabel(data.status)}
+          </span>
+        )}
       </div>
 
       {/* ── Main view dialog ── */}

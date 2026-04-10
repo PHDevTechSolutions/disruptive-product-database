@@ -373,19 +373,19 @@ export default function RequestsPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formattedDate}</td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2 flex-wrap items-center">
+                      <div className="flex gap-2 flex-nowrap items-center">
                         <CollaborationHubRowTrigger
                           requestId={String(createdSPFIds[req.spf_number] || "")}
                           spfNumber={req.spf_number}
                           status={spfStatus}
                         />
                         {!isProcurementStatus(req.spf_number) && (
-                          <Button className="rounded-none h-9 px-4" variant="outline" onClick={() => handleCreateFromRow(req)}>
+                          <Button className="rounded-none h-9 px-4 shrink-0" variant="outline" onClick={() => handleCreateFromRow(req)}>
                             Create
                           </Button>
                         )}
                         {spfStatus && (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 shrink-0">
                             <SPFRequestFetch
                               spfNumber={req.spf_number}
                               onOpen={() => markSPFRequestAsRead(req.spf_number)}
