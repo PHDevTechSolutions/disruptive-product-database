@@ -152,7 +152,7 @@ function getResolvedName(referenceID: string | undefined): string {
 function getStatusLabel(status: string | undefined): string {
   if (status === "Pending For Procurement") return "For Procurement Costing";
   if (status === "Approved By Procurement") return "Ready For Quotation";
-  if (status === "For Revision") return "Revised By Sales";
+  if (status === "For Revision") return "FOR REVISION";
   return status ?? "";
 }
 
