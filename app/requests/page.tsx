@@ -31,10 +31,8 @@ function getStatusLabel(status: string | undefined): string {
 /* ALLOWED STATUSES                                                */
 /* ─────────────────────────────────────────────────────────────── */
 const ALLOWED_STATUSES = [
-  "Approved by TSM",
-  "Approved By TSM",
-  "Approved by Sales Head",
-  "Approved By Sales Head",
+  "approved by tsm",
+  "approved by sales head",
 ];
 
 /* ─────────────────────────────────────────────────────────────── */
@@ -183,7 +181,7 @@ export default function RequestsPage() {
       const data = await res.json();
 
       const mapped = (data.requests || [])
-        .filter((r: any) => ALLOWED_STATUSES.includes(r.status ?? ""))
+        .filter((r: any) => ALLOWED_STATUSES.includes((r.status ?? "").toLowerCase()))
         .map((r: any) => ({
           ...r,
           date_created: r.date_created
@@ -238,12 +236,12 @@ export default function RequestsPage() {
   /* ─────────────────────── */
   const isProcurementStatus = (spfNumber: string): boolean => {
     if (!createdSPFLoaded) return true;
-    const s = createdSPF[spfNumber];
+    const s = (createdSPF[spfNumber] ?? "").toLowerCase();
     return (
-      s === "Approved By Procurement" ||
-      s === "Pending For Procurement" ||
-      s === "For Revision" ||
-      s === "Pending on Sales"
+      s === "approved by procurement" ||
+      s === "pending for procurement" ||
+      s === "for revision" ||
+      s === "pending on sales"
     );
   };
 
