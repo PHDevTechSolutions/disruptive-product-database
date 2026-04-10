@@ -36,7 +36,10 @@ export function CollaborationHubRowTrigger({
     userRole: string;
   } | null>(null);
 
-  const unreadCount = requestId ? getChatUnreadCount(requestId) : 0;
+  // Use spfNumber as effective doc ID when requestId is empty (document was deleted)
+  const effectiveDocId = requestId || spfNumber;
+
+  const unreadCount = effectiveDocId ? getChatUnreadCount(effectiveDocId) : 0;
   const hasUnread = unreadCount > 0;
 
   useEffect(() => {
@@ -64,16 +67,16 @@ export function CollaborationHubRowTrigger({
   const handleOpen = () => {
     setOpen(true);
     // Mark chat as read when opening
-    if (requestId) {
-      markChatAsRead(requestId);
+    if (effectiveDocId) {
+      markChatAsRead(effectiveDocId);
     }
   };
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
-    if (!isOpen && requestId) {
+    if (!isOpen && effectiveDocId) {
       // Mark chat as read when closing too
-      markChatAsRead(requestId);
+      markChatAsRead(effectiveDocId);
     }
   };
 
@@ -103,6 +106,7 @@ export function CollaborationHubRowTrigger({
             open={open}
             onOpenChange={handleOpenChange}
             requestId={requestId}
+            spfNumber={spfNumber}
             collectionName={collectionName}
             currentUserId={userId || ""}
             userName={userData.userName}
@@ -141,6 +145,7 @@ export function CollaborationHubRowTrigger({
           open={open}
           onOpenChange={handleOpenChange}
           requestId={requestId}
+          spfNumber={spfNumber}
           collectionName={collectionName}
           currentUserId={userId || ""}
           userName={userData.userName}

@@ -52,6 +52,7 @@ interface Message {
 
 interface CollaborationHubDialogProps {
   requestId: string;
+  spfNumber: string;
   collectionName: string;
   currentUserId: string;
   userName: string;
@@ -66,6 +67,7 @@ interface CollaborationHubDialogProps {
 
 export function CollaborationHubDialog({
   requestId,
+  spfNumber,
   collectionName,
   currentUserId,
   userName,
@@ -76,6 +78,8 @@ export function CollaborationHubDialog({
   open,
   onOpenChange,
 }: CollaborationHubDialogProps) {
+  // Use spfNumber as document ID when requestId is empty (document was deleted)
+  const effectiveDocId = requestId || spfNumber;
   const [chatMessage, setChatMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [lastSeenTime, setLastSeenTime] = useState<number>(Date.now());
@@ -103,7 +107,7 @@ export function CollaborationHubDialog({
 
   // Fetch messages from Firebase - always listen for notifications even when closed
   useEffect(() => {
-    if (!requestId) return;
+    if (!effectiveDocId) return;
     
     // Initialize notification sound
     if (!chatNotifSound.current) {
@@ -111,7 +115,7 @@ export function CollaborationHubDialog({
       chatNotifSound.current.preload = "auto";
     }
     
-    const docRef = doc(dbCollab, collectionName, requestId);
+    const docRef = doc(dbCollab, collectionName, effectiveDocId);
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
@@ -138,7 +142,7 @@ export function CollaborationHubDialog({
           
           // Only update if there are actually unread messages
           if (unreadCount > 0) {
-            updateChatUnreadCount(requestId, unreadCount);
+            updateChatUnreadCount(effectiveDocId, unreadCount);
           }
         }
       }
@@ -147,15 +151,15 @@ export function CollaborationHubDialog({
     });
 
     return () => unsubscribe();
-  }, [requestId, collectionName, open, currentUserId, updateChatUnreadCount, messages.length]);
+  }, [effectiveDocId, collectionName, open, currentUserId, updateChatUnreadCount, messages.length]);
 
   // Mark chat as read when dialog opens
   useEffect(() => {
-    if (open && requestId) {
-      markChatAsRead(requestId);
+    if (open && effectiveDocId) {
+      markChatAsRead(effectiveDocId);
       lastReadMessageCount.current = messages.length;
     }
-  }, [open, requestId, markChatAsRead, messages.length]);
+  }, [open, effectiveDocId, markChatAsRead, messages.length]);
 
   useEffect(() => {
     sentSound.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
@@ -166,7 +170,7 @@ export function CollaborationHubDialog({
 
   // FEATURE: TYPING INDICATORS (WRITE)
   useEffect(() => {
-    const typingRef = doc(dbCollab, "typing_indicators", `${requestId}_${currentUserId}`);
+    const typingRef = doc(dbCollab, "typing_indicators", `${effectiveDocId}_${currentUserId}`);
     if (chatMessage.length > 0) {
       setDoc(typingRef, { userName, updatedAt: serverTimestamp() });
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -178,24 +182,24 @@ export function CollaborationHubDialog({
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       deleteDoc(typingRef);
     };
-  }, [chatMessage, requestId, currentUserId, userName]);
+  }, [chatMessage, effectiveDocId, currentUserId, userName]);
 
   // Listen to typing indicators from others
   useEffect(() => {
-    if (!open || !requestId) return;
+    if (!open || !effectiveDocId) return;
     
     const typingQuery = doc(dbCollab, "typing_indicators", `${requestId}_others`);
     // This is simplified - in production you'd query all typing docs for this request
     
     return () => {};
-  }, [open, requestId]);
+  }, [open, effectiveDocId]);
 
   // FEATURE: SYSTEM MESSAGES (STATUS CHANGE)
   useEffect(() => {
     if (prevStatus.current !== status && status !== "PENDING" && open) {
       const injectSystemMessage = async () => {
         try {
-          const docRef = doc(dbCollab, collectionName, requestId);
+          const docRef = doc(dbCollab, collectionName, effectiveDocId);
           await updateDoc(docRef, {
             messages: arrayUnion({
               id: `sys-${Date.now()}`,
@@ -213,7 +217,7 @@ export function CollaborationHubDialog({
       injectSystemMessage();
     }
     prevStatus.current = status;
-  }, [status, requestId, collectionName, currentUserId, open]);
+  }, [status, effectiveDocId, collectionName, currentUserId, open]);
 
   useEffect(() => {
     if (open && messages.length > 0) {
@@ -230,12 +234,12 @@ export function CollaborationHubDialog({
               }
               return msg;
             });
-            const docRef = doc(dbCollab, collectionName, requestId); 
+            const docRef = doc(dbCollab, collectionName, effectiveDocId); 
             await updateDoc(docRef, { messages: updatedMessages });
             
             // Clear notification count for this chat since all messages are now seen
-            if (requestId) {
-              updateChatUnreadCount(requestId, 0);
+            if (effectiveDocId) {
+              updateChatUnreadCount(effectiveDocId, 0);
             }
           } catch (e) {
             console.error("Failed to update seen status", e);
@@ -244,7 +248,7 @@ export function CollaborationHubDialog({
       };
       markAsSeen();
     }
-  }, [open, messages, currentUserId, requestId, collectionName, updateChatUnreadCount]);
+  }, [open, messages, currentUserId, effectiveDocId, collectionName, updateChatUnreadCount]);
 
   const scrollToMessage = (msgId: string) => {
     const element = document.getElementById(`msg-${msgId}`);
@@ -342,7 +346,7 @@ export function CollaborationHubDialog({
     setReplyingTo(null);
 
     try {
-      const docRef = doc(dbCollab, collectionName, requestId); 
+      const docRef = doc(dbCollab, collectionName, effectiveDocId); 
       try {
         await updateDoc(docRef, {
           messages: arrayUnion({
@@ -406,7 +410,7 @@ export function CollaborationHubDialog({
 
   const toggleReaction = async (msgId: string, emoji: string) => {
     try {
-      const docRef = doc(dbCollab, collectionName, requestId); 
+      const docRef = doc(dbCollab, collectionName, effectiveDocId); 
       const updatedMessages = messages.map(m => {
         if (m.id === msgId) {
           const reactions = { ...(m.reactions || {}) };
@@ -427,7 +431,7 @@ export function CollaborationHubDialog({
 
   const toggleResolve = async (msgId: string) => {
     try {
-      const docRef = doc(dbCollab, collectionName, requestId); 
+      const docRef = doc(dbCollab, collectionName, effectiveDocId); 
       const updatedMessages = messages.map(m => 
         m.id === msgId ? { ...m, isResolved: !m.isResolved } : m
       );
