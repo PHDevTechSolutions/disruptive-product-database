@@ -150,6 +150,7 @@ export default function EditProductPage() {
 
   const dragIndex = useRef<number | null>(null);
   const dragRow = useRef<{ specIndex: number; rowIndex: number } | null>(null);
+  const hasInitializedImages = useRef(false);
 
   useEffect(() => {
     if (!userId) { router.push("/login"); return; }
@@ -195,9 +196,15 @@ export default function EditProductPage() {
         setPricePoint(data.pricePoint || "Economy");
         setBrandOrigin(data.brandOrigin || "China");
       }
-      if (data.mainImage?.url) { setImageLink(data.mainImage.url); setPreview(convertDriveToThumbnail(data.mainImage.url)); }
-      if (data.dimensionalDrawing?.url) { setDimensionalLink(data.dimensionalDrawing.url); setDimensionalPreview(convertDriveToThumbnail(data.dimensionalDrawing.url)); }
-      if (data.illuminanceDrawing?.url) { setIlluminanceLink(data.illuminanceDrawing.url); setIlluminancePreview(convertDriveToThumbnail(data.illuminanceDrawing.url)); }
+      if (!hasInitializedImages.current) {
+        if (data.mainImage?.url) { setImageLink(data.mainImage.url); setPreview(convertDriveToThumbnail(data.mainImage.url)); }
+        else { setImageLink(""); setPreview(null); }
+        if (data.dimensionalDrawing?.url) { setDimensionalLink(data.dimensionalDrawing.url); setDimensionalPreview(convertDriveToThumbnail(data.dimensionalDrawing.url)); }
+        else { setDimensionalLink(""); setDimensionalPreview(null); }
+        if (data.illuminanceDrawing?.url) { setIlluminanceLink(data.illuminanceDrawing.url); setIlluminancePreview(convertDriveToThumbnail(data.illuminanceDrawing.url)); }
+        else { setIlluminanceLink(""); setIlluminancePreview(null); }
+        hasInitializedImages.current = true;
+      }
       if (Array.isArray(data.categoryTypes)) {
         setSelectedCategoryTypes(data.categoryTypes.map((c: any) => ({ id: c.productUsageId, name: c.categoryTypeName })));
       }
