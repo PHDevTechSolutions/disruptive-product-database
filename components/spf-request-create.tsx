@@ -56,6 +56,7 @@ export type SPFRequest = {
   item_code?: string;
   status?: string;
   date_created?: string;
+  date_updated?: string;
   process_by?: string;
   tin_no?: string;
   manager?: string;

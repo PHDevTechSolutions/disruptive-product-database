@@ -1,7 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@supabase/supabase-js";
+import { getPhilippinesISOString } from "@/lib/datetime";
 
 const ROW_SEP = "|ROW|";
+
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /*
  * This API syncs product changes from Firebase to existing SPF records in Supabase.
@@ -120,15 +126,24 @@ export default async function handler(
       if (needsUpdate) {
         // Update the spf_creation record
         const newOriginalSpecs = updatedOriginalSpecs.join(ROW_SEP);
-        
+        const syncISO = getPhilippinesISOString();
+
         const { error: updateError } = await supabase
           .from("spf_creation")
           .update({
             original_technical_specification: newOriginalSpecs,
-            date_updated: new Date().toISOString(),
+            date_updated: syncISO,
           })
           .eq("id", spf.id);
-        
+
+        /* ── UPDATE parent spf_request date_updated ── */
+        if (!updateError) {
+          await supabase
+            .from("spf_request")
+            .update({ date_updated: syncISO })
+            .eq("spf_number", spf.spf_number);
+        }
+
         if (updateError) {
           console.error(`Error updating SPF ${spf.spf_number}:`, updateError);
         } else {
@@ -170,6 +185,7 @@ export default async function handler(
           .from("spf_creation_history")
           .update({
             original_technical_specification: newOriginalSpecs,
+            date_updated: getPhilippinesISOString(),
           })
           .eq("id", history.id);
         

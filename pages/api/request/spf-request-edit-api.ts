@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { getPhilippinesISOString } from "@/lib/datetime";
 import { supabase } from "@/utils/supabase";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -316,14 +317,17 @@ export default async function handler(
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
 
+    const nowISO = getPhilippinesISOString();
+
     /* ── INSERT version history snapshot ── */
     await supabase.from("spf_creation_history").insert({
       spf_number,
       version_number: nextVersion,
       version_label:  `${spf_number}_v${nextVersion}`,
-      created_at:     new Date().toISOString(),
+      created_at:     nowISO,
       edited_by:      resolvedEditedBy,
       item_added_author: resolvedEditedBy,
+      date_updated:   nowISO,
 
       status: currentStatus,
 
@@ -392,8 +396,14 @@ export default async function handler(
 
         spf_creation_start_time: spf_creation_start_time ?? null,
         spf_creation_end_time:   spf_creation_end_time   ?? null,
-        date_updated: new Date().toISOString(),
+        date_updated: nowISO,
       })
+      .eq("spf_number", spf_number);
+
+    /* ── UPDATE parent spf_request date_updated ── */
+    await supabase
+      .from("spf_request")
+      .update({ date_updated: nowISO })
       .eq("spf_number", spf_number);
 
     /* ── Audit log ── */

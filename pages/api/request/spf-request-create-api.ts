@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { getPhilippinesISOString } from "@/lib/datetime";
 import { supabase } from "@/utils/supabase";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -362,14 +363,16 @@ export default async function handler(
           spf_creation_start_time: spf_creation_start_time ?? null,
           spf_creation_end_time:   spf_creation_end_time   ?? null,
 
-          date_created: new Date().toISOString(),
-          date_updated: new Date().toISOString(),
+          date_created: getPhilippinesISOString(),
+          date_updated: getPhilippinesISOString(),
         });
 
       if (insertError) {
         console.error(insertError);
         return res.status(500).json(insertError);
       }
+
+      const nowISO = getPhilippinesISOString();
 
       /* ── Version history v1 ── */
       const { error: historyError } = await supabase
@@ -378,9 +381,10 @@ export default async function handler(
           spf_number,
           version_number: 1,
           version_label:  `${spf_number}_v1`,
-          created_at:     new Date().toISOString(),
+          created_at:     nowISO,
           edited_by:      null,
           item_added_author,
+          date_updated:   nowISO,
 
           status: initialStatus,
 
@@ -421,16 +425,29 @@ export default async function handler(
       if (historyError) {
         console.error("History insert error:", historyError);
       }
+
+      /* ── UPDATE parent spf_request date_updated ── */
+      await supabase
+        .from("spf_request")
+        .update({ date_updated: nowISO })
+        .eq("spf_number", spf_number);
     } else {
+      const updateISO = getPhilippinesISOString();
       await supabase
         .from("spf_creation")
         .update({
           spf_creation_start_time: spf_creation_start_time ?? existing?.spf_creation_start_time ?? null,
           spf_creation_end_time:   spf_creation_end_time   ?? existing?.spf_creation_end_time   ?? null,
-          date_updated: new Date().toISOString(),
+          date_updated: updateISO,
           original_technical_specification: finalOriginalSpecs,
           product_reference_id: finalProductRefIDs,
         })
+        .eq("spf_number", spf_number);
+
+      /* ── UPDATE parent spf_request date_updated ── */
+      await supabase
+        .from("spf_request")
+        .update({ date_updated: updateISO })
         .eq("spf_number", spf_number);
     }
 

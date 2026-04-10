@@ -325,7 +325,7 @@ export default function RequestsPage() {
         <table className="w-full text-sm border-collapse">
           <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">
             <tr>
-              {["SPF Number", "Customer Name", "Special Instructions", "Approval Status", "Date Created", "Action"].map((h) => (
+              {["SPF Number", "Customer Name", "Special Instructions", "Approval Status", "Date Updated", "Action"].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-bold border-b whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -341,9 +341,11 @@ export default function RequestsPage() {
               </tr>
             ) : (
               paginatedRequests.map((req) => {
-                const formattedDate = req.date_created
-                  ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
-                  : "-";
+                const formattedDate = req.date_updated
+                  ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
+                  : (req.date_created
+                    ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
+                    : "-");
                 const spfStatus = createdSPF[req.spf_number];
                 const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);
                 const isUnreadRow = unreadCountForRow > 0;
@@ -416,9 +418,11 @@ export default function RequestsPage() {
           </div>
         ) : (
           paginatedRequests.map((req) => {
-            const formattedDate = req.date_created
-              ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
-              : "-";
+            const formattedDate = req.date_updated
+              ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
+              : (req.date_created
+                ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
+                : "-");
             const spfStatus = createdSPF[req.spf_number];
             const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);
             const isUnreadRow = unreadCountForRow > 0;

@@ -18,15 +18,15 @@ export default async function handler(
     let query = supabase
       .from("spf_request")
       .select("*", { count: "exact" })
-      .order("date_created", { ascending: false })
+      .order("date_updated", { ascending: false })
       .order("id",           { ascending: false });
 
-    // 📅 DATE FILTER
+    // DATE FILTER
     if (fromDate && toDate) {
       query = query.gte("date_created", fromDate).lte("date_created", toDate);
     }
 
-    // 🔍 SEARCH FILTER
+    // SEARCH FILTER
     if (searchTerm) {
       const s = `%${searchTerm}%`;
       query = query.or(
@@ -34,7 +34,7 @@ export default async function handler(
       );
     }
 
-    // 📄 PAGINATION (server-side)
+    // PAGINATION (server-side)
     const fromIndex = (pageNum - 1) * PAGE_SIZE;
     const toIndex   = fromIndex + PAGE_SIZE - 1;
 
@@ -49,6 +49,7 @@ export default async function handler(
       ...r,
       id:                   r.id?.toString() ?? null,
       date_created:         r.date_created ? new Date(r.date_created).toISOString() : null,
+      date_updated:         r.date_updated ? new Date(r.date_updated).toISOString() : null,
       special_instructions: r.special_instructions ?? null,
       clientName:           r.clientName ?? null,
       spf_number:           r.spf_number ?? null,
