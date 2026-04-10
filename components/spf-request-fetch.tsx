@@ -1403,8 +1403,8 @@ useEffect(() => {
                               <InlineSpecs
                                 specs={prod.technicalSpecifications ?? []}
                               />
-                              {/* Edit Specs Button for mobile - show when product has multiple spec values */}
-                              {hasMultipleSpecValues({ 
+                              {/* Edit Specs Button for mobile - show when product has multiple spec values and revision type is specs or both */}
+                              {(revisionType === "specs" || revisionType === "both") && hasMultipleSpecValues({ 
                                 technicalSpecifications: prod.__originalTechnicalSpecifications || prod.technicalSpecifications 
                               }) && (
                                 <button
@@ -2097,8 +2097,8 @@ useEffect(() => {
                                                 </div>
                                               </div>
                                             ))}
-                                          {/* Edit Specs Button - show when product has multiple spec values */}
-                                          {hasMultipleSpecValues({ 
+                                          {/* Edit Specs Button - show when product has multiple spec values and revision type is specs or both */}
+                                          {(revisionType === "specs" || revisionType === "both") && hasMultipleSpecValues({ 
                                             technicalSpecifications: prod.__originalTechnicalSpecifications || prod.technicalSpecifications 
                                           }) && (
                                             <button
