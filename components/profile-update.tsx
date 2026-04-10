@@ -247,11 +247,11 @@ export default function ProfileClient() {
             </div>
           </header>
 
-          <div className="flex flex-1 flex-col gap-2 p-4">
-            <h1 className="text-2xl font-semibold mb-4">Update Profile</h1>
+          <div className="flex flex-1 flex-col gap-2 p-4 overflow-y-auto max-h-[calc(100vh-120px)]">
+            <h1 className="text-2xl font-semibold mb-4 text-foreground bg-background/80 backdrop-blur-sm p-2 rounded inline-block">Update Profile</h1>
 
-            <div className="flex flex-col md:flex-row gap-2">
-              <div className="w-full md:w-1/2 flex flex-col items-center space-y-4 border rounded p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="w-full md:w-1/2 flex flex-col items-center space-y-4 border rounded p-4 bg-background/95 backdrop-blur-sm shadow-lg">
                 <AspectRatio
                   ratio={16 / 14}
                   className="w-full bg-muted rounded-lg overflow-hidden border border-gray-300"
@@ -297,11 +297,11 @@ export default function ProfileClient() {
               <div className="flex-1">
                 <form
                   onSubmit={handleSubmit}
-                  className="space-y-6 border rounded p-2"
+                  className="space-y-6 border rounded p-4 bg-background/95 backdrop-blur-sm shadow-lg"
                   noValidate
                 >
-                  <fieldset className="flex flex-col md:flex-row space-x-0 md:space-x-4 border border-gray-300 rounded-md p-4">
-                    <legend className="text-sm font-semibold px-2">Name</legend>
+                  <fieldset className="flex flex-col md:flex-row space-x-0 md:space-x-4 border border-gray-300 rounded-md p-4 bg-background/90">
+                    <legend className="text-sm font-semibold px-2 bg-background rounded">Name</legend>
 
                     <div className="flex flex-col flex-1 space-y-2">
                       <Label htmlFor="Firstname">First Name</Label>
@@ -330,8 +330,8 @@ export default function ProfileClient() {
                     </div>
                   </fieldset>
 
-                  <fieldset className="flex flex-col md:flex-row space-x-0 md:space-x-4 border border-gray-300 rounded-md p-4">
-                    <legend className="text-sm font-semibold px-2">
+                  <fieldset className="flex flex-col md:flex-row space-x-0 md:space-x-4 border border-gray-300 rounded-md p-4 bg-background/90">
+                    <legend className="text-sm font-semibold px-2 bg-background rounded">
                       Contact Details
                     </legend>
 
@@ -361,8 +361,8 @@ export default function ProfileClient() {
                     </div>
                   </fieldset>
 
-                  <fieldset className="flex flex-col md:flex-row border border-gray-300 rounded-md p-4">
-                    <legend className="text-sm font-semibold px-2 mb-4 md:mb-0 md:mr-8 self-start">
+                  <fieldset className="flex flex-col md:flex-row border border-gray-300 rounded-md p-4 bg-background/90">
+                    <legend className="text-sm font-semibold px-2 mb-4 md:mb-0 md:mr-8 self-start bg-background rounded">
                       Password Credentials
                     </legend>
 
