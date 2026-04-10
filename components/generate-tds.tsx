@@ -70,6 +70,9 @@ export default function GenerateTDS({
   const [uploadedIlluminanceLevel, setUploadedIlluminanceLevel] =
     useState<File | null>(null);
 
+  const [dimensionalLink, setDimensionalLink] = useState("");
+  const [illuminanceLink, setIlluminanceLink] = useState("");
+
   const previewRef = useRef<HTMLDivElement>(null);
 
   const handleDimensionalDrawingChange = (
@@ -77,6 +80,7 @@ export default function GenerateTDS({
   ) => {
     if (event.target.files) {
       setUploadedDimensionalDrawing(event.target.files[0]);
+      setDimensionalLink("");
     }
   };
 
@@ -85,7 +89,18 @@ export default function GenerateTDS({
   ) => {
     if (event.target.files) {
       setUploadedIlluminanceLevel(event.target.files[0]);
+      setIlluminanceLink("");
     }
+  };
+
+  const handleDimensionalLinkChange = (value: string) => {
+    setDimensionalLink(value);
+    setUploadedDimensionalDrawing(null);
+  };
+
+  const handleIlluminanceLinkChange = (value: string) => {
+    setIlluminanceLink(value);
+    setUploadedIlluminanceLevel(null);
   };
 
   const downloadPDF = async () => {
@@ -281,8 +296,8 @@ export default function GenerateTDS({
     });
 
     /* ================= DRAWINGS ================= */
-    const dimensionalSource = uploadedDimensionalDrawing || dimensionalDrawing;
-    const illuminanceSource = uploadedIlluminanceLevel || illuminanceDrawing;
+    const dimensionalSource = uploadedDimensionalDrawing || (dimensionalLink ? { url: dimensionalLink } : null) || dimensionalDrawing;
+    const illuminanceSource = uploadedIlluminanceLevel || (illuminanceLink ? { url: illuminanceLink } : null) || illuminanceDrawing;
 
     // Only show drawings section if at least one exists
     if (dimensionalSource || illuminanceSource) {
@@ -465,10 +480,10 @@ export default function GenerateTDS({
                   type="radio"
                   value={brand}
                   checked={selectedBrand === brand}
-              onChange={(e) => {
-                setSelectedBrand(e.target.value);
-                onBrandChange?.(e.target.value);
-              }}
+                  onChange={(e) => {
+                    setSelectedBrand(e.target.value);
+                    onBrandChange?.(e.target.value);
+                  }}
                   className="accent-gray-800"
                 />
                 <span className="text-sm">{brand}</span>
@@ -515,12 +530,14 @@ export default function GenerateTDS({
               {/* Dimensional Drawing */}
               <div className="bg-white rounded-xl shadow-sm p-3 space-y-2">
                 <p className="text-xs font-semibold">Dimensional Drawing</p>
-                {(uploadedDimensionalDrawing || dimensionalDrawing) && (
+                {(uploadedDimensionalDrawing || dimensionalLink || dimensionalDrawing) && (
                   <img
                     src={
                       uploadedDimensionalDrawing
                         ? URL.createObjectURL(uploadedDimensionalDrawing)
-                        : convertDriveToThumbnail(dimensionalDrawing!.url)
+                        : dimensionalLink
+                          ? convertDriveToThumbnail(dimensionalLink)
+                          : convertDriveToThumbnail(dimensionalDrawing!.url)
                     }
                     className="w-full h-[80px] object-contain border rounded-lg"
                   />
@@ -534,17 +551,29 @@ export default function GenerateTDS({
                     className="hidden"
                   />
                 </label>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-gray-500">Or paste image link</p>
+                  <input
+                    type="text"
+                    value={dimensionalLink}
+                    onChange={(e) => handleDimensionalLinkChange(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full border rounded-lg h-8 px-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  />
+                </div>
               </div>
 
               {/* Illuminance Level */}
               <div className="bg-white rounded-xl shadow-sm p-3 space-y-2">
                 <p className="text-xs font-semibold">Illuminance Level</p>
-                {(uploadedIlluminanceLevel || illuminanceDrawing) && (
+                {(uploadedIlluminanceLevel || illuminanceLink || illuminanceDrawing) && (
                   <img
                     src={
                       uploadedIlluminanceLevel
                         ? URL.createObjectURL(uploadedIlluminanceLevel)
-                        : convertDriveToThumbnail(illuminanceDrawing!.url)
+                        : illuminanceLink
+                          ? convertDriveToThumbnail(illuminanceLink)
+                          : convertDriveToThumbnail(illuminanceDrawing!.url)
                     }
                     className="w-full h-[80px] object-contain border rounded-lg"
                   />
@@ -558,6 +587,16 @@ export default function GenerateTDS({
                     className="hidden"
                   />
                 </label>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-gray-500">Or paste image link</p>
+                  <input
+                    type="text"
+                    value={illuminanceLink}
+                    onChange={(e) => handleIlluminanceLinkChange(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full border rounded-lg h-8 px-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  />
+                </div>
               </div>
             </div>
 
@@ -599,8 +638,8 @@ export default function GenerateTDS({
                       itemCode={itemCode}
                       mainImage={mainImage}
                       technicalSpecifications={technicalSpecifications}
-                      dimensionalDrawing={uploadedDimensionalDrawing || dimensionalDrawing}
-                      illuminanceLevel={uploadedIlluminanceLevel || illuminanceDrawing}
+                      dimensionalDrawing={uploadedDimensionalDrawing || (dimensionalLink ? { url: dimensionalLink } : null) || dimensionalDrawing}
+                      illuminanceLevel={uploadedIlluminanceLevel || (illuminanceLink ? { url: illuminanceLink } : null) || illuminanceDrawing}
                       hideEmptySpecs={hideEmptySpecs}
                     />
                   </div>
