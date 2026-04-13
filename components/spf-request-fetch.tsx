@@ -81,6 +81,8 @@ type SPFData = {
   tds?: string;
   dimensional_drawing?: string;
   illuminance_drawing?: string;
+  revision_type?: string;
+  revision_remarks?: string;
 };
 
 type SPFRequestData = {
@@ -3312,6 +3314,29 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                   variant="outline"
                   className="gap-1.5 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
                   onClick={() => {
+                    // Check if revision_type is already set in data
+                    const existingRevisionType = data?.revision_type;
+                    if (existingRevisionType) {
+                      // Map database value to RevisionType
+                      const typeMap: Record<string, RevisionType> = {
+                        "Price Update": "price",
+                        "Change Item Specs & Qty": "specs",
+                        "Both": "both",
+                      };
+                      const mappedType = typeMap[existingRevisionType];
+                      if (mappedType) {
+                        // Skip selector and go directly to edit mode
+                        setRevisionType(mappedType);
+                        setOpen(false);
+                        setTimeout(() => {
+                          enterEditMode(mappedType);
+                          setEditMode(true);
+                          setOpen(true);
+                        }, 50);
+                        return;
+                      }
+                    }
+                    // Show selector if no revision_type set
                     setShowRevisionSelector(true);
                   }}
                 >
