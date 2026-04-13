@@ -733,10 +733,8 @@ useEffect(() => {
     setOriginalQuantities(origQtys);
     setOriginalUnitCosts(origCosts);
     
-    // Only fetch products if needed based on revision type
-    if (type === "specs" || type === "both") {
-      fetchProducts();
-    }
+    // Fetch products for all revision types to show in right panel
+    fetchProducts();
     
     // For existing products without original specs stored, fetch from Firebase
     const enrichProductsWithOriginalSpecs = async () => {
