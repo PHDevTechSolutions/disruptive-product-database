@@ -325,7 +325,7 @@ export default function RequestsPage() {
         <table className="w-full text-sm border-collapse">
           <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">
             <tr>
-              {["SPF Number", "Customer Name", "Special Instructions", "Approval Status", "Date Updated", "Action"].map((h) => (
+              {["SPF Number", "Customer Name", "Special Instructions", "Prepared By", "Approved By", "Approval Status", "Date Updated", "Action"].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-bold border-b whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -333,11 +333,11 @@ export default function RequestsPage() {
           <tbody>
             {loadingPage ? (
               <tr>
-                <td colSpan={6} className="text-center py-10 text-muted-foreground">Loading...</td>
+                <td colSpan={8} className="text-center py-10 text-muted-foreground">Loading...</td>
               </tr>
             ) : filteredRequests.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-10 text-muted-foreground">No SPF requests yet.</td>
+                <td colSpan={8} className="text-center py-10 text-muted-foreground">No SPF requests yet.</td>
               </tr>
             ) : (
               paginatedRequests.map((req) => {
@@ -368,6 +368,8 @@ export default function RequestsPage() {
                         {req.special_instructions || "-"}
                       </span>
                     </td>
+                    <td className="px-4 py-3">{req.prepared_by || "-"}</td>
+                    <td className="px-4 py-3">{req.approved_by || "-"}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={req.status} />
                     </td>
@@ -444,6 +446,10 @@ export default function RequestsPage() {
                 <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase w-fit inline-block">
                   {req.special_instructions || "-"}
                 </span>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p><span className="text-gray-400">Prepared By:</span> {req.prepared_by || "-"}</p>
+                  <p><span className="text-gray-400">Approved By:</span> {req.approved_by || "-"}</p>
+                </div>
                 <div>
                   <StatusBadge status={req.status} />
                 </div>
