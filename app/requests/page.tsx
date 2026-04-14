@@ -352,7 +352,7 @@ export default function RequestsPage() {
 
                 return (
                   <tr key={req.id} className={`border-b hover:bg-white/60 align-middle ${isUnreadRow ? "bg-red-50/40 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.20)]" : ""}`}>
-                    <td className="px-4 py-3 font-medium">
+                    <td className="px-4 py-3 font-medium uppercase">
                       <div className="inline-flex items-center gap-2">
                         <span>{req.spf_number}</span>
                         {isUnreadRow && (
@@ -362,7 +362,7 @@ export default function RequestsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">{req.customer_name}</td>
+                    <td className="px-4 py-3 uppercase">{req.customer_name}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-start gap-2">
                         {/* Person icon */}
@@ -383,8 +383,8 @@ export default function RequestsPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">{req.prepared_by || "-"}</td>
-                    <td className="px-4 py-3">{req.approved_by || "-"}</td>
+                    <td className="px-4 py-3 uppercase">{req.prepared_by || "-"}</td>
+                    <td className="px-4 py-3 uppercase">{req.approved_by || "-"}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={req.status} />
                     </td>
@@ -448,7 +448,7 @@ export default function RequestsPage() {
               <div key={req.id} className={`border rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm p-4 space-y-2 ${isUnreadRow ? "border-red-200 shadow-[0_0_16px_rgba(239,68,68,0.35)]" : "border-gray-200"}`}>
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-sm">{req.spf_number}</p>
+                    <p className="font-semibold text-sm uppercase">{req.spf_number}</p>
                     {isUnreadRow && (
                       <span className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_16px_rgba(239,68,68,0.75)] animate-pulse">
                         {unreadCountForRow}
@@ -457,7 +457,7 @@ export default function RequestsPage() {
                   </div>
                   <span className="text-[10px] text-muted-foreground">{formattedDate}</span>
                 </div>
-                <p className="text-sm font-medium text-gray-800">{req.customer_name}</p>
+                <p className="text-sm font-medium text-gray-800 uppercase">{req.customer_name}</p>
                 <div className="flex items-start gap-2">
                   {/* Person icon */}
                   <div className="shrink-0 w-7 h-7 rounded-full bg-linear-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-md">
@@ -476,7 +476,7 @@ export default function RequestsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="text-xs text-gray-600 space-y-1">
+                <div className="text-xs text-gray-600 space-y-1 uppercase">
                   <p><span className="text-gray-400">Prepared By:</span> {req.prepared_by || "-"}</p>
                   <p><span className="text-gray-400">Approved By:</span> {req.approved_by || "-"}</p>
                 </div>
