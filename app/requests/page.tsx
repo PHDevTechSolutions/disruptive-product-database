@@ -27,6 +27,13 @@ function getStatusLabel(status: string | undefined): string {
   return status ?? "";
 }
 
+/* ─────────────────────────────────────────────────────────────── */
+/* ALLOWED STATUSES                                                */
+/* ─────────────────────────────────────────────────────────────── */
+const ALLOWED_STATUSES = [
+  "approved by tsm",
+  "approved by sales head",
+];
 
 /* ─────────────────────────────────────────────────────────────── */
 /* STATUS BADGE                                                     */
@@ -174,6 +181,7 @@ export default function RequestsPage() {
       const data = await res.json();
 
       const mapped = (data.requests || [])
+        .filter((r: any) => ALLOWED_STATUSES.includes((r.status ?? "").toLowerCase()))
         .map((r: any) => ({
           ...r,
           date_created: r.date_created
