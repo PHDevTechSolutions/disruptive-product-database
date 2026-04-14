@@ -1763,8 +1763,8 @@ useEffect(() => {
     const showRightPanel = revisionType === "specs" || revisionType === "both";
 
     return (
-    <>
-      <DialogHeader className="w-full mb-4 relative">
+    <div className="flex flex-col h-full overflow-hidden">
+      <DialogHeader className="w-full mb-4 relative shrink-0">
         <DialogTitle className="text-center w-full flex items-center justify-center gap-2">
           <Pencil size={16} className="text-orange-500" />
           Edit SPF — {spfNumber}
@@ -1849,10 +1849,10 @@ useEffect(() => {
         )}
       </DialogHeader>
 
-      <div className="flex gap-4 overflow-hidden">
+      <div className="flex gap-4 overflow-hidden flex-1">
         {/* LEFT: Items table */}
         <Card
-          className={`${viewMode ? "w-[100%]" : "w-[70%]"} transition-all duration-500 ease-in-out p-4 flex flex-col gap-4 overflow-y-auto max-h-[70vh] overscroll-contain`}
+          className={`${viewMode ? "w-[100%]" : "w-[70%]"} transition-all duration-500 ease-in-out p-4 flex flex-col gap-4 overflow-y-auto overscroll-contain`}
         >
           <div className="mb-3 border-b pb-2">
             <h3 className="text-sm font-bold">{spfNumber}</h3>
@@ -2282,7 +2282,7 @@ useEffect(() => {
             viewMode
               ? "opacity-0 w-0 overflow-hidden pointer-events-none"
               : "opacity-100 w-[30%]"
-          } max-h-[70vh] overflow-y-auto overscroll-contain`}
+          } overflow-y-auto overscroll-contain`}
         >
           {/* Pagination controls for desktop */}
           {filteredProducts.length > PRODUCTS_PER_PAGE && (
@@ -2541,7 +2541,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
           )}
         </div>
       </DialogFooter>
-    </>
+    </div>
   );
 };
 
@@ -3289,12 +3289,12 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
           className={
             isMobile
               ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-              : "sm:max-w-8xl max-h-[90vh] overflow-y-auto rounded-none"
+              : "sm:max-w-8xl max-h-[90vh] flex flex-col overflow-hidden rounded-none"
           }
         >
           <DialogHeader
             className={
-              isMobile ? "px-4 pt-4 pb-3 border-b shrink-0" : "space-y-2"
+              isMobile ? "px-4 pt-4 pb-3 border-b shrink-0" : "space-y-2 shrink-0"
             }
           >
             <div className="flex items-center justify-between gap-2">
@@ -3398,7 +3398,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
 
           <div
             className={
-              isMobile ? "flex-1 overflow-y-auto px-3 pt-3 pb-4" : "mt-2"
+              isMobile ? "flex-1 overflow-y-auto px-3 pt-3 pb-4" : "flex-1 overflow-y-auto mt-2"
             }
           >
             {loading && (
@@ -3432,7 +3432,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
           className={
             isMobile
               ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-y-auto"
-              : "sm:max-w-8xl max-h-[90vh] overflow-y-auto rounded-none"
+              : "sm:max-w-8xl max-h-[90vh] flex flex-col overflow-y-auto rounded-none"
           }
         >
           {isMobile ? renderEditMobile() : renderEditDesktop()}
