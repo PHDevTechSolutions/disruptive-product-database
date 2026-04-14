@@ -1177,6 +1177,24 @@ useEffect(() => {
               : "⚠ Tap a row in Items tab to select it first"}
           </div>
         )}
+
+        {/* Speech balloon for revision remarks */}
+        {data?.revision_remarks && (
+          <div className="relative mt-2">
+            <div className="relative bg-orange-50 border-2 border-orange-300 rounded-2xl px-4 py-3 shadow-sm">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-orange-600 bg-orange-200 px-2 py-0.5 rounded">
+                  {data.revision_type || "Revision"}
+                </span>
+              </div>
+              <p className="text-xs text-orange-800 font-medium leading-relaxed">
+                {data.revision_remarks}
+              </p>
+              {/* Speech balloon tail */}
+              <div className="absolute -top-2 left-6 w-4 h-4 bg-orange-50 border-t-2 border-l-2 border-orange-300 transform rotate-45"></div>
+            </div>
+          </div>
+        )}
       </DialogHeader>
 
       <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -1811,6 +1829,24 @@ useEffect(() => {
             </div>
           </div>
         )}
+
+        {/* Speech balloon for revision remarks */}
+        {data?.revision_remarks && (
+          <div className="relative mt-3 mx-auto max-w-md">
+            <div className="relative bg-orange-50 border-2 border-orange-300 rounded-2xl px-4 py-3 shadow-sm">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-orange-600 bg-orange-200 px-2 py-0.5 rounded">
+                  {data.revision_type || "Revision"}
+                </span>
+              </div>
+              <p className="text-xs text-orange-800 font-medium leading-relaxed">
+                {data.revision_remarks}
+              </p>
+              {/* Speech balloon tail */}
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-orange-50 border-t-2 border-l-2 border-orange-300 transform rotate-45"></div>
+            </div>
+          </div>
+        )}
       </DialogHeader>
 
       <div className="flex gap-4 overflow-hidden">
@@ -2422,7 +2458,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                             <div key={i} className="mb-3">
                               <p className="font-semibold">{group.title}</p>
                               <ul className="ml-3 list-disc">
-                                {group.specs?.map((spec: any, s: number) => (
+                                {group.specs.map((spec: any, s: number) => (
                                   <li key={s}>
                                     <span className="font-medium">
                                       {spec.specId}
@@ -3042,15 +3078,14 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                                   {group.title}
                                                 </p>
                                               )}
-                                              <div className="space-y-0.5">
-                                                {group.specs.map((spec, si) => (
-                                                  <p
-                                                    key={si}
-                                                    className="text-[11px] text-gray-600 leading-snug"
-                                                  >
-                                                    {spec}
-                                                  </p>
-                                                ))}
+                                              <div className="text-xs">
+                                                {group.specs.map(
+                                                  (spec, si: number) => (
+                                                    <div key={si}>
+                                                      {spec}
+                                                    </div>
+                                                  ),
+                                                )}
                                               </div>
                                             </div>
                                           ))}
@@ -3343,6 +3378,24 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                 </Button>
               )}
             </div>
+
+            {/* Speech balloon for revision remarks */}
+            {isForRevision && data?.revision_remarks && (
+              <div className="relative mt-2 max-w-md">
+                <div className="relative bg-orange-50 border-2 border-orange-300 rounded-2xl px-4 py-3 shadow-sm">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-orange-600 bg-orange-200 px-2 py-0.5 rounded">
+                      {data.revision_type || "Revision"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-orange-800 font-medium leading-relaxed">
+                    {data.revision_remarks}
+                  </p>
+                  {/* Speech balloon tail */}
+                  <div className="absolute -top-2 left-6 w-4 h-4 bg-orange-50 border-t-2 border-l-2 border-orange-300 transform rotate-45"></div>
+                </div>
+              </div>
+            )}
           </DialogHeader>
 
           <div
