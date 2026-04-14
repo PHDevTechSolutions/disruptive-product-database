@@ -3434,7 +3434,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
           className={
             isMobile
               ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-              : "sm:max-w-8xl max-h-[90vh] overflow-y-auto rounded-none"
+              : "sm:max-w-8xl max-h-[90vh] overflow-hidden rounded-none"
           }
         >
           {isMobile ? renderEditMobile() : renderEditDesktop()}
