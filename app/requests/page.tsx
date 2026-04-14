@@ -364,9 +364,24 @@ export default function RequestsPage() {
                     </td>
                     <td className="px-4 py-3">{req.customer_name}</td>
                     <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase">
-                        {req.special_instructions || "-"}
-                      </span>
+                      <div className="flex items-start gap-2">
+                        {/* Person icon */}
+                        <div className="shrink-0 w-8 h-8 rounded-full bg-linear-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                        {/* Speech balloon */}
+                        <div className="relative group cursor-pointer">
+                          <div className="relative bg-linear-to-br from-indigo-50 to-purple-50 border-2 border-indigo-300 rounded-2xl px-3 py-2 shadow-sm hover:shadow-md hover:scale-105 hover:-translate-y-0.5 transition-all duration-300 ease-out">
+                            <span className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wide">
+                              {req.special_instructions || "-"}
+                            </span>
+                            {/* Speech balloon tail pointing to person */}
+                            <div className="absolute -left-2 top-3 w-3 h-3 bg-indigo-50 border-l-2 border-b-2 border-indigo-300 transform rotate-45 group-hover:bg-purple-50 transition-colors duration-300"></div>
+                          </div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3">{req.prepared_by || "-"}</td>
                     <td className="px-4 py-3">{req.approved_by || "-"}</td>
@@ -443,9 +458,24 @@ export default function RequestsPage() {
                   <span className="text-[10px] text-muted-foreground">{formattedDate}</span>
                 </div>
                 <p className="text-sm font-medium text-gray-800">{req.customer_name}</p>
-                <span className="text-xs px-2 py-1 rounded bg-gray-100 uppercase w-fit inline-block">
-                  {req.special_instructions || "-"}
-                </span>
+                <div className="flex items-start gap-2">
+                  {/* Person icon */}
+                  <div className="shrink-0 w-7 h-7 rounded-full bg-linear-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-md">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  {/* Speech balloon */}
+                  <div className="relative group cursor-pointer w-fit">
+                    <div className="relative bg-linear-to-br from-indigo-50 to-purple-50 border-2 border-indigo-300 rounded-2xl px-3 py-2 shadow-sm hover:shadow-md hover:scale-105 hover:-translate-y-0.5 transition-all duration-300 ease-out">
+                      <span className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wide">
+                        {req.special_instructions || "-"}
+                      </span>
+                      {/* Speech balloon tail pointing to person */}
+                      <div className="absolute -left-2 top-3 w-3 h-3 bg-indigo-50 border-l-2 border-b-2 border-indigo-300 transform rotate-45 group-hover:bg-purple-50 transition-colors duration-300"></div>
+                    </div>
+                  </div>
+                </div>
                 <div className="text-xs text-gray-600 space-y-1">
                   <p><span className="text-gray-400">Prepared By:</span> {req.prepared_by || "-"}</p>
                   <p><span className="text-gray-400">Approved By:</span> {req.approved_by || "-"}</p>
