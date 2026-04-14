@@ -37,6 +37,8 @@ export default function RootLayout({
         className={`
           ${GeistSans.variable}
           ${GeistMono.variable}
+          comic
+          font-comic
           antialiased
           min-h-[100svh]
           overscroll-none

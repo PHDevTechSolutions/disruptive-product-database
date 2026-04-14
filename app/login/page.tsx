@@ -29,38 +29,59 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+    <div className="flex items-center justify-center min-h-screen comic-bg-dots p-4">
+      {/* Floating decorations */}
+      <div className="fixed top-20 left-10 text-6xl comic-animate-float" style={{ animationDelay: '0s' }}>⭐</div>
+      <div className="fixed top-40 right-20 text-5xl comic-animate-float" style={{ animationDelay: '1s' }}>🚀</div>
+      <div className="fixed bottom-32 left-20 text-5xl comic-animate-float" style={{ animationDelay: '2s' }}>💡</div>
+      <div className="fixed bottom-20 right-10 text-6xl comic-animate-float" style={{ animationDelay: '0.5s' }}>⚡</div>
 
-      {/* CENTER MAIN CARD */}
-      <div className="w-full max-w-5xl bg-white shadow-2xl rounded-xl border overflow-hidden">
+      {/* CENTER MAIN CARD - Comic Style */}
+      <div className="w-full max-w-5xl comic-card comic-shadow-box overflow-hidden comic-animate-pop relative z-10">
+
+        {/* Comic style header */}
+        <div className="bg-gradient-to-r from-yellow-300 via-orange-400 to-red-400 h-4 w-full"></div>
 
         {/* INNER GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-2">
 
           {/* LEFT CARD (LOGIN FORM) */}
-          <div className="bg-white p-8 flex flex-col justify-center gap-6 border-b lg:border-b-0 lg:border-r border-gray-200">
+          <div className="bg-white p-8 flex flex-col justify-center gap-6">
 
-            <div className="flex items-center gap-3 mb-8">
-              <div className="relative w-24 h-24">
+            <div className="flex items-center gap-4 mb-6 comic-animate-bounce">
+              <div className="relative w-28 h-28 comic-card-primary p-2 flex items-center justify-center">
                 <Image
                   src="/images/disruptive-logo.png"
                   alt="Disruptive Solutions"
                   fill
-                  className="object-contain"
+                  className="object-contain p-2"
                   priority
                 />
               </div>
-              <span className="font-semibold text-red-600 text-lg">
-                Disruptive Solutions Inc.
-              </span>
+              <div className="flex flex-col">
+                <span className="font-comic-title text-2xl text-red-500 comic-text-outline">
+                  ESPIRON
+                </span>
+                <span className="font-comic text-sm text-gray-600">
+                  Product Database
+                </span>
+              </div>
+            </div>
+
+            {/* Comic speech bubble welcome */}
+            <div className="comic-bubble comic-bubble-yellow mb-4 comic-animate-pop">
+              <p className="font-comic text-lg text-center font-bold text-gray-800">
+                👋 Welcome back, hero! Ready to explore?
+              </p>
             </div>
 
             <LoginForm onLoginSuccess={handleLoginSuccess} />
 
           </div>
 
-          {/* RIGHT CARD (IMAGE) - hidden on mobile */}
-          <div className="relative hidden lg:block min-h-[500px] w-full">
+          {/* RIGHT CARD (COMIC STYLE) - hidden on mobile */}
+          <div className="relative hidden lg:block min-h-[500px] w-full bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400">
+            <div className="absolute inset-0 comic-bg-stripes opacity-30"></div>
             <Image
               src="/images/login-wallpaper-3.png"
               alt="Login Wallpaper"
@@ -68,9 +89,21 @@ export default function LoginPage() {
               className="object-cover"
               priority
             />
+            {/* Comic style overlay elements */}
+            <div className="absolute top-4 right-4 comic-badge bg-yellow-400 text-black px-4 py-2 text-lg">
+              FUN ZONE! 🎉
+            </div>
+            <div className="absolute bottom-4 left-4 comic-card-blue p-4 max-w-xs">
+              <p className="font-comic text-white text-center">
+                Discover amazing products! 🚀
+              </p>
+            </div>
           </div>
 
         </div>
+
+        {/* Comic style footer */}
+        <div className="bg-gradient-to-r from-red-400 via-orange-400 to-yellow-300 h-4 w-full"></div>
       </div>
     </div>
   );

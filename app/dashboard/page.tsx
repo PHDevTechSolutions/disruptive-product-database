@@ -87,14 +87,14 @@ export default function Dashboard() {
   return (
     <div className="h-dvh flex flex-col overflow-hidden">
       {/* ── DESKTOP HEADER ── */}
-      <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white/80 backdrop-blur-md border-b">
+      <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white border-b-4 border-gray-800">
         <SidebarTrigger />
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">
+          <h1 className="font-comic-title text-3xl text-gray-900 comic-text-shadow">
             {loading ? "Loading..." : user ? (
               <>
-                Welcome, {user.Firstname} {user.Lastname}
-                <span className="ml-2 text-sm font-normal text-muted-foreground">({user.Role})</span>
+                👋 Welcome, {user.Firstname} {user.Lastname}
+                <span className="ml-2 text-sm font-comic text-gray-600">({user.Role})</span>
               </>
             ) : "Welcome"}
           </h1>
@@ -102,13 +102,13 @@ export default function Dashboard() {
       </div>
 
       {/* ── MOBILE HEADER ── */}
-      <div className="md:hidden shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 pt-5 pb-3">
+      <div className="md:hidden shrink-0 bg-white border-b-4 border-gray-800 px-4 pt-5 pb-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold text-gray-900">
+          <h1 className="font-comic-title text-xl text-gray-900 comic-text-shadow">
             {loading ? "Loading..." : user ? (
               <>
-                Welcome, {user.Firstname} {user.Lastname}
-                <span className="ml-2 text-xs font-normal text-muted-foreground">({user.Role})</span>
+                👋 Welcome, {user.Firstname}
+                <span className="ml-2 text-xs font-comic text-gray-600">({user.Role})</span>
               </>
             ) : "Welcome"}
           </h1>
@@ -118,35 +118,36 @@ export default function Dashboard() {
       {/* ── CONTENT ── */}
       <div className="flex-1 overflow-auto p-6 space-y-6">
 
-      {/* Metric cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Metric cards - Comic Style */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {metrics.map(({ key, label, value, color, badge }) => (
           <button
             key={key}
             onClick={() => router.push(`/${key}`)}
-            className="relative bg-white/80 backdrop-blur-md rounded-lg p-4 space-y-2 text-left hover:bg-white/90 transition-colors group border border-white/40 shadow-sm"
+            className="comic-card comic-hover-lift p-5 space-y-3 text-left relative group"
+            style={{ background: 'white' }}
           >
-            {/* Red notification badge */}
+            {/* Comic notification badge */}
             {badge !== undefined && badge > 0 && (
-              <span className="absolute -top-2 -right-2 z-10 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shadow-md ring-2 ring-white animate-pulse">
+              <span className="absolute -top-2 -right-2 z-10 min-w-[28px] h-7 px-1.5 rounded-full bg-yellow-400 text-gray-900 text-xs font-comic font-bold flex items-center justify-center border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] comic-animate-bounce">
                 {badge > 99 ? "99+" : badge}
               </span>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <span
-                className="inline-block w-2 h-2 rounded-full shrink-0"
+                className="inline-block w-4 h-4 rounded-lg shrink-0 border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
                 style={{ backgroundColor: color }}
               />
-              <p className="text-sm text-muted-foreground">{label}</p>
+              <p className="font-comic text-sm font-bold text-gray-600">{label}</p>
             </div>
-            <p className="text-3xl font-semibold group-hover:underline underline-offset-2">
+            <p className="font-comic-title text-4xl text-gray-900 comic-text-shadow group-hover:scale-105 transition-transform">
               {value === null
-                ? <span className="text-muted-foreground text-lg animate-pulse">—</span>
+                ? <span className="text-gray-400 text-2xl comic-animate-pulse">⚡</span>
                 : value.toLocaleString()
               }
             </p>
-            <p className="text-xs text-muted-foreground">Click to view →</p>
+            <p className="font-comic text-xs text-gray-500">Click to explore! 🚀</p>
           </button>
         ))}
       </div>
@@ -154,14 +155,14 @@ export default function Dashboard() {
       {/* ── Customize Theme Button ── */}
       <button
         onClick={() => setThemeOpen(true)}
-        className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-dashed border-gray-300 bg-white/60 backdrop-blur-sm hover:bg-white/80 hover:border-gray-400 transition-all duration-200 text-sm font-medium text-gray-600 hover:text-gray-900 group shadow-sm"
+        className="comic-button flex items-center gap-2.5 px-5 py-3 bg-gradient-to-r from-blue-400 to-purple-400 text-white font-comic"
       >
-        <ImageIcon className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
-        <span>Customize Wallpaper</span>
+        <ImageIcon className="h-5 w-5" />
+        <span>Customize Wallpaper 🎨</span>
         {wallpaper && (
-          <span className="ml-1 flex items-center gap-1 text-xs text-emerald-600 font-normal">
+          <span className="ml-1 flex items-center gap-1 text-xs bg-green-400 text-gray-900 px-2 py-0.5 rounded-full border-2 border-gray-800 font-comic">
             <CheckCircle2 className="h-3 w-3" />
-            Active
+            Active!
           </span>
         )}
       </button>
@@ -235,21 +236,21 @@ function WallpaperModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b">
+      {/* Modal - Comic Style */}
+      <div className="comic-card w-full max-w-md overflow-hidden relative">
+        {/* Comic Header */}
+        <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-yellow-300 to-orange-300 border-b-3 border-gray-800">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">Customize Wallpaper</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Saved locally on this device only</p>
+            <h2 className="font-comic-title text-xl text-gray-900 comic-text-outline">🎨 Customize Wallpaper</h2>
+            <p className="text-xs font-comic text-gray-700 mt-0.5">Saved locally on this device only</p>
           </div>
           <button
             onClick={onClose}
-            className="h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+            className="h-10 w-10 rounded-full bg-white border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] hover:shadow-[2px_2px_0px_#2d3436] hover:translate-x-[1px] hover:translate-y-[1px] flex items-center justify-center transition-all"
           >
-            <X className="h-4 w-4 text-gray-600" />
+            <X className="h-5 w-5 text-gray-800" />
           </button>
         </div>
 
@@ -349,29 +350,29 @@ function WallpaperModal({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-5 pb-5 flex gap-2">
+        {/* Footer - Comic Style */}
+        <div className="px-5 pb-5 flex gap-3">
           {current && (
             <button
               onClick={handleSaveRemove}
-              className="flex items-center gap-1.5 px-3 h-10 rounded-xl border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 text-sm font-medium transition-colors"
+              className="comic-button flex items-center gap-1.5 px-4 h-12 bg-red-400 text-white text-sm font-comic"
             >
-              <Trash2 className="h-3.5 w-3.5" />
-              Remove
+              <Trash2 className="h-4 w-4" />
+              Remove 🗑️
             </button>
           )}
           <button
             onClick={onClose}
-            className="flex-1 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            className="comic-button flex-1 h-12 bg-gray-200 text-gray-800 text-sm font-comic"
           >
-            Cancel
+            Cancel ✖️
           </button>
           <button
             onClick={handleApply}
             disabled={!preview}
-            className="flex-1 h-10 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="comic-button flex-1 h-12 bg-gradient-to-r from-green-400 to-emerald-400 text-white text-sm font-comic disabled:opacity-50"
           >
-            Apply
+            {preview ? "Apply! ✅" : "Upload First 📤"}
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -575,6 +576,7 @@
     --sidebar-border: rgba(255,255,255,0.1);
     --sidebar-ring: rgb(150,150,150);
   }
+}
 
   /* Allow bottom sidebar clicks even when Sheet is open */
 [data-radix-sheet-overlay] {
@@ -778,4 +780,510 @@
 
 }
 
+/* ============================================
+   COMIC BOOK / KIDS THEME - Fun & Interactive
+   ============================================ */
+
+.comic {
+  --radius: 1rem;
+  
+  /* Background - Sunny Day Sky */
+  --background: #87CEEB;
+  --foreground: #1a1a2e;
+  
+  /* Cards - White with comic border */
+  --card: #ffffff;
+  --card-foreground: #1a1a2e;
+  
+  /* Popovers */
+  --popover: #fff5e6;
+  --popover-foreground: #1a1a2e;
+  
+  /* Primary - Superhero Red */
+  --primary: #ff4757;
+  --primary-foreground: #ffffff;
+  
+  /* Secondary - Sunny Yellow */
+  --secondary: #ffeaa7;
+  --secondary-foreground: #1a1a2e;
+  
+  /* Muted - Soft Cloud */
+  --muted: #dfe6e9;
+  --muted-foreground: #636e72;
+  
+  /* Accent - Bright Orange */
+  --accent: #fdcb6e;
+  --accent-foreground: #1a1a2e;
+  
+  /* Destructive */
+  --destructive: #e74c3c;
+  --destructive-foreground: #ffffff;
+  
+  /* Borders - Thick comic style */
+  --border: #2d3436;
+  --input: #dfe6e9;
+  --ring: #ff4757;
+  
+  /* Chart colors - Comic palette */
+  --chart-1: #ff4757;
+  --chart-2: #2ed573;
+  --chart-3: #1e90ff;
+  --chart-4: #ffa502;
+  --chart-5: #a55eea;
+  
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1a2e;
+  --sidebar-primary: #ff4757;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ffeaa7;
+  --sidebar-accent-foreground: #1a1a2e;
+  --sidebar-border: #2d3436;
+  --sidebar-ring: #ff4757;
+}
+
+/* Comic Font Classes */
+.font-comic {
+  font-family: 'Fredoka', 'Comic Neue', cursive !important;
+}
+
+.font-comic-title {
+  font-family: 'Bangers', 'Fredoka', cursive !important;
+  letter-spacing: 0.05em;
+}
+
+/* Comic Button Styles */
+.comic-button {
+  font-family: 'Fredoka', 'Comic Neue', cursive;
+  font-weight: 700;
+  border: 3px solid #2d3436 !important;
+  border-radius: 12px !important;
+  box-shadow: 4px 4px 0px #2d3436 !important;
+  transition: all 0.15s ease !important;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.comic-button:hover {
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 6px 6px 0px #2d3436 !important;
+}
+
+.comic-button:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 2px 2px 0px #2d3436 !important;
+}
+
+/* Comic Card Styles */
+.comic-card {
+  border: 3px solid #2d3436 !important;
+  border-radius: 16px !important;
+  box-shadow: 6px 6px 0px #2d3436 !important;
+  background: #ffffff !important;
+}
+
+.comic-card-primary {
+  border: 3px solid #2d3436 !important;
+  border-radius: 16px !important;
+  box-shadow: 6px 6px 0px #2d3436 !important;
+  background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%) !important;
+  color: white !important;
+}
+
+.comic-card-yellow {
+  border: 3px solid #2d3436 !important;
+  border-radius: 16px !important;
+  box-shadow: 6px 6px 0px #2d3436 !important;
+  background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%) !important;
+}
+
+.comic-card-blue {
+  border: 3px solid #2d3436 !important;
+  border-radius: 16px !important;
+  box-shadow: 6px 6px 0px #2d3436 !important;
+  background: linear-gradient(135deg, #74b9ff 0%, #1e90ff 100%) !important;
+  color: white !important;
+}
+
+.comic-card-green {
+  border: 3px solid #2d3436 !important;
+  border-radius: 16px !important;
+  box-shadow: 6px 6px 0px #2d3436 !important;
+  background: linear-gradient(135deg, #55efc4 0%, #00b894 100%) !important;
+  color: white !important;
+}
+
+/* Comic Input Styles */
+.comic-input {
+  border: 3px solid #2d3436 !important;
+  border-radius: 12px !important;
+  font-family: 'Comic Neue', cursive !important;
+  font-weight: 700;
+}
+
+.comic-input:focus {
+  box-shadow: 4px 4px 0px #2d3436 !important;
+  transform: translate(-2px, -2px);
+}
+
+/* Comic Badge */
+.comic-badge {
+  font-family: 'Fredoka', cursive;
+  font-weight: 700;
+  border: 2px solid #2d3436;
+  border-radius: 999px;
+  box-shadow: 2px 2px 0px #2d3436;
+}
+
+/* Comic Alert/Bubble */
+.comic-bubble {
+  position: relative;
+  background: #ffffff;
+  border: 3px solid #2d3436;
+  border-radius: 20px;
+  padding: 1rem;
+  box-shadow: 4px 4px 0px #2d3436;
+}
+
+.comic-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 30px;
+  width: 0;
+  height: 0;
+  border: 15px solid transparent;
+  border-top-color: #2d3436;
+  border-bottom: 0;
+  border-left: 0;
+  margin-left: -7.5px;
+  margin-bottom: -3px;
+}
+
+.comic-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 30px;
+  width: 0;
+  height: 0;
+  border: 15px solid transparent;
+  border-top-color: #ffffff;
+  border-bottom: 0;
+  border-left: 0;
+  margin-left: -7.5px;
+  margin-bottom: 0;
+  z-index: 1;
+}
+
+/* Yellow Comic Bubble */
+.comic-bubble-yellow {
+  background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+  border: 3px solid #2d3436;
+  box-shadow: 4px 4px 0px #2d3436;
+}
+
+.comic-bubble-yellow::before {
+  border-top-color: #ffeaa7;
+}
+
+/* Red Comic Bubble */
+.comic-bubble-red {
+  background: linear-gradient(135deg, #ff7675 0%, #d63031 100%);
+  color: white;
+  border: 3px solid #2d3436;
+  box-shadow: 4px 4px 0px #2d3436;
+}
+
+.comic-bubble-red::before {
+  border-top-color: #ff7675;
+}
+
+/* Blue Comic Bubble */
+.comic-bubble-blue {
+  background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+  color: white;
+  border: 3px solid #2d3436;
+  box-shadow: 4px 4px 0px #2d3436;
+}
+
+.comic-bubble-blue::before {
+  border-top-color: #74b9ff;
+}
+
+/* Starburst Effect */
+.comic-starburst {
+  position: relative;
+  display: inline-block;
+}
+
+.comic-starburst::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  background: #ffeaa7;
+  clip-path: polygon(
+    50% 0%, 61% 35%, 98% 35%, 68% 57%, 
+    79% 91%, 50% 70%, 21% 91%, 32% 57%, 
+    2% 35%, 39% 35%
+  );
+  z-index: -1;
+}
+
+/* Comic Animations */
+@keyframes comic-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(-8px) scale(1.02); }
+  50% { transform: translateY(0) scale(1); }
+  75% { transform: translateY(-4px) scale(1.01); }
+}
+
+@keyframes comic-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-3deg); }
+  75% { transform: rotate(3deg); }
+}
+
+@keyframes comic-pop {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes comic-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes comic-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes comic-wiggle {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+.comic-animate-bounce {
+  animation: comic-bounce 2s ease-in-out infinite;
+}
+
+.comic-animate-shake {
+  animation: comic-shake 0.5s ease-in-out infinite;
+}
+
+.comic-animate-pop {
+  animation: comic-pop 0.3s ease-out;
+}
+
+.comic-animate-float {
+  animation: comic-float 3s ease-in-out infinite;
+}
+
+.comic-animate-pulse {
+  animation: comic-pulse 1.5s ease-in-out infinite;
+}
+
+.comic-animate-wiggle {
+  animation: comic-wiggle 0.3s ease-in-out infinite;
+}
+
+/* Comic Pattern Backgrounds */
+.comic-bg-dots {
+  background-color: #87CEEB;
+  background-image: radial-gradient(#ffffff 2px, transparent 2px);
+  background-size: 20px 20px;
+}
+
+.comic-bg-stripes {
+  background: repeating-linear-gradient(
+    45deg,
+    #87CEEB,
+    #87CEEB 10px,
+    #74b9ff 10px,
+    #74b9ff 20px
+  );
+}
+
+.comic-bg-rays {
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    #ffeaa7 0deg,
+    #fdcb6e 30deg,
+    #ffeaa7 60deg,
+    #fdcb6e 90deg,
+    #ffeaa7 120deg,
+    #fdcb6e 150deg,
+    #ffeaa7 180deg,
+    #fdcb6e 210deg,
+    #ffeaa7 240deg,
+    #fdcb6e 270deg,
+    #ffeaa7 300deg,
+    #fdcb6e 330deg,
+    #ffeaa7 360deg
+  );
+}
+
+/* Hover Effects */
+.comic-hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.comic-hover-lift:hover {
+  transform: translateY(-4px) rotate(1deg);
+  box-shadow: 8px 8px 0px #2d3436 !important;
+}
+
+.comic-hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.comic-hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.comic-hover-rotate {
+  transition: transform 0.2s ease;
+}
+
+.comic-hover-rotate:hover {
+  transform: rotate(3deg);
+}
+
+/* Comic Divider */
+.comic-divider {
+  height: 4px;
+  background: repeating-linear-gradient(
+    90deg,
+    #2d3436 0px,
+    #2d3436 10px,
+    transparent 10px,
+    transparent 15px
+  );
+  border: none;
+  margin: 1rem 0;
+}
+
+/* Speech Bubble Variations */
+.comic-speech-left::after {
+  left: 20px;
+  right: auto;
+}
+
+.comic-speech-left::before {
+  left: 20px;
+  right: auto;
+}
+
+.comic-speech-right::after {
+  left: auto;
+  right: 20px;
+}
+
+.comic-speech-right::before {
+  left: auto;
+  right: 20px;
+}
+
+/* Comic Borders */
+.comic-border {
+  border: 3px solid #2d3436 !important;
+  border-radius: 12px !important;
+}
+
+.comic-border-thick {
+  border: 4px solid #2d3436 !important;
+  border-radius: 16px !important;
+}
+
+/* Comic Shadow Box */
+.comic-shadow-box {
+  box-shadow: 6px 6px 0px #2d3436 !important;
+}
+
+.comic-shadow-box-sm {
+  box-shadow: 3px 3px 0px #2d3436 !important;
+}
+
+/* Comic Text Effects */
+.comic-text-outline {
+  text-shadow: 
+    -2px -2px 0 #2d3436,
+    2px -2px 0 #2d3436,
+    -2px 2px 0 #2d3436,
+    2px 2px 0 #2d3436;
+}
+
+.comic-text-shadow {
+  text-shadow: 3px 3px 0px #2d3436;
+}
+
+/* Comic Confetti Animation */
+@keyframes comic-confetti-fall {
+  0% {
+    transform: translateY(-100%) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.comic-confetti {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  animation: comic-confetti-fall 3s linear forwards;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Comic Explosion Effect */
+.comic-explosion {
+  position: relative;
+}
+
+.comic-explosion::before {
+  content: '💥';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  font-size: 24px;
+  animation: comic-pulse 0.5s ease-in-out infinite;
+}
+
+/* Zigzag Border */
+.comic-zigzag {
+  position: relative;
+}
+
+.comic-zigzag::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: linear-gradient(135deg, #2d3436 25%, transparent 25%) -10px 0,
+              linear-gradient(225deg, #2d3436 25%, transparent 25%) -10px 0;
+  background-size: 20px 20px;
+}
+
+/* Comic Dashed Border */
+.comic-dashed {
+  border: 3px dashed #2d3436 !important;
+  border-radius: 12px !important;
+}
+
+/* Halftone Pattern */
+.comic-halftone {
+  background-color: #ffffff;
+  background-image: radial-gradient(#2d3436 1px, transparent 1px);
+  background-size: 8px 8px;
 }

@@ -86,53 +86,65 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
     <form onSubmit={handleSubmit} {...props}>
       <FieldGroup>
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          <h1 className="font-comic-title text-3xl text-red-500 comic-text-shadow comic-animate-bounce">
             Login to your account
           </h1>
 
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 font-comic text-sm text-gray-600">
             Disruptive Solutions Inc. · Internal Operations Portal
           </p>
         </div>
 
         {error && (
-          <p className="mb-3 text-sm text-red-600 text-center animate-in fade-in">
-            {error}
-          </p>
+          <div className="mb-4 comic-bubble bg-red-100 border-red-400 comic-animate-shake">
+            <p className="text-sm text-red-600 text-center font-comic font-bold">
+              ⚠️ {error}
+            </p>
+          </div>
         )}
 
         <Field>
-          <FieldLabel>Email</FieldLabel>
+          <FieldLabel className="font-comic font-bold text-gray-700">📧 Email</FieldLabel>
           <Input
             type="email"
             required
-            className="focus-visible:ring-red-500"
+            className="comic-input h-12 text-lg"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="hero@disruptive.com"
           />
         </Field>
 
         <Field>
-          <FieldLabel>Password</FieldLabel>
+          <FieldLabel className="font-comic font-bold text-gray-700">🔑 Password</FieldLabel>
           <Input
             type="password"
             required
-            className="focus-visible:ring-red-500"
+            className="comic-input h-12 text-lg"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            placeholder="Your secret code!"
           />
         </Field>
 
         <Button
           type="submit"
           disabled={loading}
-          className="mt-4 h-11 w-full bg-gradient-to-r from-red-600 to-red-700 font-semibold text-white transition-all hover:scale-[1.02] hover:from-red-700 hover:to-red-800"
+          className="comic-button mt-4 h-14 w-full bg-gradient-to-r from-red-500 to-orange-500 font-comic text-lg text-white comic-animate-pulse"
         >
-          {loading ? "Signing in..." : "Sign in to Dashboard"}
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="animate-spin">⚡</span> Powering up...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              🚀 Let&apos;s Go!
+            </span>
+          )}
         </Button>
 
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Having trouble logging in? Contact your administrator
+        <p className="mt-4 text-center text-xs text-gray-500 font-comic">
+          Having trouble? Contact your administrator 🦸
         </p>
       </FieldGroup>
     </form>
