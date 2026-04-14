@@ -111,9 +111,9 @@ export default function ViewProduct({
           {/* ── MODAL CONTAINER ── */}
           <div
             className={`
-              bg-white w-full h-[100dvh] md:h-[90vh] md:rounded-xl flex flex-col md:flex-row overflow-hidden
+              bg-white w-full h-dvh md:h-[90vh] md:rounded-xl flex flex-col md:flex-row overflow-hidden
               transition-all duration-300
-              ${openTDS ? "md:w-[1400px]" : "md:w-[1000px]"}
+              ${openTDS ? "md:w-350" : "md:w-250"}
             `}
           >
 
@@ -156,7 +156,7 @@ export default function ViewProduct({
               <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-y-auto px-4 py-4 gap-4 pb-6">
 
                 {/* IMAGE + added-by */}
-                <div className="w-full md:w-[280px] shrink-0 space-y-3">
+                <div className="w-full md:w-70 shrink-0 space-y-3">
                   <div className="w-full aspect-square border rounded-xl bg-white flex items-center justify-center overflow-hidden">
                     {product?.mainImage?.url ? (
                       <img
