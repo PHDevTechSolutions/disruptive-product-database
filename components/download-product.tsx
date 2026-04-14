@@ -286,7 +286,7 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
             <Download className="h-4 w-4 text-gray-600" />
           </button>
         ) : (
-          <Button>
+          <Button className="bg-green-600 hover:bg-green-700 text-white">
             <Download className="w-4 h-4 mr-2" />
             Download
           </Button>

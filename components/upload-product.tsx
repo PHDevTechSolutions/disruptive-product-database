@@ -948,7 +948,7 @@ export default function UploadProduct({ iconOnly = false }: Props) {
               <Upload className="h-4 w-4 text-gray-600" />
             </button>
           ) : (
-            <Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
               <Upload className="w-4 h-4 mr-2" />
               Upload
             </Button>
