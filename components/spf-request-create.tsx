@@ -1392,34 +1392,30 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
           <div className="mt-4 overflow-y-auto relative">
             {formData.item_description?.length ? (
-              <table className="w-full table-auto border">
+              <table className="w-full table-fixed border text-[10px]">
                 <thead>
                   <tr className="bg-gray-100">
-                    <th className="border px-2 py-1 text-center">#</th>
-                    <th className="border px-2 py-1 text-center">Image</th>
-                    <th className="border px-2 py-1 text-center">
+                    <th className="border px-1 py-1 text-center w-[60px]">#</th>
+                    <th className="border px-1 py-1 text-center w-[50px]">Image</th>
+                    <th className="border px-1 py-1 text-center w-[120px]">
                       Item Description
                     </th>
-                    <th className="border px-2 py-1 text-center">
-                      Product Offer
-                    </th>
+                    <th className="border px-1 py-1 text-center">Product Offer</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(formData.item_description || []).map((desc, index) => (
                     <tr
                       key={index}
-                      className="text-sm"
+                      className="text-[10px]"
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => {
                         if (viewMode || !draggedProduct) return;
-                        // Check for pipe values before dropping
                         const frozen =
                           draggedProduct.__fromRow !== undefined
                             ? draggedProduct
                             : freezeSpecs(draggedProduct);
                         if (hasMultipleSpecValues(frozen)) {
-                          // Remove from source row if it came from another row
                           if (draggedProduct.__fromRow !== undefined) {
                             setProductOffers((prev) => {
                               const copy = { ...prev };
@@ -1456,26 +1452,26 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                         }
                       }}
                     >
-                      <td className="border px-2 py-1 font-medium text-center align-middle">
+                      <td className="border px-1 py-1 font-medium text-center align-middle text-[10px]">
                         {formData.spf_number
                           ? `${formData.spf_number}-${String(index + 1).padStart(3, "0")}`
                           : "-"}
                       </td>
-                      <td className="border px-2 py-1 align-middle">
+                      <td className="border px-1 py-1 align-middle">
                         <div className="flex justify-center items-center">
                           {formData.item_photo?.[index] ? (
                             <img
                               src={formData.item_photo[index]}
                               alt={desc}
-                              className="w-24 h-24 object-contain"
+                              className="w-12 h-12 object-contain"
                             />
                           ) : (
-                            "-"
+                            <span className="text-[10px]">-</span>
                           )}
                         </div>
                       </td>
                       <td
-                        className="border px-2 py-1 whitespace-pre-wrap text-center align-middle"
+                        className="border px-1 py-1 whitespace-pre-wrap text-center align-middle text-[10px] leading-tight"
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) => {
@@ -1498,50 +1494,47 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                       <td className="border px-2 py-1 text-center align-middle">
                         {(productOffers[index] || []).length > 0 && (
                           <div className="border rounded mb-2 overflow-hidden">
-                            <table className="w-full text-xs">
+                            <table className="w-full table-fixed text-[9px]">
                               <thead className="bg-muted">
                                 <tr>
-                                  <th className="border px-2 py-1 text-center">
-                                    Option
+                                  <th className="border px-0.5 py-0.5 text-center w-[40px]">
+                                    Opt
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Supplier Brand
+                                  <th className="border px-0.5 py-0.5 text-center w-[50px]">
+                                    Brand
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Image
+                                  <th className="border px-0.5 py-0.5 text-center w-[35px]">
+                                    Img
                                   </th>
-                                  <th className="border px-2 py-1 w-[70px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-[30px]">
                                     Qty
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
+                                  <th className="border px-0.5 py-0.5 text-center w-[65px]">
                                     Price Validity
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    TDS Brand
+                                  <th className="border px-0.5 py-0.5 text-center w-[35px]">
+                                    TDS
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Technical Specifications
+                                  <th className="border px-0.5 py-0.5 text-center w-[90px]">
+                                    Technical Specs
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
+                                  <th className="border px-0.5 py-0.5 text-center w-[40px]">
                                     Unit Cost
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Qty/Per Carton
+                                  <th className="border px-0.5 py-0.5 text-center w-[30px]">
+                                    Qty/Ctn
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Packaging Details
-                                    <div className="text-[10px] text-muted-foreground">
-                                      L x W x H
-                                    </div>
+                                  <th className="border px-0.5 py-0.5 text-center w-[45px]">
+                                    Packaging
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Factory Address
+                                  <th className="border px-0.5 py-0.5 text-center w-[45px]">
+                                    Factory
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Port of Discharge
+                                  <th className="border px-0.5 py-0.5 text-center w-[35px]">
+                                    Port
                                   </th>
-                                  <th className="border px-2 py-1 w-[100px]">
-                                    Sub Total
+                                  <th className="border px-0.5 py-0.5 text-center w-[40px]">
+                                    Subtotal
                                   </th>
                                 </tr>
                               </thead>
@@ -1598,30 +1591,30 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                           setShowTrash(false);
                                         }}
                                       >
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
-                                            Option {i + 1}
+                                        <td className="border px-0.5 py-0.5 text-center align-middle">
+                                          <span className="inline-flex items-center text-[9px] font-semibold px-1 py-0 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                                            {i + 1}
                                           </span>
                                         </td>
-                                        <td className="border px-2 py-1 text-center align-middle font-medium">
+                                        <td className="border px-0.5 py-0.5 text-center align-middle font-medium text-[9px]">
                                           {brand}
                                         </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
+                                        <td className="border px-0.5 py-0.5 text-center align-middle">
                                           {prod.mainImage?.url ? (
                                             <img
                                               src={prod.mainImage.url}
-                                              className="w-16 h-16 object-contain mx-auto"
+                                              className="w-8 h-8 object-contain mx-auto"
                                               alt=""
                                             />
                                           ) : (
-                                            "-"
+                                            <span className="text-[9px]">-</span>
                                           )}
                                         </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
+                                        <td className="border px-0.5 py-0.5 text-center align-middle">
                                           <input
                                             type="number"
                                             min={1}
-                                            className="w-full border px-1 text-xs"
+                                            className="w-full border px-0.5 text-[9px]"
                                             placeholder="Qty"
                                             value={prod.qty ?? 1}
                                             onChange={(e) => {
@@ -1629,9 +1622,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                               if (qty < 1) qty = 1;
                                               setProductOffers((prev) => {
                                                 const copy = { ...prev };
-                                                const row = [
-                                                  ...(copy[index] || []),
-                                                ];
+                                                const row = [...(copy[index] || [])];
                                                 row[i] = { ...row[i], qty };
                                                 copy[index] = row;
                                                 return copy;
@@ -1639,10 +1630,10 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                             }}
                                           />
                                         </td>
-                                          <td className="border px-2 py-1 text-center align-middle">
+                                          <td className="border px-0.5 py-0.5 text-center align-middle">
                                             <input
                                               type="datetime-local"
-                                              className="border px-1 py-0.5 text-xs w-full"
+                                              className="border px-0.5 py-0.5 text-[8px] w-full"
                                               value={prod.__priceValidity ?? ""}
                                               onChange={(e) => {
                                                 setProductOffers((prev) => {
@@ -1655,9 +1646,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                               }}
                                             />
                                           </td>
-                                          <td className="border px-2 py-1 text-center align-middle">
+                                          <td className="border px-0.5 py-0.5 text-center align-middle text-[9px]">
                                             <select
-                                              className="border rounded px-1 py-0.5 text-xs w-full"
+                                              className="border rounded px-0.5 py-0.5 text-[8px] w-full"
                                               value={prod.__tdsBrand ?? ""}
                                               onChange={(e) => {
                                                 const brand = e.target.value;
@@ -1670,7 +1661,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                                 });
                                               }}
                                             >
-                                              <option value="">-- Brand --</option>
+                                              <option value="">--</option>
                                               {["Lit", "Lumera", "Ecoshift"].map((b) => (
                                                 <option key={b} value={b}>{b}</option>
                                               ))}
@@ -1678,7 +1669,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                             {prod.__tdsBrand && (
                                               <button
                                                 type="button"
-                                                className="mt-1 text-[10px] text-green-600 underline"
+                                                className="mt-0.5 text-[8px] text-green-600 underline block"
                                                 onClick={() => {
                                                   const win = window.open("", "_blank");
                                                   if (win) win.document.title = "Generating TDS...";
@@ -1700,11 +1691,11 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                                   );
                                                 }}
                                               >
-                                                ⬇ Download TDS
+                                                ⬇ TDS
                                               </button>
                                             )}
                                           </td>
-                                          <td className="border px-2 py-1 text-center align-middle">
+                                          <td className="border px-0.5 py-0.5 text-center align-middle text-[9px] leading-tight">
                                             {prod.technicalSpecifications
                                               ?.map((g: any) => ({
                                               ...g,
@@ -1719,9 +1710,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                                 g.specs && g.specs.length > 0,
                                             )
                                             .map((g: any, gi: number) => (
-                                              <div key={gi} className="mb-2">
-                                                <b>{g.title}</b>
-                                                <div className="text-xs">
+                                              <div key={gi} className="mb-1">
+                                                <b className="text-[8px]">{g.title}</b>
+                                                <div className="text-[9px]">
                                                   {g.specs.map(
                                                     (s: any, si: number) => (
                                                       <div key={si}>
@@ -1732,54 +1723,38 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                                 </div>
                                               </div>
                                             ))}
-                                            {/* Edit Specs Button - show when product has multiple spec values */}
                                             {hasMultipleSpecValues({ 
                                               technicalSpecifications: prod.__originalTechnicalSpecifications || prod.technicalSpecifications 
                                             }) && (
                                               <button
                                                 type="button"
                                                 onClick={() => openSpecsRevision(index, i)}
-                                                className="mt-2 px-2 py-1 text-[10px] bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100"
+                                                className="mt-1 px-1 py-0.5 text-[8px] bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100"
                                               >
                                                 Edit Specs
                                               </button>
                                             )}
                                         </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
+                                        <td className="border px-0.5 py-0.5 text-center align-middle text-[9px]">
                                           {unitCost}
                                         </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod?.commercialDetails
-                                            ?.pcsPerCarton || "-"}
+                                        <td className="border px-0.5 py-0.5 text-center align-middle text-[9px]">
+                                          {prod?.commercialDetails?.pcsPerCarton || "-"}
                                         </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {length} x {width} x {height}
+                                        <td className="border px-0.5 py-0.5 text-center align-middle text-[9px] leading-tight">
+                                          {length}×{width}×{height}
                                         </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
+                                        <td className="border px-0.5 py-0.5 text-center align-middle text-[9px] leading-tight">
                                           {factory}
                                         </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
+                                        <td className="border px-0.5 py-0.5 text-center align-middle text-[9px]">
                                           {port}
                                         </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {(() => {
+                                        <td className="border px-0.5 py-0.5 text-center align-middle text-[9px] font-semibold">
+                                          ${(() => {
                                             const qty = prod.qty ?? 1;
-                                            const cost = Number(
-                                              prod?.commercialDetails
-                                                ?.unitCost || 0,
-                                            );
-                                            return (
-                                              <span className="text-xs font-semibold">
-                                                $
-                                                {(qty * cost).toLocaleString(
-                                                  "en-US",
-                                                  {
-                                                    minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2,
-                                                  },
-                                                )}
-                                              </span>
-                                            );
+                                            const cost = Number(prod?.commercialDetails?.unitCost || 0);
+                                            return (qty * cost).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
                                           })()}
                                         </td>
                                       </tr>

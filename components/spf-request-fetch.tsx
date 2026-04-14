@@ -1860,17 +1860,15 @@ useEffect(() => {
 
           <div className="overflow-y-auto relative">
             {itemDescriptions.length ? (
-              <table className="w-full table-auto border">
+              <table className="w-full table-fixed border text-[10px]">
                 <thead>
                   <tr className="bg-gray-100">
-                    <th className="border px-2 py-1 text-center">#</th>
-                    <th className="border px-2 py-1 text-center">Image</th>
-                    <th className="border px-2 py-1 text-center">
+                    <th className="border px-1 py-1 text-center w-[60px]">#</th>
+                    <th className="border px-1 py-1 text-center w-[50px]">Image</th>
+                    <th className="border px-1 py-1 text-center w-[120px]">
                       Item Description
                     </th>
-                    <th className="border px-2 py-1 text-center">
-                      Product Offer
-                    </th>
+                    <th className="border px-1 py-1 text-center">Product Offer</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1923,69 +1921,69 @@ useEffect(() => {
                         }
                       }}
                     >
-                      <td className="border px-2 py-1 font-medium text-center align-middle">
+                      <td className="border px-1 py-1 font-medium text-center align-middle text-[10px]">
                         {`${spfNumber}-${String(index + 1).padStart(3, "0")}`}
                       </td>
-                      <td className="border px-2 py-1 align-middle">
+                      <td className="border px-1 py-1 align-middle">
                         <div className="flex justify-center items-center">
                           {itemImages[index] ? (
                             <img
                               src={itemImages[index]}
                               alt={desc}
-                              className="w-24 h-24 object-contain"
+                              className="w-12 h-12 object-contain"
                             />
                           ) : (
-                            "-"
+                            <span className="text-[10px]">-</span>
                           )}
                         </div>
                       </td>
-                      <td className="border px-2 py-1 whitespace-pre-wrap text-center align-middle text-sm leading-relaxed">
+                      <td className="border px-1 py-1 whitespace-pre-wrap text-center align-middle text-[10px] leading-tight">
                         {desc.replace(/\|/g, "\n")}
                       </td>
-                      <td className="border px-2 py-1 text-center align-middle">
+                      <td className="border px-1 py-1 text-center align-middle">
                         {(productOffers[index] || []).length > 0 && (
                           <div className="border rounded mb-2 overflow-hidden">
-                            <table className="w-full text-xs">
+                            <table className="w-full table-fixed text-[9px]">
                               <thead className="bg-muted">
                                 <tr>
-                                  <th className="border px-2 py-1 text-center">
-                                    Option
+                                  <th className="border px-0.5 py-0.5 text-center w-[40px]">
+                                    Opt
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Supplier Brand
+                                  <th className="border px-0.5 py-0.5 text-center w-[50px]">
+                                    Brand
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Image
+                                  <th className="border px-0.5 py-0.5 text-center w-[35px]">
+                                    Img
                                   </th>
-                                  <th className="border px-2 py-1 w-[70px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-[30px]">
                                     Qty
                                   </th>
-                                  <th className="border px-2 py-1 text-center whitespace-nowrap">
+                                  <th className="border px-0.5 py-0.5 text-center w-[65px]">
                                     Price Validity
                                   </th>
-                                  <th className="border px-2 py-1 text-center whitespace-nowrap">
-                                    TDS Brand
+                                  <th className="border px-0.5 py-0.5 text-center w-[40px]">
+                                    TDS
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Technical Specifications
+                                  <th className="border px-0.5 py-0.5 text-center w-[90px]">
+                                    Technical Specs
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
+                                  <th className="border px-0.5 py-0.5 text-center w-[40px]">
                                     Unit Cost
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
-                                    Qty/Per Carton
+                                  <th className="border px-0.5 py-0.5 text-center w-[35px]">
+                                    Qty/Ctn
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
+                                  <th className="border px-0.5 py-0.5 text-center w-[45px]">
                                     Packaging
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
+                                  <th className="border px-0.5 py-0.5 text-center w-[45px]">
                                     Factory
                                   </th>
-                                  <th className="border px-2 py-1 text-center">
+                                  <th className="border px-0.5 py-0.5 text-center w-[35px]">
                                     Port
                                   </th>
-                                  <th className="border px-2 py-1 w-[100px]">
-                                    Sub Total
+                                  <th className="border px-0.5 py-0.5 text-center w-[45px]">
+                                    Subtotal
                                   </th>
                                 </tr>
                               </thead>
@@ -3433,8 +3431,8 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
         <DialogContent
           className={
             isMobile
-              ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
-              : "sm:max-w-8xl max-h-[90vh] overflow-hidden rounded-none"
+              ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-y-auto"
+              : "sm:max-w-8xl max-h-[90vh] overflow-y-auto rounded-none"
           }
         >
           {isMobile ? renderEditMobile() : renderEditDesktop()}
