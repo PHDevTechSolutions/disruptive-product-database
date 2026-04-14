@@ -632,14 +632,49 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
                     value={contactNames[index]}
                     onChange={(e) => updateList(setContactNames, index, e.target.value)}
                   />
-                  <select
-                    className="h-10 rounded-md border px-2 text-sm bg-background"
-                    value={contactTypes[index]}
-                    onChange={(e) => updateContactType(index, e.target.value as "phone" | "other")}
-                  >
-                    <option value="phone">Phone</option>
-                    <option value="other">Others</option>
-                  </select>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-[100px] justify-between font-normal"
+                      >
+                        {contactTypes[index] === "phone" ? "Phone" : "Others"}
+                        <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[120px] p-0" align="start">
+                      <Command>
+                        <CommandList>
+                          <CommandGroup>
+                            <CommandItem
+                              onSelect={() => updateContactType(index, "phone")}
+                              className="cursor-pointer"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  contactTypes[index] === "phone" ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              Phone
+                            </CommandItem>
+                            <CommandItem
+                              onSelect={() => updateContactType(index, "other")}
+                              className="cursor-pointer"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  contactTypes[index] === "other" ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              Others
+                            </CommandItem>
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <div className="flex gap-1">
                     <Button type="button" size="icon" variant="outline" onClick={() => { addRowAfter(setContactNames, index); addRowAfter(setContactNumbers, index); addContactTypeAfter(index); }}>
                       <Plus className="h-4 w-4" />

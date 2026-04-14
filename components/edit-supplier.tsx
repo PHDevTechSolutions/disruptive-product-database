@@ -2,7 +2,12 @@
 
 import * as React from "react";
 import { useEffect, useState } from "react";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, ChevronsUpDown, Check } from "lucide-react";
+import {
+  getCountries,
+  getCountryCallingCode,
+  CountryCode,
+} from "libphonenumber-js";
 
 import {
   Sheet,
@@ -15,8 +20,20 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import PhoneInput from "react-phone-number-input";
-import "react-phone-number-input/style.css";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +54,174 @@ import {
 
 import { logSupplierEvent } from "@/lib/auditlogger"; // ✅ AUDIT
 import RequestApprovalDialog from "@/components/request-approval-dialog";
+
+/* ─────────────────────────────────────────────
+   Country display helpers
+───────────────────────────────────────────── */
+const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+
+type CountryOption = {
+  code: CountryCode;
+  name: string;
+  dialCode: string;
+  flag: string;
+};
+
+const ALL_COUNTRIES: CountryOption[] = getCountries()
+  .map((code) => {
+    try {
+      return {
+        code,
+        name: regionNames.of(code) ?? code,
+        dialCode: `+${getCountryCallingCode(code)}`,
+        flag: code
+          .toUpperCase()
+          .replace(/./g, (c) =>
+            String.fromCodePoint(127397 + c.charCodeAt(0)),
+          ),
+      };
+    } catch {
+      return null;
+    }
+  })
+  .filter(Boolean)
+  .sort((a, b) => a!.name.localeCompare(b!.name)) as CountryOption[];
+
+/* ─────────────────────────────────────────────
+   CountryCombobox
+───────────────────────────────────────────── */
+type CountryComboboxProps = {
+  value: CountryCode;
+  onChange: (code: CountryCode, dialCode: string) => void;
+};
+
+function CountryCombobox({ value, onChange }: CountryComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const selected = ALL_COUNTRIES.find((c) => c.code === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-[160px] justify-between font-normal shrink-0"
+        >
+          <span className="flex items-center gap-2 truncate">
+            <span className="text-base leading-none">{selected?.flag}</span>
+            <span className="text-sm">{selected?.dialCode}</span>
+            <span className="text-xs text-muted-foreground truncate">
+              {selected?.name}
+            </span>
+          </span>
+          <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent className="w-[280px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search country…" className="h-9" />
+          <CommandList className="max-h-60">
+            <CommandEmpty>No country found.</CommandEmpty>
+            <CommandGroup>
+              {ALL_COUNTRIES.map((country) => (
+                <CommandItem
+                  key={country.code}
+                  value={`${country.name} ${country.dialCode} ${country.code}`}
+                  onSelect={() => {
+                    onChange(country.code, country.dialCode);
+                    setOpen(false);
+                  }}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="text-base">{country.flag}</span>
+                  <span className="flex-1 truncate text-sm">{country.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {country.dialCode}
+                  </span>
+                  <Check
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      value === country.code ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   PhoneField
+───────────────────────────────────────────── */
+type PhoneFieldProps = {
+  value: string;
+  onChange: (val: string) => void;
+  defaultCountry?: CountryCode;
+};
+
+function PhoneField({
+  value,
+  onChange,
+  defaultCountry = "CN",
+}: PhoneFieldProps) {
+  const [country, setCountry] = useState<CountryCode>(defaultCountry);
+  const [localNumber, setLocalNumber] = useState("");
+
+  useEffect(() => {
+    if (!value) return;
+    const matched = ALL_COUNTRIES.find(
+      (c) => value.startsWith(c.dialCode) && c.dialCode.length > 1,
+    );
+    if (matched) {
+      setCountry(matched.code);
+      setLocalNumber(value.slice(matched.dialCode.length).trim());
+    } else {
+      setLocalNumber(value.replace(/^\+/, ""));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCountryChange = (code: CountryCode, dialCode: string) => {
+    setCountry(code);
+    const digits = localNumber.replace(/\D/g, "");
+    onChange(`${dialCode}${digits}`);
+  };
+
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^\d\s\-().]/g, "");
+    setLocalNumber(raw);
+    const dialCode = `+${getCountryCallingCode(country)}`;
+    const digits = raw.replace(/\D/g, "");
+    onChange(digits ? `${dialCode}${digits}` : "");
+  };
+
+  const dialCode = `+${getCountryCallingCode(country)}`;
+
+  return (
+    <div className="flex gap-2 items-center w-full">
+      <CountryCombobox value={country} onChange={handleCountryChange} />
+      <div className="relative flex-1">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground select-none pointer-events-none">
+          {dialCode}
+        </span>
+        <Input
+          value={localNumber}
+          onChange={handleNumberChange}
+          placeholder="XXX XXXX XXXX"
+          className="pl-14"
+          inputMode="tel"
+        />
+      </div>
+    </div>
+  );
+}
+
 import {
   createApprovalRequest,
   getApprovalUserProfile,
@@ -389,17 +574,56 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
             {contactNames.map((_, index) => (
               <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2">
                 <Input placeholder="Contact Name" value={contactNames[index]} onChange={(e) => updateList(setContactNames, index, e.target.value)} />
-                <select className="h-10 rounded-md border px-2 text-sm" value={contactTypes[index]} onChange={(e) => updateContactType(index, e.target.value as "phone" | "other")}>
-                  <option value="phone">Phone</option>
-                  <option value="other">Others</option>
-                </select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-[100px] justify-between font-normal"
+                    >
+                      {contactTypes[index] === "phone" ? "Phone" : "Others"}
+                      <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[120px] p-0" align="start">
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          <CommandItem
+                            onSelect={() => updateContactType(index, "phone")}
+                            className="cursor-pointer"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                contactTypes[index] === "phone" ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            Phone
+                          </CommandItem>
+                          <CommandItem
+                            onSelect={() => updateContactType(index, "other")}
+                            className="cursor-pointer"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                contactTypes[index] === "other" ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            Others
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <div className="flex gap-1 justify-end">
                   <Button type="button" size="icon" variant="outline" onClick={() => { addRowAfter(setContactNames, index); addRowAfter(setContactNumbers, index); addContactTypeAfter(index); }}><Plus className="h-4 w-4" /></Button>
                   <Button type="button" size="icon" variant="outline" disabled={contactNames.length === 1} onClick={() => { removeRow(setContactNames, index); removeRow(setContactNumbers, index); removeContactType(index); }}><Minus className="h-4 w-4" /></Button>
                 </div>
                 <div className="col-span-3">
                   {contactTypes[index] === "phone" ? (
-                    <PhoneInput international defaultCountry="CN" countryCallingCodeEditable={false} value={contactNumbers[index]} onChange={(value) => updateList(setContactNumbers, index, value || "")} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="+86 XXX XXXX XXXX" />
+                    <PhoneField value={contactNumbers[index]} onChange={(val) => updateList(setContactNumbers, index, val)} defaultCountry="CN" />
                   ) : (
                     <Input placeholder="WeChat / TikTok / etc" value={contactNumbers[index]} onChange={(e) => updateList(setContactNumbers, index, e.target.value)} />
                   )}
