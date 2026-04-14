@@ -129,7 +129,7 @@ export default function Dashboard() {
           >
             {/* Comic notification badge */}
             {badge !== undefined && badge > 0 && (
-              <span className="absolute -top-2 -right-2 z-10 min-w-[28px] h-7 px-1.5 rounded-full bg-yellow-400 text-gray-900 text-xs font-comic font-bold flex items-center justify-center border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] comic-animate-bounce">
+              <span className="absolute -top-2 -right-2 z-10 min-w-7 h-7 px-1.5 rounded-full bg-yellow-400 text-gray-900 text-xs font-comic font-bold flex items-center justify-center border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] comic-animate-bounce">
                 {badge > 99 ? "99+" : badge}
               </span>
             )}
@@ -155,7 +155,7 @@ export default function Dashboard() {
       {/* ── Customize Theme Button ── */}
       <button
         onClick={() => setThemeOpen(true)}
-        className="comic-button flex items-center gap-2.5 px-5 py-3 bg-gradient-to-r from-blue-400 to-purple-400 text-white font-comic"
+        className="comic-button flex items-center gap-2.5 px-5 py-3 bg-linear-to-r from-blue-400 to-purple-400 text-white font-comic"
       >
         <ImageIcon className="h-5 w-5" />
         <span>Customize Wallpaper 🎨</span>
@@ -241,14 +241,14 @@ function WallpaperModal({
       {/* Modal - Comic Style */}
       <div className="comic-card w-full max-w-md overflow-hidden relative">
         {/* Comic Header */}
-        <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-yellow-300 to-orange-300 border-b-3 border-gray-800">
+        <div className="flex items-center justify-between px-5 py-4 bg-linear-to-r from-yellow-300 to-orange-300 border-b-3 border-gray-800">
           <div>
             <h2 className="font-comic-title text-xl text-gray-900 comic-text-outline">🎨 Customize Wallpaper</h2>
             <p className="text-xs font-comic text-gray-700 mt-0.5">Saved locally on this device only</p>
           </div>
           <button
             onClick={onClose}
-            className="h-10 w-10 rounded-full bg-white border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] hover:shadow-[2px_2px_0px_#2d3436] hover:translate-x-[1px] hover:translate-y-[1px] flex items-center justify-center transition-all"
+            className="h-10 w-10 rounded-full bg-white border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] hover:shadow-[2px_2px_0px_#2d3436] hover:translate-x-px hover:translate-y-px flex items-center justify-center transition-all"
           >
             <X className="h-5 w-5 text-gray-800" />
           </button>
@@ -370,7 +370,7 @@ function WallpaperModal({
           <button
             onClick={handleApply}
             disabled={!preview}
-            className="comic-button flex-1 h-12 bg-gradient-to-r from-green-400 to-emerald-400 text-white text-sm font-comic disabled:opacity-50"
+            className="comic-button flex-1 h-12 bg-linear-to-r from-green-400 to-emerald-400 text-white text-sm font-comic disabled:opacity-50"
           >
             {preview ? "Apply! ✅" : "Upload First 📤"}
           </button>

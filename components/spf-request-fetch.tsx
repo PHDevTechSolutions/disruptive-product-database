@@ -1122,7 +1122,7 @@ useEffect(() => {
               placeholder="Search..."
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
-              className="border px-2 py-1 text-xs w-[110px] rounded"
+              className="border px-2 py-1 text-xs w-27.5 rounded"
             />
             <Button
               type="button"
@@ -1778,7 +1778,7 @@ useEffect(() => {
             placeholder="Search product..."
             value={productSearch}
             onChange={(e) => setProductSearch(e.target.value)}
-            className="border px-3 py-2 text-sm w-[220px]"
+            className="border px-3 py-2 text-sm w-55"
           />
           <Button
             size="icon"
@@ -1852,7 +1852,7 @@ useEffect(() => {
       <div className="flex gap-4 overflow-hidden flex-1">
         {/* LEFT: Items table */}
         <Card
-          className={`${viewMode ? "w-[100%]" : "w-[70%]"} transition-all duration-500 ease-in-out p-4 flex flex-col gap-4 overflow-y-auto overscroll-contain`}
+          className={`${viewMode ? "w-full" : "w-[70%]"} transition-all duration-500 ease-in-out p-4 flex flex-col gap-4 overflow-y-auto overscroll-contain`}
         >
           <div className="mb-3 border-b pb-2">
             <h3 className="text-sm font-bold">{spfNumber}</h3>
@@ -1863,9 +1863,9 @@ useEffect(() => {
               <table className="w-full table-fixed border text-[10px]">
                 <thead>
                   <tr className="bg-gray-100">
-                    <th className="border px-1 py-1 text-center w-[60px]">#</th>
-                    <th className="border px-1 py-1 text-center w-[50px]">Image</th>
-                    <th className="border px-1 py-1 text-center w-[120px]">
+                    <th className="border px-1 py-1 text-center w-15">#</th>
+                    <th className="border px-1 py-1 text-center w-12.5">Image</th>
+                    <th className="border px-1 py-1 text-center w-30">
                       Item Description
                     </th>
                     <th className="border px-1 py-1 text-center">Product Offer</th>
@@ -1946,43 +1946,43 @@ useEffect(() => {
                             <table className="w-full table-fixed text-[9px]">
                               <thead className="bg-muted">
                                 <tr>
-                                  <th className="border px-0.5 py-0.5 text-center w-[40px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-10">
                                     Opt
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[50px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-12.5">
                                     Brand
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[35px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-8.75">
                                     Img
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[30px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-7.5">
                                     Qty
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[65px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-16.25">
                                     Price Validity
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[40px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-10">
                                     TDS
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[90px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-22.5">
                                     Technical Specs
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[40px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-10">
                                     Unit Cost
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[35px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-8.75">
                                     Qty/Ctn
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[45px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
                                     Packaging
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[45px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
                                     Factory
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[35px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-8.75">
                                     Port
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-[45px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
                                     Subtotal
                                   </th>
                                 </tr>
@@ -2357,7 +2357,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
     <Pencil size={14} className="text-orange-500" />
   </button>
 )}
-                <div className="h-[100px] w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
+                <div className="h-25 w-full bg-gray-100 flex items-center justify-center overflow-hidden rounded">
                   {p.mainImage?.url ? (
                     <img
                       src={p.mainImage.url}
@@ -2943,7 +2943,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
                                       TDS
                                     </th>
-                                    <th className="border px-2 py-1 text-center min-w-[200px]">
+                                    <th className="border px-2 py-1 text-center min-w-50">
                                       Technical Specs
                                     </th>
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
@@ -3288,7 +3288,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
         <DialogContent
           className={
             isMobile
-              ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
+              ? "w-full max-w-full h-dvh rounded-none p-0 flex flex-col overflow-hidden"
               : "sm:max-w-8xl max-h-[90vh] flex flex-col overflow-hidden rounded-none"
           }
         >
@@ -3431,7 +3431,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
         <DialogContent
           className={
             isMobile
-              ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-y-auto"
+              ? "w-full max-w-full h-dvh rounded-none p-0 flex flex-col overflow-y-auto"
               : "sm:max-w-8xl max-h-[90vh] flex flex-col overflow-y-auto rounded-none"
           }
         >
@@ -3464,7 +3464,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
         <DialogContent
           className={
             isMobile
-              ? "w-full max-w-full h-[100dvh] rounded-none p-0 flex flex-col overflow-hidden"
+              ? "w-full max-w-full h-dvh rounded-none p-0 flex flex-col overflow-hidden"
               : "sm:max-w-8xl max-h-[90vh] overflow-y-auto rounded-none"
           }
         >
@@ -3525,7 +3525,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
             <p className="text-sm text-muted-foreground mb-4">
               Choose which item row to add the product to:
             </p>
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            <div className="space-y-2 max-h-75 overflow-y-auto">
               {itemDescriptions.map((desc, index) => (
                 <button
                   key={index}
@@ -3533,7 +3533,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                   onClick={() => handleRowSelectConfirm(index)}
                   className="w-full flex items-center gap-3 p-3 border rounded-lg hover:bg-accent hover:border-primary transition-colors text-left"
                 >
-                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                  <span className="shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
                     {index + 1}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -3544,7 +3544,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                       {desc?.replace(/\|/g, " · ") || "No description"}
                     </p>
                   </div>
-                  <Plus size={16} className="text-green-600 flex-shrink-0" />
+                  <Plus size={16} className="text-green-600 shrink-0" />
                 </button>
               ))}
             </div>

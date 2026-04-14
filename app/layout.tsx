@@ -40,7 +40,7 @@ export default function RootLayout({
           comic
           font-comic
           antialiased
-          min-h-[100svh]
+          min-h-svh
           overscroll-none
         `}
       >

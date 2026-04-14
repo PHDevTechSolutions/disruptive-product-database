@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const EngiConnectLogo = () => (
-  <div className="flex items-center justify-center size-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg rotate-3">
+  <div className="flex items-center justify-center size-9 bg-linear-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg rotate-3">
     <div className="relative flex items-center justify-center size-full">
       <Activity size={18} className="text-white animate-pulse" />
       <div className="absolute inset-0 border-2 border-white/20 rounded-xl scale-90" />

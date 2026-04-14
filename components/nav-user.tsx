@@ -98,7 +98,7 @@ export function NavUser({
   /* ── Shared dropdown content ── */
   const dropdownContent = (
     <DropdownMenuContent
-      className="min-w-[224px] rounded-lg z-[9999]"
+      className="min-w-56 rounded-lg z-9999"
       side={isMobile ? "top" : "right"}
       align={avatarOnly ? "end" : "start"}
       sideOffset={8}
@@ -161,7 +161,7 @@ export function NavUser({
                 </AvatarFallback>
               </Avatar>
               {notificationCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center ring-2 ring-white shadow-sm">
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center ring-2 ring-white shadow-sm">
                   {notificationLabel}
                 </span>
               )}
@@ -187,7 +187,7 @@ export function NavUser({
                       </AvatarFallback>
                     </Avatar>
                     {notificationCount > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center ring-2 ring-white shadow-sm">
+                      <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center ring-2 ring-white shadow-sm">
                         {notificationLabel}
                       </span>
                     )}

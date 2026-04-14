@@ -144,7 +144,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
         {/* Inner A4 paper — scaled from top-center so it stays centered */}
         <div
           ref={ref}
-          className="bg-white relative shadow-lg overflow-hidden flex-shrink-0"
+          className="bg-white relative shadow-lg overflow-hidden shrink-0"
           style={{
             width: PAPER_WIDTH,
             height: PAPER_HEIGHT,
@@ -185,11 +185,11 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
               <div ref={contentRef} className="px-4 pt-6 pb-2 bg-white">
                 {/* IMAGE + PRODUCT NAME */}
                 <div className="grid grid-cols-[220px_1fr] gap-6 items-center mb-2">
-                  <div className="w-[220px] h-[150px] border-2 border-black flex items-center justify-center bg-white">
+                  <div className="w-55 h-37.5 border-2 border-black flex items-center justify-center bg-white">
                     {mainImage?.url ? (
                       <img
                         src={convertGoogleDriveUrl(mainImage.url)}
-                        className="max-h-[130px] max-w-[200px] object-contain"
+                        className="max-h-32.5 max-w-50 object-contain"
                       />
                     ) : (
                       <span className="text-xs text-gray-400">PRODUCT IMAGE</span>
@@ -197,7 +197,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                   </div>
 
                   <div className="w-full">
-                    <div className="text-xl font-semibold break-words overflow-hidden">
+                    <div className="text-xl font-semibold wrap-break-word overflow-hidden">
                       <div
                         className="w-full font-bold text-center leading-[1.3]"
                         style={{
@@ -227,7 +227,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                 <table className="w-full border border-black border-collapse text-[16px] mb-3">
                   <tbody>
                     <tr>
-                      <td className="border border-black px-2 py-1 w-[300px]">Brand :</td>
+                      <td className="border border-black px-2 py-1 w-75">Brand :</td>
                       <td className="border border-black px-2 py-1 font-bold uppercase">{company}</td>
                     </tr>
                     <tr>
@@ -263,7 +263,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                             </tr>
                             {specsToRender.map((spec, s) => (
                               <tr key={s}>
-                                <td className="border border-black px-2 py-1 w-[300px]">
+                                <td className="border border-black px-2 py-1 w-75">
                                   {spec.specId} :
                                 </td>
                                 <td className="border border-black px-2 py-1">
@@ -293,7 +293,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                 {/* DRAWINGS */}
                 {(dimensionalDrawing || illuminanceLevel) && (
                   <div
-                    className={`grid gap-4 mt-4 text-[15px] min-h-[120px] ${
+                    className={`grid gap-4 mt-4 text-[15px] min-h-30 ${
                       dimensionalDrawing && illuminanceLevel ? "grid-cols-2" : "grid-cols-1 place-items-center"
                     }`}
                   >
@@ -306,7 +306,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                               ? URL.createObjectURL(dimensionalDrawing)
                               : convertGoogleDriveUrl(dimensionalDrawing.url)
                           }
-                          className="w-[220px] h-[120px] object-contain"
+                          className="w-55 h-30 object-contain"
                         />
                       </div>
                     )}
@@ -320,7 +320,7 @@ const GenerateTDSBrand = forwardRef<HTMLDivElement, Props>(
                               ? URL.createObjectURL(illuminanceLevel)
                               : convertGoogleDriveUrl(illuminanceLevel.url)
                           }
-                          className="w-[220px] h-[120px] object-contain"
+                          className="w-55 h-30 object-contain"
                         />
                       </div>
                     )}

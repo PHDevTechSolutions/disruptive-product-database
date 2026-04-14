@@ -1,9 +1,10 @@
+/* stylelint-disable at-rule-no-unknown */
+/* stylelint-disable-next-line */
 @import "tailwindcss";
 @import "tw-animate-css";
 
-
+/* stylelint-disable-next-line */
 @custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -540,12 +541,16 @@
   --calendar-weekday-fg: #6B6B6B; /* Dark gray weekday text */
 }
 
+/* stylelint-disable-next-line */
 @layer base {
+  /* stylelint-disable-next-line */
   * {
+    /* stylelint-disable-next-line */
     @apply border-border outline-ring/50;
   }
 
   body {
+    /* stylelint-disable-next-line */
     @apply bg-background text-foreground font-sans;
   }
 

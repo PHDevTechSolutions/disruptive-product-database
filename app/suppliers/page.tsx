@@ -39,8 +39,8 @@ type Supplier = {
 };
 
 const COL_WIDTHS = [
-  "w-[100px]", "w-[160px]", "w-[120px]", "w-[220px]",
-  "w-[180px]", "w-[160px]", "w-[160px]", "w-[140px]", "w-[140px]", "w-[120px]",
+  "w-[100px]", "w-40", "w-[120px]", "w-[220px]",
+  "w-[180px]", "w-40", "w-40", "w-[140px]", "w-[140px]", "w-[120px]",
 ];
 
 const HEADERS = [

@@ -372,7 +372,7 @@ export default function ProfileClient() {
                         {/* Label */}
                         <Label
                           htmlFor="Password"
-                          className="flex-shrink-0 w-24"
+                          className="shrink-0 w-24"
                         >
                           Password
                         </Label>
@@ -430,7 +430,7 @@ export default function ProfileClient() {
                         {/* Label */}
                         <Label
                           htmlFor="ContactPassword"
-                          className="flex-shrink-0 w-24"
+                          className="shrink-0 w-24"
                         >
                           Confirm Password
                         </Label>

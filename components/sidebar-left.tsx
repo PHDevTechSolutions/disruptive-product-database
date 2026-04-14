@@ -204,9 +204,9 @@ export function SidebarLeft() {
         style={{ bottom: 0, paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {/* Comic decoration stripe */}
-        <div className="h-1 bg-gradient-to-r from-red-400 via-yellow-400 to-blue-400 w-full"></div>
+        <div className="h-1 bg-linear-to-r from-red-400 via-yellow-400 to-blue-400 w-full"></div>
 
-        <div className="flex items-center h-[62px] px-1">
+        <div className="flex items-center h-15.5 px-1">
 
           {/* Left arrow */}
           <button
@@ -234,7 +234,7 @@ export function SidebarLeft() {
                 className={`flex flex-col items-center justify-center gap-1 flex-1 h-full relative font-comic ${active ? 'comic-animate-bounce' : ''}`}
               >
                 {active && (
-                  <span className="absolute top-1 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-gradient-to-r from-red-400 to-orange-400 border-2 border-gray-800" />
+                  <span className="absolute top-1 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-linear-to-r from-red-400 to-orange-400 border-2 border-gray-800" />
                 )}
                 <span className="relative">
                   <Icon
@@ -242,7 +242,7 @@ export function SidebarLeft() {
                     strokeWidth={active ? 2.5 : 2}
                   />
                   {badge > 0 && (
-                    <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 rounded-full bg-yellow-400 text-gray-900 text-[10px] font-comic font-bold flex items-center justify-center border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]">
+                    <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full bg-yellow-400 text-gray-900 text-[10px] font-comic font-bold flex items-center justify-center border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]">
                       {badge > 9 ? "9+" : badge}
                     </span>
                   )}
@@ -299,7 +299,7 @@ export function SidebarLeft() {
       "
     >
 {/* HEADER */}
-<SidebarHeader className="h-18 px-3 flex items-center bg-gradient-to-r from-yellow-300 to-orange-300 comic-border-thick m-2 rounded-2xl">
+<SidebarHeader className="h-18 px-3 flex items-center bg-linear-to-r from-yellow-300 to-orange-300 comic-border-thick m-2 rounded-2xl">
   <Link 
     href="/dashboard" 
     className="flex items-center gap-2.5 min-w-0 cursor-pointer comic-hover-scale"
@@ -376,12 +376,12 @@ export function SidebarLeft() {
                     border-2 border-transparent
                     hover:border-gray-800
                     hover:shadow-[4px_4px_0px_#2d3436]
-                    hover:translate-x-[-2px]
-                    hover:translate-y-[-2px]
+                    hover:-translate-x-0.5
+                    hover:-translate-y-0.5
                     hover:bg-yellow-100
                     rounded-xl
                     ${pathname === href 
-                      ? 'bg-gradient-to-r from-red-400 to-orange-400 text-white border-2 border-gray-800 shadow-[4px_4px_0px_#2d3436]' 
+                      ? 'bg-linear-to-r from-red-400 to-orange-400 text-white border-2 border-gray-800 shadow-[4px_4px_0px_#2d3436]' 
                       : 'bg-white text-gray-700'
                     }
                   `}
@@ -391,7 +391,7 @@ export function SidebarLeft() {
                     <span className="relative shrink-0">
                       <Icon className="h-5 w-5" />
                       {badge > 0 && state === "collapsed" && (
-                        <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-yellow-400 text-gray-900 text-[9px] font-bold flex items-center justify-center border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]">
+                        <span className="absolute -top-2 -right-2 min-w-4.5 h-4.5 px-1 rounded-full bg-yellow-400 text-gray-900 text-[9px] font-bold flex items-center justify-center border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]">
                           {badge > 9 ? "9+" : badge}
                         </span>
                       )}
@@ -402,7 +402,7 @@ export function SidebarLeft() {
                       <>
                         <span className="flex-1">{label}</span>
                         {badge > 0 && (
-                          <span className="ml-auto min-w-[24px] h-6 px-1.5 rounded-full bg-yellow-400 text-gray-900 text-xs font-bold flex items-center justify-center border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]">
+                          <span className="ml-auto min-w-6 h-6 px-1.5 rounded-full bg-yellow-400 text-gray-900 text-xs font-bold flex items-center justify-center border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]">
                             {badge > 9 ? "9+" : badge}
                           </span>
                         )}
@@ -434,7 +434,7 @@ export function SidebarLeft() {
                       hover:bg-red-50
                       hover:text-red-700
                       hover:scale-[1.01]
-                      data-[active=true]:bg-gradient-to-r
+                      data-[active=true]:bg-linear-to-r
                       data-[active=true]:from-red-600
                       data-[active=true]:to-red-700
                       data-[active=true]:text-white
@@ -447,7 +447,7 @@ export function SidebarLeft() {
                       <span className="relative shrink-0">
                         <Icon className="h-4 w-4" />
                         {badge > 0 && state === "collapsed" && (
-                          <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+                          <span className="absolute -top-1.5 -right-1.5 min-w-3.5 h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
                             {badge > 9 ? "9+" : badge}
                           </span>
                         )}
@@ -457,7 +457,7 @@ export function SidebarLeft() {
                         <>
                           <span className="flex-1">{label}</span>
                           {badge > 0 && (
-                            <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
+                            <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
                               {badge > 9 ? "9+" : badge}
                             </span>
                           )}
@@ -481,7 +481,7 @@ export function SidebarLeft() {
             className="
               comic-card
               cursor-pointer
-              bg-gradient-to-r from-blue-100 to-purple-100
+              bg-linear-to-r from-blue-100 to-purple-100
               comic-hover-lift
               p-3
             "

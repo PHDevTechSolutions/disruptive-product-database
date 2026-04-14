@@ -110,7 +110,7 @@ function CountryCombobox({ value, onChange }: CountryComboboxProps) {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-[160px] justify-between font-normal shrink-0"
+          className="w-40 justify-between font-normal shrink-0"
         >
           <span className="flex items-center gap-2 truncate">
             <span className="text-base leading-none">{selected?.flag}</span>
@@ -123,7 +123,7 @@ function CountryCombobox({ value, onChange }: CountryComboboxProps) {
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[280px] p-0" align="start">
+      <PopoverContent className="w-70 p-0" align="start">
         <Command>
           <CommandInput placeholder="Search country…" className="h-9" />
           <CommandList className="max-h-60">
@@ -540,7 +540,7 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl overflow-y-auto px-6 z-50 pb-[140px]">
+      <SheetContent className="w-full sm:max-w-xl overflow-y-auto px-6 z-50 pb-35">
         <SheetHeader>
           <SheetTitle>Add Supplier</SheetTitle>
           <SheetDescription>Enter supplier information</SheetDescription>
@@ -636,13 +636,13 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className="w-[100px] justify-between font-normal"
+                        className="w-25 justify-between font-normal"
                       >
                         {contactTypes[index] === "phone" ? "Phone" : "Others"}
                         <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[120px] p-0" align="start">
+                    <PopoverContent className="w-30 p-0" align="start">
                       <Command>
                         <CommandList>
                           <CommandGroup>

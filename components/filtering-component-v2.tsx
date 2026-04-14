@@ -504,7 +504,7 @@ export default function FilteringComponent({ products, onFilter }: Props) {
     >
       {/* ── HEADER ── */}
       <div
-        className="flex-shrink-0 px-3 py-2"
+        className="shrink-0 px-3 py-2"
         style={{
           borderBottom: "1px solid #e2e8f0",
           background: "rgba(255,255,255,0.9)",

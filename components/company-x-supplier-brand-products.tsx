@@ -166,7 +166,7 @@ export default function SupplierProducts({
       <DialogContent className="max-w-3xl w-full max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border-0">
 
         {/* ── HEADER ── */}
-        <DialogHeader className="shrink-0 px-6 pt-6 pb-5 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-t-2xl">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-5 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-t-2xl">
           <div className="flex items-start gap-4">
             {/* Icon */}
             <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 border border-white/20 shrink-0">

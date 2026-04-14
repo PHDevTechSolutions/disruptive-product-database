@@ -130,7 +130,7 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
         <Button
           type="submit"
           disabled={loading}
-          className="comic-button mt-4 h-14 w-full bg-gradient-to-r from-red-500 to-orange-500 font-comic text-lg text-white comic-animate-pulse"
+          className="comic-button mt-4 h-14 w-full bg-linear-to-r from-red-500 to-orange-500 font-comic text-lg text-white comic-animate-pulse"
         >
           {loading ? (
             <span className="flex items-center gap-2">

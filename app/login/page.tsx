@@ -40,7 +40,7 @@ export default function LoginPage() {
       <div className="w-full max-w-5xl comic-card comic-shadow-box overflow-hidden comic-animate-pop relative z-10">
 
         {/* Comic style header */}
-        <div className="bg-gradient-to-r from-yellow-300 via-orange-400 to-red-400 h-4 w-full"></div>
+        <div className="bg-linear-to-r from-yellow-300 via-orange-400 to-red-400 h-4 w-full"></div>
 
         {/* INNER GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-2">
@@ -80,7 +80,7 @@ export default function LoginPage() {
           </div>
 
           {/* RIGHT CARD (COMIC STYLE) - hidden on mobile */}
-          <div className="relative hidden lg:block min-h-[500px] w-full bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400">
+          <div className="relative hidden lg:block min-h-125 w-full bg-linear-to-br from-blue-400 via-purple-400 to-pink-400">
             <div className="absolute inset-0 comic-bg-stripes opacity-30"></div>
             <Image
               src="/images/login-wallpaper-3.png"
@@ -103,7 +103,7 @@ export default function LoginPage() {
         </div>
 
         {/* Comic style footer */}
-        <div className="bg-gradient-to-r from-red-400 via-orange-400 to-yellow-300 h-4 w-full"></div>
+        <div className="bg-linear-to-r from-red-400 via-orange-400 to-yellow-300 h-4 w-full"></div>
       </div>
     </div>
   );
