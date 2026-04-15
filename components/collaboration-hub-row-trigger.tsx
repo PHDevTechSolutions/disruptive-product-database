@@ -36,8 +36,8 @@ export function CollaborationHubRowTrigger({
     userRole: string;
   } | null>(null);
 
-  // Use spfNumber as effective doc ID for chat (based on SPF number, not database id)
-  const effectiveDocId = spfNumber || requestId;
+  // Use spfNumber as effective doc ID when requestId is empty (document was deleted)
+  const effectiveDocId = requestId || spfNumber;
 
   const unreadCount = effectiveDocId ? getChatUnreadCount(effectiveDocId) : 0;
   const hasUnread = unreadCount > 0;

@@ -78,8 +78,8 @@ export function CollaborationHubDialog({
   open,
   onOpenChange,
 }: CollaborationHubDialogProps) {
-  // Use spfNumber as document ID for chat (based on SPF number, not database id)
-  const effectiveDocId = spfNumber || requestId;
+  // Use spfNumber as document ID when requestId is empty (document was deleted)
+  const effectiveDocId = requestId || spfNumber;
   const [chatMessage, setChatMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [lastSeenTime, setLastSeenTime] = useState<number>(Date.now());
