@@ -1,34 +1,57 @@
 /**
  * Returns current timestamp in Philippines timezone (UTC+8)
- * Format: ISO 8601 with Asia/Manila timezone offset
+ * Format: ISO 8601 with Asia/Manila timezone offset (+08:00)
  */
 export function getPhilippinesISOString(): string {
   const now = new Date();
-  // Get timezone offset in minutes for Asia/Manila (should be -480 for UTC+8)
-  const manilaDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
-  const utcDate = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
-  const offsetMs = manilaDate.getTime() - utcDate.getTime();
   
-  // Create Manila timestamp
-  const manilaTimestamp = new Date(now.getTime() + offsetMs);
+  // Format the date in Asia/Manila timezone using Intl.DateTimeFormat
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
   
-  // Format as ISO string with +08:00 offset
-  const isoString = manilaTimestamp.toISOString();
-  return isoString.replace("Z", "+08:00");
+  const parts = formatter.formatToParts(now);
+  const partMap: Record<string, string> = {};
+  parts.forEach((p) => { partMap[p.type] = p.value; });
+  
+  // Build ISO string: YYYY-MM-DDTHH:mm:ss+08:00
+  const isoString = `${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}:${partMap.second}+08:00`;
+  
+  return isoString;
 }
 
 /**
  * Converts a UTC ISO string to Philippines timezone ISO string
+ * Format: ISO 8601 with Asia/Manila timezone offset (+08:00)
  */
 export function toPhilippinesTime(isoString: string): string {
   if (!isoString) return isoString;
   const date = new Date(isoString);
   if (isNaN(date.getTime())) return isoString;
   
-  const manilaDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
-  const utcDate = new Date(date.toLocaleString("en-US", { timeZone: "UTC" }));
-  const offsetMs = manilaDate.getTime() - utcDate.getTime();
+  // Format the date in Asia/Manila timezone using Intl.DateTimeFormat
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
   
-  const manilaTimestamp = new Date(date.getTime() + offsetMs);
-  return manilaTimestamp.toISOString().replace("Z", "+08:00");
+  const parts = formatter.formatToParts(date);
+  const partMap: Record<string, string> = {};
+  parts.forEach((p) => { partMap[p.type] = p.value; });
+  
+  // Build ISO string: YYYY-MM-DDTHH:mm:ss+08:00
+  return `${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}:${partMap.second}+08:00`;
 }
