@@ -15,7 +15,7 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 function TitleUpdater({ pathname }: { pathname: string | null }) {
-  const { unreadCount, unreadChatCount } = useNotifications();
+  const { activeNotificationCount, unreadChatCount } = useNotifications();
   const [forApprovalCount, setForApprovalCount] = useState(0);
 
   useEffect(() => {
@@ -45,7 +45,8 @@ function TitleUpdater({ pathname }: { pathname: string | null }) {
     };
 
     const pageTitle = pathname ? titles[pathname] : null;
-    const totalNotifications = unreadCount + unreadChatCount + forApprovalCount;
+    // Use activeNotificationCount (count of SPF rows with notifications) for consistent badge
+    const totalNotifications = activeNotificationCount + unreadChatCount + forApprovalCount;
     
     if (pageTitle) {
       document.title = totalNotifications > 0 
@@ -56,7 +57,7 @@ function TitleUpdater({ pathname }: { pathname: string | null }) {
         ? `(${totalNotifications}) Espiron | PD`
         : "Espiron | PD";
     }
-  }, [pathname, unreadCount, unreadChatCount, forApprovalCount]);
+  }, [pathname, activeNotificationCount, unreadChatCount, forApprovalCount]);
 
   return null;
 }

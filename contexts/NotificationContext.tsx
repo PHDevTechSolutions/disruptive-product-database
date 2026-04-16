@@ -18,6 +18,12 @@ const CREATION_NOTIFICATION_STATUSES = new Set([
   "for revision",
 ]);
 
+/** Allowed `spf_request.status` values that should appear in the requests list UI */
+const ALLOWED_REQUEST_STATUSES = new Set([
+  "approved by tsm",
+  "approved by sales head",
+]);
+
 function normalizeCreationStatusForCompare(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
@@ -29,6 +35,9 @@ function isCreationNotificationStatus(status: unknown): boolean {
 interface NotificationContextValue {
   unreadCount: number;
   unreadChatCount: number;
+  activeNotificationCount: number;
+  isLoading: boolean;
+  lastUpdated: Date | null;
   markSPFRequestAsRead: (spfNumber: string) => void;
   isSPFRequestUnread: (spfNumber: string) => boolean;
   getSPFRequestUnreadCount: (spfNumber: string) => number;
@@ -43,6 +52,9 @@ interface NotificationContextValue {
 const NotificationContext = createContext<NotificationContextValue>({
   unreadCount: 0,
   unreadChatCount: 0,
+  activeNotificationCount: 0,
+  isLoading: false,
+  lastUpdated: null,
   markSPFRequestAsRead: () => {},
   isSPFRequestUnread: () => false,
   getSPFRequestUnreadCount: () => 0,
@@ -57,6 +69,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const { userId } = useUser();
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [activeNotificationCount, setActiveNotificationCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stopTimerRef = useRef<number | null>(null);
@@ -128,6 +143,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     });
     unreadSPFRef.current = unreadSet;
     setUnreadCount(total);
+    setActiveNotificationCount(unreadSet.size);
   }, []);
 
   const playNotificationSound = useCallback(() => {
@@ -169,6 +185,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     let cancelled = false;
 
     const syncUnreadState = async () => {
+      setIsLoading(true);
       const { data: requestData } = await supabase
         .from("spf_request")
         .select("spf_number, status")
@@ -184,9 +201,13 @@ const { data: creationData } = await supabase
         (acc, row) => {
           const spfNumber = normalizeSPFNumber(row?.spf_number);
           if (!spfNumber) return acc;
+          const status = typeof row?.status === "string" ? row.status : null;
+          // Only include requests with statuses that appear in the UI
+          const normalizedStatus = (status ?? "").trim().toLowerCase();
+          if (!ALLOWED_REQUEST_STATUSES.has(normalizedStatus)) return acc;
           acc.push({
             spf_number: spfNumber,
-            status: typeof row?.status === "string" ? row.status : null,
+            status: status,
           });
           return acc;
         },
@@ -399,6 +420,8 @@ currentSignatureMap.set(
       persistReadMap(userId, activeReadMap);
       persistKnownSignatureMap(userId, activeKnownMap);
       persistUnreadCountMap(userId, activeUnreadCountMap);
+      setLastUpdated(new Date());
+      setIsLoading(false);
     };
 
     void syncUnreadState();
@@ -451,6 +474,8 @@ currentSignatureMap.set(
     playNotificationSound,
     getLastSeenCreationKey,
     applyEffectiveUnreadAggregates,
+    setIsLoading,
+    setLastUpdated,
   ]);
 
   const markSPFRequestAsRead = useCallback((spfNumber: string) => {
@@ -571,6 +596,9 @@ currentSignatureMap.set(
     <NotificationContext.Provider value={{
       unreadCount,
       unreadChatCount,
+      activeNotificationCount,
+      isLoading,
+      lastUpdated,
       markSPFRequestAsRead,
       isSPFRequestUnread,
       getSPFRequestUnreadCount,

@@ -357,7 +357,7 @@ export default function RequestsPage() {
                         <span>{req.spf_number}</span>
                         {isUnreadRow && (
                           <span className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_16px_rgba(239,68,68,0.75)] animate-pulse">
-                            {unreadCountForRow}
+                            1
                           </span>
                         )}
                       </div>
@@ -451,7 +451,7 @@ export default function RequestsPage() {
                     <p className="font-semibold text-sm uppercase">{req.spf_number}</p>
                     {isUnreadRow && (
                       <span className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_16px_rgba(239,68,68,0.75)] animate-pulse">
-                        {unreadCountForRow}
+                        1
                       </span>
                     )}
                   </div>

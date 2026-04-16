@@ -75,7 +75,7 @@ const BOTTOM_NAV_HREFS = new Set(["/for-approval", "/roles", "/api-management", 
 export function SidebarLeft() {
   const { state, isMobile } = useSidebar();
   const { userId } = useUser();
-  const { unreadCount } = useNotifications();
+  const { activeNotificationCount, unreadChatCount, isLoading: isNotifLoading } = useNotifications();
   const { subscribeToUserAccess } = useRoleAccess();
   const { theme } = useTheme();
   const pathname = usePathname();
@@ -238,7 +238,7 @@ export function SidebarLeft() {
             const active = pathname === href;
             const badge =
               badgeKey === "requests"
-                ? unreadCount
+                ? activeNotificationCount + unreadChatCount
                 : badgeKey === "forApproval"
                   ? forApprovalCount
                   : 0;
@@ -269,13 +269,17 @@ export function SidebarLeft() {
                     }`}
                     strokeWidth={active ? 2.5 : 2}
                   />
-                  {badge > 0 && (
+                  {(badge > 0 || (badgeKey === "requests" && isNotifLoading)) && (
                     <span className={`absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${
                       isComic
                         ? "bg-yellow-400 text-gray-900 font-comic border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
                         : "bg-red-600 text-white font-formal"
                     }`}>
-                      {badge > 9 ? "9+" : badge}
+                      {badgeKey === "requests" && isNotifLoading ? (
+                        <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        badge > 9 ? "9+" : badge
+                      )}
                     </span>
                   )}
                 </span>
@@ -313,7 +317,7 @@ export function SidebarLeft() {
                 }}
                 userId={userId}
                 avatarOnly
-                notificationCount={unreadCount}
+                notificationCount={activeNotificationCount + unreadChatCount}
               />
             </div>
           )}
@@ -411,7 +415,7 @@ export function SidebarLeft() {
           {mainDesktopNavItems.map(({ href, icon: Icon, label, badgeKey }) => {
             const badge =
               badgeKey === "requests"
-                ? unreadCount
+                ? activeNotificationCount + unreadChatCount
                 : badgeKey === "forApproval"
                   ? forApprovalCount
                   : 0;
@@ -444,13 +448,17 @@ export function SidebarLeft() {
                     {/* Icon + badge overlay when collapsed */}
                     <span className="relative shrink-0">
                       <Icon className="h-5 w-5" />
-                      {badge > 0 && state === "collapsed" && (
+                      {(badge > 0 || (badgeKey === "requests" && isNotifLoading)) && state === "collapsed" && (
                         <span className={`absolute -top-2 -right-2 min-w-4.5 h-4.5 px-1 rounded-full text-[9px] font-bold flex items-center justify-center ${
                           isComic
                             ? "bg-yellow-400 text-gray-900 border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
                             : "bg-red-600 text-white shadow-sm"
                         }`}>
-                          {badge > 9 ? "9+" : badge}
+                          {badgeKey === "requests" && isNotifLoading ? (
+                            <span className="w-2.5 h-2.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : (
+                            badge > 9 ? "9+" : badge
+                          )}
                         </span>
                       )}
                     </span>
@@ -459,13 +467,17 @@ export function SidebarLeft() {
                     {state === "expanded" && (
                       <>
                         <span className="flex-1">{label}</span>
-                        {badge > 0 && (
+                        {(badge > 0 || (badgeKey === "requests" && isNotifLoading)) && (
                           <span className={`ml-auto min-w-6 h-6 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${
                             isComic
                               ? "bg-yellow-400 text-gray-900 border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
                               : "bg-red-600 text-white shadow-sm"
                           }`}>
-                            {badge > 9 ? "9+" : badge}
+                            {badgeKey === "requests" && isNotifLoading ? (
+                              <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              badge > 9 ? "9+" : badge
+                            )}
                           </span>
                         )}
                       </>
@@ -481,7 +493,7 @@ export function SidebarLeft() {
             {bottomDesktopNavItems.map(({ href, icon: Icon, label, badgeKey }) => {
               const badge =
                 badgeKey === "requests"
-                  ? unreadCount
+                  ? activeNotificationCount + unreadChatCount
                   : badgeKey === "forApproval"
                     ? forApprovalCount
                     : 0;
@@ -565,7 +577,7 @@ export function SidebarLeft() {
                 avatar:   user.profilePicture || "/avatars/shadcn.jpg",
               }}
               userId={userId}
-              notificationCount={unreadCount}
+              notificationCount={activeNotificationCount + unreadChatCount}
             />
           </div>
         )}
