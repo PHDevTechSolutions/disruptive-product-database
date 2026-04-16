@@ -11,12 +11,12 @@ type ThemeContextType = {
 };
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: "comic",
+  theme: "formal",
   setTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("comic");
+  const [theme, setThemeState] = useState<Theme>("formal");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Prevent hydration mismatch by rendering children only after mount
   if (!mounted) {
     return (
-      <ThemeContext.Provider value={{ theme: "comic", setTheme }}>
+      <ThemeContext.Provider value={{ theme: "formal", setTheme }}>
         {children}
       </ThemeContext.Provider>
     );

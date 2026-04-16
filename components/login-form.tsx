@@ -6,6 +6,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 import { dbLogs } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -16,6 +17,8 @@ interface LoginFormProps extends React.ComponentProps<"form"> {
 
 export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
   const { setUserId } = useUser();
+  const { theme } = useTheme();
+  const isComic = theme === "comic";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -86,65 +89,80 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
     <form onSubmit={handleSubmit} {...props}>
       <FieldGroup>
         <div className="mb-6 text-center">
-          <h1 className="font-comic-title text-3xl text-red-500 comic-text-shadow comic-animate-bounce">
-            Login to your account
+          <h1 className={`text-3xl text-red-500 ${
+            isComic ? "font-comic-title comic-text-shadow comic-animate-bounce" : "font-formal-title"
+          }`}>
+            {isComic ? "Login to your account" : "Sign In"}
           </h1>
 
-          <p className="mt-2 font-comic text-sm text-gray-600">
+          <p className={`mt-2 text-sm text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
             Disruptive Solutions Inc. · Internal Operations Portal
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 comic-bubble bg-red-100 border-red-400 comic-animate-shake">
-            <p className="text-sm text-red-600 text-center font-comic font-bold">
-              ⚠️ {error}
+          <div className={`mb-4 ${
+            isComic
+              ? "comic-bubble bg-red-100 border-red-400 comic-animate-shake"
+              : "bg-red-50 border border-red-200 rounded-lg p-3"
+          }`}>
+            <p className={`text-sm text-red-600 text-center font-bold ${isComic ? "font-comic" : "font-formal"}`}>
+              {isComic && "⚠️ "}{error}
             </p>
           </div>
         )}
 
         <Field>
-          <FieldLabel className="font-comic font-bold text-gray-700">📧 Email</FieldLabel>
+          <FieldLabel className={`font-bold text-gray-700 ${isComic ? "font-comic" : "font-formal"}`}>
+            {isComic ? "📧 Email" : "Email"}
+          </FieldLabel>
           <Input
             type="email"
             required
-            className="comic-input h-12 text-lg"
+            className={`h-12 text-lg ${isComic ? "comic-input" : "border-gray-300 focus:border-red-500 focus:ring-red-500"}`}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="hero@disruptive.com"
+            placeholder={isComic ? "hero@disruptive.com" : "Enter your email"}
           />
         </Field>
 
         <Field>
-          <FieldLabel className="font-comic font-bold text-gray-700">🔑 Password</FieldLabel>
+          <FieldLabel className={`font-bold text-gray-700 ${isComic ? "font-comic" : "font-formal"}`}>
+            {isComic ? "🔑 Password" : "Password"}
+          </FieldLabel>
           <Input
             type="password"
             required
-            className="comic-input h-12 text-lg"
+            className={`h-12 text-lg ${isComic ? "comic-input" : "border-gray-300 focus:border-red-500 focus:ring-red-500"}`}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Your secret code!"
+            placeholder={isComic ? "Your secret code!" : "Enter your password"}
           />
         </Field>
 
         <Button
           type="submit"
           disabled={loading}
-          className="comic-button mt-4 h-14 w-full bg-linear-to-r from-red-500 to-orange-500 font-comic text-lg text-white comic-animate-pulse"
+          className={`mt-4 h-14 w-full text-lg text-white ${
+            isComic
+              ? "comic-button bg-linear-to-r from-red-500 to-orange-500 font-comic comic-animate-pulse"
+              : "bg-red-600 hover:bg-red-700 font-formal rounded-md shadow-md hover:shadow-lg transition-all"
+          }`}
         >
           {loading ? (
-            <span className="flex items-center gap-2">
-              <span className="animate-spin">⚡</span> Powering up...
+            <span className={`flex items-center gap-2 ${isComic ? "font-comic" : "font-formal"}`}>
+              {isComic && <span className="animate-spin">⚡</span>}
+              {isComic ? "Powering up..." : "Signing in..."}
             </span>
           ) : (
-            <span className="flex items-center gap-2">
-              🚀 Let&apos;s Go!
+            <span className={`flex items-center gap-2 ${isComic ? "font-comic" : "font-formal"}`}>
+              {isComic ? "🚀 Let's Go!" : "Sign In"}
             </span>
           )}
         </Button>
 
-        <p className="mt-4 text-center text-xs text-gray-500 font-comic">
-          Having trouble? Contact your administrator 🦸
+        <p className={`mt-4 text-center text-xs text-gray-500 ${isComic ? "font-comic" : "font-formal"}`}>
+          Having trouble? Contact your administrator{isComic && " 🦸"}
         </p>
       </FieldGroup>
     </form>
