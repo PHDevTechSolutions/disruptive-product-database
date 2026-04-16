@@ -1053,6 +1053,8 @@ useEffect(() => {
   /* ────────────────────────────────────────────────────────────── */
   const isApproved = data?.status === "Approved By Procurement";
   const isForRevision = data?.status === "For Revision";
+  const isPendingForProcurement = data?.status === "Pending For Procurement";
+  const canEditOffer = isForRevision || isPendingForProcurement || isApproved;
 
   const rowImages = splitByRow(data?.product_offer_image);
   const rowQtys = splitByRow(data?.product_offer_qty);
@@ -3339,7 +3341,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                 </div>
               )}
 
-              {isForRevision && (
+              {canEditOffer && (
                 <Button
                   size="sm"
                   variant="outline"
