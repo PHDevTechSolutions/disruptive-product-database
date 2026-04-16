@@ -76,9 +76,9 @@ export default function UploadProductDiffTable({ rows }: Props) {
       const val = String(row[c.key] ?? "");
       const isUrl = val.startsWith("http");
       return (
-        <td key={c.key} className="px-2 py-1.5 text-gray-700 max-w-[160px]">
+        <td key={c.key} className="px-2 py-1.5 text-gray-700 max-w-40">
           {isUrl ? (
-            <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline truncate block max-w-[140px]">
+            <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline truncate block max-w-35">
               ✓ Link
             </a>
           ) : (
@@ -90,7 +90,7 @@ export default function UploadProductDiffTable({ rows }: Props) {
     {specCols.map((key) => {
       const val = row.specValues?.[key] ?? "";
       return (
-        <td key={key} className="px-2 py-1.5 text-gray-700 max-w-[160px]">
+        <td key={key} className="px-2 py-1.5 text-gray-700 max-w-40">
           <span className="whitespace-nowrap">{val || "—"}</span>
         </td>
       );

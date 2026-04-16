@@ -656,8 +656,8 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           </div>
 
           {rows.length > 0 && (
-            <div className="mt-4 border rounded-md overflow-x-auto max-h-[300px]">
-              <table className="min-w-[1200px] text-sm">
+            <div className="mt-4 border rounded-md overflow-x-auto max-h-75">
+              <table className="min-w-300 text-sm">
                 <thead className="sticky top-0 bg-red-100 border-b">
                   <tr className="font-bold">
                     <th className="p-2">Company Name</th>
