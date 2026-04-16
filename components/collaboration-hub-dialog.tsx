@@ -527,15 +527,15 @@ export function CollaborationHubDialog({
                       <AvatarFallback className="bg-[#be2d2d] text-[10px] text-white">{(msg.senderName || "U").charAt(0)}</AvatarFallback>
                     </Avatar>
 
-                    <div className={cn("flex flex-col gap-1 max-w-[75%]", isMe ? "items-end" : "items-start")}>
+                    <div className={cn("flex flex-col gap-1 max-w-[70%] min-w-0", isMe ? "items-end" : "items-start")}>
                       {!isMe && <span className="text-[10px] text-slate-500 font-bold ml-1">{msg.senderName}</span>}
-                      <div 
+                      <div
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveMessageId(isActive ? null : msg.id);
                         }}
                         className={cn(
-                          "px-4 py-2.5 text-[13px] shadow-sm relative transition-all duration-300 cursor-pointer touch-manipulation",
+                          "px-4 py-2.5 text-[13px] shadow-sm relative transition-all duration-300 cursor-pointer touch-manipulation max-w-full overflow-hidden",
                           isMe ? "bg-[#be2d2d] text-white rounded-2xl rounded-br-none" : "bg-white text-slate-800 rounded-2xl rounded-bl-none",
                           msg.isResolved && "opacity-60 grayscale-[0.5]",
                           isActive && "ring-2 ring-[#dc8c28] ring-offset-1"
@@ -584,7 +584,7 @@ export function CollaborationHubDialog({
                         )}
                         
                         {/* MENTION RENDERING */}
-                        <p className="whitespace-pre-wrap leading-relaxed">{renderMessageText(msg.text)}</p>
+                        <p className="whitespace-pre-wrap leading-relaxed break-words overflow-wrap-anywhere">{renderMessageText(msg.text)}</p>
                         
                         {msg.reactions && Object.entries(msg.reactions).some(([_, users]) => users.length > 0) && (
                           <div className="flex flex-wrap gap-1 mt-2">
