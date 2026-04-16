@@ -535,30 +535,32 @@ export function CollaborationHubDialog({
                           setActiveMessageId(isActive ? null : msg.id);
                         }}
                         className={cn(
-                          "px-4 py-2.5 text-[13px] shadow-sm relative transition-all duration-300 cursor-pointer touch-manipulation max-w-full overflow-hidden",
+                          "px-4 py-2.5 text-[13px] shadow-sm relative transition-all duration-300 cursor-pointer touch-manipulation max-w-full",
                           isMe ? "bg-[#be2d2d] text-white rounded-2xl rounded-br-none" : "bg-white text-slate-800 rounded-2xl rounded-bl-none",
                           msg.isResolved && "opacity-60 grayscale-[0.5]",
                           isActive && "ring-2 ring-[#dc8c28] ring-offset-1"
                         )}
                       >
                         <div className={cn(
-                          "absolute top-full mt-2 flex items-center gap-1 transition-all z-20 bg-white shadow-xl rounded-full p-1 border border-slate-100",
-                          (isActive) ? "opacity-100 scale-100 visible" : "opacity-0 scale-95 invisible group-hover:opacity-100 group-hover:scale-100 group-hover:visible",
+                          "absolute top-full mt-2 flex items-center gap-1 transition-all z-50 bg-white shadow-xl rounded-full p-1 border border-slate-100",
+                          (isActive) ? "opacity-100 scale-100 visible pointer-events-auto" : "opacity-0 scale-95 invisible pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:visible group-hover:pointer-events-auto",
                           isMe ? "right-0" : "left-0"
                         )}>
-                          <button onClick={(e) => { e.stopPropagation(); toggleReaction(msg.id, "👍"); }} className="p-1.5 hover:bg-slate-50 rounded-full transition-colors"><ThumbsUp size={14} className="text-[#be2d2d]" /></button>
-                          <button onClick={(e) => { e.stopPropagation(); toggleReaction(msg.id, "❤️"); }} className="p-1.5 hover:bg-slate-50 rounded-full transition-colors"><Heart size={14} className="text-red-500" /></button>
-                          <button onClick={(e) => { e.stopPropagation(); toggleReaction(msg.id, "😊"); }} className="p-1.5 hover:bg-slate-50 rounded-full transition-colors"><Smile size={14} className="text-yellow-500" /></button>
+                          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleReaction(msg.id, "👍"); }} className="p-1.5 hover:bg-slate-50 rounded-full transition-colors cursor-pointer"><ThumbsUp size={14} className="text-[#be2d2d]" /></button>
+                          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleReaction(msg.id, "❤️"); }} className="p-1.5 hover:bg-slate-50 rounded-full transition-colors cursor-pointer"><Heart size={14} className="text-red-500" /></button>
+                          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleReaction(msg.id, "😊"); }} className="p-1.5 hover:bg-slate-50 rounded-full transition-colors cursor-pointer"><Smile size={14} className="text-yellow-500" /></button>
                           <div className="w-px h-4 bg-slate-200 mx-1" />
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setReplyingTo(msg); setActiveMessageId(null); }} 
-                            className="p-1.5 hover:bg-slate-50 rounded-full text-slate-600"
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReplyingTo(msg); setActiveMessageId(null); }}
+                            className="p-1.5 hover:bg-slate-50 rounded-full text-slate-600 cursor-pointer"
                           >
                             <Reply size={14} />
                           </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); toggleResolve(msg.id); }} 
-                            className="p-1.5 hover:bg-slate-50 rounded-full text-green-600"
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleResolve(msg.id); }}
+                            className="p-1.5 hover:bg-slate-50 rounded-full text-green-600 cursor-pointer"
                           >
                             <CheckCircle2 size={14} />
                           </button>
@@ -584,7 +586,9 @@ export function CollaborationHubDialog({
                         )}
                         
                         {/* MENTION RENDERING */}
-                        <p className="whitespace-pre-wrap leading-relaxed break-words overflow-wrap-anywhere">{renderMessageText(msg.text)}</p>
+                        <div className="overflow-hidden">
+                          <p className="whitespace-pre-wrap leading-relaxed break-words overflow-wrap-anywhere">{renderMessageText(msg.text)}</p>
+                        </div>
                         
                         {msg.reactions && Object.entries(msg.reactions).some(([_, users]) => users.length > 0) && (
                           <div className="flex flex-wrap gap-1 mt-2">
