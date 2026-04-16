@@ -238,6 +238,8 @@ function WallpaperModal({
   onSave: (b64: string | null, opacity: number) => void;
   onClose: () => void;
 }) {
+  const { theme } = useTheme();
+  const isComic = theme === "comic";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(current);
   const [opacity, setOpacityLocal] = useState<number>(currentOpacity);
@@ -283,19 +285,39 @@ function WallpaperModal({
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal - Comic Style */}
-      <div className="comic-card w-full max-w-md overflow-hidden relative">
-        {/* Comic Header */}
-        <div className="flex items-center justify-between px-5 py-4 bg-linear-to-r from-yellow-300 to-orange-300 border-b-3 border-gray-800">
+      {/* Modal */}
+      <div className={`w-full max-w-md overflow-hidden relative ${
+        isComic ? "comic-card" : "bg-white rounded-lg shadow-2xl"
+      }`}>
+        {/* Header */}
+        <div className={`flex items-center justify-between px-5 py-4 ${
+          isComic
+            ? "bg-linear-to-r from-yellow-300 to-orange-300 border-b-3 border-gray-800"
+            : "bg-linear-to-r from-red-600 to-red-800 border-b border-red-700"
+        }`}>
           <div>
-            <h2 className="font-comic-title text-xl text-gray-900 comic-text-outline">🎨 Customize Wallpaper</h2>
-            <p className="text-xs font-comic text-gray-700 mt-0.5">Saved locally on this device only</p>
+            <h2 className={`text-xl ${
+              isComic
+                ? "font-comic-title text-gray-900 comic-text-outline"
+                : "font-formal-title text-white"
+            }`}>
+              {isComic ? "🎨 Customize Wallpaper" : "Customize Wallpaper"}
+            </h2>
+            <p className={`text-xs mt-0.5 ${
+              isComic ? "font-comic text-gray-700" : "font-formal text-red-100"
+            }`}>
+              Saved locally on this device only
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="h-10 w-10 rounded-full bg-white border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] hover:shadow-[2px_2px_0px_#2d3436] hover:translate-x-px hover:translate-y-px flex items-center justify-center transition-all"
+            className={`h-10 w-10 rounded-full flex items-center justify-center transition-all ${
+              isComic
+                ? "bg-white border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] hover:shadow-[2px_2px_0px_#2d3436] hover:translate-x-px hover:translate-y-px"
+                : "bg-white/20 hover:bg-white/30 text-white"
+            }`}
           >
-            <X className="h-5 w-5 text-gray-800" />
+            <X className={`h-5 w-5 ${isComic ? "text-gray-800" : "text-white"}`} />
           </button>
         </div>
 
@@ -365,8 +387,8 @@ function WallpaperModal({
           {/* Opacity slider */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-gray-600">Opacity</label>
-              <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
+              <label className={`text-xs font-semibold text-gray-600 ${isComic ? "" : "font-formal"}`}>Opacity</label>
+              <span className={`text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md ${isComic ? "" : "font-formal"}`}>
                 {Math.round(opacity * 100)}%
               </span>
             </div>
@@ -377,9 +399,11 @@ function WallpaperModal({
               step={0.01}
               value={opacity}
               onChange={(e) => setOpacityLocal(parseFloat(e.target.value))}
-              className="w-full h-1.5 rounded-full appearance-none bg-gray-200 accent-gray-800 cursor-pointer"
+              className={`w-full h-1.5 rounded-full appearance-none cursor-pointer ${
+                isComic ? "bg-gray-200 accent-gray-800" : "bg-gray-200 accent-red-600"
+              }`}
             />
-            <div className="flex justify-between text-[10px] text-gray-400">
+            <div className={`flex justify-between text-[10px] text-gray-400 ${isComic ? "" : "font-formal"}`}>
               <span>Subtle</span>
               <span>Full</span>
             </div>
@@ -395,29 +419,44 @@ function WallpaperModal({
           )}
         </div>
 
-        {/* Footer - Comic Style */}
+        {/* Footer */}
         <div className="px-5 pb-5 flex gap-3">
           {current && (
             <button
               onClick={handleSaveRemove}
-              className="comic-button flex items-center gap-1.5 px-4 h-12 bg-red-400 text-white text-sm font-comic"
+              className={`flex items-center gap-1.5 px-4 h-12 text-white text-sm ${
+                isComic
+                  ? "comic-button bg-red-400 font-comic"
+                  : "bg-red-500 hover:bg-red-600 font-formal rounded-md shadow-sm transition-colors"
+              }`}
             >
               <Trash2 className="h-4 w-4" />
-              Remove 🗑️
+              {isComic ? "Remove 🗑️" : "Remove"}
             </button>
           )}
           <button
             onClick={onClose}
-            className="comic-button flex-1 h-12 bg-gray-200 text-gray-800 text-sm font-comic"
+            className={`flex-1 h-12 text-sm ${
+              isComic
+                ? "comic-button bg-gray-200 text-gray-800 font-comic"
+                : "bg-gray-100 hover:bg-gray-200 text-gray-700 font-formal rounded-md shadow-sm transition-colors"
+            }`}
           >
-            Cancel ✖️
+            {isComic ? "Cancel ✖️" : "Cancel"}
           </button>
           <button
             onClick={handleApply}
             disabled={!preview}
-            className="comic-button flex-1 h-12 bg-linear-to-r from-green-400 to-emerald-400 text-white text-sm font-comic disabled:opacity-50"
+            className={`flex-1 h-12 text-white text-sm disabled:opacity-50 ${
+              isComic
+                ? "comic-button bg-linear-to-r from-green-400 to-emerald-400 font-comic"
+                : "bg-green-600 hover:bg-green-700 font-formal rounded-md shadow-sm transition-colors"
+            }`}
           >
-            {preview ? "Apply! ✅" : "Upload First 📤"}
+            {preview
+              ? (isComic ? "Apply! ✅" : "Apply")
+              : (isComic ? "Upload First 📤" : "Upload First")
+            }
           </button>
         </div>
       </div>
