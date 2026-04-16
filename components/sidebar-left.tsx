@@ -31,11 +31,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Key,
+  Settings,
 } from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useRoleAccess, type AccessKey } from "@/contexts/RoleAccessContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { NavUser } from "@/components/nav-user";
 import { db } from "@/lib/firebase";
 
@@ -65,15 +67,17 @@ const NAV_ITEMS: Array<{
  { href: "/for-approval", icon: ClipboardCheck, label: "Approval", badgeKey: "forApproval", onlyForEngineeringManagerOrIT: true },
   { href: "/roles", icon: User, label: "Roles", accessKey: "page:roles", onlyForEngineeringManagerOrIT: true },
   { href: "/api-management", icon: Key, label: "API Keys", onlyForIT: true },
+  { href: "/settings", icon: Settings, label: "Settings" },
 ];
 
-const BOTTOM_NAV_HREFS = new Set(["/for-approval", "/roles", "/api-management"]);
+const BOTTOM_NAV_HREFS = new Set(["/for-approval", "/roles", "/api-management", "/settings"]);
 
 export function SidebarLeft() {
   const { state, isMobile } = useSidebar();
   const { userId } = useUser();
   const { unreadCount } = useNotifications();
   const { subscribeToUserAccess } = useRoleAccess();
+  const { theme } = useTheme();
   const pathname = usePathname();
 
   const [user, setUser] = React.useState<UserDetails | null>(null);
@@ -191,8 +195,10 @@ export function SidebarLeft() {
   );
 
   /* ─────────────────────────────────────────────
-     MOBILE — bottom nav bar (Comic Style)
+     MOBILE — bottom nav bar
   ───────────────────────────────────────────── */
+  const isComic = theme === "comic";
+
   if (isMobile) {
     const visibleItems = filteredNavItems.slice(navOffset, navOffset + VISIBLE_COUNT);
     const canPrev = navOffset > 0;
@@ -200,11 +206,19 @@ export function SidebarLeft() {
 
     return (
       <div
-        className="fixed left-0 right-0 z-50 bg-white border-t-4 border-gray-800 shadow-[0_-4px_0px_#2d3436]"
+        className={`fixed left-0 right-0 z-50 bg-white ${
+          isComic
+            ? "border-t-4 border-gray-800 shadow-[0_-4px_0px_#2d3436]"
+            : "border-t border-gray-200 shadow-lg"
+        }`}
         style={{ bottom: 0, paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        {/* Comic decoration stripe */}
-        <div className="h-1 bg-linear-to-r from-red-400 via-yellow-400 to-blue-400 w-full"></div>
+        {/* Theme decoration stripe */}
+        {isComic ? (
+          <div className="h-1 bg-linear-to-r from-red-400 via-yellow-400 to-blue-400 w-full"></div>
+        ) : (
+          <div className="h-1 bg-linear-to-r from-red-600 to-red-800 w-full"></div>
+        )}
 
         <div className="flex items-center h-15.5 px-1">
 
@@ -212,7 +226,9 @@ export function SidebarLeft() {
           <button
             onClick={() => setNavOffset((o) => Math.max(0, o - 1))}
             disabled={!canPrev}
-            className="flex items-center justify-center w-8 h-full text-gray-800 disabled:opacity-30 shrink-0 font-comic font-bold text-xl"
+            className={`flex items-center justify-center w-8 h-full text-gray-800 disabled:opacity-30 shrink-0 ${
+              isComic ? "font-comic font-bold text-xl" : "font-formal font-medium"
+            }`}
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
@@ -231,23 +247,43 @@ export function SidebarLeft() {
               <Link
                 key={href}
                 href={href}
-                className={`flex flex-col items-center justify-center gap-1 flex-1 h-full relative font-comic ${active ? 'comic-animate-bounce' : ''}`}
+                className={`flex flex-col items-center justify-center gap-1 flex-1 h-full relative ${
+                  isComic ? `font-comic ${active ? 'comic-animate-bounce' : ''}` : "font-formal"
+                }`}
               >
                 {active && (
-                  <span className="absolute top-1 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-linear-to-r from-red-400 to-orange-400 border-2 border-gray-800" />
+                  <span className={`absolute top-1 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-linear-to-r ${
+                    isComic
+                      ? "from-red-400 to-orange-400 border-2 border-gray-800"
+                      : "from-red-600 to-red-800"
+                  }`} />
                 )}
                 <span className="relative">
                   <Icon
-                    className={`h-6 w-6 transition-all ${active ? "text-red-500 comic-text-shadow" : "text-gray-600"}`}
+                    className={`h-6 w-6 transition-all ${
+                      active
+                        ? isComic
+                          ? "text-red-500 comic-text-shadow"
+                          : "text-red-600"
+                        : "text-gray-600"
+                    }`}
                     strokeWidth={active ? 2.5 : 2}
                   />
                   {badge > 0 && (
-                    <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full bg-yellow-400 text-gray-900 text-[10px] font-comic font-bold flex items-center justify-center border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]">
+                    <span className={`absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                      isComic
+                        ? "bg-yellow-400 text-gray-900 font-comic border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
+                        : "bg-red-600 text-white font-formal"
+                    }`}>
                       {badge > 9 ? "9+" : badge}
                     </span>
                   )}
                 </span>
-                <span className={`text-[11px] font-comic font-bold transition-colors ${active ? "text-red-500" : "text-gray-600"}`}>
+                <span className={`text-[11px] font-bold transition-colors ${
+                  active
+                    ? isComic ? "text-red-500" : "text-red-600"
+                    : "text-gray-600"
+                } ${isComic ? "font-comic" : "font-formal"}`}>
                   {label}
                 </span>
               </Link>
@@ -258,7 +294,9 @@ export function SidebarLeft() {
           <button
             onClick={() => setNavOffset((o) => Math.min(filteredNavItems.length - VISIBLE_COUNT, o + 1))}
             disabled={!canNext}
-            className="flex items-center justify-center w-8 h-full text-gray-800 disabled:opacity-30 shrink-0 font-comic font-bold text-xl"
+            className={`flex items-center justify-center w-8 h-full text-gray-800 disabled:opacity-30 shrink-0 ${
+              isComic ? "font-comic font-bold text-xl" : "font-formal font-medium"
+            }`}
           >
             <ChevronRight className="h-6 w-6" />
           </button>
@@ -290,22 +328,27 @@ export function SidebarLeft() {
   return (
     <Sidebar
       collapsible="icon"
-      className="
-        bg-white/90
-        backdrop-blur-md
+      className={`
         shadow-2xl
         border-r
-        border-border/50
-      "
+        ${isComic
+          ? "bg-white/90 backdrop-blur-md border-border/50"
+          : "bg-white border-gray-200"
+        }
+      `}
     >
 {/* HEADER */}
-<SidebarHeader className="h-18 px-3 flex items-center bg-linear-to-r from-yellow-300 to-orange-300 comic-border-thick m-2 rounded-2xl">
-  <Link 
-    href="/dashboard" 
-    className="flex items-center gap-2.5 min-w-0 cursor-pointer comic-hover-scale"
+<SidebarHeader className={`h-18 px-3 flex items-center m-2 rounded-2xl ${
+  isComic
+    ? "bg-linear-to-r from-yellow-300 to-orange-300 comic-border-thick"
+    : "bg-linear-to-r from-red-600 to-red-800 border border-red-700"
+}`}>
+  <Link
+    href="/dashboard"
+    className={`flex items-center gap-2.5 min-w-0 cursor-pointer ${isComic ? "comic-hover-scale" : "hover:scale-105 transition-transform"}`}
   >
     {/* Logo mark — always visible, even when collapsed */}
-    <div className="shrink-0 comic-animate-bounce">
+    <div className={`shrink-0 ${isComic ? "comic-animate-bounce" : ""}`}>
       <svg
         width="36"
         height="36"
@@ -319,7 +362,7 @@ export function SidebarLeft() {
         <path
           d="M16 2L28.1244 9V23L16 30L3.87564 23V9L16 2Z"
           fill="url(#espironGrad)"
-          stroke="#2d3436"
+          stroke={isComic ? "#2d3436" : "#ffffff"}
           strokeWidth="1"
         />
         {/* Inner "E" mark built from bars */}
@@ -329,8 +372,8 @@ export function SidebarLeft() {
         <rect x="10" y="10" width="2" height="12" rx="1" fill="white" opacity="0.95" />
         <defs>
           <linearGradient id="espironGrad" x1="3.87564" y1="2" x2="28.1244" y2="30" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#ff4757" />
-            <stop offset="100%" stopColor="#ffa502" />
+            <stop offset="0%" stopColor={isComic ? "#ff4757" : "#dc2626"} />
+            <stop offset="100%" stopColor={isComic ? "#ffa502" : "#b91c1c"} />
           </linearGradient>
         </defs>
       </svg>
@@ -340,14 +383,22 @@ export function SidebarLeft() {
     {state === "expanded" && (
       <div className="flex flex-col leading-none min-w-0">
         <span
-          className="font-comic-title text-lg text-gray-900 truncate comic-text-outline"
+          className={`text-lg truncate ${
+            isComic
+              ? "font-comic-title text-gray-900 comic-text-outline"
+              : "font-formal-title text-white"
+          }`}
         >
           ESPIRON
         </span>
         <span
-          className="font-comic text-xs font-bold text-red-500 truncate"
+          className={`text-xs truncate ${
+            isComic
+              ? "font-comic font-bold text-red-500"
+              : "font-formal text-red-100"
+          }`}
         >
-          Product Database 🚀
+          Product Database {isComic ? "🚀" : ""}
         </span>
       </div>
     )}
@@ -371,18 +422,21 @@ export function SidebarLeft() {
                   asChild
                   data-active={pathname === href}
                   className={`
-                    font-comic font-bold text-sm
+                    ${isComic ? "font-comic" : "font-formal"} font-bold text-sm
                     transition-all duration-200
-                    border-2 border-transparent
-                    hover:border-gray-800
-                    hover:shadow-[4px_4px_0px_#2d3436]
-                    hover:-translate-x-0.5
-                    hover:-translate-y-0.5
-                    hover:bg-yellow-100
                     rounded-xl
-                    ${pathname === href 
-                      ? 'bg-linear-to-r from-red-400 to-orange-400 text-white border-2 border-gray-800 shadow-[4px_4px_0px_#2d3436]' 
-                      : 'bg-white text-gray-700'
+                    ${isComic ? "border-2 border-transparent" : "border border-transparent"}
+                    ${isComic
+                      ? "hover:border-gray-800 hover:shadow-[4px_4px_0px_#2d3436] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-yellow-100"
+                      : "hover:border-red-600 hover:shadow-md hover:bg-red-600 hover:text-white"
+                    }
+                    ${isComic
+                      ? "data-[active=true]:bg-linear-to-r data-[active=true]:from-red-400 data-[active=true]:to-orange-400 data-[active=true]:text-white data-[active=true]:border-2 data-[active=true]:border-gray-800 data-[active=true]:shadow-[4px_4px_0px_#2d3436]"
+                      : "data-[active=true]:bg-linear-to-r data-[active=true]:from-red-600 data-[active=true]:to-red-700 data-[active=true]:text-white data-[active=true]:border data-[active=true]:border-red-700 data-[active=true]:shadow-md"
+                    }
+                    ${isComic
+                      ? "bg-white text-gray-700 data-[active=false]:hover:text-red-500"
+                      : "bg-white text-gray-700"
                     }
                   `}
                 >
@@ -391,7 +445,11 @@ export function SidebarLeft() {
                     <span className="relative shrink-0">
                       <Icon className="h-5 w-5" />
                       {badge > 0 && state === "collapsed" && (
-                        <span className="absolute -top-2 -right-2 min-w-4.5 h-4.5 px-1 rounded-full bg-yellow-400 text-gray-900 text-[9px] font-bold flex items-center justify-center border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]">
+                        <span className={`absolute -top-2 -right-2 min-w-4.5 h-4.5 px-1 rounded-full text-[9px] font-bold flex items-center justify-center ${
+                          isComic
+                            ? "bg-yellow-400 text-gray-900 border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
+                            : "bg-red-600 text-white shadow-sm"
+                        }`}>
                           {badge > 9 ? "9+" : badge}
                         </span>
                       )}
@@ -402,7 +460,11 @@ export function SidebarLeft() {
                       <>
                         <span className="flex-1">{label}</span>
                         {badge > 0 && (
-                          <span className="ml-auto min-w-6 h-6 px-1.5 rounded-full bg-yellow-400 text-gray-900 text-xs font-bold flex items-center justify-center border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]">
+                          <span className={`ml-auto min-w-6 h-6 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${
+                            isComic
+                              ? "bg-yellow-400 text-gray-900 border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
+                              : "bg-red-600 text-white shadow-sm"
+                          }`}>
                             {badge > 9 ? "9+" : badge}
                           </span>
                         )}
@@ -429,25 +491,31 @@ export function SidebarLeft() {
                   <SidebarMenuButton
                     asChild
                     data-active={pathname === href}
-                    className="
+                    className={`
+                      ${isComic ? "font-comic text-gray-700" : "font-formal text-gray-700"}
                       transition-all
-                      hover:bg-red-50
-                      hover:text-red-700
+                      ${isComic ? "hover:bg-red-50 hover:text-red-700" : "hover:bg-red-600 hover:text-white"}
                       hover:scale-[1.01]
-                      data-[active=true]:bg-linear-to-r
-                      data-[active=true]:from-red-600
-                      data-[active=true]:to-red-700
+                      ${isComic
+                        ? "data-[active=true]:bg-linear-to-r data-[active=true]:from-red-400 data-[active=true]:to-orange-400"
+                        : "data-[active=true]:bg-linear-to-r data-[active=true]:from-red-600 data-[active=true]:to-red-700"
+                      }
                       data-[active=true]:text-white
                       data-[active=true]:shadow-md
-                      data-[active=true]:hover:from-red-700
-                      data-[active=true]:hover:to-red-800
-                    "
+                      ${isComic
+                        ? "data-[active=true]:hover:from-red-500 data-[active=true]:hover:to-orange-500"
+                        : "data-[active=true]:hover:from-red-700 data-[active=true]:hover:to-red-800"
+                      }
+                      data-[active=true]:hover:text-white
+                    `}
                   >
                     <Link href={href} className="relative flex items-center gap-2 w-full">
                       <span className="relative shrink-0">
                         <Icon className="h-4 w-4" />
                         {badge > 0 && state === "collapsed" && (
-                          <span className="absolute -top-1.5 -right-1.5 min-w-3.5 h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+                          <span className={`absolute -top-1.5 -right-1.5 min-w-3.5 h-3.5 px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center ring-2 ring-white ${
+                            isComic ? "bg-red-500 text-white" : "bg-red-600 text-white"
+                          }`}>
                             {badge > 9 ? "9+" : badge}
                           </span>
                         )}
@@ -457,7 +525,9 @@ export function SidebarLeft() {
                         <>
                           <span className="flex-1">{label}</span>
                           {badge > 0 && (
-                            <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
+                            <span className={`ml-auto min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center shadow-sm ${
+                              isComic ? "bg-red-500 text-white" : "bg-red-600 text-white"
+                            }`}>
                               {badge > 9 ? "9+" : badge}
                             </span>
                           )}
@@ -472,19 +542,20 @@ export function SidebarLeft() {
         )}
       </SidebarContent>
 
-      <SidebarSeparator className="h-1 bg-gray-800 my-2" />
+      <SidebarSeparator className={`h-1 my-2 ${isComic ? "bg-gray-800" : "bg-gray-200"}`} />
 
-      {/* FOOTER - Comic Style */}
+      {/* FOOTER */}
       <SidebarFooter className="p-3">
         {user && userId && (
           <div
-            className="
-              comic-card
+            className={`
               cursor-pointer
-              bg-linear-to-r from-blue-100 to-purple-100
-              comic-hover-lift
               p-3
-            "
+              ${isComic
+                ? "comic-card bg-linear-to-r from-blue-100 to-purple-100 comic-hover-lift"
+                : "formal-card bg-linear-to-r from-red-50 to-red-100 hover:shadow-md transition-shadow"
+              }
+            `}
           >
             <NavUser
               user={{

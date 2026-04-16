@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, LogOut } from "lucide-react";
+import { BadgeCheck, LogOut, Settings } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -129,6 +129,14 @@ export function NavUser({
             <div className="flex items-center gap-2 cursor-pointer">
               <BadgeCheck className="size-4" />
               <span>Account</span>
+            </div>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings">
+            <div className="flex items-center gap-2 cursor-pointer">
+              <Settings className="size-4" />
+              <span>Settings</span>
             </div>
           </Link>
         </DropdownMenuItem>

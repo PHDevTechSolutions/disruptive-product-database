@@ -1292,3 +1292,191 @@
   background-image: radial-gradient(#2d3436 1px, transparent 1px);
   background-size: 8px 8px;
 }
+
+/* ============================================
+   FORMAL THEME - Professional Clean UI
+   ============================================ */
+
+.formal {
+  --radius: 0.375rem;
+
+  /* Background - Clean White */
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+
+  /* Cards - White with subtle shadow */
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+
+  /* Popovers */
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+
+  /* Primary - Professional Red */
+  --primary: #dc2626;
+  --primary-foreground: #ffffff;
+
+  /* Secondary - Light Gray */
+  --secondary: #f3f4f6;
+  --secondary-foreground: #374151;
+
+  /* Muted - Soft Gray */
+  --muted: #f9fafb;
+  --muted-foreground: #6b7280;
+
+  /* Accent - Light Red */
+  --accent: #fef2f2;
+  --accent-foreground: #991b1b;
+
+  /* Destructive */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  /* Borders - Clean thin lines */
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #dc2626;
+
+  /* Chart colors - Professional palette */
+  --chart-1: #dc2626;
+  --chart-2: #2563eb;
+  --chart-3: #059669;
+  --chart-4: #d97706;
+  --chart-5: #7c3aed;
+
+  /* Sidebar - Clean white */
+  --sidebar: #fafafa;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #dc2626;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f3f4f6;
+  --sidebar-accent-foreground: #374151;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #dc2626;
+}
+
+/* Formal Font Classes */
+.font-formal {
+  font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif !important;
+}
+
+.font-formal-title {
+  font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Formal Button Styles */
+.formal-button {
+  font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+  font-weight: 500;
+  border: 1px solid #dc2626 !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+  text-transform: none;
+}
+
+.formal-button:hover {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.formal-button:active {
+  transform: scale(0.98);
+}
+
+/* Formal Card Styles */
+.formal-card {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  background: #ffffff !important;
+}
+
+.formal-card-primary {
+  border: 1px solid #dc2626 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.1) !important;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  color: white !important;
+}
+
+/* Formal Input Styles */
+.formal-input {
+  border: 1px solid #d1d5db !important;
+  border-radius: 6px !important;
+  font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif !important;
+}
+
+.formal-input:focus {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+}
+
+/* Formal Badge */
+.formal-badge {
+  font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+  font-weight: 500;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #f9fafb;
+}
+
+/* Formal Navigation Item */
+.formal-nav-item {
+  font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+}
+
+.formal-nav-item:hover {
+  background-color: #f9fafb;
+  border-left-color: #dc2626;
+}
+
+.formal-nav-item.active {
+  background-color: #fef2f2;
+  border-left-color: #dc2626;
+  color: #dc2626;
+}
+
+/* Formal Header */
+.formal-header {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+}
+
+/* Formal Section Divider */
+.formal-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 1.5rem 0;
+}
+
+/* Formal Table Styles */
+.formal-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.formal-table th {
+  background-color: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+  font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: #374151;
+  padding: 0.75rem 1rem;
+}
+
+.formal-table td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem;
+  font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+}
+
+.formal-table tr:hover td {
+  background-color: #f9fafb;
+}

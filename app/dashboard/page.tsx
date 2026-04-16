@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { useWallpaper } from "@/contexts/WallpaperContext";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { collection, query, where, getCountFromServer } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -23,9 +24,11 @@ export default function Dashboard() {
   const { userId } = useUser();
   const { wallpaper, opacity, setWallpaper, setOpacity } = useWallpaper();
   const { unreadCount } = useNotifications();
+  const { theme } = useTheme();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [themeOpen, setThemeOpen] = useState(false);
+  const isComic = theme === "comic";
 
   const [totalProducts, setTotalProducts]   = useState<number | null>(null);
   const [totalSuppliers, setTotalSuppliers] = useState<number | null>(null);
@@ -87,14 +90,22 @@ export default function Dashboard() {
   return (
     <div className="h-dvh flex flex-col overflow-hidden">
       {/* ── DESKTOP HEADER ── */}
-      <div className="hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white border-b-4 border-gray-800">
+      <div className={`hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white ${
+        isComic ? "border-b-4 border-gray-800" : "border-b border-gray-200"
+      }`}>
         <SidebarTrigger />
         <div className="flex items-center justify-between">
-          <h1 className="font-comic-title text-3xl text-gray-900 comic-text-shadow">
+          <h1 className={`text-3xl text-gray-900 ${
+            isComic
+              ? "font-comic-title comic-text-shadow"
+              : "font-formal-title"
+          }`}>
             {loading ? "Loading..." : user ? (
               <>
-                👋 Welcome, {user.Firstname} {user.Lastname}
-                <span className="ml-2 text-sm font-comic text-gray-600">({user.Role})</span>
+                {isComic && "👋 "}Welcome, {user.Firstname} {user.Lastname}
+                <span className={`ml-2 text-sm text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
+                  ({user.Role})
+                </span>
               </>
             ) : "Welcome"}
           </h1>
@@ -102,13 +113,19 @@ export default function Dashboard() {
       </div>
 
       {/* ── MOBILE HEADER ── */}
-      <div className="md:hidden shrink-0 bg-white border-b-4 border-gray-800 px-4 pt-5 pb-3">
+      <div className={`md:hidden shrink-0 bg-white px-4 pt-5 pb-3 ${
+        isComic ? "border-b-4 border-gray-800" : "border-b border-gray-200"
+      }`}>
         <div className="flex items-center justify-between">
-          <h1 className="font-comic-title text-xl text-gray-900 comic-text-shadow">
+          <h1 className={`text-xl text-gray-900 ${
+            isComic ? "font-comic-title comic-text-shadow" : "font-formal-title"
+          }`}>
             {loading ? "Loading..." : user ? (
               <>
-                👋 Welcome, {user.Firstname}
-                <span className="ml-2 text-xs font-comic text-gray-600">({user.Role})</span>
+                {isComic && "👋 "}Welcome, {user.Firstname}
+                <span className={`ml-2 text-xs text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
+                  ({user.Role})
+                </span>
               </>
             ) : "Welcome"}
           </h1>
@@ -118,36 +135,56 @@ export default function Dashboard() {
       {/* ── CONTENT ── */}
       <div className="flex-1 overflow-auto p-6 space-y-6">
 
-      {/* Metric cards - Comic Style */}
+      {/* Metric cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {metrics.map(({ key, label, value, color, badge }) => (
           <button
             key={key}
             onClick={() => router.push(`/${key}`)}
-            className="comic-card comic-hover-lift p-5 space-y-3 text-left relative group"
+            className={`p-5 space-y-3 text-left relative group ${
+              isComic
+                ? "comic-card comic-hover-lift"
+                : "formal-card hover:shadow-lg transition-shadow"
+            }`}
             style={{ background: 'white' }}
           >
-            {/* Comic notification badge */}
+            {/* Notification badge */}
             {badge !== undefined && badge > 0 && (
-              <span className="absolute -top-2 -right-2 z-10 min-w-7 h-7 px-1.5 rounded-full bg-yellow-400 text-gray-900 text-xs font-comic font-bold flex items-center justify-center border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] comic-animate-bounce">
+              <span className={`absolute -top-2 -right-2 z-10 min-w-7 h-7 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${
+                isComic
+                  ? "bg-yellow-400 text-gray-900 font-comic border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] comic-animate-bounce"
+                  : "bg-red-600 text-white font-formal shadow-md"
+              }`}>
                 {badge > 99 ? "99+" : badge}
               </span>
             )}
 
             <div className="flex items-center gap-3">
               <span
-                className="inline-block w-4 h-4 rounded-lg shrink-0 border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
+                className={`inline-block w-4 h-4 rounded-lg shrink-0 ${
+                  isComic
+                    ? "border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
+                    : "border border-gray-300"
+                }`}
                 style={{ backgroundColor: color }}
               />
-              <p className="font-comic text-sm font-bold text-gray-600">{label}</p>
+              <p className={`text-sm font-bold text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
+                {label}
+              </p>
             </div>
-            <p className="font-comic-title text-4xl text-gray-900 comic-text-shadow group-hover:scale-105 transition-transform">
+            <p className={`text-4xl text-gray-900 group-hover:scale-105 transition-transform ${
+              isComic ? "font-comic-title comic-text-shadow" : "font-formal-title"
+            }`}>
               {value === null
-                ? <span className="text-gray-400 text-2xl comic-animate-pulse">⚡</span>
+                ? <span className={`text-gray-400 text-2xl ${isComic ? "comic-animate-pulse" : ""}`}>
+                    {isComic ? "⚡" : "..."}
+                  </span>
                 : value.toLocaleString()
               }
             </p>
-            <p className="font-comic text-xs text-gray-500">Click to explore! 🚀</p>
+            <p className={`text-xs text-gray-500 ${isComic ? "font-comic" : "font-formal"}`}>
+              {isComic ? "Click to explore! 🚀" : "Click to explore"}
+            </p>
           </button>
         ))}
       </div>
@@ -155,12 +192,20 @@ export default function Dashboard() {
       {/* ── Customize Theme Button ── */}
       <button
         onClick={() => setThemeOpen(true)}
-        className="comic-button flex items-center gap-2.5 px-5 py-3 bg-linear-to-r from-blue-400 to-purple-400 text-white font-comic"
+        className={`flex items-center gap-2.5 px-5 py-3 bg-linear-to-r from-blue-400 to-purple-400 text-white ${
+          isComic
+            ? "comic-button font-comic"
+            : "font-formal rounded-md shadow-sm hover:shadow-md transition-shadow"
+        }`}
       >
         <ImageIcon className="h-5 w-5" />
-        <span>Customize Wallpaper 🎨</span>
+        <span>{isComic ? "Customize Wallpaper 🎨" : "Customize Wallpaper"}</span>
         {wallpaper && (
-          <span className="ml-1 flex items-center gap-1 text-xs bg-green-400 text-gray-900 px-2 py-0.5 rounded-full border-2 border-gray-800 font-comic">
+          <span className={`ml-1 flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+            isComic
+              ? "bg-green-400 text-gray-900 border-2 border-gray-800 font-comic"
+              : "bg-green-500 text-white font-formal"
+          }`}>
             <CheckCircle2 className="h-3 w-3" />
             Active!
           </span>
