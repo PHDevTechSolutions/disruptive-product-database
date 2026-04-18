@@ -32,6 +32,7 @@ import {
   ChevronRight,
   Key,
   Settings,
+  StickyNote,
 } from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
@@ -64,6 +65,7 @@ const NAV_ITEMS: Array<{
   { href: "/suppliers", icon: Truck, label: "Suppliers", accessKey: "page:suppliers" },
   { href: "/requests", icon: ClipboardList, label: "Requests", badgeKey: "requests", accessKey: "page:requests" },
   { href: "/history", icon: History, label: "History" },
+  { href: "/notes", icon: StickyNote, label: "Notes" },
  { href: "/for-approval", icon: ClipboardCheck, label: "Approval", badgeKey: "forApproval", onlyForEngineeringManagerOrIT: true },
   { href: "/roles", icon: User, label: "Roles", accessKey: "page:roles", onlyForEngineeringManagerOrIT: true },
   { href: "/api-management", icon: Key, label: "API Keys", onlyForIT: true },
