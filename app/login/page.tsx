@@ -63,27 +63,27 @@ export default function LoginPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2">
 
           {/* LEFT CARD (LOGIN FORM) */}
-          <div className="bg-white p-8 flex flex-col justify-center gap-6">
+          <div className="bg-white p-4 sm:p-6 lg:p-8 flex flex-col justify-center gap-4 sm:gap-6">
 
-            <div className={`flex items-center gap-4 mb-6 ${isComic ? "comic-animate-bounce" : ""}`}>
-              <div className={`relative w-28 h-28 p-2 flex items-center justify-center ${
+            <div className={`flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6 ${isComic ? "comic-animate-bounce" : ""}`}>
+              <div className={`relative w-16 h-16 sm:w-20 sm:h-20 lg:w-28 lg:h-28 p-1 sm:p-2 flex items-center justify-center ${
                 isComic ? "comic-card-primary" : "bg-red-50 rounded-lg border border-red-100"
               }`}>
                 <Image
                   src="/images/disruptive-logo.png"
                   alt="Disruptive Solutions"
                   fill
-                  className="object-contain p-2"
+                  className="object-contain p-1 sm:p-2"
                   priority
                 />
               </div>
               <div className="flex flex-col">
-                <span className={`text-2xl text-red-500 ${
+                <span className={`text-xl sm:text-2xl text-red-500 ${
                   isComic ? "font-comic-title comic-text-outline" : "font-formal-title"
                 }`}>
                   ESPIRON
                 </span>
-                <span className={`text-sm text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
+                <span className={`text-xs sm:text-sm text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
                   Product Database
                 </span>
               </div>
@@ -91,14 +91,14 @@ export default function LoginPage() {
 
             {/* Welcome message */}
             {isComic ? (
-              <div className="comic-bubble comic-bubble-yellow mb-4 comic-animate-pop">
-                <p className="font-comic text-lg text-center font-bold text-gray-800">
+              <div className="comic-bubble comic-bubble-yellow mb-2 sm:mb-4 comic-animate-pop">
+                <p className="font-comic text-base sm:text-lg text-center font-bold text-gray-800">
                   👋 Welcome back, hero! Ready to explore?
                 </p>
               </div>
             ) : (
-              <div className="bg-red-50 border border-red-100 rounded-lg p-4 mb-4">
-                <p className="font-formal text-center text-gray-800">
+              <div className="bg-red-50 border border-red-100 rounded-lg p-3 sm:p-4 mb-2 sm:mb-4">
+                <p className="font-formal text-center text-gray-800 text-sm sm:text-base">
                   Welcome back. Please sign in to continue.
                 </p>
               </div>

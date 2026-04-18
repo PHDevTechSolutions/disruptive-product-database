@@ -88,14 +88,14 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
   return (
     <form onSubmit={handleSubmit} {...props}>
       <FieldGroup>
-        <div className="mb-6 text-center">
-          <h1 className={`text-3xl text-red-500 ${
+        <div className="mb-4 sm:mb-6 text-center">
+          <h1 className={`text-2xl sm:text-3xl text-red-500 ${
             isComic ? "font-comic-title comic-text-shadow comic-animate-bounce" : "font-formal-title"
           }`}>
             {isComic ? "Login to your account" : "Sign In"}
           </h1>
 
-          <p className={`mt-2 text-sm text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
+          <p className={`mt-2 text-xs sm:text-sm text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
             Disruptive Solutions Inc. · Internal Operations Portal
           </p>
         </div>
@@ -119,7 +119,7 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
           <Input
             type="email"
             required
-            className={`h-12 text-lg ${isComic ? "comic-input" : "border-gray-300 focus:border-red-500 focus:ring-red-500"}`}
+            className={`h-10 sm:h-12 text-base sm:text-lg ${isComic ? "comic-input" : "border-gray-300 focus:border-red-500 focus:ring-red-500"}`}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={isComic ? "hero@disruptive.com" : "Enter your email"}
@@ -133,7 +133,7 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
           <Input
             type="password"
             required
-            className={`h-12 text-lg ${isComic ? "comic-input" : "border-gray-300 focus:border-red-500 focus:ring-red-500"}`}
+            className={`h-10 sm:h-12 text-base sm:text-lg ${isComic ? "comic-input" : "border-gray-300 focus:border-red-500 focus:ring-red-500"}`}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder={isComic ? "Your secret code!" : "Enter your password"}
@@ -143,7 +143,7 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
         <Button
           type="submit"
           disabled={loading}
-          className={`mt-4 h-14 w-full text-lg text-white ${
+          className={`mt-3 sm:mt-4 h-12 sm:h-14 w-full text-base sm:text-lg text-white ${
             isComic
               ? "comic-button bg-linear-to-r from-red-500 to-orange-500 font-comic comic-animate-pulse"
               : "bg-red-600 hover:bg-red-700 font-formal rounded-md shadow-md hover:shadow-lg transition-all"
@@ -161,7 +161,7 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
           )}
         </Button>
 
-        <p className={`mt-4 text-center text-xs text-gray-500 ${isComic ? "font-comic" : "font-formal"}`}>
+        <p className={`mt-3 sm:mt-4 text-center text-xs text-gray-500 ${isComic ? "font-comic" : "font-formal"}`}>
           Having trouble? Contact your administrator{isComic && " 🦸"}
         </p>
       </FieldGroup>
