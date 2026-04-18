@@ -51,12 +51,9 @@ export function PWAInstallPrompt() {
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-    // Show prompt after a delay for all users (mobile and desktop with Chrome/Edge)
+    // Show prompt immediately for all users
     if (!installed) {
-      const timer = setTimeout(() => {
-        setIsVisible(true);
-      }, 3000);
-      return () => clearTimeout(timer);
+      setIsVisible(true);
     }
 
     return () => {
