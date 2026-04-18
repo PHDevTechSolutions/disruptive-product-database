@@ -1,0 +1,118 @@
+{
+  "name": "Espiron Product Database",
+  "short_name": "Espiron",
+  "description": "Disruptive Product Database & SPF Management System with real-time notifications",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/images/login-wallpaper-3.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/images/login-wallpaper.jpg",
+      "sizes": "720x1280",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "View Products",
+      "short_name": "Products",
+      "description": "View all products in the database",
+      "url": "/products",
+      "icons": [{ "src": "/disruptive-logo.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "SPF Requests",
+      "short_name": "SPF",
+      "description": "View SPF requests",
+      "url": "/spf-requests",
+      "icons": [{ "src": "/disruptive-logo.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Add Product",
+      "short_name": "Add",
+      "description": "Add a new product",
+      "url": "/add-product",
+      "icons": [{ "src": "/disruptive-logo.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "gcm_sender_id": "103953800507",
+  "display_override": ["standalone", "minimal-ui"],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+espiron",
+      "url": "/%s"
+    }
+  ]
+}
