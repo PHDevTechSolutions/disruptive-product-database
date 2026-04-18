@@ -1,0 +1,72 @@
+{
+  "name": "Espiron Product Database",
+  "short_name": "Espiron",
+  "description": "Product Database and Supplier Management System with SPF Request tracking",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/disruptive-logo.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Products",
+      "short_name": "Products",
+      "description": "View and manage products",
+      "url": "/products",
+      "icons": [{ "src": "/disruptive-logo.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Suppliers",
+      "short_name": "Suppliers",
+      "description": "View and manage suppliers",
+      "url": "/suppliers",
+      "icons": [{ "src": "/disruptive-logo.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Requests",
+      "short_name": "Requests",
+      "description": "View SPF requests",
+      "url": "/requests",
+      "icons": [{ "src": "/disruptive-logo.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/disruptive-logo.png", "sizes": "96x96" }]
+    }
+  ]
+}
