@@ -89,6 +89,7 @@ export function NavUser({
     } finally {
       setUserId(null);
       sessionStorage.removeItem("splashPlayed");
+      document.title = "Espiron | PD";
       setIsLoggingOut(false);
       setIsDialogOpen(false);
       router.replace("/login");

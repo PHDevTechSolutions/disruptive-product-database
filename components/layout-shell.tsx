@@ -14,7 +14,8 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-function TitleUpdater({ pathname, userId }: { pathname: string | null; userId: string | null }) {
+function TitleUpdater({ pathname }: { pathname: string | null }) {
+  const { userId } = useUser();
   const { activeNotificationCount, unreadChatCount } = useNotifications();
   const [forApprovalCount, setForApprovalCount] = useState(0);
 
@@ -49,7 +50,8 @@ function TitleUpdater({ pathname, userId }: { pathname: string | null; userId: s
     };
 
     const pageTitle = pathname ? titles[pathname] : null;
-    // Only show notification count when user is logged in
+    // Use activeNotificationCount (count of SPF rows with notifications) for consistent badge
+    // Only show notification badge when user is logged in
     const totalNotifications = userId ? activeNotificationCount + unreadChatCount + forApprovalCount : 0;
 
     if (pageTitle) {
@@ -107,7 +109,7 @@ export default function LayoutShell({
 
   return (
     <NotificationProvider>
-      <TitleUpdater pathname={pathname} userId={userId} />
+      <TitleUpdater pathname={pathname} />
       <ApprovalToastListener />
       <div className="relative flex min-h-svh w-full">
         {/* SidebarLeft handles both desktop (left sidebar) and mobile (bottom nav) */}
