@@ -1,286 +1,346 @@
-/**
- * Push Notification Service
- * Sends push notifications via Firebase Cloud Messaging (FCM)
- * - Handles server-side push notification sending
- * - Integrates with Supabase fcm_tokens table
- * - Supports targeted notifications by user
- */
+// Push Notification Manager
+// Coordinates notifications from various sources (Firebase, Supabase, Local)
 
-import { supabase } from '@/utils/supabase';
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { supabase } from "@/utils/supabase";
+import { updateProductBadge, updateSupplierBadge, updateRequestBadge } from "./badge-counter";
 
 export interface PushNotificationPayload {
   title: string;
   body: string;
-  icon?: string;
-  badge?: string;
-  tag?: string;
+  type: "product" | "supplier" | "request" | "chat" | "system";
+  data?: Record<string, any>;
   requireInteraction?: boolean;
-  data?: {
-    type?: 'product' | 'supplier' | 'request' | 'chat' | 'general';
-    url?: string;
-    [key: string]: any;
-  };
-  actions?: Array<{
-    action: string;
-    title: string;
-    icon?: string;
-  }>;
 }
 
-export interface NotificationTarget {
-  userId?: string;
-  role?: string;
-  all?: boolean;
-}
+class PushNotificationManager {
+  private isInitialized = false;
+  private listeners: Array<() => void> = [];
+  private onNotification: ((payload: PushNotificationPayload) => void) | null = null;
 
-/**
- * Send push notification to specific users
- */
-export async function sendPushNotification(
-  target: NotificationTarget,
-  payload: PushNotificationPayload
-): Promise<{ success: boolean; sent: number; errors: string[] }> {
-  const errors: string[] = [];
-  let sent = 0;
-
-  try {
-    // Get target FCM tokens
-    const tokens = await getTargetTokens(target);
-    
-    if (tokens.length === 0) {
-      return { success: false, sent: 0, errors: ['No target tokens found'] };
+  // Initialize all notification listeners
+  initialize(
+    onNotification: (payload: PushNotificationPayload) => void,
+    userId?: string
+  ) {
+    if (this.isInitialized) {
+      this.cleanup();
     }
 
-    // Send notification via API route (server-side Firebase Admin)
-    const results = await Promise.allSettled(
-      tokens.map(token => sendToToken(token, payload))
-    );
+    this.onNotification = onNotification;
+    this.isInitialized = true;
 
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        sent++;
-      } else {
-        errors.push(`Token ${index}: ${result.reason}`);
-        // Deactivate invalid tokens
-        deactivateToken(tokens[index]);
+    // Start listening to various data sources
+    this.listenToProducts();
+    this.listenToSuppliers();
+    this.listenToRequests(userId);
+
+    console.log("[PushNotifications] Initialized");
+  }
+
+  // Listen for new products
+  private listenToProducts() {
+    // Get initial count
+    let lastProductCount = parseInt(localStorage.getItem("last-product-count") || "0");
+
+    const q = query(collection(db, "products"), where("isActive", "==", true));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const currentCount = snapshot.size;
+      
+      // If new products were added
+      if (currentCount > lastProductCount && lastProductCount > 0) {
+        const newCount = currentCount - lastProductCount;
+        
+        // Find the newest products (sorted by createdAt)
+        const newProducts = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter((p: any) => {
+            const createdAt = p.createdAt?.toDate?.() || new Date(p.createdAt);
+            // Consider products created in last 5 minutes as "new"
+            return (Date.now() - createdAt.getTime()) < 5 * 60 * 1000;
+          })
+          .slice(0, newCount);
+
+        newProducts.forEach((product: any) => {
+          this.showNotification({
+            title: "New Product Added",
+            body: `"${product.productName}" has been added to the database`,
+            type: "product",
+            data: { 
+              url: "/products",
+              productId: product.id,
+              productName: product.productName 
+            },
+          });
+        });
+
+        updateProductBadge(newCount);
       }
+
+      localStorage.setItem("last-product-count", currentCount.toString());
     });
 
-    return { 
-      success: sent > 0, 
-      sent, 
-      errors 
-    };
-
-  } catch (err: any) {
-    return { 
-      success: false, 
-      sent, 
-      errors: [err.message || 'Unknown error'] 
-    };
+    this.listeners.push(unsubscribe);
   }
-}
 
-/**
- * Send notification to a single FCM token
- */
-async function sendToToken(
-  token: string, 
-  payload: PushNotificationPayload
-): Promise<void> {
-  const response = await fetch('/api/send-push', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      token,
-      notification: {
-        title: payload.title,
-        body: payload.body,
-        icon: payload.icon || '/disruptive-logo.png',
-        badge: payload.badge || '/disruptive-logo.png',
-      },
-      data: payload.data || {},
-      webpush: {
-        notification: {
-          requireInteraction: payload.requireInteraction ?? true,
-          tag: payload.tag || 'espiron',
-          renotify: true,
-          actions: payload.actions || [
-            { action: 'view', title: 'View' },
-            { action: 'dismiss', title: 'Dismiss' }
-          ]
+  // Listen for new suppliers
+  private listenToSuppliers() {
+    let lastSupplierCount = parseInt(localStorage.getItem("last-supplier-count") || "0");
+
+    const q = query(collection(db, "suppliers"), where("isActive", "==", true));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const currentCount = snapshot.size;
+      
+      if (currentCount > lastSupplierCount && lastSupplierCount > 0) {
+        const newCount = currentCount - lastSupplierCount;
+        
+        const newSuppliers = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter((s: any) => {
+            const createdAt = s.createdAt?.toDate?.() || new Date(s.createdAt);
+            return (Date.now() - createdAt.getTime()) < 5 * 60 * 1000;
+          })
+          .slice(0, newCount);
+
+        newSuppliers.forEach((supplier: any) => {
+          this.showNotification({
+            title: "New Supplier Added",
+            body: `"${supplier.company}" has been added as a supplier`,
+            type: "supplier",
+            data: { 
+              url: "/suppliers",
+              supplierId: supplier.id,
+              company: supplier.company 
+            },
+          });
+        });
+
+        updateSupplierBadge(newCount);
+      }
+
+      localStorage.setItem("last-supplier-count", currentCount.toString());
+    });
+
+    this.listeners.push(unsubscribe);
+  }
+
+  // Listen for SPF request status changes
+  private listenToRequests(userId?: string) {
+    // Track last seen statuses
+    const lastStatusesKey = "last-request-statuses";
+    let lastStatuses: Record<string, string> = {};
+    try {
+      lastStatuses = JSON.parse(localStorage.getItem(lastStatusesKey) || "{}");
+    } catch (e) {
+      lastStatuses = {};
+    }
+
+    // Subscribe to Supabase real-time changes
+    const channel = supabase
+      .channel("pwa-spf-notifications")
+      .on(
+        "postgres_changes",
+        { 
+          event: "UPDATE", 
+          schema: "public", 
+          table: "spf_request",
+        },
+        (payload: { new: Record<string, any>; old: Record<string, any> }) => {
+          const newRecord = payload.new;
+          const oldRecord = payload.old;
+          
+          // Check if status changed
+          if (newRecord.status !== oldRecord.status) {
+            const spfNumber = newRecord.spf_number;
+            const newStatus = newRecord.status;
+            const oldStatus = oldRecord.status;
+
+            // Only notify for certain status transitions
+            const notifyStatuses = [
+              "approved by tsm",
+              "approved by sales head",
+              "pending for procurement",
+              "approved by procurement",
+              "for revision",
+            ];
+
+            if (notifyStatuses.includes(newStatus.toLowerCase())) {
+              this.showNotification({
+                title: "SPF Request Updated",
+                body: `Request ${spfNumber} status changed from "${oldStatus}" to "${newStatus}"`,
+                type: "request",
+                data: { 
+                  url: "/requests",
+                  spfNumber: spfNumber,
+                  status: newStatus 
+                },
+                requireInteraction: true,
+              });
+
+              // Increment request badge
+              const currentRequestBadge = parseInt(localStorage.getItem("request-badge") || "0");
+              updateRequestBadge(currentRequestBadge + 1);
+            }
+
+            // Update tracked status
+            lastStatuses[spfNumber] = newStatus;
+            localStorage.setItem(lastStatusesKey, JSON.stringify(lastStatuses));
+          }
         }
-      }
-    })
-  });
+      )
+      .on(
+        "postgres_changes",
+        { 
+          event: "INSERT", 
+          schema: "public", 
+          table: "spf_request",
+        },
+        (payload: { new: Record<string, any> }) => {
+          const newRecord = payload.new;
+          
+          // Notify for new requests
+          if (newRecord.status?.toLowerCase().includes("approved")) {
+            this.showNotification({
+              title: "New SPF Request",
+              body: `Request ${newRecord.spf_number} has been created and ${newRecord.status}`,
+              type: "request",
+              data: { 
+                url: "/requests",
+                spfNumber: newRecord.spf_number,
+                status: newRecord.status 
+              },
+            });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error);
+            const currentRequestBadge = parseInt(localStorage.getItem("request-badge") || "0");
+            updateRequestBadge(currentRequestBadge + 1);
+          }
+        }
+      )
+      .subscribe();
+
+    this.listeners.push(() => {
+      supabase.removeChannel(channel);
+    });
+
+    // Also listen to spf_creation for status changes
+    const creationChannel = supabase
+      .channel("pwa-spf-creation-notifications")
+      .on(
+        "postgres_changes",
+        { 
+          event: "UPDATE", 
+          schema: "public", 
+          table: "spf_creation",
+        },
+        (payload: { new: Record<string, any>; old: Record<string, any> }) => {
+          const newRecord = payload.new;
+          const oldRecord = payload.old;
+          
+          if (newRecord.status !== oldRecord.status) {
+            const spfNumber = newRecord.spf_number;
+            const newStatus = newRecord.status;
+
+            // Notify for creation status changes
+            const creationNotifyStatuses = [
+              "pending for procurement",
+              "approved by procurement",
+              "for revision",
+              "pending on sales",
+            ];
+
+            if (creationNotifyStatuses.includes(newStatus.toLowerCase())) {
+              this.showNotification({
+                title: "SPF Creation Updated",
+                body: `Request ${spfNumber} creation status changed to "${newStatus}"`,
+                type: "request",
+                data: { 
+                  url: "/requests",
+                  spfNumber: spfNumber,
+                  creationStatus: newStatus 
+                },
+                requireInteraction: true,
+              });
+
+              const currentRequestBadge = parseInt(localStorage.getItem("request-badge") || "0");
+              updateRequestBadge(currentRequestBadge + 1);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    this.listeners.push(() => {
+      supabase.removeChannel(creationChannel);
+    });
+  }
+
+  // Show a notification
+  private showNotification(payload: PushNotificationPayload) {
+    // Call the callback
+    if (this.onNotification) {
+      this.onNotification(payload);
+    }
+
+    // Also try to show system notification
+    this.showSystemNotification(payload);
+
+    // Play notification sound
+    this.playSound();
+  }
+
+  // Show system notification via service worker
+  private async showSystemNotification(payload: PushNotificationPayload) {
+    if (!("serviceWorker" in navigator)) return;
+    if (Notification.permission !== "granted") return;
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (registration.active) {
+        registration.active.postMessage({
+          type: "SHOW_NOTIFICATION",
+          title: payload.title,
+          options: {
+            body: payload.body,
+            icon: "/espiron-logo.svg",
+            badge: "/espiron-logo.svg",
+            tag: payload.type,
+            data: payload.data || {},
+            requireInteraction: payload.requireInteraction || false,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("[PushNotifications] Failed to show system notification:", err);
+    }
+  }
+
+  // Play notification sound
+  private playSound() {
+    try {
+      const audio = new Audio("/musics/notif-sound.mp3");
+      audio.volume = 0.5;
+      audio.play().catch(() => {}); // Ignore autoplay restrictions
+    } catch (e) {
+      // Ignore audio errors
+    }
+  }
+
+  // Cleanup all listeners
+  cleanup() {
+    this.listeners.forEach(unsubscribe => unsubscribe());
+    this.listeners = [];
+    this.isInitialized = false;
+    console.log("[PushNotifications] Cleaned up");
   }
 }
 
-/**
- * Get FCM tokens for notification target
- */
-async function getTargetTokens(target: NotificationTarget): Promise<string[]> {
-  let query = supabase
-    .from('fcm_tokens')
-    .select('token')
-    .eq('active', true);
+// Export singleton
+export const pushNotificationManager = new PushNotificationManager();
 
-  if (target.userId) {
-    query = query.eq('user_id', target.userId);
-  }
-
-  const { data, error } = await query;
-  
-  if (error) {
-    console.error('Error fetching FCM tokens:', error);
-    return [];
-  }
-
-  return (data || []).map((row: { token: string }) => row.token);
-}
-
-/**
- * Deactivate invalid token
- */
-async function deactivateToken(token: string): Promise<void> {
-  try {
-    await supabase
-      .from('fcm_tokens')
-      .update({ active: false })
-      .eq('token', token);
-  } catch (err) {
-    console.error('Error deactivating token:', err);
-  }
-}
-
-/**
- * Send product added notification
- */
-export async function notifyProductAdded(
-  productName: string,
-  addedBy: string,
-  targetUsers?: NotificationTarget
-): Promise<void> {
-  await sendPushNotification(
-    targetUsers || { all: true },
-    {
-      title: 'New Product Added',
-      body: `${productName} was added by ${addedBy}`,
-      icon: '/disruptive-logo.png',
-      tag: 'product-added',
-      data: {
-        type: 'product',
-        url: '/products',
-        notificationType: 'product'
-      }
-    }
-  );
-}
-
-/**
- * Send supplier added notification
- */
-export async function notifySupplierAdded(
-  supplierName: string,
-  addedBy: string,
-  targetUsers?: NotificationTarget
-): Promise<void> {
-  await sendPushNotification(
-    targetUsers || { all: true },
-    {
-      title: 'New Supplier Added',
-      body: `${supplierName} was added by ${addedBy}`,
-      icon: '/disruptive-logo.png',
-      tag: 'supplier-added',
-      data: {
-        type: 'supplier',
-        url: '/suppliers',
-        notificationType: 'supplier'
-      }
-    }
-  );
-}
-
-/**
- * Send request status change notification
- */
-export async function notifyRequestStatusChange(
-  spfNumber: string,
-  status: string,
-  updatedBy: string,
-  targetUsers?: NotificationTarget
-): Promise<void> {
-  await sendPushNotification(
-    targetUsers || { all: true },
-    {
-      title: 'Request Status Updated',
-      body: `SPF ${spfNumber} is now ${status} (updated by ${updatedBy})`,
-      icon: '/disruptive-logo.png',
-      tag: `request-${spfNumber}`,
-      data: {
-        type: 'request',
-        url: '/requests',
-        spfNumber,
-        status,
-        notificationType: 'request'
-      }
-    }
-  );
-}
-
-/**
- * Send chat message notification
- */
-export async function notifyChatMessage(
-  requestId: string,
-  senderName: string,
-  message: string,
-  targetUsers?: NotificationTarget
-): Promise<void> {
-  // Truncate message if too long
-  const truncated = message.length > 50 ? message.substring(0, 50) + '...' : message;
-  
-  await sendPushNotification(
-    targetUsers || { all: true },
-    {
-      title: `New message from ${senderName}`,
-      body: truncated,
-      icon: '/disruptive-logo.png',
-      tag: `chat-${requestId}`,
-      data: {
-        type: 'chat',
-        url: `/requests?chat=${requestId}`,
-        requestId,
-        notificationType: 'chat'
-      }
-    }
-  );
-}
-
-/**
- * Send broadcast notification to all users
- */
-export async function sendBroadcastNotification(
-  title: string,
-  body: string,
-  options?: Partial<PushNotificationPayload>
-): Promise<void> {
-  await sendPushNotification(
-    { all: true },
-    {
-      title,
-      body,
-      icon: '/disruptive-logo.png',
-      tag: options?.tag || 'broadcast',
-      ...options,
-      data: {
-        type: 'general',
-        ...options?.data
-      }
-    }
-  );
+// Helper to manually trigger a notification
+export function showManualNotification(payload: PushNotificationPayload) {
+  pushNotificationManager["showNotification"](payload);
 }

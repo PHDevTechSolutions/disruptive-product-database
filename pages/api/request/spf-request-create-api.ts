@@ -3,7 +3,6 @@ import { getPhilippinesISOString } from "@/lib/datetime";
 import { supabase } from "@/utils/supabase";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { triggerRequestNotification } from "../../../hooks/use-notification-triggers";
 
 const ROW_SEP = "|ROW|";
 
@@ -488,17 +487,6 @@ export default async function handler(
       });
     } catch (auditErr) {
       console.error("Audit log error:", auditErr);
-    }
-
-    /* ── Push notification ── */
-    try {
-      void triggerRequestNotification(
-        spf_number,
-        initialStatus,
-        item_added_author || "Someone"
-      );
-    } catch (notifErr) {
-      console.error("Push notification error:", notifErr);
     }
 
     return res.status(200).json({ success: true, message: "SPF created successfully" });

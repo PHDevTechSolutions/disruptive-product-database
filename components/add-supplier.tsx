@@ -52,7 +52,6 @@ import {
 
 import { db } from "@/lib/firebase";
 import { logSupplierEvent } from "@/lib/auditlogger"; // ✅ AUDIT
-import { triggerSupplierNotification } from "@/hooks/use-notification-triggers"; // ✅ NOTIFICATIONS
 import RequestApprovalDialog from "@/components/request-approval-dialog";
 import {
   createApprovalRequest,
@@ -429,12 +428,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
         referenceID   : user?.ReferenceID,
         userId        : userId ?? undefined,
       });
-
-      // ✅ TRIGGER PUSH NOTIFICATION
-      void triggerSupplierNotification(
-        company || supplierBrand || "New Supplier",
-        user?.Firstname ? `${user.Firstname} ${user.Lastname || ""}`.trim() : "Someone"
-      );
 
       toast.success("Supplier saved successfully", { description: company });
       resetForm();

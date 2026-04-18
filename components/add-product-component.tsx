@@ -47,7 +47,6 @@ import {
 
 import { db } from "@/lib/firebase";
 import { logProductEvent, logProductUsageEvent, logProductFamilyEvent } from "@/lib/auditlogger"; // ✅ AUDIT
-import { triggerProductNotification } from "@/hooks/use-notification-triggers"; // ✅ NOTIFICATIONS
 
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
@@ -473,12 +472,6 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
         referenceID: user?.ReferenceID,
         userId     : userId ?? undefined,
       });
-
-      // ✅ TRIGGER PUSH NOTIFICATION
-      void triggerProductNotification(
-        newProductReferenceID || productClass || "New Product",
-        user?.Firstname ? `${user.Firstname} ${user.Lastname || ""}`.trim() : "Someone"
-      );
 
       toast.success("Product saved successfully");
       if (onClose) onClose();

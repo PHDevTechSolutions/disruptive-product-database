@@ -1,26 +1,28 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Download, X, Smartphone, Check } from "lucide-react";
+import { Download, X, Smartphone, Bell } from "lucide-react";
 
 interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: "accepted" | "dismissed";
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
 }
 
-export function PWAInstallPrompt() {
+interface PWAInstallPromptProps {
+  variant?: "default" | "comic";
+}
+
+export function PWAInstallPrompt({ variant = "default" }: PWAInstallPromptProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
+  const isComic = variant === "comic";
 
   useEffect(() => {
     // Check if already installed
@@ -29,169 +31,181 @@ export function PWAInstallPrompt() {
       return;
     }
 
-    // Check if iOS (which doesn't support beforeinstallprompt)
-    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    setIsIOS(isIOSDevice);
+    // Check if user previously dismissed
+    const dismissed = localStorage.getItem("pwa-install-dismissed");
+    if (dismissed) {
+      const dismissedTime = parseInt(dismissed);
+      // Show again after 7 days
+      if (Date.now() - dismissedTime < 7 * 24 * 60 * 60 * 1000) {
+        setIsDismissed(true);
+        return;
+      }
+    }
 
-    // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      
-      // Check if user previously dismissed
-      const dismissed = localStorage.getItem("pwa-prompt-dismissed");
-      const dismissedTime = dismissed ? parseInt(dismissed, 10) : 0;
-      const weekInMs = 7 * 24 * 60 * 60 * 1000;
-      
-      if (!dismissed || Date.now() - dismissedTime > weekInMs) {
-        setShowPrompt(true);
-      }
+      setIsVisible(true);
     };
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
-    // Listen for appinstalled event
     const handleAppInstalled = () => {
       setIsInstalled(true);
+      setIsVisible(false);
       setDeferredPrompt(null);
-      setShowPrompt(false);
       localStorage.setItem("pwa-installed", "true");
     };
 
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleAppInstalled);
+
+    // For iOS - show manual install prompt
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    
+    if (isIOS && isSafari && !isInstalled && !dismissed) {
+      // Show iOS install hint after a delay
+      const timer = setTimeout(() => {
+        if (!deferredPrompt) {
+          setIsVisible(true);
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
-  }, []);
+  }, [deferredPrompt, isInstalled]);
 
-  const handleInstall = async () => {
-    if (!deferredPrompt) return;
+  const handleInstall = useCallback(async () => {
+    if (!deferredPrompt) {
+      // iOS manual instructions
+      alert('To install on iOS:\n1. Tap the Share button\n2. Scroll down and tap "Add to Home Screen"');
+      return;
+    }
 
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-
+    
     if (outcome === "accepted") {
-      setIsInstalled(true);
+      console.log("PWA installed successfully");
+    } else {
+      console.log("PWA install dismissed");
     }
-
+    
     setDeferredPrompt(null);
-    setShowPrompt(false);
-  };
+    setIsVisible(false);
+  }, [deferredPrompt]);
 
-  const handleDismiss = () => {
-    setShowPrompt(false);
-    localStorage.setItem("pwa-prompt-dismissed", Date.now().toString());
-  };
+  const handleDismiss = useCallback(() => {
+    setIsVisible(false);
+    setIsDismissed(true);
+    localStorage.setItem("pwa-install-dismissed", Date.now().toString());
+  }, []);
 
-  // Don't show if already installed
-  if (isInstalled) return null;
+  if (!isVisible || isInstalled) return null;
+
+  // iOS Safari manual install UI
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !deferredPrompt;
+
+  if (isComic) {
+    return (
+      <div className="fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom duration-300">
+        <div className="comic-card bg-yellow-50 border-4 border-yellow-400 shadow-[8px_8px_0px_0px_rgba(251,191,36,1)] rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="shrink-0 w-12 h-12 rounded-full bg-yellow-400 border-4 border-black flex items-center justify-center comic-animate-bounce">
+              {isIOS ? <Smartphone className="w-6 h-6 text-black" /> : <Download className="w-6 h-6 text-black" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-comic-title text-lg text-black leading-tight">
+                {isIOS ? "Add to Home Screen! 📱" : "Install Espiron App! 🚀"}
+              </h3>
+              <p className="font-comic text-sm text-gray-700 mt-1">
+                {isIOS 
+                  ? "Tap Share → 'Add to Home Screen' for quick access!"
+                  : "Get notifications & offline access like a native app!"}
+              </p>
+              <div className="flex gap-2 mt-3">
+                {!isIOS && (
+                  <Button 
+                    onClick={handleInstall}
+                    className="comic-btn-primary flex-1"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Install Now
+                  </Button>
+                )}
+                <Button 
+                  onClick={handleDismiss}
+                  variant="outline"
+                  className="comic-btn-outline"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Dialog open={showPrompt} onOpenChange={setShowPrompt}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <Download className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <DialogTitle>Install Espiron App</DialogTitle>
-              <DialogDescription>
-                Get faster access and native notifications
-              </DialogDescription>
-            </div>
+    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 animate-in slide-in-from-bottom duration-300">
+      <div className="bg-white border border-gray-200 shadow-lg rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+            {isIOS ? <Smartphone className="w-5 h-5 text-red-600" /> : <Download className="w-5 h-5 text-red-600" />}
           </div>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <Check className="w-5 h-5 text-green-500 mt-0.5" />
-              <div>
-                <p className="font-medium text-sm">Quick Access</p>
-                <p className="text-sm text-muted-foreground">
-                  Launch directly from your home screen
-                </p>
-              </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="font-semibold text-gray-900 text-sm">
+                {isIOS ? "Add to Home Screen" : "Install Espiron App"}
+              </h3>
+              <button 
+                onClick={handleDismiss}
+                className="shrink-0 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div className="flex items-start gap-3">
-              <Check className="w-5 h-5 text-green-500 mt-0.5" />
-              <div>
-                <p className="font-medium text-sm">Push Notifications</p>
-                <p className="text-sm text-muted-foreground">
-                  Get instant alerts for products, suppliers & requests
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <Check className="w-5 h-5 text-green-500 mt-0.5" />
-              <div>
-                <p className="font-medium text-sm">Offline Support</p>
-                <p className="text-sm text-muted-foreground">
-                  Access cached data even without internet
-                </p>
-              </div>
-            </div>
+            <p className="text-xs text-gray-600 mt-1">
+              {isIOS 
+                ? "Tap the Share button and select 'Add to Home Screen' for quick access."
+                : "Install for push notifications, offline access, and a better experience."}
+            </p>
+            {!isIOS && (
+              <Button 
+                onClick={handleInstall}
+                size="sm"
+                className="mt-3 w-full bg-red-600 hover:bg-red-700"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Install App
+              </Button>
+            )}
           </div>
-
-          {isIOS && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <Smartphone className="w-5 h-5 text-amber-600 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-amber-800">iOS Installation</p>
-                  <p className="text-amber-700">
-                    Tap the share button in Safari, then "Add to Home Screen"
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
-
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={handleDismiss}>
-            <X className="w-4 h-4 mr-2" />
-            Later
-          </Button>
-          {!isIOS && deferredPrompt && (
-            <Button className="flex-1" onClick={handleInstall}>
-              <Download className="w-4 h-4 mr-2" />
-              Install
-            </Button>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
-export function usePWAStatus() {
+// Hook to check if PWA is installed
+export function usePWAInstalled() {
   const [isInstalled, setIsInstalled] = useState(false);
-  const [canInstall, setCanInstall] = useState(false);
 
   useEffect(() => {
-    const checkStatus = () => {
-      const standalone = window.matchMedia("(display-mode: standalone)").matches;
-      const iOSStandalone = (window.navigator as any).standalone === true;
-      setIsInstalled(standalone || iOSStandalone);
+    const checkInstalled = () => {
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
+      const isIOSStandalone = (window.navigator as any).standalone === true;
+      setIsInstalled(isStandalone || isIOSStandalone);
     };
 
-    checkStatus();
-
-    const handleBeforeInstallPrompt = () => {
-      setCanInstall(true);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    checkInstalled();
     window.addEventListener("appinstalled", () => setIsInstalled(true));
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    };
   }, []);
 
-  return { isInstalled, canInstall };
+  return isInstalled;
 }

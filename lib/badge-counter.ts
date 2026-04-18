@@ -1,225 +1,161 @@
-/**
- * Badge Counter Utility
- * Manages app badge counts for PWA notifications
- * - Shows badge on app icon (like Viber red notification dot)
- * - Persists count in localStorage
- * - Syncs with Service Worker
- */
+// Badge Counter Utility for PWA
+// Handles app icon badge updates on both mobile and desktop
 
-const BADGE_STORAGE_KEY = 'espiron-badge-count';
+import { updateAppBadge } from "@/components/service-worker-registration";
 
-/**
- * Check if the Badging API is supported
- */
-export function isBadgingSupported(): boolean {
-  return 'setAppBadge' in navigator && 'clearAppBadge' in navigator;
-}
+class BadgeCounter {
+  private count: number = 0;
+  private listeners: Set<(count: number) => void> = new Set();
 
-/**
- * Get current badge count from storage
- */
-export function getBadgeCount(): number {
-  if (typeof window === 'undefined') return 0;
-  try {
-    const stored = localStorage.getItem(BADGE_STORAGE_KEY);
-    return stored ? parseInt(stored, 10) || 0 : 0;
-  } catch {
-    return 0;
-  }
-}
-
-/**
- * Set badge count in storage and on app icon
- */
-export async function setBadgeCount(count: number): Promise<void> {
-  if (typeof window === 'undefined') return;
-  
-  const normalizedCount = Math.max(0, Math.floor(count));
-  
-  // Save to localStorage
-  try {
-    localStorage.setItem(BADGE_STORAGE_KEY, String(normalizedCount));
-  } catch {
-    // Ignore storage errors
-  }
-  
-  // Set badge on app icon if supported
-  if (isBadgingSupported()) {
-    try {
-      if (normalizedCount > 0) {
-        await (navigator as any).setAppBadge(normalizedCount);
-      } else {
-        await (navigator as any).clearAppBadge();
+  constructor() {
+    // Load saved count
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("badge-count");
+      if (saved) {
+        this.count = parseInt(saved, 10) || 0;
+        this.updateBadge();
       }
-    } catch (err) {
-      console.warn('[BadgeCounter] Failed to set badge:', err);
     }
   }
-  
-  // Notify service worker about badge update
-  notifyServiceWorker({ type: 'BADGE_UPDATE', count: normalizedCount });
-}
 
-/**
- * Increment badge count by amount (default 1)
- */
-export async function incrementBadgeCount(amount: number = 1): Promise<number> {
-  const current = getBadgeCount();
-  const newCount = current + amount;
-  await setBadgeCount(newCount);
-  return newCount;
-}
-
-/**
- * Decrement badge count by amount (default 1)
- */
-export async function decrementBadgeCount(amount: number = 1): Promise<number> {
-  const current = getBadgeCount();
-  const newCount = Math.max(0, current - amount);
-  await setBadgeCount(newCount);
-  return newCount;
-}
-
-/**
- * Clear badge count
- */
-export async function clearBadgeCount(): Promise<void> {
-  await setBadgeCount(0);
-}
-
-/**
- * Notify service worker about badge updates
- */
-function notifyServiceWorker(message: any): void {
-  if (typeof window === 'undefined') return;
-  
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage(message);
+  // Get current count
+  getCount(): number {
+    return this.count;
   }
-}
 
-/**
- * Badge Counter for specific notification types
- * Tracks counts per category: products, suppliers, requests
- */
-const CATEGORY_KEYS = {
-  product: 'espiron-badge-products',
-  supplier: 'espiron-badge-suppliers',
-  request: 'espiron-badge-requests',
-  chat: 'espiron-badge-chat'
-};
-
-export type BadgeCategory = keyof typeof CATEGORY_KEYS;
-
-/**
- * Get badge count for a specific category
- */
-export function getCategoryBadgeCount(category: BadgeCategory): number {
-  if (typeof window === 'undefined') return 0;
-  try {
-    const stored = localStorage.getItem(CATEGORY_KEYS[category]);
-    return stored ? parseInt(stored, 10) || 0 : 0;
-  } catch {
-    return 0;
+  // Set count directly
+  setCount(count: number): void {
+    this.count = Math.max(0, count);
+    this.saveAndUpdate();
   }
-}
 
-/**
- * Set badge count for a specific category
- */
-export async function setCategoryBadgeCount(
-  category: BadgeCategory, 
-  count: number
-): Promise<void> {
-  if (typeof window === 'undefined') return;
-  
-  const normalizedCount = Math.max(0, Math.floor(count));
-  
-  try {
-    localStorage.setItem(CATEGORY_KEYS[category], String(normalizedCount));
-  } catch {
-    // Ignore storage errors
+  // Increment count
+  increment(amount: number = 1): void {
+    this.count += amount;
+    this.saveAndUpdate();
   }
-  
-  // Recalculate total badge count
-  await recalculateTotalBadge();
-}
 
-/**
- * Increment badge count for a specific category
- */
-export async function incrementCategoryBadge(
-  category: BadgeCategory, 
-  amount: number = 1
-): Promise<number> {
-  const current = getCategoryBadgeCount(category);
-  const newCount = current + amount;
-  await setCategoryBadgeCount(category, newCount);
-  return newCount;
-}
-
-/**
- * Clear badge count for a specific category
- */
-export async function clearCategoryBadge(category: BadgeCategory): Promise<void> {
-  await setCategoryBadgeCount(category, 0);
-}
-
-/**
- * Recalculate total badge count from all categories
- */
-async function recalculateTotalBadge(): Promise<void> {
-  const total = Object.keys(CATEGORY_KEYS).reduce((sum, key) => {
-    return sum + getCategoryBadgeCount(key as BadgeCategory);
-  }, 0);
-  
-  await setBadgeCount(total);
-}
-
-/**
- * Get all category badge counts
- */
-export function getAllBadgeCounts(): Record<BadgeCategory, number> & { total: number } {
-  const categories = Object.keys(CATEGORY_KEYS) as BadgeCategory[];
-  const counts = {} as Record<BadgeCategory, number>;
-  
-  let total = 0;
-  for (const category of categories) {
-    const count = getCategoryBadgeCount(category);
-    counts[category] = count;
-    total += count;
+  // Decrement count
+  decrement(amount: number = 1): void {
+    this.count = Math.max(0, this.count - amount);
+    this.saveAndUpdate();
   }
-  
-  return { ...counts, total };
-}
 
-/**
- * Clear all badge counts
- */
-export async function clearAllBadges(): Promise<void> {
-  const categories = Object.keys(CATEGORY_KEYS) as BadgeCategory[];
-  
-  for (const category of categories) {
+  // Clear count
+  clear(): void {
+    this.count = 0;
+    this.saveAndUpdate();
+  }
+
+  // Subscribe to count changes
+  subscribe(callback: (count: number) => void): () => void {
+    this.listeners.add(callback);
+    callback(this.count);
+    
+    return () => {
+      this.listeners.delete(callback);
+    };
+  }
+
+  // Notify all listeners
+  private notify(): void {
+    this.listeners.forEach(callback => callback(this.count));
+  }
+
+  // Save to storage and update badge
+  private saveAndUpdate(): void {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("badge-count", this.count.toString());
+    }
+    this.updateBadge();
+    this.notify();
+  }
+
+  // Update the actual badge
+  private async updateBadge(): Promise<void> {
     try {
-      localStorage.removeItem(CATEGORY_KEYS[category]);
-    } catch {
-      // Ignore errors
+      await updateAppBadge(this.count);
+    } catch (err) {
+      console.error("[BadgeCounter] Failed to update badge:", err);
     }
   }
-  
-  await clearBadgeCount();
 }
 
-/**
- * Initialize badge counter from storage on app load
- */
-export function initializeBadgeCounter(): void {
-  if (typeof window === 'undefined') return;
-  
-  // Recalculate and set badge on load
-  const { total } = getAllBadgeCounts();
-  
-  if (isBadgingSupported() && total > 0) {
-    (navigator as any).setAppBadge(total).catch(() => {});
+// Export singleton instance
+export const badgeCounter = new BadgeCounter();
+
+// React hook for badge count
+export function useBadgeCount() {
+  if (typeof window === "undefined") {
+    return { count: 0 };
   }
+  return { count: badgeCounter.getCount() };
+}
+
+// Utility to update badge from various sources
+export function updateBadgeFromNotifications(
+  productCount: number,
+  supplierCount: number,
+  requestCount: number,
+  chatCount: number = 0
+): void {
+  const total = productCount + supplierCount + requestCount + chatCount;
+  badgeCounter.setCount(total);
+}
+
+// Utility for specific page badges
+export function updateProductBadge(count: number): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("product-badge", count.toString());
+  }
+  updateBadgeFromNotifications(
+    count,
+    parseInt(localStorage.getItem("supplier-badge") || "0"),
+    parseInt(localStorage.getItem("request-badge") || "0"),
+    parseInt(localStorage.getItem("chat-badge") || "0")
+  );
+}
+
+export function updateSupplierBadge(count: number): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("supplier-badge", count.toString());
+  }
+  updateBadgeFromNotifications(
+    parseInt(localStorage.getItem("product-badge") || "0"),
+    count,
+    parseInt(localStorage.getItem("request-badge") || "0"),
+    parseInt(localStorage.getItem("chat-badge") || "0")
+  );
+}
+
+export function updateRequestBadge(count: number): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("request-badge", count.toString());
+  }
+  updateBadgeFromNotifications(
+    parseInt(localStorage.getItem("product-badge") || "0"),
+    parseInt(localStorage.getItem("supplier-badge") || "0"),
+    count,
+    parseInt(localStorage.getItem("chat-badge") || "0")
+  );
+}
+
+// Get individual badge counts
+export function getBadgeBreakdown() {
+  if (typeof window === "undefined") {
+    return { product: 0, supplier: 0, request: 0, chat: 0, total: 0 };
+  }
+  
+  const product = parseInt(localStorage.getItem("product-badge") || "0");
+  const supplier = parseInt(localStorage.getItem("supplier-badge") || "0");
+  const request = parseInt(localStorage.getItem("request-badge") || "0");
+  const chat = parseInt(localStorage.getItem("chat-badge") || "0");
+  
+  return {
+    product,
+    supplier,
+    request,
+    chat,
+    total: product + supplier + request + chat,
+  };
 }

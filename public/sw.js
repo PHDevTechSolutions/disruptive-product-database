@@ -1,7 +1,4 @@
-// Service Worker for Espiron PWA
-// Handles caching, push notifications, and offline support
-
-const CACHE_NAME = 'espiron-v1';
+const CACHE_NAME = 'espiron-pwa-v1';
 const STATIC_ASSETS = [
   '/',
   '/login',
@@ -9,27 +6,29 @@ const STATIC_ASSETS = [
   '/products',
   '/suppliers',
   '/requests',
-  '/disruptive-logo.png',
   '/espiron-logo.svg',
+  '/images/disruptive-logo.png',
   '/musics/notif-sound.mp3',
-  '/musics/notif-messege-sound.mp3'
+  '/musics/notif-messege-sound.mp3',
+  '/musics/elevator-music.mp3'
 ];
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing...');
+  console.log('[SW] Install event');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
-    }).then(() => {
-      return self.skipWaiting();
+    }).catch((err) => {
+      console.log('[SW] Cache failed:', err);
     })
   );
+  self.skipWaiting();
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating...');
+  console.log('[SW] Activate event');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -37,129 +36,147 @@ self.addEventListener('activate', (event) => {
           .filter((name) => name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       );
-    }).then(() => {
-      return self.clients.claim();
     })
   );
+  self.clients.claim();
 });
 
 // Fetch event - serve from cache or network
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
+  // Skip non-GET requests and API calls
   if (event.request.method !== 'GET') return;
-  
-  // Skip API calls and Supabase
-  if (event.request.url.includes('/api/') || 
-      event.request.url.includes('supabase.co')) {
-    return;
-  }
+  if (event.request.url.includes('/api/')) return;
+  if (event.request.url.includes('supabase')) return;
+  if (event.request.url.includes('firebase')) return;
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) {
         return cached;
       }
-      
       return fetch(event.request).then((response) => {
-        // Cache successful GET requests
-        if (response.ok && response.type === 'basic') {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
+        // Don't cache if not valid response
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
         }
+        // Clone and cache
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
+        });
         return response;
       }).catch(() => {
-        // Return offline fallback for HTML pages
-        if (event.request.headers.get('accept')?.includes('text/html')) {
-          return caches.match('/');
+        // Return offline fallback if available
+        if (event.request.mode === 'navigate') {
+          return caches.match('/login');
         }
       });
     })
   );
 });
 
-// Push notification event
+// Background sync for offline actions
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-requests') {
+    event.waitUntil(syncRequests());
+  }
+});
+
+async function syncRequests() {
+  console.log('[SW] Syncing requests...');
+  // Placeholder for background sync logic
+}
+
+// Handle push notifications
 self.addEventListener('push', (event) => {
   console.log('[SW] Push received:', event);
   
-  if (!event.data) return;
-  
+  let data = {};
   try {
-    const data = event.data.json();
-    const title = data.title || 'Espiron Notification';
-    const options = {
-      body: data.body || '',
-      icon: data.icon || '/disruptive-logo.png',
-      badge: '/disruptive-logo.png',
-      tag: data.tag || 'espiron-notification',
-      requireInteraction: true,
-      renotify: true,
-      data: data.data || {},
-      actions: data.actions || []
+    data = event.data.json();
+  } catch (e) {
+    data = {
+      title: 'Espiron Notification',
+      body: event.data.text(),
+      icon: '/espiron-logo.svg',
+      badge: '/espiron-logo.svg'
     };
-
-    event.waitUntil(
-      self.registration.showNotification(title, options)
-    );
-
-    // Update badge counter if supported
-    if (data.badgeCount !== undefined && 'setAppBadge' in navigator) {
-      event.waitUntil(
-        navigator.setAppBadge(data.badgeCount).catch(() => {})
-      );
-    }
-
-  } catch (err) {
-    console.error('[SW] Error handling push:', err);
   }
-});
 
-// Notification click event
-self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event);
-  event.notification.close();
-
-  const notificationData = event.notification.data;
-  let url = '/';
-
-  // Route based on notification type
-  if (notificationData?.type === 'product') {
-    url = '/products';
-  } else if (notificationData?.type === 'supplier') {
-    url = '/suppliers';
-  } else if (notificationData?.type === 'request') {
-    url = '/requests';
-  } else if (notificationData?.url) {
-    url = notificationData.url;
-  }
+  const options = {
+    body: data.body || 'New notification from Espiron',
+    icon: data.icon || '/espiron-logo.svg',
+    badge: data.badge || '/espiron-logo.svg',
+    tag: data.tag || 'default',
+    requireInteraction: data.requireInteraction || false,
+    data: data.data || {},
+    actions: data.actions || []
+  };
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If a window is already open, focus it and navigate
+    self.registration.showNotification(data.title || 'Espiron', options)
+  );
+
+  // Update badge count
+  updateBadge(data.badgeCount || 1);
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification click:', event);
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || '/dashboard';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If window is already open, focus it
       for (const client of clientList) {
-        if (client.url && 'focus' in client) {
-          client.focus();
-          client.navigate(url);
-          return;
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
         }
       }
-      // Otherwise open a new window
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(url);
+      // Otherwise open new window
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
       }
     })
   );
+
+  // Clear badge when notification is clicked
+  updateBadge(0);
 });
 
-// Background sync for offline form submissions (if needed in future)
-self.addEventListener('sync', (event) => {
-  console.log('[SW] Background sync:', event.tag);
-});
-
-// Message from main thread
+// Handle message from main thread
 self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') {
+  if (event.data && event.data.type === 'UPDATE_BADGE') {
+    updateBadge(event.data.count);
+  }
+  if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
+
+// Update app badge (for supported browsers)
+async function updateBadge(count) {
+  if ('setAppBadge' in navigator) {
+    try {
+      if (count > 0) {
+        await navigator.setAppBadge(count);
+      } else {
+        await navigator.clearAppBadge();
+      }
+    } catch (err) {
+      console.log('[SW] Badge update failed:', err);
+    }
+  }
+  
+  // Broadcast to all clients
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  clients.forEach(client => {
+    client.postMessage({
+      type: 'BADGE_UPDATED',
+      count: count
+    });
+  });
+}
