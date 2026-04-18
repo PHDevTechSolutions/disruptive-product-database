@@ -55,6 +55,18 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
+import { dbCollab } from "@/lib/firebase";
+import {
+  collection,
+  query,
+  orderBy,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  Timestamp,
+} from "firebase/firestore";
 
 type Priority = "Low" | "Medium" | "High";
 
@@ -163,23 +175,44 @@ export default function NotesPage() {
       .catch(console.error);
   }, [userId]);
 
-  /* ── Load notes from localStorage ── */
+  /* ── Load notes from Firebase ── */
   useEffect(() => {
-    const stored = localStorage.getItem("espiron-notes");
-    if (stored) {
-      try {
-        setNotes(JSON.parse(stored));
-      } catch (e) {
-        console.error("Failed to parse notes:", e);
-      }
-    }
-  }, []);
+    if (!userId) return;
 
-  /* ── Save notes to localStorage ── */
-  const saveNotes = useCallback((updatedNotes: Note[]) => {
-    localStorage.setItem("espiron-notes", JSON.stringify(updatedNotes));
-    setNotes(updatedNotes);
-  }, []);
+    const notesQuery = query(
+      collection(dbCollab, "notes"),
+      orderBy("updatedAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      notesQuery,
+      (snapshot) => {
+        const loadedNotes: Note[] = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            title: data.title || "",
+            content: data.content || "",
+            priority: data.priority || "Medium",
+            collaborators: data.collaborators || [],
+            createdBy: data.createdBy || "Unknown",
+            createdByUserId: data.createdByUserId || "",
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt || new Date().toISOString(),
+          };
+        });
+        setNotes(loadedNotes);
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error("Failed to load notes:", error);
+        toast.error("Failed to load notes");
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [userId]);
 
   /* ── Check if user has full access (Engineering Manager or IT) ── */
   const hasFullAccess = useCallback(() => {
@@ -220,72 +253,79 @@ export default function NotesPage() {
   });
 
   /* ── Create note ── */
-  const handleCreateNote = () => {
+  const handleCreateNote = async () => {
     if (!newNoteTitle.trim()) {
       toast.error("Title is required");
       return;
     }
 
-    const now = new Date().toISOString();
-    const newNote: Note = {
-      id: crypto.randomUUID(),
-      title: newNoteTitle.trim(),
-      content: newNoteContent.trim(),
-      priority: newNotePriority,
-      collaborators: [],
-      createdBy: userName,
-      createdByUserId: userId || "",
-      createdAt: now,
-      updatedAt: now,
-    };
+    try {
+      const now = Timestamp.now();
+      const noteData = {
+        title: newNoteTitle.trim(),
+        content: newNoteContent.trim(),
+        priority: newNotePriority,
+        collaborators: [],
+        createdBy: userName,
+        createdByUserId: userId || "",
+        createdAt: now,
+        updatedAt: now,
+      };
 
-    const updated = [newNote, ...notes];
-    saveNotes(updated);
-    setNewNoteTitle("");
-    setNewNoteContent("");
-    setNewNotePriority("Medium");
-    setIsCreateDialogOpen(false);
-    toast.success("Note created successfully");
+      await addDoc(collection(dbCollab, "notes"), noteData);
+      setNewNoteTitle("");
+      setNewNoteContent("");
+      setNewNotePriority("Medium");
+      setIsCreateDialogOpen(false);
+      toast.success("Note created successfully");
+    } catch (error) {
+      console.error("Failed to create note:", error);
+      toast.error("Failed to create note");
+    }
   };
 
   /* ── Edit note ── */
-  const handleEditNote = () => {
+  const handleEditNote = async () => {
     if (!selectedNote) return;
     if (!editTitle.trim()) {
       toast.error("Title is required");
       return;
     }
 
-    const updated = notes.map((note) =>
-      note.id === selectedNote.id
-        ? {
-            ...note,
-            title: editTitle.trim(),
-            content: editContent.trim(),
-            priority: editPriority,
-            updatedAt: new Date().toISOString(),
-          }
-        : note
-    );
-    saveNotes(updated);
-    setIsEditDialogOpen(false);
-    setSelectedNote(null);
-    toast.success("Note updated successfully");
+    try {
+      const noteRef = doc(dbCollab, "notes", selectedNote.id);
+      await updateDoc(noteRef, {
+        title: editTitle.trim(),
+        content: editContent.trim(),
+        priority: editPriority,
+        updatedAt: Timestamp.now(),
+      });
+      setIsEditDialogOpen(false);
+      setSelectedNote(null);
+      toast.success("Note updated successfully");
+    } catch (error) {
+      console.error("Failed to update note:", error);
+      toast.error("Failed to update note");
+    }
   };
 
   /* ── Delete note ── */
-  const handleDeleteNote = () => {
+  const handleDeleteNote = async () => {
     if (!selectedNote) return;
-    const updated = notes.filter((note) => note.id !== selectedNote.id);
-    saveNotes(updated);
-    setIsDeleteDialogOpen(false);
-    setSelectedNote(null);
-    setIsDetailsDialogOpen(false);
-    toast.success("Note deleted successfully");
+    try {
+      await deleteDoc(doc(dbCollab, "notes", selectedNote.id));
+      setIsDeleteDialogOpen(false);
+      setSelectedNote(null);
+      setIsDetailsDialogOpen(false);
+      toast.success("Note deleted successfully");
+    } catch (error) {
+      console.error("Failed to delete note:", error);
+      toast.error("Failed to delete note");
+    }
   };
 
   /* ── Add collaborator ── */
-  const handleAddCollaborator = (user: User) => {
+  const handleAddCollaborator = async (user: User) => {
     if (!selectedNote) return;
 
     const isAlreadyCollaborator = selectedNote.collaborators?.some(
@@ -310,46 +350,46 @@ export default function NotesPage() {
       invitedAt: new Date().toISOString(),
     };
 
-    const updated = notes.map((note) =>
-      note.id === selectedNote.id
-        ? {
-            ...note,
-            collaborators: [...note.collaborators, newCollaborator],
-            updatedAt: new Date().toISOString(),
-          }
-        : note
-    );
-    saveNotes(updated);
-    setSelectedNote({
-      ...selectedNote,
-      collaborators: [...selectedNote.collaborators, newCollaborator],
-    });
-    toast.success(`${name} added as collaborator`);
+    try {
+      const noteRef = doc(dbCollab, "notes", selectedNote.id);
+      const updatedCollaborators = [...(selectedNote.collaborators || []), newCollaborator];
+      await updateDoc(noteRef, {
+        collaborators: updatedCollaborators,
+        updatedAt: Timestamp.now(),
+      });
+      setSelectedNote({
+        ...selectedNote,
+        collaborators: updatedCollaborators,
+      });
+      toast.success(`${name} added as collaborator`);
+    } catch (error) {
+      console.error("Failed to add collaborator:", error);
+      toast.error("Failed to add collaborator");
+    }
   };
 
   /* ── Remove collaborator ── */
-  const handleRemoveCollaborator = (collaboratorUserId: string) => {
+  const handleRemoveCollaborator = async (collaboratorUserId: string) => {
     if (!selectedNote) return;
 
-    const updated = notes.map((note) =>
-      note.id === selectedNote.id
-        ? {
-            ...note,
-            collaborators: note.collaborators.filter(
-              (c) => c.userId !== collaboratorUserId
-            ),
-            updatedAt: new Date().toISOString(),
-          }
-        : note
-    );
-    saveNotes(updated);
-    setSelectedNote({
-      ...selectedNote,
-      collaborators: selectedNote.collaborators.filter(
+    try {
+      const noteRef = doc(dbCollab, "notes", selectedNote.id);
+      const updatedCollaborators = (selectedNote.collaborators || []).filter(
         (c) => c.userId !== collaboratorUserId
-      ),
-    });
-    toast.success("Collaborator removed");
+      );
+      await updateDoc(noteRef, {
+        collaborators: updatedCollaborators,
+        updatedAt: Timestamp.now(),
+      });
+      setSelectedNote({
+        ...selectedNote,
+        collaborators: updatedCollaborators,
+      });
+      toast.success("Collaborator removed");
+    } catch (error) {
+      console.error("Failed to remove collaborator:", error);
+      toast.error("Failed to remove collaborator");
+    }
   };
 
   /* ── Export PDF ── */
