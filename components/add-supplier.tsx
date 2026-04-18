@@ -52,7 +52,6 @@ import {
 
 import { db } from "@/lib/firebase";
 import { logSupplierEvent } from "@/lib/auditlogger"; // ✅ AUDIT
-import { notifyNewSupplier } from "@/lib/push-notifications"; // ✅ PUSH NOTIFICATION
 import RequestApprovalDialog from "@/components/request-approval-dialog";
 import {
   createApprovalRequest,
@@ -431,11 +430,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
       });
 
       toast.success("Supplier saved successfully", { description: company });
-      
-      // ✅ Send push notification
-      const userName = user ? `${user.Firstname} ${user.Lastname}`.trim() : undefined;
-      void notifyNewSupplier(company, userName);
-      
       resetForm();
       onOpenChange(false);
     } catch (error) {

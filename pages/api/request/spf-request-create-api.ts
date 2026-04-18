@@ -1,10 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPhilippinesISOString } from "@/lib/datetime";
 import { supabase } from "@/utils/supabase";
-import { supabaseAdmin } from "@/utils/supabase-admin";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { sendPushNotificationServer } from "@/lib/push-notifications";
 
 const ROW_SEP = "|ROW|";
 
@@ -52,9 +50,8 @@ export default async function handler(
     const tsmValue         = spfRequest.tsm          ?? null;
     const managerValue     = spfRequest.manager       ?? null;
 
-    /* ── Resolve item_added_author and user name ── */
+    /* ── Resolve item_added_author ── */
     let item_added_author: string | null = null;
-    let userName: string | undefined;
     try {
       if (userId) {
         const { connectToDatabase } = await import("@/lib/mongodb");
@@ -62,10 +59,9 @@ export default async function handler(
         const mongoDb = await connectToDatabase();
         const user = await mongoDb.collection("users").findOne(
           { _id: new ObjectId(userId) },
-          { projection: { ReferenceID: 1, Firstname: 1, Lastname: 1 } }
+          { projection: { ReferenceID: 1 } }
         );
         item_added_author = user?.ReferenceID || null;
-        userName = user ? `${user.Firstname || ""} ${user.Lastname || ""}`.trim() : undefined;
       }
     } catch (err) {
       console.error("Failed to resolve item_added_author:", err);
@@ -491,19 +487,6 @@ export default async function handler(
       });
     } catch (auditErr) {
       console.error("Audit log error:", auditErr);
-    }
-
-    /* ── Send push notification ── */
-    try {
-      await sendPushNotificationServer(supabaseAdmin, {
-        title: "New SPF Request Created",
-        body: userName
-          ? `${userName} created SPF request: ${spf_number}`
-          : `New SPF request created: ${spf_number}`,
-        url: "/requests",
-      });
-    } catch (notifErr: any) {
-      console.error("Push notification error (non-blocking):", notifErr.message);
     }
 
     return res.status(200).json({ success: true, message: "SPF created successfully" });

@@ -11,9 +11,6 @@ import { Toaster } from "sonner";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import LayoutShell from "@/components/layout-shell";
 import { ThemeBody } from "@/components/theme-body";
-import { NotificationBanner } from "@/components/notification-banner";
-import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
-import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 
 export const viewport = {
   width: "device-width",
@@ -23,23 +20,12 @@ export const viewport = {
 
 export const metadata = {
   title: "Espiron | Product Database",
-  description: "Product and Supplier Database with Push Notifications",
-  manifest: "/manifest.json",
-  icons: {
-    icon: [
-      { url: "/espiron-logo.svg", type: "image/svg+xml" },
-      { url: "/disruptive-logo.png", sizes: "192x192", type: "image/png" },
-    ],
-    apple: [
-      { url: "/disruptive-logo.png", sizes: "192x192" },
-    ],
-  },
-  themeColor: "#3b82f6",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Espiron",
-  },
+  description: "...",
+icons: {
+  icon: [
+    { url: "/espiron-logo.svg", type: "image/svg+xml" },
+  ],
+},
 };
 
 export default function RootLayout({
@@ -66,9 +52,6 @@ export default function RootLayout({
                     "bg-background border border-border text-foreground shadow-lg rounded-lg",
                 }}
               />
-              <NotificationBanner />
-              <PWAInstallPrompt />
-              <ServiceWorkerRegistration />
             </WallpaperProvider>
           </RoleAccessProvider>
           </UserProvider>

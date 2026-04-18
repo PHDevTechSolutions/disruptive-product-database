@@ -1,42 +1,28 @@
 import { NextResponse } from "next/server";
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'; 
 
 const admin = require("firebase-admin");
 
 if (!admin.apps.length) {
   try {
-    const rawKey = process.env.FIREBASE_PRIVATE_KEY_ESPIRON;
-    if (!rawKey) {
-      console.warn("FIREBASE_PRIVATE_KEY_ESPIRON not set");
-    } else {
-      // Handle various private key formats
-      let formattedKey = rawKey;
-      
-      // Remove surrounding quotes if present
-      if (formattedKey.startsWith('"') && formattedKey.endsWith('"')) {
-        formattedKey = formattedKey.slice(1, -1);
-      }
-      
-      // Replace escaped newlines with actual newlines
-      formattedKey = formattedKey.replace(/\\n/g, '\n');
-      
-      // Also try replacing literal \n if still present
-      formattedKey = formattedKey.replace(/\n/g, '\n');
+    const rawKey = process.env.FIREBASE_PRIVATE_KEY;
+    // This regex handles keys with or without quotes and fixes newline characters
+    const formattedKey = rawKey 
+      ? rawKey.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1') 
+      : undefined;
 
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: "disruptive-product-database-v2",
-          clientEmail: "firebase-adminsdk-fbsvc@disruptive-product-database-v2.iam.gserviceaccount.com",
-          privateKey: formattedKey,
-        }),
-      });
-      console.log("Firebase Admin Initialized");
-    }
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: "engiconnect-b15c6",
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: formattedKey,
+      }),
+    });
+    console.log("Firebase Admin Initialized");
   } catch (error: any) {
     console.error("Firebase Admin Init Error:", error.message);
-    console.error("Key format issue - check your .env.local file");
   }
 }
 
