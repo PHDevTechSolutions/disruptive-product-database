@@ -2410,7 +2410,7 @@ useEffect(() => {
                                             );
                                             return (
                                               <span className="text-xs font-semibold">
-                                                ₱
+                                                $
                                                 {(qty * cost).toLocaleString(
                                                   "en-PH",
                                                   {
@@ -2866,7 +2866,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                       Subtotal
                                     </span>
                                     <span className="font-semibold text-gray-900">
-                                      ₱
+                                      $
                                       {Number(prodSubtotals[i] || 0).toLocaleString()}
                                     </span>
                                   </div>
@@ -2992,7 +2992,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                               <span className="font-semibold text-green-700">
                                 {prodSellingCosts[i] &&
                                 prodSellingCosts[i] !== "-"
-                                  ? `₱${Number(prodSellingCosts[i]).toLocaleString()}`
+                                  ? `$${Number(prodSellingCosts[i]).toLocaleString()}`
                                   : "-"}
                               </span>
                             </div>
@@ -3003,7 +3003,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                               <span className="font-semibold text-green-700">
                                 {prodFinalUnitCosts[i] &&
                                 prodFinalUnitCosts[i] !== "-"
-                                  ? `₱${Number(prodFinalUnitCosts[i]).toLocaleString()}`
+                                  ? `$${Number(prodFinalUnitCosts[i]).toLocaleString()}`
                                   : "-"}
                               </span>
                             </div>
@@ -3014,7 +3014,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                               <span className="font-semibold text-green-700">
                                 {prodFinalSubtotals[i] &&
                                 prodFinalSubtotals[i] !== "-"
-                                  ? `₱${Number(prodFinalSubtotals[i]).toLocaleString()}`
+                                  ? `$${Number(prodFinalSubtotals[i]).toLocaleString()}`
                                   : "-"}
                               </span>
                             </div>
@@ -3133,7 +3133,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                     <th className="border px-2 py-1 text-center whitespace-nowrap w-28">
                                       Image
                                     </th>
-<th className="border px-2 py-1 text-center whitespace-nowrap">
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
                                       Qty
                                     </th>
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
@@ -3313,7 +3313,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                       {prodPorts[i] || "-"}
                                     </td>
                                     <td className="border px-2 py-2 text-center align-middle font-semibold">
-                                      ₱
+                                      $
                                       {Number(
                                         prodSubtotals[i] || 0,
                                       ).toLocaleString()}
@@ -3338,19 +3338,19 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                         <td className="border px-2 py-2 text-center align-middle bg-green-50 text-green-700 font-semibold">
                                           {prodSellingCosts[i] &&
                                           prodSellingCosts[i] !== "-"
-                                            ? `₱${Number(prodSellingCosts[i]).toLocaleString()}`
+                                            ? `$${Number(prodSellingCosts[i]).toLocaleString()}`
                                             : "-"}
                                         </td>
                                         <td className="border px-2 py-2 text-center align-middle bg-green-50 text-green-700 font-semibold">
                                           {prodFinalUnitCosts[i] &&
                                           prodFinalUnitCosts[i] !== "-"
-                                            ? `₱${Number(prodFinalUnitCosts[i]).toLocaleString()}`
+                                            ? `$${Number(prodFinalUnitCosts[i]).toLocaleString()}`
                                             : "-"}
                                         </td>
                                         <td className="border px-2 py-2 text-center align-middle bg-green-50 text-green-700 font-semibold">
                                           {prodFinalSubtotals[i] &&
                                           prodFinalSubtotals[i] !== "-"
-                                            ? `₱${Number(prodFinalSubtotals[i]).toLocaleString()}`
+                                            ? `$${Number(prodFinalSubtotals[i]).toLocaleString()}`
                                             : "-"}
                                         </td>
                                       </>
