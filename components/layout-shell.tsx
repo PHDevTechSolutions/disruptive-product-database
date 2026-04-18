@@ -14,11 +14,15 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-function TitleUpdater({ pathname }: { pathname: string | null }) {
+function TitleUpdater({ pathname, userId }: { pathname: string | null; userId: string | null }) {
   const { activeNotificationCount, unreadChatCount } = useNotifications();
   const [forApprovalCount, setForApprovalCount] = useState(0);
 
   useEffect(() => {
+    if (!userId) {
+      setForApprovalCount(0);
+      return;
+    }
     const q = query(collection(db, "forApprovals"), where("status", "==", "Pending"));
     const unsub = onSnapshot(
       q,
@@ -30,7 +34,7 @@ function TitleUpdater({ pathname }: { pathname: string | null }) {
       }
     );
     return () => unsub();
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     const titles: Record<string, string> = {
@@ -45,11 +49,11 @@ function TitleUpdater({ pathname }: { pathname: string | null }) {
     };
 
     const pageTitle = pathname ? titles[pathname] : null;
-    // Use activeNotificationCount (count of SPF rows with notifications) for consistent badge
-    const totalNotifications = activeNotificationCount + unreadChatCount + forApprovalCount;
-    
+    // Only show notification count when user is logged in
+    const totalNotifications = userId ? activeNotificationCount + unreadChatCount + forApprovalCount : 0;
+
     if (pageTitle) {
-      document.title = totalNotifications > 0 
+      document.title = totalNotifications > 0
         ? `(${totalNotifications}) ${pageTitle} - Espiron | PD`
         : `${pageTitle} - Espiron | PD`;
     } else {
@@ -57,7 +61,7 @@ function TitleUpdater({ pathname }: { pathname: string | null }) {
         ? `(${totalNotifications}) Espiron | PD`
         : "Espiron | PD";
     }
-  }, [pathname, activeNotificationCount, unreadChatCount, forApprovalCount]);
+  }, [pathname, activeNotificationCount, unreadChatCount, forApprovalCount, userId]);
 
   return null;
 }
@@ -103,7 +107,7 @@ export default function LayoutShell({
 
   return (
     <NotificationProvider>
-      <TitleUpdater pathname={pathname} />
+      <TitleUpdater pathname={pathname} userId={userId} />
       <ApprovalToastListener />
       <div className="relative flex min-h-svh w-full">
         {/* SidebarLeft handles both desktop (left sidebar) and mobile (bottom nav) */}
