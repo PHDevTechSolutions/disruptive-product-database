@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Minus, ImagePlus, ChevronLeft } from "lucide-react";
+import { Plus, Minus, ImagePlus, ChevronLeft, Trash2 } from "lucide-react";
 import { useRef } from "react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 import { useUser } from "@/contexts/UserContext";
@@ -48,7 +49,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
-import { logProductEvent, logProductUsageEvent, logProductFamilyEvent } from "@/lib/auditlogger"; // ✅ AUDIT
+import { logProductEvent, logProductUsageEvent, logProductFamilyEvent } from "@/lib/auditlogger"; // AUDIT
 
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
@@ -77,6 +78,7 @@ type Supplier = { supplierId: string; company: string; supplierBrand?: string };
 type Brand = { id: string; name: string };
 type ProductFamily = { id: string; name: string; productUsageId: string };
 type SelectedCategoryType = { id: string; name: string };
+type PackagingDimension = { length: string; width: string; height: string; pcsPerCarton: string };
 
 const convertDriveToThumbnail = (url: string) => {
   const trimmed = url.trim();
@@ -121,6 +123,8 @@ export default function AddProductPage() {
   const [packWidth, setPackWidth] = useState("");
   const [packHeight, setPackHeight] = useState("");
   const [pcsPerCarton, setPcsPerCarton] = useState("");
+  const [hasMultipleDimensions, setHasMultipleDimensions] = useState(false);
+  const [packagingDimensions, setPackagingDimensions] = useState<PackagingDimension[]>([{ length: "", width: "", height: "", pcsPerCarton: "" }]);
   const [factoryAddress, setFactoryAddress] = useState("");
   const [portOfDischarge, setPortOfDischarge] = useState("");
 
@@ -247,6 +251,13 @@ export default function AddProductPage() {
     setIlluminancePreview(URL.createObjectURL(file));
   };
 
+  // Multiple dimensions helpers
+  const addPackagingDimension = () => setPackagingDimensions(p => [...p, { length: "", width: "", height: "", pcsPerCarton: "" }]);
+  const removePackagingDimension = (index: number) => setPackagingDimensions(p => p.length > 1 ? p.filter((_, i) => i !== index) : p);
+  const updatePackagingDimension = (index: number, field: keyof PackagingDimension, value: string) => {
+    setPackagingDimensions(p => p.map((dim, i) => i === index ? { ...dim, [field]: value } : dim));
+  };
+
   const handleAddCategoryType = async () => {
     if (!newCategoryType.trim()) return;
     const newCatRef = await addDoc(collection(db, "categoryTypes"), { name: newCategoryType.trim(), isActive: true, createdAt: serverTimestamp(), whatHappened: "Product Usage Added", date_updated: serverTimestamp() });
@@ -344,6 +355,26 @@ export default function AddProductPage() {
       const newProductReferenceID = await generateProductReferenceID();
       await syncSpecsToProductType();
 
+      // Prepare packaging data based on multiple dimensions checkbox
+      const packagingData = hasMultipleDimensions
+        ? packagingDimensions
+            .filter(d => d.length || d.width || d.height)
+            .map(d => ({
+              length: d.length ? `${parseFloat(d.length)} cm` : null,
+              width: d.width ? `${parseFloat(d.width)} cm` : null,
+              height: d.height ? `${parseFloat(d.height)} cm` : null,
+              pcsPerCarton: d.pcsPerCarton ? parseInt(d.pcsPerCarton) : null,
+            }))
+        : {
+            length: packLength ? `${parseFloat(packLength)} cm` : null,
+            width: packWidth ? `${parseFloat(packWidth)} cm` : null,
+            height: packHeight ? `${parseFloat(packHeight)} cm` : null,
+          };
+
+      const pcsPerCartonValue = hasMultipleDimensions
+        ? null
+        : pcsPerCarton ? parseInt(pcsPerCarton) : null;
+
       const productRef = await addDoc(collection(db, "products"), {
         productReferenceID: newProductReferenceID,
         pricePoint: noSupplier ? "ECONOMY" : pricePoint,
@@ -354,10 +385,11 @@ export default function AddProductPage() {
         categoryTypes: selectedCategoryTypes.map(c => ({ productUsageId: c.id, categoryTypeName: c.name })),
         commercialDetails: {
           unitCost: unitCost ? parseFloat(unitCost) : null,
-          packaging: { length: packLength ? `${parseFloat(packLength)} cm` : null, width: packWidth ? `${parseFloat(packWidth)} cm` : null, height: packHeight ? `${parseFloat(packHeight)} cm` : null },
-          pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
+          packaging: packagingData,
+          pcsPerCarton: pcsPerCartonValue,
           factoryAddress: factoryAddress || "",
           portOfDischarge: portOfDischarge || "",
+          hasMultipleDimensions,
         },
         technicalSpecifications: technicalSpecs.filter(s => s.title.trim()).map(s => ({ technicalSpecificationId: s.id || "", title: s.title, specs: s.specs.filter(r => r.specId.trim()).map(r => ({ specId: r.specId.trim(), value: r.value?.trim() || "" })) })),
         mainImage: imageLink ? { name: "external-image", url: imageLink, publicId: null } : null,
@@ -509,7 +541,7 @@ export default function AddProductPage() {
   return (
   <AccessGuard accessKey="page:add-product">
     <div className="h-screen overflow-hidden">
-      <div className="h-full overflow-y-auto px-6 pb-[140px]">
+      <div className="h-full overflow-y-auto px-6 pb-35">
 
       {/* ── MOBILE STICKY HEADER ── */}
       <div className="md:hidden sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
@@ -708,18 +740,99 @@ export default function AddProductPage() {
                   <Label className="text-xs text-gray-500">Unit Cost (USD)</Label>
                   <Input type="number" step="0.01" placeholder="0.00" value={unitCost} onChange={e => setUnitCost(e.target.value)} />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-500">Packaging (cm) — L × W × H</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Input type="number" step="0.01" placeholder="Length" value={packLength} onChange={e => setPackLength(e.target.value)} />
-                    <Input type="number" step="0.01" placeholder="Width" value={packWidth} onChange={e => setPackWidth(e.target.value)} />
-                    <Input type="number" step="0.01" placeholder="Height" value={packHeight} onChange={e => setPackHeight(e.target.value)} />
+                {/* Multiple Dimensions Checkbox */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="multiple-dimensions"
+                    checked={hasMultipleDimensions}
+                    onCheckedChange={(checked) => setHasMultipleDimensions(checked as boolean)}
+                  />
+                  <Label htmlFor="multiple-dimensions" className="text-sm text-gray-600 cursor-pointer">
+                    Multiple Dimensions
+                  </Label>
+                </div>
+
+                {/* Single Dimension Mode */}
+                {!hasMultipleDimensions && (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-gray-500">Packaging (cm) — L × W × H</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Input type="number" step="0.01" placeholder="Length" value={packLength} onChange={e => setPackLength(e.target.value)} />
+                        <Input type="number" step="0.01" placeholder="Width" value={packWidth} onChange={e => setPackWidth(e.target.value)} />
+                        <Input type="number" step="0.01" placeholder="Height" value={packHeight} onChange={e => setPackHeight(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-gray-500">pcs / carton</Label>
+                      <Input type="number" step="1" placeholder="0" value={pcsPerCarton} onChange={e => setPcsPerCarton(e.target.value)} />
+                    </div>
+                  </>
+                )}
+
+                {/* Multiple Dimensions Mode */}
+                {hasMultipleDimensions && (
+                  <div className="space-y-3">
+                    {packagingDimensions.map((dim, index) => (
+                      <div key={index} className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-gray-600">Dimension Set {index + 1}</span>
+                          {packagingDimensions.length > 1 && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 text-red-500"
+                              onClick={() => removePackagingDimension(index)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Length"
+                            value={dim.length}
+                            onChange={e => updatePackagingDimension(index, 'length', e.target.value)}
+                          />
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Width"
+                            value={dim.width}
+                            onChange={e => updatePackagingDimension(index, 'width', e.target.value)}
+                          />
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Height"
+                            value={dim.height}
+                            onChange={e => updatePackagingDimension(index, 'height', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            type="number"
+                            step="1"
+                            placeholder="pcs / carton"
+                            value={dim.pcsPerCarton}
+                            onChange={e => updatePackagingDimension(index, 'pcsPerCarton', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={addPackagingDimension}
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Dimension Set
+                    </Button>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-500">pcs / carton</Label>
-                  <Input type="number" step="1" placeholder="0" value={pcsPerCarton} onChange={e => setPcsPerCarton(e.target.value)} />
-                </div>
+                )}
                 <div className="space-y-1">
                   <Label className="text-xs text-gray-500">Factory Address</Label>
                   <textarea className="w-full border rounded-xl p-2.5 text-sm bg-white resize-none" rows={3} placeholder="Enter factory address..." value={factoryAddress} onChange={e => setFactoryAddress(e.target.value)} />
@@ -737,7 +850,7 @@ export default function AddProductPage() {
                 <Label className="font-semibold">Technical Specifications</Label>
                 <Button size="sm" variant="outline" onClick={addTechnicalSpec} className="h-8 text-xs rounded-xl">+ Add Group</Button>
               </div>
-              <div className="max-h-[600px] overflow-y-auto pr-1 space-y-3">
+              <div className="max-h-150 overflow-y-auto pr-1 space-y-3">
                 {technicalSpecs.map((item, index) => (
                   <Card key={index} draggable onDragStart={() => handleDragStart(index)} onDragOver={handleDragOver} onDrop={() => handleDrop(index)} className="border-2 border-blue-200 bg-blue-50 cursor-move">
                     <CardContent className="p-3 space-y-3">

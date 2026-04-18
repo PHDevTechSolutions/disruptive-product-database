@@ -63,6 +63,7 @@ type SPFData = {
   product_offer_unit_cost: string;
   product_offer_pcs_per_carton?: string;
   product_offer_packaging_details: string;
+  product_offer_has_multiple_dimensions?: string;
   product_offer_factory_address: string;
   product_offer_port_of_discharge: string;
   product_offer_subtotal: string;
@@ -192,6 +193,55 @@ function splitSpecsByRow(value: string | undefined): SpecGroup[][][] {
   return value
     .split(ROW_SEP)
     .map((rowStr) => rowStr.split(" || ").map(parseTechSpec));
+}
+
+/* Helper to format packaging display with Pkg labels */
+function formatPackagingWithLabels(packagingStr: string, pcsPerCartonStr: string): { qtyCtn: React.ReactNode, packaging: React.ReactNode } {
+  // Check if multiple dimensions (contains "||")
+  const hasMultipleDims = packagingStr && packagingStr.includes(" || ");
+  
+  if (hasMultipleDims) {
+    // Parse packaging: "L x W x H (PCS: N) || L x W x H (PCS: N) || ..."
+    const packParts = packagingStr.split(" || ");
+    const pcsParts = pcsPerCartonStr ? pcsPerCartonStr.split(" | ") : [];
+    
+    const qtyCtnDisplay = (
+      <div className="space-y-1">
+        {packParts.map((_, idx: number) => (
+          <div key={idx} className="text-[9px]">
+            <span className="font-semibold">Pkg {idx + 1}:</span>
+            <br />
+            {pcsParts[idx] || "-"}
+          </div>
+        ))}
+      </div>
+    );
+    
+    const packagingDisplay = (
+      <div className="space-y-1">
+        {packParts.map((dimSet: string, idx: number) => {
+          // Extract dimensions from format "L x W x H (PCS: N)" or just "L x W x H"
+          const match = dimSet.match(/^(.+?)(?:\s*\(PCS:\s*(.+?)\))?$/);
+          const dims = match ? match[1].trim() : dimSet;
+          return (
+            <div key={idx} className="text-[9px]">
+              <span className="font-semibold">Pkg {idx + 1}:</span>
+              <br />
+              {dims}
+            </div>
+          );
+        })}
+      </div>
+    );
+    
+    return { qtyCtn: qtyCtnDisplay, packaging: packagingDisplay };
+  }
+  
+  // Single dimension - return as-is
+  return { 
+    qtyCtn: pcsPerCartonStr || "-", 
+    packaging: packagingStr || "-" 
+  };
 }
 
 /* ─────────────────────────────────────────────────────────────── */
@@ -415,6 +465,13 @@ useEffect(() => {
   const [showRowSelectModal, setShowRowSelectModal] = useState(false);
   const [pendingRowSelectProduct, setPendingRowSelectProduct] = useState<any | null>(null);
 
+  /* ── Submit loading state ── */
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /* ── Image Preview modal ── */
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (!open) return;
     const start = new Date().toISOString();
@@ -561,6 +618,7 @@ useEffect(() => {
     const rowUnitCosts = splitByRow(data.product_offer_unit_cost);
     const rowPcsPerCartons = splitByRow(data.product_offer_pcs_per_carton);
     const rowPackaging = splitByRow(data.product_offer_packaging_details);
+    const rowHasMultipleDims = splitByRow(data.product_offer_has_multiple_dimensions);
     const rowFactories = splitByRow(data.product_offer_factory_address);
     const rowPorts = splitByRow(data.product_offer_port_of_discharge);
     const rowSubtotals = splitByRow(data.product_offer_subtotal);
@@ -568,17 +626,17 @@ useEffect(() => {
     const rowSellingCosts = splitByRow(data.final_selling_cost);
     const rowLeadTimes = splitByRow(data.proj_lead_time);
     const rowItemCodes = splitByRow(data.item_code);
-        const rowPriceValidities = splitByRow(data.price_validity);
-        const rowDimensionalEdit = splitByRow(data.dimensional_drawing);
-        const rowIlluminanceEdit = splitByRow(data.illuminance_drawing);
-        const rowTdsBrands = splitByRow(data.tds);
-        const rowSpecs = splitSpecsByRow(
-          data.product_offer_technical_specification,
-        );
-        const rowOriginalSpecs = splitSpecsByRow(
-          data.original_technical_specification,
-        );
-        const rowProductRefIDs = splitByRow(data.product_reference_id);
+    const rowPriceValidities = splitByRow(data.price_validity);
+    const rowDimensionalEdit = splitByRow(data.dimensional_drawing);
+    const rowIlluminanceEdit = splitByRow(data.illuminance_drawing);
+    const rowTdsBrands = splitByRow(data.tds);
+    const rowSpecs = splitSpecsByRow(
+      data.product_offer_technical_specification,
+    );
+    const rowOriginalSpecs = splitSpecsByRow(
+      data.original_technical_specification,
+    );
+    const rowProductRefIDs = splitByRow(data.product_reference_id);
     const descs = (requestData.item_description || "")
       .split(",")
       .map((s) => s.trim());
@@ -592,6 +650,7 @@ useEffect(() => {
       const costs = rowUnitCosts[rowIndex] ?? [];
       const pcsPerCartons = rowPcsPerCartons[rowIndex] ?? [];
       const packs = rowPackaging[rowIndex] ?? [];
+      const hasMultipleDims = rowHasMultipleDims[rowIndex] ?? [];
       const facts = rowFactories[rowIndex] ?? [];
       const ports = rowPorts[rowIndex] ?? [];
       const brands = rowBrands[rowIndex] ?? [];
@@ -606,9 +665,34 @@ useEffect(() => {
       }
 
       initialOffers[rowIndex] = imgs.map((img, i) => {
-        const [length, width, height] = (packs[i] || "- x - x -")
-          .split(" x ")
-          .map((v) => v.trim());
+        // Detect multiple dimensions by checking for " || " delimiter in packaging string
+        const productHasMultipleDims = (packs[i] || "").includes(" || ");
+        let packagingData;
+        
+        if (productHasMultipleDims) {
+          // Parse multiple dimensions format: "L x W x H (PCS: N) || L x W x H (PCS: N) || ..."
+          const packStr = packs[i] || "";
+          const dimSets = packStr.split(" || ").map((dimSet: string) => {
+            // Extract "L x W x H" and "PCS: N" parts
+            const match = dimSet.match(/^(.+?)\s*\(PCS:\s*(.+?)\)$/);
+            if (match) {
+              const [_, dims, pcs] = match;
+              const [length, width, height] = dims.split(" x ").map((v: string) => v.trim());
+              return { length, width, height, pcsPerCarton: pcs.trim() };
+            }
+            // Fallback: try simple "L x W x H" without PCS
+            const [length, width, height] = dimSet.split(" x ").map((v: string) => v.trim());
+            return { length: length || "-", width: width || "-", height: height || "-", pcsPerCarton: "-" };
+          });
+          packagingData = dimSets;
+        } else {
+          // Single dimension: "L x W x H"
+          const [length, width, height] = (packs[i] || "- x - x -")
+            .split(" x ")
+            .map((v) => v.trim());
+          packagingData = { length, width, height };
+        }
+        
         const originalQty = Number(qtys[i] || 1);
         // Store original quantity with key format "rowIndex_optionIndex"
         origQtys[`${rowIndex}_${i}`] = originalQty;
@@ -627,12 +711,13 @@ useEffect(() => {
             pcsPerCarton: pcsPerCartons[i] || "-",
             factoryAddress: facts[i] || "-",
             portOfDischarge: ports[i] || "-",
-            packaging: { length, width, height },
+            hasMultipleDimensions: productHasMultipleDims,
+            packaging: packagingData,
           },
           technicalSpecifications: (rowSpecs[rowIndex]?.[i] ?? []).map(
             (group) => ({
               title: group.title,
-              specs: group.specs.map((spec) => {
+              specs: group.specs.map((spec: string) => {
                 const colonIdx = spec.indexOf(":");
                 if (colonIdx === -1) return { specId: spec, value: "" };
                 return {
@@ -970,6 +1055,9 @@ useEffect(() => {
 
   /* ── Submit edit ── */
   const handleSubmitEdit = async () => {
+    if (isSubmitting) return; // Prevent double submission
+    
+    setIsSubmitting(true);
     const end = new Date().toISOString();
     setSpfCreationEndTime(end);
     setTimerActive(false);
@@ -981,16 +1069,19 @@ useEffect(() => {
     for (let i = 0; i < totalRows; i++) {
       if (!productOffers[i] || productOffers[i].length === 0) {
         toast.error(`Item row ${i + 1} has no product selected`);
+        setIsSubmitting(false);
         return;
       }
       for (let j = 0; j < productOffers[i].length; j++) {
         const prod = productOffers[i][j];
         if (!prod.__priceValidity || prod.__priceValidity.trim() === "") {
           toast.error(`Row ${i + 1}, Option ${j + 1}: Price Validity is required`);
+          setIsSubmitting(false);
           return;
         }
         if (!prod.__tdsBrand || prod.__tdsBrand.trim() === "") {
           toast.error(`Row ${i + 1}, Option ${j + 1}: TDS Brand is required`);
+          setIsSubmitting(false);
           return;
         }
       }
@@ -1045,6 +1136,8 @@ useEffect(() => {
     } catch (err: any) {
       console.error("Submit edit error:", err);
       toast.error("Something went wrong while updating SPF");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1302,12 +1395,30 @@ useEffect(() => {
                           prod?.commercialDetails?.unitCost || 0,
                         );
                         const subtotal = qty * cost;
-                        const length =
-                          prod?.commercialDetails?.packaging?.length || "-";
-                        const width =
-                          prod?.commercialDetails?.packaging?.width || "-";
-                        const height =
-                          prod?.commercialDetails?.packaging?.height || "-";
+                        const hasMultipleDims = prod?.commercialDetails?.hasMultipleDimensions === true;
+                        const packagingData = prod?.commercialDetails?.packaging;
+                        let packagingDisplay: React.ReactNode = "-";
+                        if (hasMultipleDims && Array.isArray(packagingData) && packagingData.length > 0) {
+                          packagingDisplay = (
+                            <div className="space-y-1">
+                              {packagingData.map((dim: any, idx: number) => (
+                                <div key={idx} className="text-[9px]">
+                                  <span className="font-semibold">Pkg {idx + 1}:</span>
+                                  <br />
+                                  {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
+                                  {dim.pcsPerCarton && dim.pcsPerCarton !== "-" && (
+                                    <span className="text-muted-foreground"> (PCS: {dim.pcsPerCarton})</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        } else if (packagingData) {
+                          const length = packagingData.length || "-";
+                          const width = packagingData.width || "-";
+                          const height = packagingData.height || "-";
+                          packagingDisplay = `${length} × ${width} × ${height}`;
+                        }
                         const factory =
                           prod?.commercialDetails?.factoryAddress || "-";
                         const port =
@@ -1444,9 +1555,15 @@ useEffect(() => {
                                     ))}
                                   </select>
                                 </div>
-                                <p className="text-[10px] text-muted-foreground">
-                                  Pack: {length} × {width} × {height}
-                                </p>
+                                {hasMultipleDims && Array.isArray(packagingData) ? (
+                                  <div className="text-[10px] text-muted-foreground mt-1">
+                                    {packagingDisplay}
+                                  </div>
+                                ) : (
+                                  <p className="text-[10px] text-muted-foreground">
+                                    Pack: {packagingDisplay}
+                                  </p>
+                                )}
                               {factory !== "-" && (
                                 <p className="text-[10px] text-muted-foreground truncate">
                                   Factory: {factory}
@@ -1722,6 +1839,7 @@ useEffect(() => {
             className="flex-1 rounded bg-orange-600 hover:bg-orange-700"
             onClick={handleSubmitEdit}
             disabled={
+              isSubmitting ||
               itemDescriptions.length === 0 ||
               itemDescriptions.some(
                 (_, i) => !productOffers[i] || productOffers[i].length === 0,
@@ -1731,7 +1849,7 @@ useEffect(() => {
               )
             }
           >
-            Save
+            {isSubmitting ? "Saving..." : "Save"}
           </Button>
         )}
       </DialogFooter>
@@ -1766,38 +1884,41 @@ useEffect(() => {
 
     return (
     <div className="flex flex-col h-full overflow-hidden">
-      <DialogHeader className="w-full mb-4 relative shrink-0">
-        <DialogTitle className="text-center w-full flex items-center justify-center gap-2">
-          <Pencil size={16} className="text-orange-500" />
-          Edit SPF — {spfNumber}
-          <span className={`text-xs px-2 py-0.5 rounded border ${revisionBadge.color}`}>
-            {revisionBadge.label}
-          </span>
-        </DialogTitle>
-        <div className="absolute right-0 top-0 flex gap-2 items-center">
-          <input
-            type="text"
-            placeholder="Search product..."
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-            className="border px-3 py-2 text-sm w-55"
-          />
-          <Button
-            size="icon"
-            variant="outline"
-            className="rounded-none p-6"
-            onClick={() => setOpenFilter((prev) => !prev)}
-          >
-            <Funnel size={16} />
-          </Button>
-          {showRightPanel && canAddProduct && (
+      <DialogHeader className="w-full mb-4 shrink-0">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1" />
+          <DialogTitle className="flex items-center justify-center gap-2 shrink-0">
+            <Pencil size={16} className="text-orange-500" />
+            Edit SPF — {spfNumber}
+            <span className={`text-xs px-2 py-0.5 rounded border ${revisionBadge.color}`}>
+              {revisionBadge.label}
+            </span>
+          </DialogTitle>
+          <div className="flex-1 flex gap-2 items-center justify-end">
+            <input
+              type="text"
+              placeholder="Search product..."
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              className="border px-3 py-2 text-sm w-55"
+            />
             <Button
+              size="icon"
+              variant="outline"
               className="rounded-none p-6"
-              onClick={() => setOpenAddProduct(true)}
+              onClick={() => setOpenFilter((prev) => !prev)}
             >
-              + Add Product
+              <Funnel size={16} />
             </Button>
-          )}
+            {showRightPanel && canAddProduct && (
+              <Button
+                className="rounded-none p-6"
+                onClick={() => setOpenAddProduct(true)}
+              >
+                + Add Product
+              </Button>
+            )}
+          </div>
         </div>
 
         {showTrash && (
@@ -1932,7 +2053,8 @@ useEffect(() => {
                             <img
                               src={itemImages[index]}
                               alt={desc}
-                              className="w-12 h-12 object-contain"
+                              className="w-12 h-12 object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => openImagePreview(itemImages[index])}
                             />
                           ) : (
                             <span className="text-[10px]">-</span>
@@ -1948,6 +2070,9 @@ useEffect(() => {
                             <table className="w-full table-fixed text-[9px]">
                               <thead className="bg-muted">
                                 <tr>
+                                  <th className="border px-0.5 py-0.5 text-center w-6 text-[9px]">
+                                    Actions
+                                  </th>
                                   <th className="border px-0.5 py-0.5 text-center w-10">
                                     Opt
                                   </th>
@@ -1994,15 +2119,41 @@ useEffect(() => {
                                   (prod: any, i: number) => {
                                     const unitCost =
                                       prod?.commercialDetails?.unitCost || "-";
-                                    const length =
-                                      prod?.commercialDetails?.packaging
-                                        ?.length || "-";
-                                    const width =
-                                      prod?.commercialDetails?.packaging
-                                        ?.width || "-";
-                                    const height =
-                                      prod?.commercialDetails?.packaging
-                                        ?.height || "-";
+                                    // Handle multiple dimensions display
+                                    const hasMultipleDims = prod?.commercialDetails?.hasMultipleDimensions === true;
+                                    const packagingData = prod?.commercialDetails?.packaging;
+                                    let packagingDisplay: React.ReactNode = "-";
+                                    let qtyCtnDisplay: React.ReactNode = "-";
+                                    if (hasMultipleDims && Array.isArray(packagingData) && packagingData.length > 0) {
+                                      packagingDisplay = (
+                                        <div className="space-y-1">
+                                          {packagingData.map((dim: any, idx: number) => (
+                                            <div key={idx} className="text-[9px]">
+                                              <span className="font-semibold">Pkg {idx + 1}:</span>
+                                              <br />
+                                              {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      );
+                                      qtyCtnDisplay = (
+                                        <div className="space-y-1">
+                                          {packagingData.map((dim: any, idx: number) => (
+                                            <div key={idx} className="text-[9px]">
+                                              <span className="font-semibold">Pkg {idx + 1}:</span>
+                                              <br />
+                                              {dim.pcsPerCarton || "-"}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      );
+                                    } else if (packagingData) {
+                                      const length = packagingData.length || "-";
+                                      const width = packagingData.width || "-";
+                                      const height = packagingData.height || "-";
+                                      packagingDisplay = `${length} × ${width} × ${height}`;
+                                      qtyCtnDisplay = prod?.commercialDetails?.pcsPerCarton || "-";
+                                    }
                                     const factory =
                                       prod?.commercialDetails?.factoryAddress ||
                                       "-";
@@ -2040,6 +2191,18 @@ useEffect(() => {
                                         }}
                                       >
                                         <td className="border px-2 py-1 text-center align-middle">
+                                          {!prod.__isExisting && (
+                                            <button
+                                              type="button"
+                                              onClick={() => removeProduct(index, i)}
+                                              className="text-destructive/60 hover:text-destructive transition-colors"
+                                              title="Delete this option"
+                                            >
+                                              <Trash2 size={14} />
+                                            </button>
+                                          )}
+                                        </td>
+                                        <td className="border px-2 py-1 text-center align-middle">
                                           <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
                                             Option {i + 1}
                                           </span>
@@ -2051,8 +2214,9 @@ useEffect(() => {
                                           {prod.mainImage?.url ? (
                                             <img
                                               src={prod.mainImage.url}
-                                              className="w-16 h-16 object-contain mx-auto"
+                                              className="w-16 h-16 object-contain mx-auto cursor-pointer hover:opacity-80 transition-opacity"
                                               alt=""
+                                              onClick={() => openImagePreview(prod.mainImage?.url)}
                                             />
                                           ) : (
                                             "-"
@@ -2086,7 +2250,7 @@ useEffect(() => {
                                             />
                                           )}
                                         </td>
-                                                    <td className="border px-2 py-1 text-center align-middle">
+                                        <td className="border px-2 py-1 text-center align-middle">
                                           <input
                                             type="datetime-local"
                                             className={`border px-1 py-0.5 text-xs w-full ${prod.__isExisting ? "bg-gray-100 cursor-not-allowed" : ""}`}
@@ -2226,11 +2390,10 @@ useEffect(() => {
                                           )}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle">
-                                          {prod?.commercialDetails
-                                            ?.pcsPerCarton || "-"}
+                                          {qtyCtnDisplay}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle">
-                                          {length} x {width} x {height}
+                                          {packagingDisplay}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle">
                                           {factory}
@@ -2247,9 +2410,9 @@ useEffect(() => {
                                             );
                                             return (
                                               <span className="text-xs font-semibold">
-                                                $
+                                                ₱
                                                 {(qty * cost).toLocaleString(
-                                                  "en-US",
+                                                  "en-PH",
                                                   {
                                                     minimumFractionDigits: 2,
                                                     maximumFractionDigits: 2,
@@ -2395,6 +2558,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                         const details = p.commercialDetails;
                         if (!details) return <p>-</p>;
                         const packaging = details.packaging || {};
+                        const hasMultipleDims = details.hasMultipleDimensions === true;
                         return (
                           <>
                             {details.factoryAddress && (
@@ -2415,32 +2579,54 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                 {details.unitCost}
                               </p>
                             )}
-                            {details.pcsPerCarton && (
-                              <p>
-                                <span className="font-medium">
-                                  Qty/Per Carton:
-                                </span>{" "}
-                                {details.pcsPerCarton}
-                              </p>
-                            )}
-                            {(packaging.height ||
-                              packaging.length ||
-                              packaging.width) && (
-                              <div>
-                                <p className="font-medium">Packaging</p>
-                                <ul className="ml-3 list-disc">
-                                  {packaging.height && (
-                                    <li>Height: {packaging.height}</li>
+                            {(() => {
+                              if (hasMultipleDims && Array.isArray(packaging) && packaging.length > 0) {
+                                return (
+                                  <>
+                                    <div>
+                                      <span className="font-medium">Qty/Per Carton:</span>
+                                      <ul className="ml-3 list-disc">
+                                        {packaging.map((dim: any, idx: number) => (
+                                          <li key={idx}>
+                                            Pkg {idx + 1}: {dim.pcsPerCarton || "-"}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                    <div>
+                                      <p className="font-medium">Packaging</p>
+                                      <ul className="ml-3 list-disc">
+                                        {packaging.map((dim: any, idx: number) => (
+                                          <li key={idx}>
+                                            Pkg {idx + 1}: {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  </>
+                                );
+                              }
+                              return (
+                                <>
+                                  {details.pcsPerCarton && (
+                                    <p>
+                                      <span className="font-medium">Qty/Per Carton:</span>{" "}
+                                      {details.pcsPerCarton}
+                                    </p>
                                   )}
-                                  {packaging.length && (
-                                    <li>Length: {packaging.length}</li>
+                                  {(packaging.height || packaging.length || packaging.width) && (
+                                    <div>
+                                      <p className="font-medium">Packaging</p>
+                                      <ul className="ml-3 list-disc">
+                                        {packaging.height && <li>Height: {packaging.height}</li>}
+                                        {packaging.length && <li>Length: {packaging.length}</li>}
+                                        {packaging.width && <li>Width: {packaging.width}</li>}
+                                      </ul>
+                                    </div>
                                   )}
-                                  {packaging.width && (
-                                    <li>Width: {packaging.width}</li>
-                                  )}
-                                </ul>
-                              </div>
-                            )}
+                                </>
+                              );
+                            })()}
                           </>
                         );
                       })()}
@@ -2526,8 +2712,9 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
           </Button>
           {viewMode && (
             <Button
-            className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
+              className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
               disabled={
+                isSubmitting ||
                 itemDescriptions.length === 0 ||
                 itemDescriptions.some(
                   (_, i) => !productOffers[i] || productOffers[i].length === 0,
@@ -2538,7 +2725,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
               }
               onClick={handleSubmitEdit}
             >
-              Save Changes
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           )}
         </div>
@@ -2588,8 +2775,9 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
               {itemImages[rowIndex] ? (
                 <img
                   src={itemImages[rowIndex]}
-                  className="w-10 h-10 object-contain rounded shrink-0"
+                  className="w-10 h-10 object-contain rounded shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                   alt=""
+                  onClick={() => openImagePreview(itemImages[rowIndex])}
                 />
               ) : null}
               <p className="text-xs font-medium text-gray-800 line-clamp-2 flex-1">
@@ -2628,8 +2816,9 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                         {img && img !== "-" ? (
                           <img
                             src={img}
-                            className="w-16 h-16 object-contain rounded border shrink-0"
+                            className="w-16 h-16 object-contain rounded border shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                             alt=""
+                            onClick={() => openImagePreview(img)}
                           />
                         ) : (
                           <div className="w-16 h-16 bg-gray-100 rounded border shrink-0 flex items-center justify-center text-[10px] text-gray-400">
@@ -2652,31 +2841,38 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                 {prodUnitCosts[i] || "-"}
                               </span>
                             </div>
-                            <div>
-                              <span className="text-gray-400 block">
-                                Qty/Per Carton
-                              </span>
-                              <span className="font-medium">
-                                {prodPcsPerCartons[i] || "-"}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-400 block">
-                                Subtotal
-                              </span>
-                              <span className="font-semibold text-gray-900">
-                                ₱
-                                {Number(prodSubtotals[i] || 0).toLocaleString()}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-400 block">
-                                Packaging
-                              </span>
-                              <span className="font-medium">
-                                {prodPackaging[i] || "-"}
-                              </span>
-                            </div>
+                            {(() => {
+                              const { qtyCtn, packaging } = formatPackagingWithLabels(prodPackaging[i], prodPcsPerCartons[i]);
+                              return (
+                                <>
+                                  <div>
+                                    <span className="text-gray-400 block">
+                                      Qty/Per Carton
+                                    </span>
+                                    <span className="font-medium">
+                                      {qtyCtn}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-400 block">
+                                      Packaging
+                                    </span>
+                                    <span className="font-medium">
+                                      {packaging}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-400 block">
+                                      Subtotal
+                                    </span>
+                                    <span className="font-semibold text-gray-900">
+                                      ₱
+                                      {Number(prodSubtotals[i] || 0).toLocaleString()}
+                                    </span>
+                                  </div>
+                                </>
+                              );
+                            })()}
                             <div>
                               <span className="text-gray-400 block">
                                 Price Validity
@@ -2847,7 +3043,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
             <th className="border px-3 py-2 text-center whitespace-nowrap">
               #
             </th>
-            <th className="border px-3 py-2 text-center whitespace-nowrap">
+            <th className="border px-3 py-2 text-center whitespace-nowrap w-40">
               Image
             </th>
             <th className="border px-3 py-2 text-center whitespace-nowrap">
@@ -2890,8 +3086,9 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                   {itemImages[rowIndex] ? (
                     <img
                       src={itemImages[rowIndex]}
-                      className="w-24 h-24 object-contain mx-auto"
+                      className="w-36 h-36 object-contain mx-auto cursor-pointer hover:opacity-80 transition-opacity"
                       alt=""
+                      onClick={() => openImagePreview(itemImages[rowIndex])}
                     />
                   ) : (
                     <span className="text-muted-foreground text-xs">-</span>
@@ -2933,7 +3130,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
                                       Supplier Brand
                                     </th>
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap w-28">
                                       Image
                                     </th>
 <th className="border px-2 py-1 text-center whitespace-nowrap">
@@ -3002,8 +3199,9 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                       {img && img !== "-" ? (
                                         <img
                                           src={img}
-                                          className="w-16 h-16 object-contain mx-auto"
+                                          className="w-24 h-24 object-contain mx-auto cursor-pointer hover:opacity-80 transition-opacity"
                                           alt=""
+                                          onClick={() => openImagePreview(img)}
                                         />
                                       ) : (
                                         <span className="text-muted-foreground">
@@ -3095,12 +3293,19 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                     <td className="border px-2 py-2 text-center align-middle">
                                       {prodUnitCosts[i] || "-"}
                                     </td>
-                                    <td className="border px-2 py-2 text-center align-middle">
-                                      {prodPcsPerCartons[i] || "-"}
-                                    </td>
-                                    <td className="border px-2 py-2 text-center align-middle">
-                                      {prodPackaging[i] || "-"}
-                                    </td>
+                                    {(() => {
+                                      const { qtyCtn, packaging } = formatPackagingWithLabels(prodPackaging[i], prodPcsPerCartons[i]);
+                                      return (
+                                        <>
+                                          <td className="border px-2 py-2 text-center align-middle">
+                                            {qtyCtn}
+                                          </td>
+                                          <td className="border px-2 py-2 text-center align-middle">
+                                            {packaging}
+                                          </td>
+                                        </>
+                                      );
+                                    })()}
                                     <td className="border px-2 py-2 text-center align-middle">
                                       {prodFactories[i] || "-"}
                                     </td>
@@ -3185,6 +3390,13 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
   const getMinUnitCost = (rowIndex: number, optionIndex: number): number => {
     const key = `${rowIndex}_${optionIndex}`;
     return originalUnitCosts[key] ?? 0;
+  };
+
+  /* ── Open image preview dialog ── */
+  const openImagePreview = (url: string | null | undefined) => {
+    if (!url || url === "-") return;
+    setPreviewImageUrl(url);
+    setImagePreviewOpen(true);
   };
 
   /* ── Open specs revision modal for a product ── */
@@ -3494,7 +3706,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
 
       {/* 🔥 EDIT PRODUCT MODAL */}
       <Dialog open={openEditProduct && canEditProduct} onOpenChange={setOpenEditProduct}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-8xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Product</DialogTitle>
           </DialogHeader>
@@ -3554,6 +3766,31 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
           <DialogFooter>
             <Button variant="outline" onClick={handleRowSelectCancel}>
               Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Image Preview Dialog ── */}
+      <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] rounded-none p-0 overflow-hidden">
+          <DialogHeader className="px-4 py-3 border-b shrink-0">
+            <DialogTitle className="text-sm">Image Preview</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-6 bg-gray-50 min-h-75">
+            {previewImageUrl ? (
+              <img
+                src={previewImageUrl}
+                className="max-w-full max-h-[70vh] object-contain"
+                alt="Preview"
+              />
+            ) : (
+              <span className="text-muted-foreground">No image</span>
+            )}
+          </div>
+          <DialogFooter className="px-4 py-3 border-t shrink-0">
+            <Button variant="outline" onClick={() => setImagePreviewOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

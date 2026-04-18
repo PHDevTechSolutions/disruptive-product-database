@@ -170,13 +170,36 @@ export default async function handler(
 
         const qty          = Number(p.qty || 0);
         const unitCost     = Number(p?.commercialDetails?.unitCost || 0);
-        const pcsPerCarton = p?.commercialDetails?.pcsPerCarton || "-";
-        const length       = p?.commercialDetails?.packaging?.length || "-";
-        const width        = p?.commercialDetails?.packaging?.width  || "-";
-        const height       = p?.commercialDetails?.packaging?.height || "-";
         const factory      = p?.commercialDetails?.factoryAddress    || "-";
         const port         = p?.commercialDetails?.portOfDischarge   || "-";
         const subtotal     = qty * unitCost;
+
+        // Handle multiple dimensions vs single dimension
+        const productHasMultipleDims = p?.commercialDetails?.hasMultipleDimensions === true;
+        const packagingData = p?.commercialDetails?.packaging;
+        
+        let pcsPerCarton: string;
+        let packagingStr: string;
+        
+        if (productHasMultipleDims && Array.isArray(packagingData) && packagingData.length > 0) {
+          // Multiple dimensions: format as "L x W x H (PCS: N) || L x W x H (PCS: N) || ..."
+          const dimSets = packagingData.map((dim: any) => {
+            const len = dim?.length || "-";
+            const wid = dim?.width || "-";
+            const hgt = dim?.height || "-";
+            const pcs = dim?.pcsPerCarton ?? "-";
+            return `${len} x ${wid} x ${hgt} (PCS: ${pcs})`;
+          });
+          packagingStr = dimSets.join(" || ");
+          pcsPerCarton = packagingData.map((dim: any) => dim?.pcsPerCarton ?? "-").join(" | ");
+        } else {
+          // Single dimension
+          const length = packagingData?.length || "-";
+          const width  = packagingData?.width  || "-";
+          const height = packagingData?.height || "-";
+          pcsPerCarton = String(p?.commercialDetails?.pcsPerCarton ?? "-");
+          packagingStr = `${length} x ${width} x ${height}`;
+        }
 
         // price_validity: store as-is (text column, delimited string)
         const rawPV = p?.price_validity;
@@ -193,8 +216,8 @@ export default async function handler(
         images.push(p?.mainImage?.url || "-");
         qtys.push(String(qty));
         unitCosts.push(String(unitCost));
-        pcsPerCartons.push(String(pcsPerCarton));
-        packaging.push(`${length} x ${width} x ${height}`);
+        pcsPerCartons.push(pcsPerCarton);
+        packaging.push(packagingStr);
         factories.push(factory);
         ports.push(port);
         subtotals.push(String(subtotal));

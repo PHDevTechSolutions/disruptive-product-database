@@ -267,9 +267,20 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   );
   const [timerActive, setTimerActive] = useState(false);
 
+  /* ── Image Preview modal ── */
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
   /* ── Desktop drag ── */
   const [draggedProduct, setDraggedProduct] = useState<any | null>(null);
   const [showTrash, setShowTrash] = useState(false);
+
+  /* ── Open image preview dialog ── */
+  const openImagePreview = (url: string | null | undefined) => {
+    if (!url || url === "-") return;
+    setPreviewImageUrl(url);
+    setImagePreviewOpen(true);
+  };
 
   /* ── Mobile ── */
   const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
@@ -295,6 +306,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   /* ── Row Selection modal ── */
   const [showRowSelectModal, setShowRowSelectModal] = useState(false);
   const [pendingRowSelectProduct, setPendingRowSelectProduct] = useState<any | null>(null);
+
+  /* ── Submit loading state ── */
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   /* ── Sync formData when rowData changes ── */
   useEffect(() => {
@@ -604,6 +618,8 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
   /* ── Submit ── */
   const handleSubmit = async () => {
+    if (isSubmitting) return; // Prevent double submission
+    
     // ✅ VALIDATION: check if every row has at least 1 product
     const totalRows = formData.item_description?.length || 0;
 
@@ -625,6 +641,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
       }
     }
 
+    setIsSubmitting(true);
     const end = new Date().toISOString();
     setSpfCreationEndTime(end);
     setTimerActive(false);
@@ -669,6 +686,8 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     } catch (err: any) {
       console.error("Submit error:", err);
       toast.error("Something went wrong while creating SPF");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -875,12 +894,31 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                             prod?.commercialDetails?.unitCost || 0,
                           );
                           const subtotal = qty * cost;
-                          const length =
-                            prod?.commercialDetails?.packaging?.length || "-";
-                          const width =
-                            prod?.commercialDetails?.packaging?.width || "-";
-                          const height =
-                            prod?.commercialDetails?.packaging?.height || "-";
+                          // Handle multiple dimensions display
+                          const hasMultipleDims = prod?.commercialDetails?.hasMultipleDimensions === true;
+                          const packagingData = prod?.commercialDetails?.packaging;
+                          let packagingDisplay: React.ReactNode = "-";
+                          if (hasMultipleDims && Array.isArray(packagingData) && packagingData.length > 0) {
+                            packagingDisplay = (
+                              <div className="space-y-1">
+                                {packagingData.map((dim: any, idx: number) => (
+                                  <div key={idx} className="text-[9px]">
+                                    <span className="font-semibold">Pkg {idx + 1}:</span>
+                                    <br />
+                                    {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
+                                    {dim.pcsPerCarton && dim.pcsPerCarton !== "-" && (
+                                      <span className="text-muted-foreground"> (PCS: {dim.pcsPerCarton})</span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          } else if (packagingData) {
+                            const length = packagingData.length || "-";
+                            const width = packagingData.width || "-";
+                            const height = packagingData.height || "-";
+                            packagingDisplay = `${length} × ${width} × ${height}`;
+                          }
                           const factory =
                             prod?.commercialDetails?.factoryAddress || "-";
                           const port =
@@ -983,9 +1021,15 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                     ))}
                                   </select>
                                 </div>
-                                <p className="text-[10px] text-muted-foreground">
-                                  Pack: {length} × {width} × {height}
-                                </p>
+                                <div className="text-[10px] text-muted-foreground">
+                                  {hasMultipleDims && Array.isArray(packagingData) ? (
+                                    <div className="mt-1">
+                                      {packagingDisplay}
+                                    </div>
+                                  ) : (
+                                    <p>Pack: {packagingDisplay}</p>
+                                  )}
+                                </div>
                                 {factory !== "-" && (
                                   <p className="text-[10px] text-muted-foreground truncate">
                                     Factory: {factory}
@@ -1193,11 +1237,31 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                             Unit cost: {p.commercialDetails.unitCost}
                           </p>
                         )}
-                        {p.commercialDetails?.pcsPerCarton && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5">
-                            Qty/Per Carton: {p.commercialDetails.pcsPerCarton}
-                          </p>
-                        )}
+                        {(() => {
+                          const details = p.commercialDetails;
+                          if (!details) return null;
+                          const hasMulti = details.hasMultipleDimensions === true;
+                          const packaging = details.packaging;
+                          if (hasMulti && Array.isArray(packaging) && packaging.length > 0) {
+                            return (
+                              <div className="text-[10px] text-muted-foreground mt-0.5">
+                                <span className="font-medium">Qty/Per Carton:</span>
+                                {packaging.map((dim: any, idx: number) => (
+                                  <div key={idx} className="ml-2">
+                                    P{idx + 1}: {dim.pcsPerCarton || "-"}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          } else if (details.pcsPerCarton) {
+                            return (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                Qty/Per Carton: {details.pcsPerCarton}
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
                         <InlineProductSpecs
                           specs={p.technicalSpecifications ?? []}
                         />
@@ -1258,7 +1322,8 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
               type="button"
               className="flex-1 rounded"
               onClick={handleSubmit}
-          disabled={
+              disabled={
+                isSubmitting ||
                 (formData.item_description?.length || 0) === 0 ||
                 formData.item_description?.some(
                   (_, i) => !productOffers[i] || productOffers[i].length === 0,
@@ -1268,7 +1333,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                 )
               }
             >
-              Submit
+              {isSubmitting ? "Submitting..." : "Submit"}
             </Button>
           )}
         </div>
@@ -1396,7 +1461,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                 <thead>
                   <tr className="bg-gray-100">
                     <th className="border px-1 py-1 text-center w-15">#</th>
-                    <th className="border px-1 py-1 text-center w-12.5">Image</th>
+                    <th className="border px-1 py-1 text-center w-28">Image</th>
                     <th className="border px-1 py-1 text-center w-30">
                       Item Description
                     </th>
@@ -1463,7 +1528,8 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                             <img
                               src={formData.item_photo[index]}
                               alt={desc}
-                              className="w-12 h-12 object-contain"
+                              className="w-24 h-24 object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => openImagePreview(formData.item_photo?.[index])}
                             />
                           ) : (
                             <span className="text-[10px]">-</span>
@@ -1497,14 +1563,17 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                             <table className="w-full table-fixed text-[9px]">
                               <thead className="bg-muted">
                                 <tr>
+                                  <th className="border px-0.5 py-0.5 text-center w-6 text-[9px]">
+                                    Actions
+                                  </th>
                                   <th className="border px-0.5 py-0.5 text-center w-10">
                                     Opt
                                   </th>
                                   <th className="border px-0.5 py-0.5 text-center w-12.5">
                                     Brand
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-8.75">
-                                    Img
+                                  <th className="border px-0.5 py-0.5 text-center w-20">
+                                    Image
                                   </th>
                                   <th className="border px-0.5 py-0.5 text-center w-7.5">
                                     Qty
@@ -1543,15 +1612,41 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                   (prod: any, i: number) => {
                                     const unitCost =
                                       prod?.commercialDetails?.unitCost || "-";
-                                    const length =
-                                      prod?.commercialDetails?.packaging
-                                        ?.length || "-";
-                                    const width =
-                                      prod?.commercialDetails?.packaging
-                                        ?.width || "-";
-                                    const height =
-                                      prod?.commercialDetails?.packaging
-                                        ?.height || "-";
+                                    // Handle multiple dimensions display
+                                    const hasMultipleDims = prod?.commercialDetails?.hasMultipleDimensions === true;
+                                    const packagingData = prod?.commercialDetails?.packaging;
+                                    let packagingDisplay: React.ReactNode = "-";
+                                    let qtyCtnDisplay: React.ReactNode = "-";
+                                    if (hasMultipleDims && Array.isArray(packagingData) && packagingData.length > 0) {
+                                      packagingDisplay = (
+                                        <div className="space-y-1">
+                                          {packagingData.map((dim: any, idx: number) => (
+                                            <div key={idx} className="text-[8px]">
+                                              <span className="font-semibold">Pkg {idx + 1}:</span>
+                                              <br />
+                                              {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      );
+                                      qtyCtnDisplay = (
+                                        <div className="space-y-1">
+                                          {packagingData.map((dim: any, idx: number) => (
+                                            <div key={idx} className="text-[8px]">
+                                              <span className="font-semibold">Pkg {idx + 1}:</span>
+                                              <br />
+                                              {dim.pcsPerCarton || "-"}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      );
+                                    } else if (packagingData) {
+                                      const length = packagingData.length || "-";
+                                      const width = packagingData.width || "-";
+                                      const height = packagingData.height || "-";
+                                      packagingDisplay = `${length} × ${width} × ${height}`;
+                                      qtyCtnDisplay = prod?.commercialDetails?.pcsPerCarton || "-";
+                                    }
                                     const factory =
                                       prod?.commercialDetails?.factoryAddress ||
                                       "-";
@@ -1592,6 +1687,16 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                         }}
                                       >
                                         <td className="border px-0.5 py-0.5 text-center align-middle">
+                                          <button
+                                            type="button"
+                                            onClick={() => removeProduct(index, i)}
+                                            className="text-destructive/60 hover:text-destructive transition-colors"
+                                            title="Delete this option"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </td>
+                                        <td className="border px-0.5 py-0.5 text-center align-middle">
                                           <span className="inline-flex items-center text-[9px] font-semibold px-1 py-0 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
                                             {i + 1}
                                           </span>
@@ -1603,8 +1708,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                           {prod.mainImage?.url ? (
                                             <img
                                               src={prod.mainImage.url}
-                                              className="w-8 h-8 object-contain mx-auto"
+                                              className="w-16 h-16 object-contain mx-auto cursor-pointer hover:opacity-80 transition-opacity"
                                               alt=""
+                                              onClick={() => openImagePreview(prod.mainImage?.url)}
                                             />
                                           ) : (
                                             <span className="text-[9px]">-</span>
@@ -1738,11 +1844,11 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                         <td className="border px-0.5 py-0.5 text-center align-middle text-[9px]">
                                           {unitCost}
                                         </td>
-                                        <td className="border px-0.5 py-0.5 text-center align-middle text-[9px]">
-                                          {prod?.commercialDetails?.pcsPerCarton || "-"}
+                                        <td className="border px-0.5 py-0.5 text-center align-middle text-[9px] leading-tight">
+                                          {qtyCtnDisplay}
                                         </td>
                                         <td className="border px-0.5 py-0.5 text-center align-middle text-[9px] leading-tight">
-                                          {length}×{width}×{height}
+                                          {packagingDisplay}
                                         </td>
                                         <td className="border px-0.5 py-0.5 text-center align-middle text-[9px] leading-tight">
                                           {factory}
@@ -1915,36 +2021,57 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                 {details.unitCost}
                               </p>
                             )}
-                            {details.pcsPerCarton && (
-                              <p>
-                                <span className="font-medium">
-                                  Qty/Per Carton:
-                                </span>{" "}
-                                {details.pcsPerCarton}
-                              </p>
-                            )}
-                            {(packaging.height ||
-                              packaging.length ||
-                              packaging.width ||
-                              details.pcsPerCarton) && (
-                              <div>
-                                <p className="font-medium">Packaging</p>
-                                <ul className="ml-3 list-disc">
-                                  {packaging.height && (
-                                    <li>Height: {packaging.height}</li>
-                                  )}
-                                  {packaging.length && (
-                                    <li>Length: {packaging.length}</li>
-                                  )}
-                                  {packaging.width && (
-                                    <li>Width: {packaging.width}</li>
-                                  )}
+                            {(() => {
+                              const hasMulti = details.hasMultipleDimensions === true;
+                              const packArray = details.packaging;
+                              if (hasMulti && Array.isArray(packArray) && packArray.length > 0) {
+                                return (
+                                  <>
+                                    <div>
+                                      <span className="font-medium">Qty/Per Carton:</span>
+                                      <ul className="ml-3 list-disc">
+                                        {packArray.map((dim: any, idx: number) => (
+                                          <li key={idx}>
+                                            Pkg {idx + 1}: {dim.pcsPerCarton || "-"}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                    <div>
+                                      <p className="font-medium">Packaging</p>
+                                      <ul className="ml-3 list-disc">
+                                        {packArray.map((dim: any, idx: number) => (
+                                          <li key={idx}>
+                                            Pkg {idx + 1}: {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  </>
+                                );
+                              }
+                              return (
+                                <>
                                   {details.pcsPerCarton && (
-                                    <li>PCS/Carton: {details.pcsPerCarton}</li>
+                                    <p>
+                                      <span className="font-medium">Qty/Per Carton:</span>{" "}
+                                      {details.pcsPerCarton}
+                                    </p>
                                   )}
-                                </ul>
-                              </div>
-                            )}
+                                  {(packaging.height || packaging.length || packaging.width || details.pcsPerCarton) && (
+                                    <div>
+                                      <p className="font-medium">Packaging</p>
+                                      <ul className="ml-3 list-disc">
+                                        {packaging.height && <li>Height: {packaging.height}</li>}
+                                        {packaging.length && <li>Length: {packaging.length}</li>}
+                                        {packaging.width && <li>Width: {packaging.width}</li>}
+                                        {details.pcsPerCarton && <li>PCS/Carton: {details.pcsPerCarton}</li>}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </>
                         );
                       })()}
@@ -2030,6 +2157,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
               className="rounded-none p-6"
               onClick={handleSubmit}
               disabled={
+                isSubmitting ||
                 (formData.item_description?.length || 0) === 0 ||
                 formData.item_description?.some(
                   (_, i) => !productOffers[i] || productOffers[i].length === 0,
@@ -2039,7 +2167,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                 )
               }
             >
-              Submit
+              {isSubmitting ? "Submitting..." : "Submit"}
             </Button>
           )}
         </div>
@@ -2080,8 +2208,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
           className={
             isMobile
               ? "w-full max-w-full h-dvh rounded-none p-0 flex flex-col overflow-hidden"
-              : "sm:max-w-300 max-h-[90vh] overflow-y-auto"
+              : "!max-w-none w-[95vw] max-h-[95vh] overflow-y-auto"
           }
+          style={{ maxWidth: "95vw" }}
         >
           <DialogHeader
             className={isMobile ? "px-4 pt-4 pb-2 border-b shrink-0" : ""}
@@ -2107,7 +2236,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
       {/* 🔥 EDIT PRODUCT MODAL */}
 <Dialog open={openEditProduct && canEditProduct} onOpenChange={setOpenEditProduct}>
-  <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+  <DialogContent className="!max-w-none w-[95vw] max-h-[95vh] overflow-y-auto" style={{ maxWidth: "95vw" }}>
     <DialogHeader>
       <DialogTitle>Edit Product</DialogTitle>
     </DialogHeader>
@@ -2167,6 +2296,31 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
           <DialogFooter>
             <Button variant="outline" onClick={handleRowSelectCancel}>
               Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Image Preview Dialog ── */}
+      <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] rounded-none p-0 overflow-hidden">
+          <DialogHeader className="px-4 py-3 border-b shrink-0">
+            <DialogTitle className="text-sm">Image Preview</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-6 bg-gray-50 min-h-75">
+            {previewImageUrl ? (
+              <img
+                src={previewImageUrl}
+                className="max-w-full max-h-[70vh] object-contain"
+                alt="Preview"
+              />
+            ) : (
+              <span className="text-muted-foreground">No image</span>
+            )}
+          </div>
+          <DialogFooter className="px-4 py-3 border-t shrink-0">
+            <Button variant="outline" onClick={() => setImagePreviewOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
