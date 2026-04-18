@@ -58,7 +58,6 @@ import {
   getApprovalUserProfile,
   shouldRequireApproval,
 } from "@/lib/for-approval";
-import { notifySupplierAdded, notifySupplierForApproval } from "@/lib/push-notifications";
 
 /* ─────────────────────────────────────────────
    Country display helpers
@@ -430,14 +429,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
         userId        : userId ?? undefined,
       });
 
-      // 🔔 PUSH NOTIFICATION
-      await notifySupplierAdded({
-        company,
-        supplierBrand,
-        addedBy: user ? `${user.Firstname} ${user.Lastname}` : undefined,
-        supplierId: docRef.id,
-      });
-
       toast.success("Supplier saved successfully", { description: company });
       resetForm();
       onOpenChange(false);
@@ -484,14 +475,6 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
         referenceID: profile.referenceID,
         userId,
       });
-
-      // 🔔 PUSH NOTIFICATION - Approval Request
-      await notifySupplierForApproval({
-        company: company.trim(),
-        actionType: "add",
-        requestedBy: `${profile.firstName} ${profile.lastName}`,
-      });
-
       toast.success("Request sent for approval");
       setRequestApprovalOpen(false);
       resetForm();

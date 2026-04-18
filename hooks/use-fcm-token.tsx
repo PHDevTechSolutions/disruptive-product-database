@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, isSupported, deleteToken } from 'firebase/messaging';
 import { supabase } from '@/utils/supabase';
 
-// ESPIRON Firebase config - uses env variables
+// ESPIRON Firebase config - uses Public Key from env
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY_ESPIRON || "",
   authDomain: "espiron-1e202.firebaseapp.com",
   projectId: "espiron-1e202",
   storageBucket: "espiron-1e202.appspot.com",
   messagingSenderId: "944237041937",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID_ESPIRON || "",
 };
 
 interface FCMTokenState {
@@ -21,38 +21,10 @@ interface FCMTokenState {
   isSupported: boolean;
   isLoading: boolean;
   error: string | null;
-  isMobile: boolean;
-  serviceWorkerRegistered: boolean;
 }
-
-// Extended notification options for mobile support
-interface ExtendedNotificationOptions extends NotificationOptions {
-  image?: string;
-  badge?: string;
-  tag?: string;
-  renotify?: boolean;
-  vibrate?: number[];
-  requireInteraction?: boolean;
-  silent?: boolean;
-}
-
-// Mobile detection utility
-const isMobileDevice = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  const userAgent = navigator.userAgent.toLowerCase();
-  return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent);
-};
-
-// iOS detection utility
-const isIOSDevice = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  const userAgent = navigator.userAgent.toLowerCase();
-  return /iphone|ipad|ipod/.test(userAgent);
-};
 
 /**
  * Hook para sa Firebase Cloud Messaging token management
- * Optimized for mobile devices with background notification support
  * 
  * Usage:
  * const { token, permission, requestPermission, isSupported } = useFCMToken(userId);
@@ -63,54 +35,27 @@ export function useFCMToken(userId: string | null | undefined) {
     permission: 'default',
     isSupported: true,
     isLoading: true,
-    error: null,
-    isMobile: false,
-    serviceWorkerRegistered: false
+    error: null
   });
-
-  const messagingRef = useRef<any>(null);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
-  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   /**
    * Request notification permission from browser
-   * Mobile-optimized with wake lock to ensure the process completes
    */
   const requestPermission = useCallback(async (): Promise<NotificationPermission> => {
     if (typeof window === 'undefined') return 'default';
 
-    // Request wake lock on mobile to prevent screen sleep during permission request
-    const isMobile = isMobileDevice();
-    
-    try {
-      if (isMobile && 'wakeLock' in navigator) {
-        wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
-      }
-    } catch (wakeLockErr) {
-      // Wake lock not critical, continue
-    }
-
     try {
       // Check if browser supports notifications
       if (!('Notification' in window)) {
-        setState(prev => ({ ...prev, error: 'Notifications not supported', isMobile }));
+        setState(prev => ({ ...prev, error: 'Notifications not supported' }));
         return 'denied';
-      }
-
-      // iOS Safari specific handling
-      if (isIOSDevice()) {
-        // On iOS, notifications only work in standalone PWA mode
-        const isStandalone = (window.navigator as any).standalone === true;
-        if (!isStandalone) {
-          console.log('[FCM] iOS: App not in standalone mode, notifications may be limited');
-        }
       }
 
       // Check current permission
       const currentPermission = Notification.permission;
       
       if (currentPermission === 'granted') {
-        setState(prev => ({ ...prev, permission: 'granted', isMobile }));
+        setState(prev => ({ ...prev, permission: 'granted' }));
         return 'granted';
       }
 
@@ -118,15 +63,14 @@ export function useFCMToken(userId: string | null | undefined) {
         setState(prev => ({ 
           ...prev, 
           permission: 'denied',
-          error: 'Notification permission was denied. Please enable in browser settings.',
-          isMobile
+          error: 'Notification permission was denied. Please enable in browser settings.'
         }));
         return 'denied';
       }
 
       // Request permission
       const permission = await Notification.requestPermission();
-      setState(prev => ({ ...prev, permission, isMobile }));
+      setState(prev => ({ ...prev, permission }));
       
       if (permission === 'granted') {
         // Initialize FCM after permission granted
@@ -136,28 +80,19 @@ export function useFCMToken(userId: string | null | undefined) {
       return permission;
     } catch (err: any) {
       console.error('Error requesting permission:', err);
-      setState(prev => ({ ...prev, error: err.message, isMobile }));
+      setState(prev => ({ ...prev, error: err.message }));
       return 'denied';
-    } finally {
-      // Release wake lock
-      if (wakeLockRef.current) {
-        wakeLockRef.current.release().catch(() => {});
-        wakeLockRef.current = null;
-      }
     }
   }, []);
 
   /**
    * Initialize Firebase Messaging at kunin ang FCM token
-   * Mobile-optimized with service worker integration
    */
   const initializeFCM = useCallback(async () => {
     if (!userId || typeof window === 'undefined') return;
 
-    const isMobile = isMobileDevice();
-
     try {
-      setState(prev => ({ ...prev, isLoading: true, error: null, isMobile }));
+      setState(prev => ({ ...prev, isLoading: true, error: null }));
 
       // Check if messaging is supported
       const supported = await isSupported();
@@ -166,31 +101,9 @@ export function useFCMToken(userId: string | null | undefined) {
           ...prev, 
           isSupported: false, 
           isLoading: false,
-          error: 'Firebase Messaging not supported on this browser',
-          isMobile
+          error: 'Firebase Messaging not supported on this browser'
         }));
         return;
-      }
-
-      // Check service worker registration (critical for mobile background notifications)
-      let swRegistration: ServiceWorkerRegistration | undefined;
-      if ('serviceWorker' in navigator) {
-        try {
-          swRegistration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
-          if (!swRegistration) {
-            // Try to register service worker
-            swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-              scope: '/'
-            });
-            console.log('[FCM] Service Worker registered:', swRegistration);
-          } else {
-            console.log('[FCM] Service Worker already registered');
-          }
-          setState(prev => ({ ...prev, serviceWorkerRegistered: true }));
-        } catch (swError) {
-          console.warn('[FCM] Service worker registration failed:', swError);
-          setState(prev => ({ ...prev, serviceWorkerRegistered: false }));
-        }
       }
 
       // Initialize Firebase app (kung hindi pa na-initialize)
@@ -199,131 +112,80 @@ export function useFCMToken(userId: string | null | undefined) {
         : getApp('espiron');
 
       const messaging = getMessaging(app);
-      messagingRef.current = messaging;
 
-      // Get VAPID key from env (supports both with and without NEXT_PUBLIC_ prefix)
-      const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_PUBLIC_KEY_ESPIRON || process.env.FIREBASE_PUBLIC_KEY_ESPIRON;
+      // Get VAPID key from env
+      const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_PUBLIC_KEY_ESPIRON;
       
       if (!vapidKey) {
-        throw new Error('VAPID key not configured. Add NEXT_PUBLIC_FIREBASE_PUBLIC_KEY_ESPIRON or FIREBASE_PUBLIC_KEY_ESPIRON to your .env.local');
+        throw new Error('VAPID key not configured');
       }
 
-      // Get FCM token with service worker registration
-      const currentToken = await getToken(messaging, { 
-        vapidKey,
-        serviceWorkerRegistration: swRegistration
-      });
+      // Get FCM token
+      const currentToken = await getToken(messaging, { vapidKey });
 
       if (currentToken) {
-        console.log('[FCM] Token obtained:', currentToken.substring(0, 20) + '...');
+        console.log('FCM Token obtained:', currentToken.substring(0, 20) + '...');
         
         // Save to database
-        await saveTokenToDatabase(userId, currentToken, isMobile);
+        await saveTokenToDatabase(userId, currentToken);
 
         setState(prev => ({ 
           ...prev, 
           token: currentToken, 
-          isLoading: false,
-          isMobile
+          isLoading: false 
         }));
 
-        // Unsubscribe previous listener if exists
-        if (unsubscribeRef.current) {
-          unsubscribeRef.current();
-        }
-
-        // Listen for foreground messages with mobile-optimized handling
-        unsubscribeRef.current = onMessage(messaging, (payload) => {
-          console.log('[FCM] Foreground message received:', payload);
-          
-          // Mobile: Vibrate device
-          if (isMobile && navigator.vibrate) {
-            navigator.vibrate([200, 100, 200]);
-          }
+        // Listen for foreground messages
+        onMessage(messaging, (payload) => {
+          console.log('Foreground message received:', payload);
           
           // Show notification even when app is in foreground
           if (payload.notification && 'Notification' in window) {
-            const { title, body, image } = payload.notification;
+            const { title, body } = payload.notification;
             const icon = '/disruptive-logo.png';
             
             // Play notification sound
             try {
               const audio = new Audio('/musics/notif-sound.mp3');
-              audio.volume = 0.5; // Lower volume for mobile
               audio.play().catch(() => {});
             } catch (e) {
               // Ignore audio errors
             }
 
-            // Show browser notification with mobile-optimized options
-            const notificationOptions: ExtendedNotificationOptions = {
+            // Show browser notification
+            new Notification(title || 'New Notification', {
               body: body || '',
               icon,
-              badge: '/disruptive-logo.png', // For mobile Android
-              image: image || undefined,
-              data: {
-                ...payload.data,
-                click_action: payload.data?.click_action || '/',
-                timestamp: Date.now()
-              },
-              requireInteraction: !isMobile, // On mobile, let it auto-dismiss
-              silent: false,
-              vibrate: isMobile ? [200, 100, 200] : undefined,
-              tag: payload.data?.tag || 'default', // Prevent notification stacking
-              renotify: true, // Vibrate/sound for updates to same tag
-            };
-
-            const notification = new Notification(title || 'New Notification', notificationOptions);
-
-            // Auto-close notification on mobile after 5 seconds
-            if (isMobile) {
-              setTimeout(() => notification.close(), 5000);
-            }
-
-            // Handle click
-            notification.onclick = (event) => {
-              event.preventDefault();
-              const clickAction = payload.data?.click_action || '/';
-              window.focus();
-              window.location.href = clickAction;
-              notification.close();
-            };
+              data: payload.data,
+              requireInteraction: true
+            });
           }
         });
 
       } else {
-        console.log('[FCM] No token available');
+        console.log('No FCM token available');
         setState(prev => ({ 
           ...prev, 
           error: 'No registration token available. Request permission to generate one.',
-          isLoading: false,
-          isMobile
+          isLoading: false 
         }));
       }
 
     } catch (err: any) {
-      console.error('[FCM] Initialization error:', err);
+      console.error('FCM initialization error:', err);
       setState(prev => ({ 
         ...prev, 
         error: err.message || 'Failed to initialize notifications',
-        isLoading: false,
-        isMobile
+        isLoading: false 
       }));
     }
   }, [userId]);
 
   /**
    * Save FCM token to Supabase database
-   * Includes device type for targeting specific platforms
    */
-  const saveTokenToDatabase = async (uid: string, token: string, isMobile: boolean = false) => {
+  const saveTokenToDatabase = async (uid: string, token: string) => {
     try {
-      // Detect platform
-      const userAgent = navigator.userAgent;
-      const platform = /iPhone|iPad|iPod/.test(userAgent) ? 'ios' : 
-                       /Android/.test(userAgent) ? 'android' : 
-                       'web';
-
       // Check if token already exists
       const { data: existing } = await supabase
         .from('fcm_tokens')
@@ -338,9 +200,6 @@ export function useFCMToken(userId: string | null | undefined) {
           .update({ 
             user_id: uid,
             active: true,
-            platform,
-            is_mobile: isMobile,
-            user_agent: userAgent.slice(0, 255), // Limit length
             updated_at: new Date().toISOString()
           })
           .eq('id', existing.id);
@@ -352,17 +211,14 @@ export function useFCMToken(userId: string | null | undefined) {
             user_id: uid,
             token: token,
             active: true,
-            platform,
-            is_mobile: isMobile,
-            user_agent: userAgent.slice(0, 255),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
       }
 
-      console.log('[FCM] Token saved to database:', { platform, isMobile });
+      console.log('FCM token saved to database');
     } catch (err) {
-      console.error('[FCM] Error saving token:', err);
+      console.error('Error saving FCM token:', err);
     }
   };
 
@@ -394,91 +250,24 @@ export function useFCMToken(userId: string | null | undefined) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const isMobile = isMobileDevice();
-
     // Check initial permission
     if ('Notification' in window) {
-      setState(prev => ({ 
-        ...prev, 
-        permission: Notification.permission,
-        isMobile
-      }));
+      setState(prev => ({ ...prev, permission: Notification.permission }));
     }
 
     // If already granted, initialize FCM
     if (Notification.permission === 'granted' && userId) {
       initializeFCM();
     } else {
-      setState(prev => ({ ...prev, isLoading: false, isMobile }));
+      setState(prev => ({ ...prev, isLoading: false }));
     }
-
-    // Cleanup on unmount
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-      if (wakeLockRef.current) {
-        wakeLockRef.current.release().catch(() => {});
-        wakeLockRef.current = null;
-      }
-    };
   }, [userId, initializeFCM]);
-
-  // Handle visibility change for mobile (re-initialize when app comes to foreground)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && state.token && userId) {
-        console.log('[FCM] App visible, refreshing token...');
-        // Refresh token periodically to ensure it's valid
-        refreshToken();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [state.token, userId]);
-
-  // Refresh token function
-  const refreshToken = useCallback(async () => {
-    if (!userId || !messagingRef.current) return;
-    
-    try {
-      const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_PUBLIC_KEY_ESPIRON || process.env.FIREBASE_PUBLIC_KEY_ESPIRON;
-      if (!vapidKey) return;
-
-      // Check if service worker is still active
-      let swRegistration: ServiceWorkerRegistration | undefined;
-      if ('serviceWorker' in navigator) {
-        swRegistration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
-      }
-
-      const newToken = await getToken(messagingRef.current, { 
-        vapidKey,
-        serviceWorkerRegistration: swRegistration
-      });
-
-      if (newToken && newToken !== state.token) {
-        console.log('[FCM] Token refreshed');
-        setState(prev => ({ ...prev, token: newToken }));
-        await saveTokenToDatabase(userId, newToken, isMobileDevice());
-      }
-    } catch (err) {
-      console.error('[FCM] Error refreshing token:', err);
-    }
-  }, [userId, state.token]);
 
   return {
     ...state,
     requestPermission,
     deleteToken: deleteTokenFromDatabase,
-    refreshToken,
-    isMobile: isMobileDevice()
+    refreshToken: initializeFCM
   };
 }
 

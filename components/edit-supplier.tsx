@@ -54,7 +54,6 @@ import {
 
 import { logSupplierEvent } from "@/lib/auditlogger"; // ✅ AUDIT
 import RequestApprovalDialog from "@/components/request-approval-dialog";
-import { notifySupplierEdited, notifySupplierForApproval } from "@/lib/push-notifications";
 
 /* ─────────────────────────────────────────────
    Country display helpers
@@ -438,14 +437,6 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
         userId        : userId ?? undefined,
       });
 
-      // 🔔 PUSH NOTIFICATION
-      await notifySupplierEdited({
-        company: company.trim(),
-        supplierBrand: supplierBrand.trim(),
-        editedBy: user ? `${user.Firstname} ${user.Lastname}` : undefined,
-        supplierId: supplier.id,
-      });
-
       toast.success("Supplier updated everywhere", { description: company });
       onOpenChange(false);
     } catch (error) {
@@ -491,14 +482,6 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
         referenceID: profile.referenceID,
         userId,
       });
-
-      // 🔔 PUSH NOTIFICATION - Approval Request
-      await notifySupplierForApproval({
-        company: company.trim() || supplier?.company || "",
-        actionType: "edit",
-        requestedBy: `${profile.firstName} ${profile.lastName}`,
-      });
-
       toast.success("Request sent for approval");
       setRequestApprovalOpen(false);
       onOpenChange(false);
