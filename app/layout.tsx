@@ -12,6 +12,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import LayoutShell from "@/components/layout-shell";
 import { ThemeBody } from "@/components/theme-body";
 import { NotificationBanner } from "@/components/notification-banner";
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 
 export const viewport = {
   width: "device-width",
@@ -21,12 +22,23 @@ export const viewport = {
 
 export const metadata = {
   title: "Espiron | Product Database",
-  description: "...",
-icons: {
-  icon: [
-    { url: "/espiron-logo.svg", type: "image/svg+xml" },
-  ],
-},
+  description: "Product and Supplier Database with Push Notifications",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/espiron-logo.svg", type: "image/svg+xml" },
+      { url: "/disruptive-logo.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [
+      { url: "/disruptive-logo.png", sizes: "192x192" },
+    ],
+  },
+  themeColor: "#3b82f6",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Espiron",
+  },
 };
 
 export default function RootLayout({
@@ -54,6 +66,7 @@ export default function RootLayout({
                 }}
               />
               <NotificationBanner />
+              <PWAInstallPrompt />
             </WallpaperProvider>
           </RoleAccessProvider>
           </UserProvider>

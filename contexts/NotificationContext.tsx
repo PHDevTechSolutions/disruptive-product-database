@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { supabase } from "@/utils/supabase";
 import { useUser } from "@/contexts/UserContext";
+import { updateBadgeCount } from "@/lib/badge-counter";
 
 /** Raw `spf_creation.status` values that map to actionable badges on the requests list. */
 const CREATION_NOTIFICATION_STATUSES = new Set([
@@ -144,6 +145,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     unreadSPFRef.current = unreadSet;
     setUnreadCount(total);
     setActiveNotificationCount(unreadSet.size);
+    
+    // Update PWA app icon badge
+    updateBadgeCount(total);
   }, []);
 
   const playNotificationSound = useCallback(() => {

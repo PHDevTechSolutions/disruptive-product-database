@@ -57,7 +57,7 @@ export function useFCMToken(userId: string | null): UseFCMTokenReturn {
       const { initializeApp, getApps } = await import("firebase/app");
       const { getMessaging, getToken, onMessage } = await import("firebase/messaging");
 
-      // ESPIRON project config (using existing env variables)
+      // Firebase config using existing env variables
       const firebaseConfig = {
         apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
         authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -82,8 +82,8 @@ export function useFCMToken(userId: string | null): UseFCMTokenReturn {
       // Wait for service worker to be ready
       await navigator.serviceWorker.ready;
 
-      // Get FCM token with VAPID key (from ESPIRON push notification config)
-      const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_PUBLIC_KEY_ESPIRON || process.env.FIREBASE_PUBLIC_KEY_ESPIRON;
+      // Get FCM token with VAPID key
+      const vapidKey = process.env.FIREBASE_PUBLIC_KEY_ESPIRON;
       
       if (!vapidKey) {
         console.warn("No VAPID key found, trying without...");
