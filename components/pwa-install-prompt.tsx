@@ -15,9 +15,10 @@ interface BeforeInstallPromptEvent extends Event {
 
 interface PWAInstallPromptProps {
   variant?: "default" | "comic";
+  alwaysShow?: boolean;
 }
 
-export function PWAInstallPrompt({ variant = "default" }: PWAInstallPromptProps) {
+export function PWAInstallPrompt({ variant = "default", alwaysShow = false }: PWAInstallPromptProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -33,7 +34,7 @@ export function PWAInstallPrompt({ variant = "default" }: PWAInstallPromptProps)
 
     // Check if user previously dismissed
     const dismissed = localStorage.getItem("pwa-install-dismissed");
-    if (dismissed) {
+    if (dismissed && !alwaysShow) {
       const dismissedTime = parseInt(dismissed);
       // Show again after 7 days
       if (Date.now() - dismissedTime < 7 * 24 * 60 * 60 * 1000) {
@@ -58,6 +59,14 @@ export function PWAInstallPrompt({ variant = "default" }: PWAInstallPromptProps)
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleAppInstalled);
 
+    // For alwaysShow mode - show after short delay
+    if (alwaysShow) {
+      const timer = setTimeout(() => {
+        setIsVisible(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+
     // For iOS - show manual install prompt
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -76,7 +85,7 @@ export function PWAInstallPrompt({ variant = "default" }: PWAInstallPromptProps)
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
-  }, [deferredPrompt, isInstalled]);
+  }, [deferredPrompt, isInstalled, alwaysShow]);
 
   const handleInstall = useCallback(async () => {
     if (!deferredPrompt) {
@@ -100,11 +109,16 @@ export function PWAInstallPrompt({ variant = "default" }: PWAInstallPromptProps)
 
   const handleDismiss = useCallback(() => {
     setIsVisible(false);
-    setIsDismissed(true);
-    localStorage.setItem("pwa-install-dismissed", Date.now().toString());
-  }, []);
+    // Only save dismissal to localStorage if not in alwaysShow mode
+    if (!alwaysShow) {
+      setIsDismissed(true);
+      localStorage.setItem("pwa-install-dismissed", Date.now().toString());
+    }
+  }, [alwaysShow]);
 
-  if (!isVisible || isInstalled) return null;
+  // Show if: alwaysShow is true AND not installed, OR isVisible is true AND not installed
+  if (isInstalled) return null;
+  if (!alwaysShow && !isVisible) return null;
 
   // iOS Safari manual install UI
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !deferredPrompt;

@@ -154,8 +154,8 @@ export default function LoginPage() {
         }`}></div>
       </div>
 
-      {/* PWA Install Prompt - shows on login page */}
-      <PWAInstallPrompt variant={isComic ? "comic" : "default"} />
+      {/* PWA Install Prompt - always shows on login page */}
+      <PWAInstallPrompt variant={isComic ? "comic" : "default"} alwaysShow />
     </div>
   );
 }
