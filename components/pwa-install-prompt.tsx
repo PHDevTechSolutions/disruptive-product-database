@@ -16,23 +16,16 @@ interface BeforeInstallPromptEvent extends Event {
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     // Check if already installed
     const installed = isPWA();
     setIsInstalled(installed);
     if (installed) return;
-
-    // Check if dismissed before
-    const dismissed = localStorage.getItem("pwa-install-dismissed");
-    if (dismissed) {
-      setIsDismissed(true);
-      return;
-    }
 
     // Check if mobile device
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -42,19 +35,25 @@ export function PWAInstallPrompt() {
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(isIOSDevice);
 
+    // For iOS, show immediately since no install prompt needed
+    if (isIOSDevice) {
+      setIsVisible(true);
+      return;
+    }
+
     // Listen for beforeinstallprompt (Android/Chrome)
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      console.log("✅ beforeinstallprompt event captured!");
       setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setIsReady(true);
       setIsVisible(true);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-    // Show prompt immediately for all users
-    if (!installed) {
-      setIsVisible(true);
-    }
+    // Show prompt anyway, but button will be disabled until ready
+    setIsVisible(true);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -62,28 +61,32 @@ export function PWAInstallPrompt() {
   }, []);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) {
+      alert("Please wait a moment and try again, or tap the Chrome menu (⋮) → Add to Home Screen");
+      return;
+    }
 
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    try {
+      console.log("📲 Triggering install prompt...");
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
 
-    if (outcome === "accepted") {
-      console.log("✅ PWA installed");
-      setIsInstalled(true);
+      if (outcome === "accepted") {
+        console.log("✅ PWA installed");
+        setIsInstalled(true);
+      } else {
+        console.log("❌ User dismissed install");
+      }
+    } catch (err) {
+      console.error("Install error:", err);
+      alert("Install failed. Please use Chrome menu (⋮) → Add to Home Screen");
     }
 
     setDeferredPrompt(null);
-    setIsVisible(false);
   };
 
-  const handleDismiss = () => {
-    setIsDismissed(true);
-    localStorage.setItem("pwa-install-dismissed", "true");
-    setIsVisible(false);
-  };
-
-  // Don't show if already installed or dismissed
-  if (isInstalled || isDismissed || !isVisible) return null;
+  // Don't show if already installed
+  if (isInstalled || !isVisible) return null;
 
   // iOS Safari instructions
   if (isIOS) {
@@ -104,14 +107,6 @@ export function PWAInstallPrompt() {
               <li>Open app from home screen, allow notifications</li>
             </ol>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleDismiss}
-            className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20 shrink-0"
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </div>
       </div>
     );
@@ -144,31 +139,16 @@ export function PWAInstallPrompt() {
             </li>
           </ul>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleDismiss}
-          className="h-6 w-6 text-blue-200 hover:text-white hover:bg-blue-700 shrink-0"
-        >
-          <X className="h-4 w-4" />
-        </Button>
       </div>
       <div className="mt-3 flex gap-2">
         <Button
           size="sm"
           onClick={handleInstall}
-          className="flex-1 bg-white text-blue-600 hover:bg-blue-50 font-semibold"
+          disabled={!isReady && !isIOS}
+          className="flex-1 bg-white text-blue-600 hover:bg-blue-50 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="h-4 w-4 mr-1" />
-          Install App
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={handleDismiss}
-          className="text-blue-200 hover:text-white hover:bg-blue-700"
-        >
-          Later
+          {isReady || isIOS ? "Install App" : "Preparing..."}
         </Button>
       </div>
     </div>

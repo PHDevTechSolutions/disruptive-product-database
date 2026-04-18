@@ -13,6 +13,7 @@ import LayoutShell from "@/components/layout-shell";
 import { ThemeBody } from "@/components/theme-body";
 import { NotificationBanner } from "@/components/notification-banner";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
+import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 
 export const viewport = {
   width: "device-width",
@@ -67,6 +68,7 @@ export default function RootLayout({
               />
               <NotificationBanner />
               <PWAInstallPrompt />
+              <ServiceWorkerRegistration />
             </WallpaperProvider>
           </RoleAccessProvider>
           </UserProvider>
