@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoginForm } from "@/components/login-form";
 import { SplashScreen } from "@/components/splash-screen";
-import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { useUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import Image from "next/image";
@@ -153,9 +152,6 @@ export default function LoginPage() {
             : "bg-linear-to-r from-red-600 to-red-800"
         }`}></div>
       </div>
-
-      {/* PWA Install Prompt - always shows on login page */}
-      <PWAInstallPrompt variant={isComic ? "comic" : "default"} alwaysShow />
     </div>
   );
 }
