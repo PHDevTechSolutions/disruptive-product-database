@@ -19,6 +19,7 @@ export function PWAInstallPrompt() {
   const [isDismissed, setIsDismissed] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     // Check if already installed
@@ -33,6 +34,10 @@ export function PWAInstallPrompt() {
       return;
     }
 
+    // Check if mobile device
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    setIsMobile(isMobileDevice);
+
     // Check if iOS
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(isIOSDevice);
@@ -46,11 +51,11 @@ export function PWAInstallPrompt() {
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-    // For iOS, show prompt after a delay since there's no native install prompt
-    if (isIOSDevice && !installed) {
+    // Show prompt after a delay for all users (mobile and desktop with Chrome/Edge)
+    if (!installed) {
       const timer = setTimeout(() => {
         setIsVisible(true);
-      }, 5000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
 
