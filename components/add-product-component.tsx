@@ -47,6 +47,7 @@ import {
 
 import { db } from "@/lib/firebase";
 import { logProductEvent, logProductUsageEvent, logProductFamilyEvent } from "@/lib/auditlogger"; // ✅ AUDIT
+import { notifyNewProduct } from "@/lib/push-notifications"; // ✅ PUSH NOTIFICATION
 
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
@@ -474,6 +475,11 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
       });
 
       toast.success("Product saved successfully");
+      
+      // ✅ Send push notification
+      const userName = user ? `${user.Firstname} ${user.Lastname}`.trim() : undefined;
+      void notifyNewProduct(productClass || "New Product", userName);
+      
       if (onClose) onClose();
     } catch (err) {
       console.error(err);

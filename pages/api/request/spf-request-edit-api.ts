@@ -1,8 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPhilippinesISOString } from "@/lib/datetime";
 import { supabase } from "@/utils/supabase";
+import { supabaseAdmin } from "@/utils/supabase-admin";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { sendPushNotificationServer } from "@/lib/push-notifications";
 
 const ROW_SEP = "|ROW|";
 
@@ -37,8 +39,9 @@ export default async function handler(
       return res.status(400).json({ message: "Missing SPF number" });
     }
 
-    /* ── Resolve edited_by ── */
+    /* ── Resolve edited_by and user name ── */
     let resolvedEditedBy: string | null = null;
+    let userName: string | undefined;
     try {
       if (userId) {
         const { connectToDatabase } = await import("@/lib/mongodb");
@@ -46,9 +49,10 @@ export default async function handler(
         const mongoDb = await connectToDatabase();
         const user = await mongoDb.collection("users").findOne(
           { _id: new ObjectId(userId) },
-          { projection: { ReferenceID: 1 } }
+          { projection: { ReferenceID: 1, Firstname: 1, Lastname: 1 } }
         );
         resolvedEditedBy = user?.ReferenceID || null;
+        userName = user ? `${user.Firstname || ""} ${user.Lastname || ""}`.trim() : undefined;
       }
     } catch (err) {
       console.error("Failed to resolve resolvedEditedBy:", err);
@@ -442,6 +446,19 @@ export default async function handler(
       });
     } catch (auditErr) {
       console.error("Audit log error:", auditErr);
+    }
+
+    /* ── Send push notification ── */
+    try {
+      await sendPushNotificationServer(supabaseAdmin, {
+        title: "SPF Request Updated",
+        body: userName
+          ? `${userName} updated SPF ${spf_number} - New version v${nextVersion}`
+          : `SPF ${spf_number} has been updated - New version v${nextVersion}`,
+        url: "/requests",
+      });
+    } catch (notifErr: any) {
+      console.error("Push notification error (non-blocking):", notifErr.message);
     }
 
     return res.status(200).json({

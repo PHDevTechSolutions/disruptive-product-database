@@ -1,26 +1,26 @@
 import { NextResponse } from "next/server";
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic'; 
+export const dynamic = 'force-dynamic';
 
 const admin = require("firebase-admin");
 
 if (!admin.apps.length) {
   try {
-    const rawKey = process.env.FIREBASE_PRIVATE_KEY;
+    const rawKey = process.env.FIREBASE_PRIVATE_KEY_ESPIRON;
     // This regex handles keys with or without quotes and fixes newline characters
-    const formattedKey = rawKey 
-      ? rawKey.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1') 
+    const formattedKey = rawKey
+      ? rawKey.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1')
       : undefined;
 
     admin.initializeApp({
       credential: admin.credential.cert({
-        projectId: "engiconnect-b15c6",
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        projectId: "espiron-1e202",
+        clientEmail: "firebase-adminsdk-fbsvc@espiron-1e202.iam.gserviceaccount.com",
         privateKey: formattedKey,
       }),
     });
-    console.log("Firebase Admin Initialized");
+    console.log("Firebase Admin Initialized (ESPIRON)");
   } catch (error: any) {
     console.error("Firebase Admin Init Error:", error.message);
   }
