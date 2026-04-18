@@ -50,6 +50,7 @@ import {
 
 import { db } from "@/lib/firebase";
 import { logProductEvent, logProductUsageEvent, logProductFamilyEvent } from "@/lib/auditlogger"; // AUDIT
+import { notifyProductAdded, notifyProductForApproval } from "@/lib/push-notifications";
 
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
@@ -431,6 +432,14 @@ export default function AddProductPage() {
         userId     : userId ?? undefined,
       });
 
+      // 🔔 PUSH NOTIFICATION
+      await notifyProductAdded({
+        productReferenceID: newProductReferenceID,
+        productClass,
+        supplierCompany: noSupplier ? undefined : selectedSupplier?.company,
+        addedBy: user ? `${user.Firstname} ${user.Lastname}` : undefined,
+      });
+
       toast.success("Product saved successfully");
       router.push("/products");
     } catch (err) {
@@ -497,6 +506,14 @@ export default function AddProductPage() {
         referenceID: profile.referenceID,
         userId,
       });
+
+      // 🔔 PUSH NOTIFICATION - Approval Request
+      await notifyProductForApproval({
+        productId: productClass,
+        actionType: "add",
+        requestedBy: `${profile.firstName} ${profile.lastName}`,
+      });
+
       toast.success("Request sent for approval");
       setRequestApprovalOpen(false);
       router.push("/products");

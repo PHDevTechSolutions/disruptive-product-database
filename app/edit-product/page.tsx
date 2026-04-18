@@ -49,6 +49,7 @@ import {
 
 import { db } from "@/lib/firebase";
 import { logProductEvent, logProductUsageEvent, logProductFamilyEvent } from "@/lib/auditlogger"; // ✅ AUDIT
+import { notifyProductEdited, notifyProductForApproval } from "@/lib/push-notifications";
 
 import AddProductSelectProductType from "@/components/add-product-edit-select-category-type";
 import AddProductEditSelectProduct from "@/components/add-product-edit-select-product";
@@ -553,7 +554,14 @@ const handleSaveProduct = async () => {
         userId: userId ?? undefined,
       });
 
-      toast.success("Product saved successfully");
+      // 🔔 PUSH NOTIFICATION
+      await notifyProductEdited({
+        productReferenceID: productId || undefined,
+        productClass,
+        editedBy: user ? `${user.Firstname} ${user.Lastname}` : undefined,
+      });
+
+      toast.success("Product updated successfully");
       router.push("/products");
     } catch (err) {
       console.error(err);
@@ -620,6 +628,14 @@ const handleSaveProduct = async () => {
         referenceID: profile.referenceID,
         userId,
       });
+
+      // 🔔 PUSH NOTIFICATION - Approval Request
+      await notifyProductForApproval({
+        productId: productId || undefined,
+        actionType: "edit",
+        requestedBy: `${profile.firstName} ${profile.lastName}`,
+      });
+
       toast.success("Request sent for approval");
       setRequestApprovalOpen(false);
       router.push("/products");

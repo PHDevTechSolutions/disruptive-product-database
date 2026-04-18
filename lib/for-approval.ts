@@ -15,6 +15,7 @@ import {
 import { logProductEvent, logSupplierEvent } from "@/lib/auditlogger";
 import { insertParsedProductBulk, type ParsedProductRow } from "@/lib/product-bulk-insert-runner";
 import { executeSupplierBulkFromRows } from "@/lib/supplier-bulk-insert-runner";
+import { notifySupplierAdded, notifySupplierEdited, notifyProductAdded, notifyProductEdited } from "@/lib/push-notifications";
 
 export type ApprovalActionType =
   | "product_add"
@@ -199,6 +200,14 @@ export async function performApprovedAction(requestId: string): Promise<void> {
         referenceID: data.requesterReferenceID ?? undefined,
         userId: data.requesterUserId ?? undefined,
       });
+
+      // 🔔 PUSH NOTIFICATION
+      await notifySupplierAdded({
+        company: payload.company ?? "",
+        supplierBrand: payload.supplierBrand ?? "",
+        addedBy: data.requesterName,
+        supplierId: supplierRef.id,
+      });
       break;
     }
     case "supplier_edit": {
@@ -247,6 +256,14 @@ export async function performApprovedAction(requestId: string): Promise<void> {
         supplierBrand: payload.supplierBrand ?? "",
         referenceID: data.requesterReferenceID ?? undefined,
         userId: data.requesterUserId ?? undefined,
+      });
+
+      // 🔔 PUSH NOTIFICATION
+      await notifySupplierEdited({
+        company: payload.company ?? "",
+        supplierBrand: payload.supplierBrand ?? "",
+        editedBy: data.requesterName,
+        supplierId,
       });
       break;
     }
@@ -320,6 +337,14 @@ export async function performApprovedAction(requestId: string): Promise<void> {
         referenceID: data.requesterReferenceID ?? undefined,
         userId: data.requesterUserId ?? undefined,
       });
+
+      // 🔔 PUSH NOTIFICATION
+      await notifyProductAdded({
+        productReferenceID: referenceNumber,
+        productClass: payload.productClass ?? "",
+        supplierCompany: payload.supplier?.company,
+        addedBy: data.requesterName,
+      });
       break;
     }
     case "product_edit": {
@@ -350,6 +375,13 @@ export async function performApprovedAction(requestId: string): Promise<void> {
         brandOrigin: payload.brandOrigin ?? "CHINA",
         referenceID: data.requesterReferenceID ?? undefined,
         userId: data.requesterUserId ?? undefined,
+      });
+
+      // 🔔 PUSH NOTIFICATION
+      await notifyProductEdited({
+        productReferenceID: productId,
+        productClass: payload.productClass ?? "",
+        editedBy: data.requesterName,
       });
       break;
     }
