@@ -78,7 +78,7 @@ interface Collaborator {
   role: string;
   department: string;
   invitedAt: string;
-}
+}//test
 
 interface Note {
   id: string;
