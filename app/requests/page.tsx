@@ -17,6 +17,7 @@ import {
 import SPFRequestFetch from "@/components/spf-request-fetch";
 import SPFRequestCreate, { type SPFRequest } from "@/components/spf-request-create";
 import { CollaborationHubRowTrigger } from "@/components/collaboration-hub-row-trigger";
+import SPFRequestDownloadAll from "@/components/spf-request-download-all";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* STATUS LABEL MAPPING                                            */
@@ -270,6 +271,7 @@ export default function RequestsPage() {
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold shrink-0">SPF Requests</h1>
           <div className="flex flex-wrap gap-2 items-center">
+            <SPFRequestDownloadAll requests={filteredRequests} />
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               <input
@@ -289,6 +291,7 @@ export default function RequestsPage() {
       <div className="md:hidden shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-bold text-gray-900">SPF Requests</h1>
+          <SPFRequestDownloadAll requests={filteredRequests} />
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
