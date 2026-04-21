@@ -22,7 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Download, FileSpreadsheet, FileText, History, Database, ChevronDown, Loader2 } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, History, Database, ClipboardList, ChevronDown, Loader2 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import ExcelJS from "exceljs";
 import saveAs from "file-saver";
@@ -72,7 +72,7 @@ type VersionRecord = {
 };
 
 type DownloadOption = {
-  type: "specific-history" | "all-history";
+  type: "specific-history" | "all-history" | "spf-request";
   format: "excel" | "pdf";
 };
 
@@ -108,10 +108,19 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
   const fetchSPFRequestData = async (spfNumber: string) => {
     const { data } = await supabase
       .from("spf_request")
-      .select("item_description,item_photo,item_code,customer_name,special_instructions,prepared_by,approved_by,status,date_updated,date_created")
+      .select("item_description,item_photo,item_code,customer_name,special_instructions,prepared_by,approved_by,status,date_updated,date_created,spf_number")
       .eq("spf_number", spfNumber)
       .maybeSingle();
     return data;
+  };
+
+  const fetchAllSPFRequests = async (): Promise<SPFRequest[]> => {
+    const { data, error } = await supabase
+      .from("spf_request")
+      .select("*")
+      .order("date_updated", { ascending: false });
+    if (error) throw error;
+    return data || [];
   };
 
   const fetchSPFCreation = async (spfNumber: string) => {
@@ -386,6 +395,106 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
     doc.save(`All_SPF_History_${new Date().toISOString().split("T")[0]}.pdf`);
   };
 
+  // ─── SPF REQUEST DOWNLOADS (Raw Inquiries Without Offers) ───
+  const downloadSPFRequestExcel = async (spfNumber: string) => {
+    const requestData = await fetchSPFRequestData(spfNumber);
+    if (!requestData) {
+      toast.error(`No request data found for ${spfNumber}`);
+      return;
+    }
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("SPF Request");
+
+    const headers = [
+      "SPF Number", "Customer Name", "Item Description", "Item Code",
+      "Special Instructions", "Prepared By", "Approved By", "Status",
+      "Date Created", "Date Updated"
+    ];
+
+    ws.addRow(headers);
+    ws.getRow(1).eachCell((cell) => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "F59E0B" } };
+      cell.font = { bold: true, color: { argb: "FFFFFF" } };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+    });
+
+    const descriptions = (requestData.item_description || "").split(",").map((s: string) => s.trim());
+    const itemCodes = (requestData.item_code || "").split(",").map((s: string) => s.trim());
+
+    descriptions.forEach((desc: string, idx: number) => {
+      ws.addRow([
+        requestData.spf_number,
+        requestData.customer_name,
+        desc,
+        itemCodes[idx] || "-",
+        requestData.special_instructions || "-",
+        requestData.prepared_by || "-",
+        requestData.approved_by || "-",
+        requestData.status || "-",
+        requestData.date_created ? new Date(requestData.date_created).toLocaleString("en-PH") : "-",
+        requestData.date_updated ? new Date(requestData.date_updated).toLocaleString("en-PH") : "-",
+      ]);
+    });
+
+    ws.columns.forEach((column) => {
+      let max = 15;
+      column.eachCell?.({ includeEmpty: true }, (cell) => {
+        const len = cell.value?.toString().length || 0;
+        if (len > max) max = len;
+      });
+      column.width = Math.min(max + 4, 50);
+    });
+
+    const buffer = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `${spfNumber}_Request.xlsx`);
+  };
+
+  const downloadSPFRequestPDF = async (spfNumber: string) => {
+    const requestData = await fetchSPFRequestData(spfNumber);
+    if (!requestData) {
+      toast.error(`No request data found for ${spfNumber}`);
+      return;
+    }
+
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text(`SPF Request: ${spfNumber}`, 14, 20);
+
+    doc.setFontSize(10);
+    doc.text(`Customer: ${requestData.customer_name || "-"}`, 14, 30);
+    doc.text(`Status: ${requestData.status || "-"}`, 14, 36);
+    doc.text(`Prepared By: ${requestData.prepared_by || "-"}`, 14, 42);
+    doc.text(`Approved By: ${requestData.approved_by || "-"}`, 14, 48);
+
+    const descriptions = (requestData.item_description || "").split(",").map((s: string) => s.trim());
+    const itemCodes = (requestData.item_code || "").split(",").map((s: string) => s.trim());
+
+    const headers = ["#", "Item Description", "Item Code"];
+    const data = descriptions.map((desc: string, idx: number) => [
+      (idx + 1).toString(),
+      desc,
+      itemCodes[idx] || "-",
+    ]);
+
+    autoTable(doc, {
+      head: [headers],
+      body: data,
+      startY: 55,
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [245, 158, 11] },
+    });
+
+    const finalY = (doc as any).lastAutoTable?.finalY || 70;
+    doc.text(`Special Instructions:`, 14, finalY + 10);
+    doc.setFontSize(8);
+    const instructions = requestData.special_instructions || "-";
+    const splitInstructions = doc.splitTextToSize(instructions, 180);
+    doc.text(splitInstructions, 14, finalY + 16);
+
+    doc.save(`${spfNumber}_Request.pdf`);
+  };
+
   const handleDownload = async () => {
     if (!selectedOption) return;
 
@@ -402,6 +511,18 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
           await downloadSpecificHistoryExcel(spfNumber);
         } else {
           await downloadSpecificHistoryPDF(spfNumber);
+        }
+      } else if (selectedOption.type === "spf-request") {
+        // SPF Request (raw inquiry without offers)
+        const spfNumber = selectedSPF || (requests.length > 0 ? requests[0].spf_number : "");
+        if (!spfNumber) {
+          toast.error("Please select an SPF number");
+          return;
+        }
+        if (selectedOption.format === "excel") {
+          await downloadSPFRequestExcel(spfNumber);
+        } else {
+          await downloadSPFRequestPDF(spfNumber);
         }
       } else {
         // All history
@@ -425,7 +546,10 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
 
   const getOptionLabel = () => {
     if (!selectedOption) return "";
-    const typeLabel = selectedOption.type === "specific-history" ? "Specific SPF History" : "All SPF History";
+    let typeLabel = "";
+    if (selectedOption.type === "specific-history") typeLabel = "Specific SPF History";
+    else if (selectedOption.type === "spf-request") typeLabel = "SPF Request (Inquiry)";
+    else typeLabel = "All SPF History";
     const formatLabel = selectedOption.format === "excel" ? "Excel" : "PDF";
     return `${typeLabel} (${formatLabel})`;
   };
@@ -445,6 +569,38 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
+          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            SPF Request (Inquiry)
+          </div>
+          <DropdownMenuItem
+            onClick={() => {
+              setSelectedOption({ type: "spf-request", format: "excel" });
+              setOpen(true);
+            }}
+            className="cursor-pointer gap-2"
+          >
+            <ClipboardList className="h-4 w-4 text-amber-600" />
+            <FileSpreadsheet className="h-4 w-4 text-green-600" />
+            <div className="flex flex-col">
+              <span className="font-medium">SPF Request</span>
+              <span className="text-xs text-muted-foreground">Raw inquiry - Excel</span>
+            </div>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setSelectedOption({ type: "spf-request", format: "pdf" });
+              setOpen(true);
+            }}
+            className="cursor-pointer gap-2"
+          >
+            <ClipboardList className="h-4 w-4 text-amber-600" />
+            <FileText className="h-4 w-4 text-red-600" />
+            <div className="flex flex-col">
+              <span className="font-medium">SPF Request</span>
+              <span className="text-xs text-muted-foreground">Raw inquiry - PDF</span>
+            </div>
+          </DropdownMenuItem>
+          <div className="h-px bg-gray-200 my-1" />
           <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             SPF History Options
           </div>
@@ -520,12 +676,14 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
               <p className="text-xs text-muted-foreground mt-1">
                 {selectedOption?.type === "specific-history"
                   ? `Download history for selected SPF with all versions (v1, v2, etc.)`
+                  : selectedOption?.type === "spf-request"
+                  ? `Download raw inquiry data (item descriptions, customer info) for selected SPF - even without offers`
                   : `Download all ${requests.length} SPF records, 1 SPF per sheet`}
               </p>
             </div>
 
-            {/* SPF Selection dropdown for Specific History */}
-            {selectedOption?.type === "specific-history" && (
+            {/* SPF Selection dropdown for Specific History and SPF Request */}
+            {(selectedOption?.type === "specific-history" || selectedOption?.type === "spf-request") && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Select SPF Number:</label>
                 <Select value={selectedSPF} onValueChange={setSelectedSPF}>
