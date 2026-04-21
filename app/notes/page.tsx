@@ -55,11 +55,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
-import { dbCollab } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import {
   collection,
   query,
   orderBy,//test
+  where,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -90,6 +91,7 @@ interface Note {
   createdByUserId: string;
   createdAt: string;
   updatedAt: string;
+  status?: boolean; // true = active, false = deleted (soft delete)
 }
 
 interface User {
@@ -180,7 +182,8 @@ export default function NotesPage() {
     if (!userId) return;
 
     const notesQuery = query(
-      collection(dbCollab, "notes"),
+      collection(db, "notes"),
+      where("status", "==", true),
       orderBy("updatedAt", "desc")
     );
 
@@ -260,19 +263,19 @@ export default function NotesPage() {
     }
 
     try {
-      const now = Timestamp.now();
-      const noteData = {
+      // Create new note
+      await addDoc(collection(db, "notes"), {
         title: newNoteTitle.trim(),
         content: newNoteContent.trim(),
         priority: newNotePriority,
         collaborators: [],
         createdBy: userName,
         createdByUserId: userId || "",
-        createdAt: now,
-        updatedAt: now,
-      };
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: true, // Active by default
+      });
 
-      await addDoc(collection(dbCollab, "notes"), noteData);
       setNewNoteTitle("");
       setNewNoteContent("");
       setNewNotePriority("Medium");
@@ -293,7 +296,7 @@ export default function NotesPage() {
     }
 
     try {
-      const noteRef = doc(dbCollab, "notes", selectedNote.id);
+      const noteRef = doc(db, "notes", selectedNote.id);
       await updateDoc(noteRef, {
         title: editTitle.trim(),
         content: editContent.trim(),
@@ -309,11 +312,15 @@ export default function NotesPage() {
     }
   };
 
-  /* ── Delete note ── */
+  /* ── Delete note (Soft Delete) ── */
   const handleDeleteNote = async () => {
     if (!selectedNote) return;
     try {
-      await deleteDoc(doc(dbCollab, "notes", selectedNote.id));
+      // Soft delete: update status to false instead of hard delete
+      await updateDoc(doc(db, "notes", selectedNote.id), {
+        status: false,
+        updatedAt: new Date().toISOString(),
+      });
       setIsDeleteDialogOpen(false);
       setSelectedNote(null);
       setIsDetailsDialogOpen(false);
@@ -351,7 +358,7 @@ export default function NotesPage() {
     };
 
     try {
-      const noteRef = doc(dbCollab, "notes", selectedNote.id);
+      const noteRef = doc(db, "notes", selectedNote.id);
       const updatedCollaborators = [...(selectedNote.collaborators || []), newCollaborator];
       await updateDoc(noteRef, {
         collaborators: updatedCollaborators,
@@ -373,7 +380,7 @@ export default function NotesPage() {
     if (!selectedNote) return;
 
     try {
-      const noteRef = doc(dbCollab, "notes", selectedNote.id);
+      const noteRef = doc(db, "notes", selectedNote.id);
       const updatedCollaborators = (selectedNote.collaborators || []).filter(
         (c) => c.userId !== collaboratorUserId
       );
@@ -658,7 +665,7 @@ export default function NotesPage() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle
-                      className={`text-base truncate flex-1 ${
+                      className={`text-base break-words flex-1 leading-tight ${
                         isComic
                           ? "font-comic-title text-gray-900"
                           : "font-formal-title"
@@ -1109,8 +1116,7 @@ export default function NotesPage() {
               variant="outline"
               onClick={() => {
                 setIsEditDialogOpen(false);
-                setSelectedNote(null);
-                setIsDetailsDialogOpen(true);
+                setIsDetailsDialogOpen(true); // Return to details dialog
               }}
               className={isComic ? "font-comic" : ""}
             >
@@ -1388,7 +1394,7 @@ export default function NotesPage() {
               variant="outline"
               onClick={() => {
                 setIsDeleteDialogOpen(false);
-                setIsDetailsDialogOpen(true);
+                // Don't reopen details dialog
               }}
               className={isComic ? "font-comic" : ""}
             >
