@@ -103,6 +103,7 @@ interface User {
   ReferenceID?: string;
   Role: string;
   Department: string;
+  Status?: string;
   profilePicture?: string;
 }
 
@@ -507,7 +508,9 @@ export default function NotesPage() {
   const availableUsers = allUsers.filter(
     (user) =>
       !selectedNote?.collaborators.some((c) => c.userId === user._id) &&
-      user._id !== selectedNote?.createdByUserId
+      user._id !== selectedNote?.createdByUserId &&
+      user.Department === "Engineering" &&
+      user.Status === "Active"
   );
 
   const filteredAvailableUsers = availableUsers.filter(
