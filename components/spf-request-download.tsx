@@ -129,6 +129,7 @@ export default function SPFRequestDownload({ spfNumber }: Props) {
       "SPF Number",
       "Item Code",
       "Supplier Brand",
+      "Product Image",
       "Qty",
       "Unit Cost",
       "PCS/Carton",
@@ -145,6 +146,7 @@ export default function SPFRequestDownload({ spfNumber }: Props) {
       "Final Subtotal",
       "TDS Brand",
       "Price Validity",
+      "Technical Spec",
     ];
 
     ws.addRow(headers);
@@ -155,8 +157,9 @@ export default function SPFRequestDownload({ spfNumber }: Props) {
       cell.font = { bold: true, color: { argb: "FFFFFF" } };
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
+    ws.getRow(1).height = 30;
 
-    // Data rows - flatten all versions
+    // Data rows - flatten all versions with image URLs as text
     for (const record of history) {
       const rowImages = splitByRow(record.product_offer_image);
       const rowQtys = splitByRow(record.product_offer_qty);
@@ -177,16 +180,12 @@ export default function SPFRequestDownload({ spfNumber }: Props) {
       const rowFinalSubtotals = splitByRow(record.final_subtotal);
       const rowTdsBrands = splitByRow(record.tds);
       const rowPriceValidities = splitByRow(record.price_validity);
-
-      // Get max number of options across all rows
-      const maxOptions = Math.max(
-        ...rowImages.map((arr) => arr.length),
-        1
-      );
+      const rowTechSpecs = splitByRow(record.product_offer_technical_specification);
 
       for (let rowIdx = 0; rowIdx < rowImages.length; rowIdx++) {
         for (let optIdx = 0; optIdx < (rowImages[rowIdx]?.length || 0); optIdx++) {
-          if (rowImages[rowIdx][optIdx] && rowImages[rowIdx][optIdx] !== "-") {
+          const imageUrl = rowImages[rowIdx]?.[optIdx];
+          if (imageUrl && imageUrl !== "-" && imageUrl.startsWith("http")) {
             ws.addRow([
               record.version_number,
               record.version_label || `${spfNumber}_v${record.version_number}`,
@@ -196,6 +195,7 @@ export default function SPFRequestDownload({ spfNumber }: Props) {
               record.spf_number,
               rowItemCodes[rowIdx]?.[optIdx] || "-",
               rowBrands[rowIdx]?.[optIdx] || "-",
+              imageUrl, // Show image URL as text
               rowQtys[rowIdx]?.[optIdx] || "-",
               rowUnitCosts[rowIdx]?.[optIdx] || "-",
               rowPcsPerCartons[rowIdx]?.[optIdx] || "-",
@@ -214,6 +214,7 @@ export default function SPFRequestDownload({ spfNumber }: Props) {
               rowPriceValidities[rowIdx]?.[optIdx]
                 ? new Date(rowPriceValidities[rowIdx][optIdx]).toLocaleString("en-PH")
                 : "-",
+              rowTechSpecs[rowIdx]?.[optIdx] || "-",
             ]);
           }
         }
@@ -221,13 +222,17 @@ export default function SPFRequestDownload({ spfNumber }: Props) {
     }
 
     // Auto column width
-    ws.columns.forEach((column) => {
-      let max = 15;
-      column.eachCell?.({ includeEmpty: true }, (cell) => {
-        const len = cell.value?.toString().length || 0;
-        if (len > max) max = len;
-      });
-      column.width = Math.min(max + 4, 50);
+    ws.columns.forEach((column, idx) => {
+      if (idx === 8) { // Image URL column
+        column.width = 60; // Wider for URLs
+      } else {
+        let max = 15;
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
+          const len = cell.value?.toString().length || 0;
+          if (len > max) max = len;
+        });
+        column.width = Math.min(max + 4, 50);
+      }
     });
 
     const buffer = await wb.xlsx.writeBuffer();
@@ -282,6 +287,7 @@ export default function SPFRequestDownload({ spfNumber }: Props) {
       cell.font = { bold: true, color: { argb: "FFFFFF" } };
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
+    ws.getRow(1).height = 30;
 
     const rowImages = splitByRow(creation.product_offer_image);
     const rowQtys = splitByRow(creation.product_offer_qty);
@@ -310,7 +316,7 @@ export default function SPFRequestDownload({ spfNumber }: Props) {
       .split(",")
       .map((s: string) => s.trim());
 
-    // Data rows
+    // Data rows with image URLs as text
     for (let rowIdx = 0; rowIdx < rowImages.length; rowIdx++) {
       const desc = descriptions[rowIdx] || "-";
       const images = rowImages[rowIdx] || [];
@@ -337,13 +343,14 @@ export default function SPFRequestDownload({ spfNumber }: Props) {
       const techSpecs = rowTechSpecs[rowIdx] || [];
 
       for (let optIdx = 0; optIdx < images.length; optIdx++) {
-        if (images[optIdx] && images[optIdx] !== "-") {
+        const imageUrl = images[optIdx];
+        if (imageUrl && imageUrl !== "-" && imageUrl.startsWith("http")) {
           ws.addRow([
             spfNumber,
             desc,
             itemCodes[optIdx] || "-",
             brands[optIdx] || "-",
-            images[optIdx] || "-",
+            imageUrl, // Show image URL as text
             qtys[optIdx] || "-",
             unitCosts[optIdx] || "-",
             pcsPerCartons[optIdx] || "-",
@@ -372,13 +379,17 @@ export default function SPFRequestDownload({ spfNumber }: Props) {
     }
 
     // Auto column width
-    ws.columns.forEach((column) => {
-      let max = 15;
-      column.eachCell?.({ includeEmpty: true }, (cell) => {
-        const len = cell.value?.toString().length || 0;
-        if (len > max) max = len;
-      });
-      column.width = Math.min(max + 4, 50);
+    ws.columns.forEach((column, idx) => {
+      if (idx === 4) { // Image URL column (0-indexed: 4 = column E)
+        column.width = 60; // Wider for URLs
+      } else {
+        let max = 15;
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
+          const len = cell.value?.toString().length || 0;
+          if (len > max) max = len;
+        });
+        column.width = Math.min(max + 4, 50);
+      }
     });
 
     const buffer = await wb.xlsx.writeBuffer();

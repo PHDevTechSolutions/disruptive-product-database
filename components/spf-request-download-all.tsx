@@ -60,6 +60,7 @@ type VersionRecord = {
   product_offer_factory_address?: string;
   product_offer_port_of_discharge?: string;
   product_offer_subtotal?: string;
+  product_offer_technical_specification?: string;
   company_name?: string;
   contact_name?: string;
   contact_number?: string;
@@ -155,12 +156,14 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
       const rowFinalSubtotals = splitByRow(record.final_subtotal);
       const rowTdsBrands = splitByRow(record.tds);
       const rowPriceValidities = splitByRow(record.price_validity);
+      const rowTechSpecs = splitByRow(record.product_offer_technical_specification);
 
       const descriptions = (spfRequest?.item_description || "").split(",").map((s: string) => s.trim());
 
       for (let rowIdx = 0; rowIdx < rowImages.length; rowIdx++) {
         for (let optIdx = 0; optIdx < (rowImages[rowIdx]?.length || 0); optIdx++) {
-          if (rowImages[rowIdx][optIdx] && rowImages[rowIdx][optIdx] !== "-") {
+          const imageUrl = rowImages[rowIdx]?.[optIdx];
+          if (imageUrl && imageUrl !== "-" && imageUrl.startsWith("http")) {
             rows.push({
               version: record.version_number,
               versionLabel: record.version_label || `${record.spf_number}_v${record.version_number}`,
@@ -190,6 +193,8 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
               priceValidity: rowPriceValidities[rowIdx]?.[optIdx]
                 ? new Date(rowPriceValidities[rowIdx][optIdx]).toLocaleDateString("en-PH")
                 : "-",
+              productImageUrl: imageUrl,
+              technicalSpec: rowTechSpecs[rowIdx]?.[optIdx] || "-",
             });
           }
         }
@@ -214,9 +219,10 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
     const headers = [
       "Version", "Version Label", "Date Created", "Edited By", "Status",
       "SPF Number", "Customer", "Item Description", "Item Code", "Supplier Brand",
-      "Qty", "Unit Cost", "PCS/Carton", "Packaging", "Factory", "Port",
+      "Product Image", "Qty", "Unit Cost", "PCS/Carton", "Packaging", "Factory", "Port",
       "Subtotal", "Company", "Contact Name", "Contact Number", "Lead Time",
-      "Selling Cost", "Final Unit Cost", "Final Subtotal", "TDS Brand", "Price Validity"
+      "Selling Cost", "Final Unit Cost", "Final Subtotal", "TDS Brand", "Price Validity",
+      "Technical Spec"
     ];
 
     ws.addRow(headers);
@@ -226,23 +232,34 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
 
+    // Set row height for images
+    ws.getRow(1).height = 30;
+
+    // Add rows with data - show image URLs instead of embedding
     rows.forEach((row) => {
       ws.addRow([
         row.version, row.versionLabel, row.dateCreated, row.editedBy, row.status,
         row.spfNumber, row.customerName, row.itemDescription, row.itemCode, row.supplierBrand,
+        row.productImageUrl || "-", // Show image URL as text
         row.qty, row.unitCost, row.pcsPerCarton, row.packaging, row.factory, row.port,
         row.subtotal, row.companyName, row.contactName, row.contactNumber, row.leadTime,
-        row.sellingCost, row.finalUnitCost, row.finalSubtotal, row.tdsBrand, row.priceValidity
+        row.sellingCost, row.finalUnitCost, row.finalSubtotal, row.tdsBrand, row.priceValidity,
+        row.technicalSpec
       ]);
     });
 
-    ws.columns.forEach((column) => {
-      let max = 15;
-      column.eachCell?.({ includeEmpty: true }, (cell) => {
-        const len = cell.value?.toString().length || 0;
-        if (len > max) max = len;
-      });
-      column.width = Math.min(max + 4, 50);
+    // Set column widths
+    ws.columns.forEach((column, idx) => {
+      if (idx === 10) { // Image URL column (0-indexed: 10 = column K)
+        column.width = 60; // Wider for URLs
+      } else {
+        let max = 15;
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
+          const len = cell.value?.toString().length || 0;
+          if (len > max) max = len;
+        });
+        column.width = Math.min(max + 4, 50);
+      }
     });
 
     const buffer = await wb.xlsx.writeBuffer();
@@ -307,9 +324,10 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
       const headers = [
         "Version", "Version Label", "Date Created", "Edited By", "Status",
         "SPF Number", "Customer", "Item Description", "Item Code", "Supplier Brand",
-        "Qty", "Unit Cost", "PCS/Carton", "Packaging", "Factory", "Port",
+        "Product Image", "Qty", "Unit Cost", "PCS/Carton", "Packaging", "Factory", "Port",
         "Subtotal", "Company", "Contact Name", "Contact Number", "Lead Time",
-        "Selling Cost", "Final Unit Cost", "Final Subtotal", "TDS Brand", "Price Validity"
+        "Selling Cost", "Final Unit Cost", "Final Subtotal", "TDS Brand", "Price Validity",
+        "Technical Spec"
       ];
 
       ws.addRow(headers);
@@ -318,24 +336,32 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
         cell.font = { bold: true, color: { argb: "FFFFFF" } };
         cell.alignment = { vertical: "middle", horizontal: "center" };
       });
+      ws.getRow(1).height = 30;
 
+      // Add rows with image URLs as text
       rows.forEach((row) => {
         ws.addRow([
           row.version, row.versionLabel, row.dateCreated, row.editedBy, row.status,
           row.spfNumber, row.customerName, row.itemDescription, row.itemCode, row.supplierBrand,
+          row.productImageUrl || "-", // Show image URL as text
           row.qty, row.unitCost, row.pcsPerCarton, row.packaging, row.factory, row.port,
           row.subtotal, row.companyName, row.contactName, row.contactNumber, row.leadTime,
-          row.sellingCost, row.finalUnitCost, row.finalSubtotal, row.tdsBrand, row.priceValidity
+          row.sellingCost, row.finalUnitCost, row.finalSubtotal, row.tdsBrand, row.priceValidity,
+          row.technicalSpec
         ]);
       });
 
-      ws.columns.forEach((column) => {
-        let max = 12;
-        column.eachCell?.({ includeEmpty: true }, (cell) => {
-          const len = cell.value?.toString().length || 0;
-          if (len > max) max = len;
-        });
-        column.width = Math.min(max + 2, 40);
+      ws.columns.forEach((column, idx) => {
+        if (idx === 10) { // Image URL column
+          column.width = 60; // Wider for URLs
+        } else {
+          let max = 12;
+          column.eachCell?.({ includeEmpty: true }, (cell) => {
+            const len = cell.value?.toString().length || 0;
+            if (len > max) max = len;
+          });
+          column.width = Math.min(max + 2, 40);
+        }
       });
     }
 
@@ -407,7 +433,7 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
     const ws = wb.addWorksheet("SPF Request");
 
     const headers = [
-      "SPF Number", "Customer Name", "Item Description", "Item Code",
+      "SPF Number", "Customer Name", "Item Image", "Item Description", "Item Code",
       "Special Instructions", "Prepared By", "Approved By", "Status",
       "Date Created", "Date Updated"
     ];
@@ -418,16 +444,24 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
       cell.font = { bold: true, color: { argb: "FFFFFF" } };
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
+    ws.getRow(1).height = 30;
 
     const descriptions = (requestData.item_description || "").split(",").map((s: string) => s.trim());
     const itemCodes = (requestData.item_code || "").split(",").map((s: string) => s.trim());
+    const itemPhotos = (requestData.item_photo || "").split(",").map((s: string) => s.trim()).filter((url: string) => url.startsWith("http"));
 
-    descriptions.forEach((desc: string, idx: number) => {
+    // Add rows with image URLs as text
+    for (let idx = 0; idx < descriptions.length; idx++) {
+      const desc = descriptions[idx] || "-";
+      const itemCode = itemCodes[idx] || "-";
+      const photoUrl = itemPhotos[idx] || "-";
+
       ws.addRow([
         requestData.spf_number,
         requestData.customer_name,
+        photoUrl, // Show item photo URL as text
         desc,
-        itemCodes[idx] || "-",
+        itemCode,
         requestData.special_instructions || "-",
         requestData.prepared_by || "-",
         requestData.approved_by || "-",
@@ -435,15 +469,19 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
         requestData.date_created ? new Date(requestData.date_created).toLocaleString("en-PH") : "-",
         requestData.date_updated ? new Date(requestData.date_updated).toLocaleString("en-PH") : "-",
       ]);
-    });
+    }
 
-    ws.columns.forEach((column) => {
-      let max = 15;
-      column.eachCell?.({ includeEmpty: true }, (cell) => {
-        const len = cell.value?.toString().length || 0;
-        if (len > max) max = len;
-      });
-      column.width = Math.min(max + 4, 50);
+    ws.columns.forEach((column, idx) => {
+      if (idx === 2) { // Item Image URL column (0-indexed: 2 = column C)
+        column.width = 60; // Wider for URLs
+      } else {
+        let max = 15;
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
+          const len = cell.value?.toString().length || 0;
+          if (len > max) max = len;
+        });
+        column.width = Math.min(max + 4, 50);
+      }
     });
 
     const buffer = await wb.xlsx.writeBuffer();
