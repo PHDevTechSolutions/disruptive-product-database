@@ -55,3 +55,40 @@ export function toPhilippinesTime(isoString: string): string {
   // Build ISO string: YYYY-MM-DDTHH:mm:ss+08:00
   return `${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}:${partMap.second}+08:00`;
 }
+
+/**
+ * Formats a UTC ISO string to Philippines timezone display string
+ * Format: "Jan 15, 2024, 02:30:45 PM" (with Asia/Manila timezone)
+ */
+export function formatPhilippinesDate(isoString: string | Date | null | undefined): string {
+  if (!isoString) return "-";
+  const date = typeof isoString === "string" ? new Date(isoString) : isoString;
+  if (isNaN(date.getTime())) return "-";
+
+  return date.toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+/**
+ * Formats a UTC ISO string to Philippines timezone short display string (date only)
+ * Format: "Jan 15, 2024" (with Asia/Manila timezone)
+ */
+export function formatPhilippinesDateShort(isoString: string | Date | null | undefined): string {
+  if (!isoString) return "-";
+  const date = typeof isoString === "string" ? new Date(isoString) : isoString;
+  if (isNaN(date.getTime())) return "-";
+
+  return date.toLocaleDateString("en-PH", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  });
+}

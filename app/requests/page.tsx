@@ -18,6 +18,7 @@ import SPFRequestFetch from "@/components/spf-request-fetch";
 import SPFRequestCreate, { type SPFRequest } from "@/components/spf-request-create";
 import { CollaborationHubRowTrigger } from "@/components/collaboration-hub-row-trigger";
 import SPFRequestDownloadAll from "@/components/spf-request-download-all";
+import { formatPhilippinesDate } from "@/lib/datetime";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* STATUS LABEL MAPPING                                            */
@@ -345,9 +346,9 @@ export default function RequestsPage() {
             ) : (
               paginatedRequests.map((req) => {
                 const formattedDate = req.date_updated
-                  ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
+                  ? formatPhilippinesDate(req.date_updated)
                   : (req.date_created
-                    ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
+                    ? formatPhilippinesDate(req.date_created)
                     : "-");
                 const spfStatus = createdSPF[req.spf_number];
                 const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);
@@ -439,9 +440,9 @@ export default function RequestsPage() {
         ) : (
           paginatedRequests.map((req) => {
             const formattedDate = req.date_updated
-              ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
+              ? formatPhilippinesDate(req.date_updated)
               : (req.date_created
-                ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
+                ? formatPhilippinesDate(req.date_created)
                 : "-");
             const spfStatus = createdSPF[req.spf_number];
             const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);

@@ -52,6 +52,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { cn } from "@/lib/utils";
+import { formatPhilippinesDate } from "@/lib/datetime";
 
 /* ─────────────────────────────────────────────
    Types
@@ -139,10 +140,7 @@ const ACTION_OPTIONS: Record<CollectionTab, string[]> = {
 const formatTimestamp = (ts?: Timestamp): string => {
   if (!ts) return "—";
   try {
-    return ts.toDate().toLocaleString("en-PH", {
-      year: "numeric", month: "short", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit",
-    });
+    return formatPhilippinesDate(ts.toDate());
   } catch { return "—"; }
 };
 
