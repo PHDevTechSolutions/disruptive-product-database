@@ -176,19 +176,19 @@ export default function RequestsPage() {
       setCreatedSPFLoaded(false);
       setLoadingPage(true);
 
-      const res = await fetch(`/api/request/spf-request-fetch-api?page=1`);
+      // Pass allowed statuses to API for server-side filtering
+      const statusParams = ALLOWED_STATUSES.map(s => `status=${encodeURIComponent(s)}`).join('&');
+      const res = await fetch(`/api/request/spf-request-fetch-api?page=1&${statusParams}`);
       if (!res.ok) throw new Error("Failed to fetch SPF requests");
 
       const data = await res.json();
 
-      const mapped = (data.requests || [])
-        .filter((r: any) => ALLOWED_STATUSES.includes((r.status ?? "").toLowerCase()))
-        .map((r: any) => ({
-          ...r,
-          date_created: r.date_created
-            ? new Date(r.date_created).toISOString()
-            : null,
-        }));
+      const mapped = (data.requests || []).map((r: any) => ({
+        ...r,
+        date_created: r.date_created
+          ? new Date(r.date_created).toISOString()
+          : null,
+      }));
 
       setRequests(mapped);
       await fetchCreatedSPF(mapped.map((r: any) => r.spf_number));
