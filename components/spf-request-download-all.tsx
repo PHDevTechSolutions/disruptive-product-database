@@ -28,7 +28,6 @@ import ExcelJS from "exceljs";
 import saveAs from "file-saver";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
-import { formatPhilippinesDate, formatPhilippinesDateShort } from "@/lib/datetime";
 import autoTable from "jspdf-autotable";
 
 type SPFRequest = {
@@ -165,7 +164,7 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
             rows.push({
               version: record.version_number,
               versionLabel: record.version_label || `${record.spf_number}_v${record.version_number}`,
-              dateCreated: record.created_at ? formatPhilippinesDate(record.created_at) : "-",
+              dateCreated: record.created_at ? new Date(record.created_at).toLocaleString("en-PH") : "-",
               editedBy: record.edited_by || "-",
               status: record.status || "-",
               spfNumber: record.spf_number,
@@ -189,7 +188,7 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
               finalSubtotal: rowFinalSubtotals[rowIdx]?.[optIdx] || "-",
               tdsBrand: rowTdsBrands[rowIdx]?.[optIdx] || "-",
               priceValidity: rowPriceValidities[rowIdx]?.[optIdx]
-                ? formatPhilippinesDateShort(rowPriceValidities[rowIdx][optIdx])
+                ? new Date(rowPriceValidities[rowIdx][optIdx]).toLocaleDateString("en-PH")
                 : "-",
             });
           }
@@ -433,8 +432,8 @@ export default function SPFRequestDownloadAll({ requests }: { requests: SPFReque
         requestData.prepared_by || "-",
         requestData.approved_by || "-",
         requestData.status || "-",
-        requestData.date_created ? formatPhilippinesDate(requestData.date_created) : "-",
-        requestData.date_updated ? formatPhilippinesDate(requestData.date_updated) : "-",
+        requestData.date_created ? new Date(requestData.date_created).toLocaleString("en-PH") : "-",
+        requestData.date_updated ? new Date(requestData.date_updated).toLocaleString("en-PH") : "-",
       ]);
     });
 

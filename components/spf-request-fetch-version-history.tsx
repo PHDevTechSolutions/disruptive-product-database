@@ -12,7 +12,6 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/utils/supabase";
 import { History, ChevronDown, ChevronUp, Clock, User } from "lucide-react";
 import { generateTDSPdf } from "@/lib/generateTDSPdf";
-import { formatPhilippinesDate } from "@/lib/datetime";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* TYPES                                                           */
@@ -152,7 +151,18 @@ function splitSpecsByRow(value: string | undefined): SpecGroup[][][] {
 }
 
 function formatDateTime(iso: string): string {
-  return formatPhilippinesDate(iso);
+  try {
+    return new Date(iso).toLocaleString("en-PH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────── */

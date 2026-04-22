@@ -28,7 +28,6 @@ import {
 import { toast } from "sonner";
 import { collection, query, where, onSnapshot, getDocs, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { formatPhilippinesDate } from "@/lib/datetime";
 import FilteringComponent from "@/components/filtering-component-v2";
 import AddProductComponent from "@/components/add-product-component";
 import EditProductComponent from "@/components/edit-product-component";
@@ -2882,7 +2881,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                 {(() => {
                                   const pv = (rowPriceValidities[rowIndex] ?? [])[i];
                                   if (!pv || pv === "-") return "-";
-                                  try { return formatPhilippinesDate(pv); } catch { return pv; }
+                                  try { return new Date(pv).toLocaleString("en-PH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return pv; }
                                 })()}
                               </span>
                             </div>
@@ -3217,7 +3216,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                       {(() => {
                                         const pv = (rowPriceValidities[rowIndex] ?? [])[i];
                                         if (!pv || pv === "-") return "-";
-                                        try { return formatPhilippinesDate(pv); } catch { return pv; }
+                                        try { return new Date(pv).toLocaleString("en-PH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return pv; }
                                       })()}
                                     </td>
                                     <td className="border px-2 py-2 text-center align-middle whitespace-nowrap">

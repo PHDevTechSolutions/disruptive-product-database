@@ -1,13 +1,19 @@
 /**
- * Returns current timestamp in Philippines timezone (UTC+8)
- * Format: ISO 8601 with Asia/Manila timezone offset (+08:00)
+ * Returns current timestamp in local machine timezone
+ * Format: ISO 8601 with local timezone offset
  */
-export function getPhilippinesISOString(): string {
+export function getLocalISOString(): string {
   const now = new Date();
   
-  // Format the date in Asia/Manila timezone using Intl.DateTimeFormat
+  // Get timezone offset in minutes (positive if behind UTC, negative if ahead)
+  const offset = now.getTimezoneOffset();
+  const offsetHours = Math.abs(Math.floor(offset / 60));
+  const offsetMinutes = Math.abs(offset % 60);
+  const offsetSign = offset <= 0 ? "+" : "-";
+  const offsetStr = `${offsetSign}${String(offsetHours).padStart(2, "0")}:${String(offsetMinutes).padStart(2, "0")}`;
+  
+  // Format the date using local time components
   const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Manila",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -21,24 +27,31 @@ export function getPhilippinesISOString(): string {
   const partMap: Record<string, string> = {};
   parts.forEach((p) => { partMap[p.type] = p.value; });
   
-  // Build ISO string: YYYY-MM-DDTHH:mm:ss+08:00
-  const isoString = `${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}:${partMap.second}+08:00`;
-  
-  return isoString;
+  // Build ISO string: YYYY-MM-DDTHH:mm:ss+/-HH:mm
+  return `${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}:${partMap.second}${offsetStr}`;
 }
 
+// Keep alias for backward compatibility
+export const getPhilippinesISOString = getLocalISOString;
+
 /**
- * Converts a UTC ISO string to Philippines timezone ISO string
- * Format: ISO 8601 with Asia/Manila timezone offset (+08:00)
+ * Converts a UTC ISO string to local machine timezone ISO string
+ * Format: ISO 8601 with local timezone offset
  */
-export function toPhilippinesTime(isoString: string): string {
+export function toLocalTime(isoString: string): string {
   if (!isoString) return isoString;
   const date = new Date(isoString);
   if (isNaN(date.getTime())) return isoString;
   
-  // Format the date in Asia/Manila timezone using Intl.DateTimeFormat
+  // Get timezone offset in minutes (positive if behind UTC, negative if ahead)
+  const offset = date.getTimezoneOffset();
+  const offsetHours = Math.abs(Math.floor(offset / 60));
+  const offsetMinutes = Math.abs(offset % 60);
+  const offsetSign = offset <= 0 ? "+" : "-";
+  const offsetStr = `${offsetSign}${String(offsetHours).padStart(2, "0")}:${String(offsetMinutes).padStart(2, "0")}`;
+  
+  // Format the date using local time components
   const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Manila",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -52,43 +65,9 @@ export function toPhilippinesTime(isoString: string): string {
   const partMap: Record<string, string> = {};
   parts.forEach((p) => { partMap[p.type] = p.value; });
   
-  // Build ISO string: YYYY-MM-DDTHH:mm:ss+08:00
-  return `${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}:${partMap.second}+08:00`;
+  // Build ISO string: YYYY-MM-DDTHH:mm:ss+/-HH:mm
+  return `${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}:${partMap.second}${offsetStr}`;
 }
 
-/**
- * Formats a UTC ISO string to Philippines timezone display string
- * Format: "Jan 15, 2024, 02:30:45 PM" (with Asia/Manila timezone)
- */
-export function formatPhilippinesDate(isoString: string | Date | null | undefined): string {
-  if (!isoString) return "-";
-  const date = typeof isoString === "string" ? new Date(isoString) : isoString;
-  if (isNaN(date.getTime())) return "-";
-
-  return date.toLocaleString("en-PH", {
-    timeZone: "Asia/Manila",
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-/**
- * Formats a UTC ISO string to Philippines timezone short display string (date only)
- * Format: "Jan 15, 2024" (with Asia/Manila timezone)
- */
-export function formatPhilippinesDateShort(isoString: string | Date | null | undefined): string {
-  if (!isoString) return "-";
-  const date = typeof isoString === "string" ? new Date(isoString) : isoString;
-  if (isNaN(date.getTime())) return "-";
-
-  return date.toLocaleDateString("en-PH", {
-    timeZone: "Asia/Manila",
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  });
-}
+// Keep alias for backward compatibility
+export const toPhilippinesTime = toLocalTime;

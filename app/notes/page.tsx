@@ -68,7 +68,6 @@ import {
   onSnapshot,
   Timestamp,
 } from "firebase/firestore";
-import { formatPhilippinesDate } from "@/lib/datetime";
 
 type Priority = "Low" | "Medium" | "High";
 
@@ -465,7 +464,14 @@ export default function NotesPage() {
 
   /* ── Format date ── */
   const formatDate = (dateStr: string) => {
-    return formatPhilippinesDate(dateStr);
+    const date = new Date(dateStr);
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   };
 
   /* ── Get priority color ── */
