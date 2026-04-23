@@ -345,9 +345,9 @@ export default function RequestsPage() {
             ) : (
               paginatedRequests.map((req) => {
                 const formattedDate = req.date_updated
-                  ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
+                  ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
                   : (req.date_created
-                    ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
+                    ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
                     : "-");
                 const spfStatus = createdSPF[req.spf_number];
                 const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);
@@ -439,9 +439,9 @@ export default function RequestsPage() {
         ) : (
           paginatedRequests.map((req) => {
             const formattedDate = req.date_updated
-              ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
+              ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
               : (req.date_created
-                ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
+                ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
                 : "-");
             const spfStatus = createdSPF[req.spf_number];
             const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);
