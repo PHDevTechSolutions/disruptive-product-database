@@ -328,7 +328,7 @@ export default function RequestsPage() {
         <table className="w-full text-sm border-collapse">
           <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">
             <tr>
-              {["SPF Number", "Customer Name", "Special Instructions", "Prepared By", "Approved By", "Approval Status", "Date Approved Sales Head", "Date Updated", "Action"].map((h) => (
+              {["SPF Number", "Customer Name", "Special Instructions", "Prepared By", "Approved By", "Approval Status", "Date Received", "Date Updated", "Action"].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-bold border-b whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -493,7 +493,7 @@ export default function RequestsPage() {
                 <div>
                   <StatusBadge status={req.status} />
                 </div>
-                <p className="text-xs text-gray-600"><span className="text-gray-400">Date Approved Sales Head:</span> {formattedDateApprovedSalesHead}</p>
+                <p className="text-xs text-gray-600"><span className="text-gray-400">Date Received:</span> {formattedDateApprovedSalesHead}</p>
                 <div className="flex gap-2 pt-1 flex-wrap items-center">
                   <CollaborationHubRowTrigger
                     requestId={String(createdSPFIds[req.spf_number] || "")}
