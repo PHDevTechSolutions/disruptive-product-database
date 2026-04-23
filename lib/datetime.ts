@@ -1,13 +1,13 @@
 /**
- * Returns current timestamp in Philippines timezone (UTC+8)
- * Format: ISO 8601 with Asia/Manila timezone offset (+08:00)
+ * Returns current timestamp in China/Shanghai timezone (UTC+8)
+ * Format: ISO 8601 with Asia/Shanghai timezone offset (+08:00)
  */
 export function getPhilippinesISOString(): string {
   const now = new Date();
   
-  // Format the date in Asia/Manila timezone using Intl.DateTimeFormat
+  // Format the date in Asia/Shanghai timezone using Intl.DateTimeFormat
   const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Manila",
+    timeZone: "Asia/Shanghai",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -28,17 +28,17 @@ export function getPhilippinesISOString(): string {
 }
 
 /**
- * Converts a UTC ISO string to Philippines timezone ISO string
- * Format: ISO 8601 with Asia/Manila timezone offset (+08:00)
+ * Converts a UTC ISO string to China/Shanghai timezone ISO string
+ * Format: ISO 8601 with Asia/Shanghai timezone offset (+08:00)
  */
 export function toPhilippinesTime(isoString: string): string {
   if (!isoString) return isoString;
   const date = new Date(isoString);
   if (isNaN(date.getTime())) return isoString;
   
-  // Format the date in Asia/Manila timezone using Intl.DateTimeFormat
+  // Format the date in Asia/Shanghai timezone using Intl.DateTimeFormat
   const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Manila",
+    timeZone: "Asia/Shanghai",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

@@ -152,7 +152,8 @@ function splitSpecsByRow(value: string | undefined): SpecGroup[][][] {
 
 function formatDateTime(iso: string): string {
   try {
-    return new Date(iso).toLocaleString("en-PH", {
+    return new Date(iso).toLocaleString("en-US", {
+      timeZone: "Asia/Shanghai",
       year: "numeric",
       month: "short",
       day: "numeric",

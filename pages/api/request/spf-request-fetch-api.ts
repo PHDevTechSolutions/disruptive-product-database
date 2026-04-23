@@ -1,13 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "@/utils/supabase";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 100;
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const { from, to, page, search } = req.query;
+  const { from, to, page, search, status } = req.query;
 
   const fromDate   = typeof from   === "string" ? from   : undefined;
   const toDate     = typeof to     === "string" ? to     : undefined;
@@ -24,6 +24,18 @@ export default async function handler(
     // DATE FILTER
     if (fromDate && toDate) {
       query = query.gte("date_created", fromDate).lte("date_created", toDate);
+    }
+
+    // STATUS FILTER - handle single status or array of statuses
+    if (status) {
+      const statusArray = Array.isArray(status) ? status : [status];
+      const validStatuses = statusArray.filter((s): s is string => typeof s === "string" && s.length > 0);
+      if (validStatuses.length === 1) {
+        query = query.ilike("status", validStatuses[0]);
+      } else if (validStatuses.length > 1) {
+        const orConditions = validStatuses.map((s) => `status.ilike.${s}`).join(",");
+        query = query.or(orConditions);
+      }
     }
 
     // SEARCH FILTER

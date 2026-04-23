@@ -176,19 +176,19 @@ export default function RequestsPage() {
       setCreatedSPFLoaded(false);
       setLoadingPage(true);
 
-      const res = await fetch(`/api/request/spf-request-fetch-api?page=1`);
+      // Pass allowed statuses to API for server-side filtering
+      const statusParams = ALLOWED_STATUSES.map(s => `status=${encodeURIComponent(s)}`).join('&');
+      const res = await fetch(`/api/request/spf-request-fetch-api?page=1&${statusParams}`);
       if (!res.ok) throw new Error("Failed to fetch SPF requests");
 
       const data = await res.json();
 
-      const mapped = (data.requests || [])
-        .filter((r: any) => ALLOWED_STATUSES.includes((r.status ?? "").toLowerCase()))
-        .map((r: any) => ({
-          ...r,
-          date_created: r.date_created
-            ? new Date(r.date_created).toISOString()
-            : null,
-        }));
+      const mapped = (data.requests || []).map((r: any) => ({
+        ...r,
+        date_created: r.date_created
+          ? new Date(r.date_created).toISOString()
+          : null,
+      }));
 
       setRequests(mapped);
       await fetchCreatedSPF(mapped.map((r: any) => r.spf_number));
@@ -345,9 +345,9 @@ export default function RequestsPage() {
             ) : (
               paginatedRequests.map((req) => {
                 const formattedDate = req.date_updated
-                  ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
+                  ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
                   : (req.date_created
-                    ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
+                    ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
                     : "-");
                 const spfStatus = createdSPF[req.spf_number];
                 const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);
@@ -439,9 +439,9 @@ export default function RequestsPage() {
         ) : (
           paginatedRequests.map((req) => {
             const formattedDate = req.date_updated
-              ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
+              ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
               : (req.date_created
-                ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
+                ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
                 : "-");
             const spfStatus = createdSPF[req.spf_number];
             const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);
