@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [themeOpen, setThemeOpen] = useState(false);
   const isComic = theme === "comic";
+  const isEngineer = theme === "engineer";
 
   const [totalProducts, setTotalProducts]   = useState<number | null>(null);
   const [totalSuppliers, setTotalSuppliers] = useState<number | null>(null);
@@ -91,19 +92,21 @@ export default function Dashboard() {
     <div className="h-dvh flex flex-col overflow-hidden">
       {/* ── DESKTOP HEADER ── */}
       <div className={`hidden md:flex flex-col gap-3 px-6 pt-6 pb-3 shrink-0 bg-white ${
-        isComic ? "border-b-4 border-gray-800" : "border-b border-gray-200"
+        isComic ? "border-b-4 border-gray-800" : isEngineer ? "border-b-4 border-gray-800" : "border-b border-gray-200"
       }`}>
         <SidebarTrigger />
         <div className="flex items-center justify-between">
-          <h1 className={`text-3xl text-gray-900 ${
+          <h1 className={`text-3xl ${
             isComic
-              ? "font-comic-title comic-text-shadow"
-              : "font-formal-title"
+              ? "font-comic-title comic-text-shadow text-gray-900"
+              : isEngineer
+              ? "font-engineer-title engineer-text-shadow text-orange-600"
+              : "font-formal-title text-gray-900"
           }`}>
             {loading ? "Loading..." : user ? (
               <>
-                {isComic && "👋 "}Welcome, {user.Firstname} {user.Lastname}
-                <span className={`ml-2 text-sm text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
+                {isComic && "👋 "}{isEngineer && "👷 "}Welcome, {user.Firstname} {user.Lastname}
+                <span className={`ml-2 text-sm ${isComic ? "text-gray-600 font-comic" : isEngineer ? "text-gray-700 font-engineer" : "text-gray-600 font-formal"}`}>
                   ({user.Role})
                 </span>
               </>
@@ -114,16 +117,20 @@ export default function Dashboard() {
 
       {/* ── MOBILE HEADER ── */}
       <div className={`md:hidden shrink-0 bg-white px-4 pt-5 pb-3 ${
-        isComic ? "border-b-4 border-gray-800" : "border-b border-gray-200"
+        isComic ? "border-b-4 border-gray-800" : isEngineer ? "border-b-4 border-gray-800" : "border-b border-gray-200"
       }`}>
         <div className="flex items-center justify-between">
-          <h1 className={`text-xl text-gray-900 ${
-            isComic ? "font-comic-title comic-text-shadow" : "font-formal-title"
+          <h1 className={`text-xl ${
+            isComic
+              ? "font-comic-title comic-text-shadow text-gray-900"
+              : isEngineer
+              ? "font-engineer-title engineer-text-shadow text-orange-600"
+              : "font-formal-title text-gray-900"
           }`}>
             {loading ? "Loading..." : user ? (
               <>
-                {isComic && "👋 "}Welcome, {user.Firstname}
-                <span className={`ml-2 text-xs text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
+                {isComic && "👋 "}{isEngineer && "👷 "}Welcome, {user.Firstname}
+                <span className={`ml-2 text-xs ${isComic ? "text-gray-600 font-comic" : isEngineer ? "text-gray-700 font-engineer" : "text-gray-600 font-formal"}`}>
                   ({user.Role})
                 </span>
               </>
@@ -133,7 +140,9 @@ export default function Dashboard() {
       </div>
 
       {/* ── CONTENT ── */}
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className={`flex-1 overflow-auto p-6 space-y-6 ${
+        isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
+      }`}>
 
       {/* Metric cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -144,6 +153,8 @@ export default function Dashboard() {
             className={`p-5 space-y-3 text-left relative group ${
               isComic
                 ? "comic-card comic-hover-lift"
+                : isEngineer
+                ? "engineer-card engineer-hover-lift"
                 : "formal-card hover:shadow-lg transition-shadow"
             }`}
             style={{ background: 'white' }}
@@ -153,6 +164,8 @@ export default function Dashboard() {
               <span className={`absolute -top-2 -right-2 z-10 min-w-7 h-7 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${
                 isComic
                   ? "bg-yellow-400 text-gray-900 font-comic border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] comic-animate-bounce"
+                  : isEngineer
+                  ? "bg-orange-500 text-white font-engineer border-3 border-gray-800 shadow-[3px_3px_0px_#2c3e50] engineer-animate-wiggle"
                   : "bg-red-600 text-white font-formal shadow-md"
               }`}>
                 {badge > 99 ? "99+" : badge}
@@ -168,22 +181,22 @@ export default function Dashboard() {
                 }`}
                 style={{ backgroundColor: color }}
               />
-              <p className={`text-sm font-bold text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
+              <p className={`text-sm font-bold text-gray-600 ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"}`}>
                 {label}
               </p>
             </div>
             <p className={`text-4xl text-gray-900 group-hover:scale-105 transition-transform ${
-              isComic ? "font-comic-title comic-text-shadow" : "font-formal-title"
+              isComic ? "font-comic-title comic-text-shadow" : isEngineer ? "font-engineer-title engineer-text-shadow" : "font-formal-title"
             }`}>
               {value === null
                 ? <span className={`text-gray-400 text-2xl ${isComic ? "comic-animate-pulse" : ""}`}>
-                    {isComic ? "⚡" : "..."}
+                    {isComic ? "⚡" : isEngineer ? "🔧" : "..."}
                   </span>
                 : value.toLocaleString()
               }
             </p>
-            <p className={`text-xs text-gray-500 ${isComic ? "font-comic" : "font-formal"}`}>
-              {isComic ? "Click to explore! 🚀" : "Click to explore"}
+            <p className={`text-xs text-gray-500 ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"}`}>
+              {isComic ? "Click to explore! 🚀" : isEngineer ? "Click to explore! 🏗️" : "Click to explore"}
             </p>
           </button>
         ))}
@@ -195,15 +208,19 @@ export default function Dashboard() {
         className={`flex items-center gap-2.5 px-5 py-3 bg-linear-to-r from-blue-400 to-purple-400 text-white ${
           isComic
             ? "comic-button font-comic"
+            : isEngineer
+            ? "engineer-button font-engineer"
             : "font-formal rounded-md shadow-sm hover:shadow-md transition-shadow"
         }`}
       >
         <ImageIcon className="h-5 w-5" />
-        <span>{isComic ? "Customize Wallpaper 🎨" : "Customize Wallpaper"}</span>
+        <span>{isComic ? "Customize Wallpaper 🎨" : isEngineer ? "Customize Wallpaper 🔧" : "Customize Wallpaper"}</span>
         {wallpaper && (
           <span className={`ml-1 flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
             isComic
               ? "bg-green-400 text-gray-900 border-2 border-gray-800 font-comic"
+              : isEngineer
+              ? "bg-orange-500 text-white border-2 border-gray-800 font-engineer"
               : "bg-green-500 text-white font-formal"
           }`}>
             <CheckCircle2 className="h-3 w-3" />
@@ -240,6 +257,7 @@ function WallpaperModal({
 }) {
   const { theme } = useTheme();
   const isComic = theme === "comic";
+  const isEngineer = theme === "engineer";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(current);
   const [opacity, setOpacityLocal] = useState<number>(currentOpacity);
@@ -287,24 +305,28 @@ function WallpaperModal({
 
       {/* Modal */}
       <div className={`w-full max-w-md overflow-hidden relative ${
-        isComic ? "comic-card" : "bg-white rounded-lg shadow-2xl"
+        isComic ? "comic-card" : isEngineer ? "engineer-card" : "bg-white rounded-lg shadow-2xl"
       }`}>
         {/* Header */}
         <div className={`flex items-center justify-between px-5 py-4 ${
           isComic
             ? "bg-linear-to-r from-yellow-300 to-orange-300 border-b-3 border-gray-800"
+            : isEngineer
+            ? "bg-linear-to-r from-orange-500 to-yellow-400 border-b-4 border-gray-800"
             : "bg-linear-to-r from-red-600 to-red-800 border-b border-red-700"
         }`}>
           <div>
             <h2 className={`text-xl ${
               isComic
                 ? "font-comic-title text-gray-900 comic-text-outline"
+                : isEngineer
+                ? "font-engineer-title text-white engineer-text-shadow"
                 : "font-formal-title text-white"
             }`}>
-              {isComic ? "🎨 Customize Wallpaper" : "Customize Wallpaper"}
+              {isComic ? "🎨 Customize Wallpaper" : isEngineer ? "🔧 Customize Wallpaper" : "Customize Wallpaper"}
             </h2>
             <p className={`text-xs mt-0.5 ${
-              isComic ? "font-comic text-gray-700" : "font-formal text-red-100"
+              isComic ? "font-comic text-gray-700" : isEngineer ? "font-engineer text-yellow-200" : "font-formal text-red-100"
             }`}>
               Saved locally on this device only
             </p>
@@ -314,10 +336,12 @@ function WallpaperModal({
             className={`h-10 w-10 rounded-full flex items-center justify-center transition-all ${
               isComic
                 ? "bg-white border-3 border-gray-800 shadow-[3px_3px_0px_#2d3436] hover:shadow-[2px_2px_0px_#2d3436] hover:translate-x-px hover:translate-y-px"
+                : isEngineer
+                ? "bg-white border-3 border-gray-800 shadow-[3px_3px_0px_#2c3e50] hover:shadow-[2px_2px_0px_#2c3e50] hover:translate-x-px hover:translate-y-px"
                 : "bg-white/20 hover:bg-white/30 text-white"
             }`}
           >
-            <X className={`h-5 w-5 ${isComic ? "text-gray-800" : "text-white"}`} />
+            <X className={`h-5 w-5 ${isComic || isEngineer ? "text-gray-800" : "text-white"}`} />
           </button>
         </div>
 
@@ -387,8 +411,8 @@ function WallpaperModal({
           {/* Opacity slider */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className={`text-xs font-semibold text-gray-600 ${isComic ? "" : "font-formal"}`}>Opacity</label>
-              <span className={`text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md ${isComic ? "" : "font-formal"}`}>
+              <label className={`text-xs font-semibold text-gray-600 ${isComic ? "" : isEngineer ? "font-engineer" : "font-formal"}`}>Opacity</label>
+              <span className={`text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md ${isComic ? "" : isEngineer ? "font-engineer" : "font-formal"}`}>
                 {Math.round(opacity * 100)}%
               </span>
             </div>
@@ -400,10 +424,10 @@ function WallpaperModal({
               value={opacity}
               onChange={(e) => setOpacityLocal(parseFloat(e.target.value))}
               className={`w-full h-1.5 rounded-full appearance-none cursor-pointer ${
-                isComic ? "bg-gray-200 accent-gray-800" : "bg-gray-200 accent-red-600"
+                isComic ? "bg-gray-200 accent-gray-800" : isEngineer ? "bg-gray-200 accent-orange-600" : "bg-gray-200 accent-red-600"
               }`}
             />
-            <div className={`flex justify-between text-[10px] text-gray-400 ${isComic ? "" : "font-formal"}`}>
+            <div className={`flex justify-between text-[10px] text-gray-400 ${isComic ? "" : isEngineer ? "font-engineer" : "font-formal"}`}>
               <span>Subtle</span>
               <span>Full</span>
             </div>
@@ -427,11 +451,13 @@ function WallpaperModal({
               className={`flex items-center gap-1.5 px-4 h-12 text-white text-sm ${
                 isComic
                   ? "comic-button bg-red-400 font-comic"
+                  : isEngineer
+                  ? "engineer-button bg-red-500 font-engineer"
                   : "bg-red-500 hover:bg-red-600 font-formal rounded-md shadow-sm transition-colors"
               }`}
             >
               <Trash2 className="h-4 w-4" />
-              {isComic ? "Remove 🗑️" : "Remove"}
+              {isComic ? "Remove 🗑️" : isEngineer ? "Remove 🗑️" : "Remove"}
             </button>
           )}
           <button
@@ -439,10 +465,12 @@ function WallpaperModal({
             className={`flex-1 h-12 text-sm ${
               isComic
                 ? "comic-button bg-gray-200 text-gray-800 font-comic"
+                : isEngineer
+                ? "engineer-button bg-gray-200 text-gray-800 font-engineer"
                 : "bg-gray-100 hover:bg-gray-200 text-gray-700 font-formal rounded-md shadow-sm transition-colors"
             }`}
           >
-            {isComic ? "Cancel ✖️" : "Cancel"}
+            {isComic ? "Cancel ✖️" : isEngineer ? "Cancel ✖️" : "Cancel"}
           </button>
           <button
             onClick={handleApply}
@@ -450,12 +478,14 @@ function WallpaperModal({
             className={`flex-1 h-12 text-white text-sm disabled:opacity-50 ${
               isComic
                 ? "comic-button bg-linear-to-r from-green-400 to-emerald-400 font-comic"
+                : isEngineer
+                ? "engineer-button bg-green-600 font-engineer"
                 : "bg-green-600 hover:bg-green-700 font-formal rounded-md shadow-sm transition-colors"
             }`}
           >
             {preview
-              ? (isComic ? "Apply! ✅" : "Apply")
-              : (isComic ? "Upload First 📤" : "Upload First")
+              ? (isComic ? "Apply! ✅" : isEngineer ? "Apply! ✅" : "Apply")
+              : (isComic ? "Upload First 📤" : isEngineer ? "Upload First 📤" : "Upload First")
             }
           </button>
         </div>

@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { dbLogs } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useUser } from "@/contexts/UserContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export function NavUser({
   user,
@@ -55,6 +56,8 @@ export function NavUser({
   const { isMobile } = useSidebar();
   const router = useRouter();
   const { setUserId } = useUser();
+  const { theme } = useTheme();
+  const isEngineer = theme === "engineer";
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -114,9 +117,9 @@ export function NavUser({
             </AvatarFallback>
           </Avatar>
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-medium capitalize">{user.name}</span>
+            <span className={`truncate font-medium capitalize ${isEngineer ? "text-gray-900" : ""}`}>{user.name}</span>
             {user.position && (
-              <span className="truncate text-xs text-muted-foreground">{user.position}</span>
+              <span className={`truncate text-xs ${isEngineer ? "text-gray-700" : "text-muted-foreground"}`}>{user.position}</span>
             )}
           </div>
         </div>
@@ -202,9 +205,9 @@ export function NavUser({
                     )}
                   </span>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium capitalize">{user.name}</span>
+                    <span className={`truncate font-medium capitalize ${isEngineer ? "text-gray-900" : ""}`}>{user.name}</span>
                     {user.position && (
-                      <span className="truncate text-xs text-muted-foreground">{user.position}</span>
+                      <span className={`truncate text-xs ${isEngineer ? "text-gray-700" : "text-muted-foreground"}`}>{user.position}</span>
                     )}
                   </div>
                 </SidebarMenuButton>

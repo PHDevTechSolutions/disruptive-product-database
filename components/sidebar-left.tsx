@@ -200,6 +200,7 @@ export function SidebarLeft() {
      MOBILE — bottom nav bar
   ───────────────────────────────────────────── */
   const isComic = theme === "comic";
+  const isEngineer = theme === "engineer";
 
   if (isMobile) {
     const visibleItems = filteredNavItems.slice(navOffset, navOffset + VISIBLE_COUNT);
@@ -211,6 +212,8 @@ export function SidebarLeft() {
         className={`fixed left-0 right-0 z-50 bg-white ${
           isComic
             ? "border-t-4 border-gray-800 shadow-[0_-4px_0px_#2d3436]"
+            : isEngineer
+            ? "border-t-4 border-gray-800 shadow-[0_-4px_0px_#2c3e50]"
             : "border-t border-gray-200 shadow-lg"
         }`}
         style={{ bottom: 0, paddingBottom: "env(safe-area-inset-bottom)" }}
@@ -218,6 +221,8 @@ export function SidebarLeft() {
         {/* Theme decoration stripe */}
         {isComic ? (
           <div className="h-1 bg-linear-to-r from-red-400 via-yellow-400 to-blue-400 w-full"></div>
+        ) : isEngineer ? (
+          <div className="h-1 bg-linear-to-r from-orange-500 via-yellow-400 to-orange-500 w-full"></div>
         ) : (
           <div className="h-1 bg-linear-to-r from-red-600 to-red-800 w-full"></div>
         )}
@@ -229,7 +234,7 @@ export function SidebarLeft() {
             onClick={() => setNavOffset((o) => Math.max(0, o - 1))}
             disabled={!canPrev}
             className={`flex items-center justify-center w-8 h-full text-gray-800 disabled:opacity-30 shrink-0 ${
-              isComic ? "font-comic font-bold text-xl" : "font-formal font-medium"
+              isComic ? "font-comic font-bold text-xl" : isEngineer ? "font-engineer font-bold text-xl" : "font-formal font-medium"
             }`}
           >
             <ChevronLeft className="h-6 w-6" />
@@ -250,13 +255,15 @@ export function SidebarLeft() {
                 key={href}
                 href={href}
                 className={`flex flex-col items-center justify-center gap-1 flex-1 h-full relative ${
-                  isComic ? `font-comic ${active ? 'comic-animate-bounce' : ''}` : "font-formal"
+                  isComic ? `font-comic ${active ? 'comic-animate-bounce' : ''}` : isEngineer ? `font-engineer ${active ? 'engineer-animate-wiggle' : ''}` : "font-formal"
                 }`}
               >
                 {active && (
                   <span className={`absolute top-1 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-linear-to-r ${
                     isComic
                       ? "from-red-400 to-orange-400 border-2 border-gray-800"
+                      : isEngineer
+                      ? "from-orange-500 to-yellow-400 border-2 border-gray-800"
                       : "from-red-600 to-red-800"
                   }`} />
                 )}
@@ -266,6 +273,8 @@ export function SidebarLeft() {
                       active
                         ? isComic
                           ? "text-red-500 comic-text-shadow"
+                          : isEngineer
+                          ? "text-orange-600 engineer-text-shadow"
                           : "text-red-600"
                         : "text-gray-600"
                     }`}
@@ -275,6 +284,8 @@ export function SidebarLeft() {
                     <span className={`absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${
                       isComic
                         ? "bg-yellow-400 text-gray-900 font-comic border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
+                        : isEngineer
+                        ? "bg-orange-500 text-white font-engineer border-2 border-gray-800 shadow-[2px_2px_0px_#2c3e50]"
                         : "bg-red-600 text-white font-formal"
                     }`}>
                       {badgeKey === "requests" && isNotifLoading ? (
@@ -287,9 +298,9 @@ export function SidebarLeft() {
                 </span>
                 <span className={`text-[11px] font-bold transition-colors ${
                   active
-                    ? isComic ? "text-red-500" : "text-red-600"
+                    ? isComic ? "text-red-500" : isEngineer ? "text-orange-600" : "text-red-600"
                     : "text-gray-600"
-                } ${isComic ? "font-comic" : "font-formal"}`}>
+                } ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"}`}>
                   {label}
                 </span>
               </Link>
@@ -301,7 +312,7 @@ export function SidebarLeft() {
             onClick={() => setNavOffset((o) => Math.min(filteredNavItems.length - VISIBLE_COUNT, o + 1))}
             disabled={!canNext}
             className={`flex items-center justify-center w-8 h-full text-gray-800 disabled:opacity-30 shrink-0 ${
-              isComic ? "font-comic font-bold text-xl" : "font-formal font-medium"
+              isComic ? "font-comic font-bold text-xl" : isEngineer ? "font-engineer font-bold text-xl" : "font-formal font-medium"
             }`}
           >
             <ChevronRight className="h-6 w-6" />
@@ -339,6 +350,8 @@ export function SidebarLeft() {
         border-r
         ${isComic
           ? "bg-white/90 backdrop-blur-md border-border/50"
+          : isEngineer
+          ? "bg-white/90 backdrop-blur-md border-border/50"
           : "bg-white border-gray-200"
         }
       `}
@@ -347,11 +360,13 @@ export function SidebarLeft() {
 <SidebarHeader className={`h-18 px-3 flex items-center m-2 rounded-2xl ${
   isComic
     ? "bg-linear-to-r from-yellow-300 to-orange-300 comic-border-thick"
+    : isEngineer
+    ? "bg-linear-to-r from-orange-500 to-yellow-400 engineer-steel-beam"
     : "bg-linear-to-r from-red-600 to-red-800 border border-red-700"
 }`}>
   <Link
     href="/dashboard"
-    className={`flex items-center gap-2.5 min-w-0 cursor-pointer ${isComic ? "comic-hover-scale" : "hover:scale-105 transition-transform"}`}
+    className={`flex items-center gap-2.5 min-w-0 cursor-pointer ${isComic ? "comic-hover-scale" : isEngineer ? "hover:scale-105 transition-transform" : "hover:scale-105 transition-transform"}`}
   >
     {/* Logo mark — always visible, even when collapsed */}
     <div className={`shrink-0 ${isComic ? "comic-animate-bounce" : ""}`}>
@@ -368,7 +383,7 @@ export function SidebarLeft() {
         <path
           d="M16 2L28.1244 9V23L16 30L3.87564 23V9L16 2Z"
           fill="url(#espironGrad)"
-          stroke={isComic ? "#2d3436" : "#ffffff"}
+          stroke={isComic ? "#2d3436" : isEngineer ? "#2c3e50" : "#ffffff"}
           strokeWidth="1"
         />
         {/* Inner "E" mark built from bars */}
@@ -378,8 +393,8 @@ export function SidebarLeft() {
         <rect x="10" y="10" width="2" height="12" rx="1" fill="white" opacity="0.95" />
         <defs>
           <linearGradient id="espironGrad" x1="3.87564" y1="2" x2="28.1244" y2="30" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor={isComic ? "#ff4757" : "#dc2626"} />
-            <stop offset="100%" stopColor={isComic ? "#ffa502" : "#b91c1c"} />
+            <stop offset="0%" stopColor={isComic ? "#ff4757" : isEngineer ? "#ff6b35" : "#dc2626"} />
+            <stop offset="100%" stopColor={isComic ? "#ffa502" : isEngineer ? "#ffd93d" : "#b91c1c"} />
           </linearGradient>
         </defs>
       </svg>
@@ -392,6 +407,8 @@ export function SidebarLeft() {
           className={`text-lg truncate ${
             isComic
               ? "font-comic-title text-gray-900 comic-text-outline"
+              : isEngineer
+              ? "font-engineer-title text-white engineer-text-shadow"
               : "font-formal-title text-white"
           }`}
         >
@@ -401,10 +418,12 @@ export function SidebarLeft() {
           className={`text-xs truncate ${
             isComic
               ? "font-comic font-bold text-red-500"
+              : isEngineer
+              ? "font-engineer font-bold text-yellow-300"
               : "font-formal text-red-100"
           }`}
         >
-          Product Database {isComic ? "🚀" : ""}
+          Product Database {isComic ? "🚀" : isEngineer ? "👷" : ""}
         </span>
       </div>
     )}
@@ -428,20 +447,26 @@ export function SidebarLeft() {
                   asChild
                   data-active={pathname === href}
                   className={`
-                    ${isComic ? "font-comic" : "font-formal"} font-bold text-sm
+                    ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"} font-bold text-sm
                     transition-all duration-200
                     rounded-xl
-                    ${isComic ? "border-2 border-transparent" : "border border-transparent"}
+                    ${isComic ? "border-2 border-transparent" : isEngineer ? "border-2 border-transparent" : "border border-transparent"}
                     ${isComic
                       ? "hover:border-gray-800 hover:shadow-[4px_4px_0px_#2d3436] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-yellow-100"
+                      : isEngineer
+                      ? "hover:border-gray-800 hover:shadow-[4px_4px_0px_#2c3e50] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-orange-100"
                       : "hover:border-red-600 hover:shadow-md hover:bg-red-600 hover:text-white"
                     }
                     ${isComic
                       ? "data-[active=true]:bg-linear-to-r data-[active=true]:from-red-400 data-[active=true]:to-orange-400 data-[active=true]:text-white data-[active=true]:border-2 data-[active=true]:border-gray-800 data-[active=true]:shadow-[4px_4px_0px_#2d3436]"
+                      : isEngineer
+                      ? "data-[active=true]:bg-linear-to-r data-[active=true]:from-orange-500 data-[active=true]:to-yellow-400 data-[active=true]:text-white data-[active=true]:border-2 data-[active=true]:border-gray-800 data-[active=true]:shadow-[4px_4px_0px_#2c3e50]"
                       : "data-[active=true]:bg-linear-to-r data-[active=true]:from-red-600 data-[active=true]:to-red-700 data-[active=true]:text-white data-[active=true]:border data-[active=true]:border-red-700 data-[active=true]:shadow-md"
                     }
                     ${isComic
                       ? "bg-white text-gray-700 data-[active=false]:hover:text-red-500"
+                      : isEngineer
+                      ? "bg-white text-gray-700 data-[active=false]:hover:text-orange-600"
                       : "bg-white text-gray-700"
                     }
                   `}
@@ -454,6 +479,8 @@ export function SidebarLeft() {
                         <span className={`absolute -top-2 -right-2 min-w-4.5 h-4.5 px-1 rounded-full text-[9px] font-bold flex items-center justify-center ${
                           isComic
                             ? "bg-yellow-400 text-gray-900 border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
+                            : isEngineer
+                            ? "bg-orange-500 text-white border-2 border-gray-800 shadow-[2px_2px_0px_#2c3e50]"
                             : "bg-red-600 text-white shadow-sm"
                         }`}>
                           {badgeKey === "requests" && isNotifLoading ? (
@@ -473,6 +500,8 @@ export function SidebarLeft() {
                           <span className={`ml-auto min-w-6 h-6 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${
                             isComic
                               ? "bg-yellow-400 text-gray-900 border-2 border-gray-800 shadow-[2px_2px_0px_#2d3436]"
+                              : isEngineer
+                              ? "bg-orange-500 text-white border-2 border-gray-800 shadow-[2px_2px_0px_#2c3e50]"
                               : "bg-red-600 text-white shadow-sm"
                           }`}>
                             {badgeKey === "requests" && isNotifLoading ? (
@@ -506,18 +535,22 @@ export function SidebarLeft() {
                     asChild
                     data-active={pathname === href}
                     className={`
-                      ${isComic ? "font-comic text-gray-700" : "font-formal text-gray-700"}
+                      ${isComic ? "font-comic text-gray-700" : isEngineer ? "font-engineer text-white" : "font-formal text-gray-700"}
                       transition-all
-                      ${isComic ? "hover:bg-red-50 hover:text-red-700" : "hover:bg-red-600 hover:text-white"}
+                      ${isComic ? "hover:bg-red-50 hover:text-red-700" : isEngineer ? "hover:bg-orange-500 hover:text-white" : "hover:bg-red-600 hover:text-white"}
                       hover:scale-[1.01]
                       ${isComic
                         ? "data-[active=true]:bg-linear-to-r data-[active=true]:from-red-400 data-[active=true]:to-orange-400"
+                        : isEngineer
+                        ? "data-[active=true]:bg-linear-to-r data-[active=true]:from-orange-500 data-[active=true]:to-yellow-400"
                         : "data-[active=true]:bg-linear-to-r data-[active=true]:from-red-600 data-[active=true]:to-red-700"
                       }
                       data-[active=true]:text-white
                       data-[active=true]:shadow-md
                       ${isComic
                         ? "data-[active=true]:hover:from-red-500 data-[active=true]:hover:to-orange-500"
+                        : isEngineer
+                        ? "data-[active=true]:hover:from-orange-600 data-[active=true]:hover:to-yellow-500"
                         : "data-[active=true]:hover:from-red-700 data-[active=true]:hover:to-red-800"
                       }
                       data-[active=true]:hover:text-white
@@ -528,7 +561,7 @@ export function SidebarLeft() {
                         <Icon className="h-4 w-4" />
                         {badge > 0 && state === "collapsed" && (
                           <span className={`absolute -top-1.5 -right-1.5 min-w-3.5 h-3.5 px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center ring-2 ring-white ${
-                            isComic ? "bg-red-500 text-white" : "bg-red-600 text-white"
+                            isComic ? "bg-red-500 text-white" : isEngineer ? "bg-orange-500 text-white" : "bg-red-600 text-white"
                           }`}>
                             {badge > 9 ? "9+" : badge}
                           </span>
@@ -556,7 +589,7 @@ export function SidebarLeft() {
         )}
       </SidebarContent>
 
-      <SidebarSeparator className={`h-1 my-2 ${isComic ? "bg-gray-800" : "bg-gray-200"}`} />
+      <SidebarSeparator className={`h-1 my-2 ${isComic ? "bg-gray-800" : isEngineer ? "bg-gray-800" : "bg-gray-200"}`} />
 
       {/* FOOTER */}
       <SidebarFooter className="p-3">
@@ -567,6 +600,8 @@ export function SidebarLeft() {
               p-3
               ${isComic
                 ? "comic-card bg-linear-to-r from-blue-100 to-purple-100 comic-hover-lift"
+                : isEngineer
+                ? "engineer-card bg-linear-to-r from-orange-100 to-yellow-100"
                 : "formal-card bg-linear-to-r from-red-50 to-red-100 hover:shadow-md transition-shadow"
               }
             `}

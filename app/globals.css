@@ -1480,3 +1480,468 @@
 .formal-table tr:hover td {
   background-color: #f9fafb;
 }
+
+/* ============================================
+   ENGINEER THEME - Bob the Builder Inspired
+   ============================================ */
+
+.engineer {
+  --radius: 1rem;
+
+  /* Background - Construction Site */
+  --background: #ffeaa7;
+  --foreground: #2c3e50;
+
+  /* Cards - Blueprint style */
+  --card: #ffffff;
+  --card-foreground: #2c3e50;
+
+  /* Popovers */
+  --popover: #fff8e7;
+  --popover-foreground: #2c3e50;
+
+  /* Primary - Safety Orange */
+  --primary: #ff6b35;
+  --primary-foreground: #ffffff;
+
+  /* Secondary - Construction Yellow */
+  --secondary: #ffd93d;
+  --secondary-foreground: #2c3e50;
+
+  /* Muted - Concrete Gray */
+  --muted: #e8e8e8;
+  --muted-foreground: #5a6c7d;
+
+  /* Accent - Steel Blue */
+  --accent: #4a90a4;
+  --accent-foreground: #ffffff;
+
+  /* Destructive */
+  --destructive: #c0392b;
+  --destructive-foreground: #ffffff;
+
+  /* Borders - Industrial style */
+  --border: #34495e;
+  --input: #e8e8e8;
+  --ring: #ff6b35;
+
+  /* Chart colors - Construction palette */
+  --chart-1: #ff6b35;
+  --chart-2: #ffd93d;
+  --chart-3: #4a90a4;
+  --chart-4: #2c3e50;
+  --chart-5: #95a5a6;
+
+  /* Sidebar */
+  --sidebar: #2c3e50;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ff6b35;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ffd93d;
+  --sidebar-accent-foreground: #2c3e50;
+  --sidebar-border: #34495e;
+  --sidebar-ring: #ff6b35;
+}
+
+/* Engineer Font Classes */
+.font-engineer {
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif !important;
+}
+
+.font-engineer-title {
+  font-family: 'Roboto Condensed', 'Arial Black', sans-serif !important;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Engineer Button Styles */
+.engineer-button {
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-weight: 700;
+  border: 3px solid #2c3e50 !important;
+  border-radius: 4px !important;
+  box-shadow: 4px 4px 0px #2c3e50 !important;
+  transition: all 0.15s ease !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: linear-gradient(180deg, #ff6b35 0%, #e55a2b 100%) !important;
+  color: white !important;
+}
+
+.engineer-button:hover {
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 6px 6px 0px #2c3e50 !important;
+  background: linear-gradient(180deg, #ff7b45 0%, #ff6b35 100%) !important;
+}
+
+.engineer-button:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 2px 2px 0px #2c3e50 !important;
+}
+
+/* Engineer Card Styles */
+.engineer-card {
+  border: 3px solid #2c3e50 !important;
+  border-radius: 8px !important;
+  box-shadow: 6px 6px 0px #2c3e50 !important;
+  background: #ffffff !important;
+  position: relative;
+}
+
+.engineer-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: repeating-linear-gradient(
+    45deg,
+    #ff6b35,
+    #ff6b35 10px,
+    #ffd93d 10px,
+    #ffd93d 20px
+  );
+  border-radius: 8px 8px 0 0;
+}
+
+.engineer-card-primary {
+  border: 4px solid #2c3e50 !important;
+  border-radius: 16px !important;
+  box-shadow: 8px 8px 0px #2c3e50 !important;
+  background: linear-gradient(180deg, #ff6b35 0%, #e55a2b 100%) !important;
+  color: white !important;
+}
+
+.engineer-card-yellow {
+  border: 4px solid #2c3e50 !important;
+  border-radius: 16px !important;
+  box-shadow: 8px 8px 0px #2c3e50 !important;
+  background: linear-gradient(180deg, #ffd93d 0%, #f4c430 100%) !important;
+}
+
+.engineer-card-blue {
+  border: 4px solid #2c3e50 !important;
+  border-radius: 16px !important;
+  box-shadow: 8px 8px 0px #2c3e50 !important;
+  background: linear-gradient(180deg, #4a90a4 0%, #3d7a8c 100%) !important;
+  color: white !important;
+}
+
+/* Engineer Input Styles */
+.engineer-input {
+  border: 3px solid #2c3e50 !important;
+  border-radius: 4px !important;
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif !important;
+  font-weight: 600;
+  background: #ffffff !important;
+}
+
+.engineer-input:focus {
+  box-shadow: 4px 4px 0px #2c3e50 !important;
+  transform: translate(-2px, -2px);
+  border-color: #ff6b35 !important;
+}
+
+/* Engineer Badge */
+.engineer-badge {
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-weight: 700;
+  border: 2px solid #2c3e50;
+  border-radius: 4px;
+  box-shadow: 2px 2px 0px #2c3e50;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Engineer Caution Tape Pattern */
+.engineer-caution-tape {
+  background: repeating-linear-gradient(
+    45deg,
+    #ffd93d,
+    #ffd93d 20px,
+    #2c3e50 20px,
+    #2c3e50 40px
+  );
+}
+
+/* Engineer Blueprint Pattern */
+.engineer-blueprint {
+  background-color: #1a3a5c;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  color: #ffffff;
+}
+
+/* Engineer Hard Hat Icon Effect */
+.engineer-hard-hat {
+  position: relative;
+}
+
+.engineer-hard-hat::before {
+  content: '👷';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 20px;
+  animation: engineer-wiggle 1s ease-in-out infinite;
+}
+
+/* Engineer Animations */
+@keyframes engineer-wiggle {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+@keyframes engineer-hammer {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-15deg); }
+  75% { transform: rotate(15deg); }
+}
+
+@keyframes engineer-drill {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+
+.engineer-animate-wiggle {
+  animation: engineer-wiggle 1s ease-in-out infinite;
+}
+
+.engineer-animate-hammer {
+  animation: engineer-hammer 0.5s ease-in-out infinite;
+}
+
+.engineer-animate-drill {
+  animation: engineer-drill 0.1s ease-in-out infinite;
+}
+
+/* Engineer Divider */
+.engineer-divider {
+  height: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    #ff6b35 0px,
+    #ff6b35 20px,
+    #ffd93d 20px,
+    #ffd93d 40px
+  );
+  border: none;
+  margin: 1rem 0;
+  border-radius: 3px;
+}
+
+/* Engineer Text Effects */
+.engineer-text-stencil {
+  font-family: 'Roboto Condensed', 'Arial Black', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  -webkit-text-stroke: 1px #2c3e50;
+  paint-order: stroke fill;
+}
+
+.engineer-text-shadow {
+  text-shadow: 3px 3px 0px #2c3e50;
+}
+
+/* Engineer Rivet Pattern */
+.engineer-rivets {
+  position: relative;
+}
+
+.engineer-rivets::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  border: 2px dashed #2c3e50;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* Engineer Steel Beam Border */
+.engineer-steel-beam {
+  border: 4px solid #2c3e50 !important;
+  border-radius: 0 !important;
+  box-shadow: 
+    inset 2px 2px 0px #4a90a4,
+    inset -2px -2px 0px #4a90a4,
+    4px 4px 0px #2c3e50 !important;
+}
+
+/* Engineer Construction Sign */
+.engineer-sign {
+  background: #ffd93d;
+  border: 4px solid #2c3e50;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 4px 4px 0px #2c3e50;
+  position: relative;
+}
+
+.engineer-sign::before {
+  content: '⚠️';
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  background: #ffd93d;
+  padding: 0 8px;
+  border: 3px solid #2c3e50;
+  border-radius: 50%;
+}
+
+/* Engineer Tool Box Pattern */
+.engineer-toolbox {
+  background: linear-gradient(180deg, #ff6b35 0%, #e55a2b 100%);
+  border: 4px solid #2c3e50;
+  border-radius: 12px;
+  box-shadow: 6px 6px 0px #2c3e50;
+  position: relative;
+}
+
+.engineer-toolbox::after {
+  content: '🔧';
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  font-size: 28px;
+  background: #ff6b35;
+  border: 3px solid #2c3e50;
+  border-radius: 50%;
+  padding: 6px;
+  animation: engineer-wiggle 1s ease-in-out infinite;
+}
+
+/* Engineer Grid Background */
+.engineer-grid {
+  background-color: #f4e4bc;
+  background-image: 
+    linear-gradient(rgba(44, 62, 80, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(44, 62, 80, 0.1) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+/* Engineer Checkbox/Radio Styles */
+.engineer-checkbox {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #2c3e50;
+  border-radius: 4px;
+  background: #ffffff;
+  cursor: pointer;
+  appearance: none;
+  position: relative;
+}
+
+.engineer-checkbox:checked {
+  background: #ff6b35;
+  border-color: #2c3e50;
+}
+
+.engineer-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* Engineer Progress Bar */
+.engineer-progress {
+  height: 24px;
+  background: #e8e8e8;
+  border: 3px solid #2c3e50;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.engineer-progress-bar {
+  height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    #ff6b35,
+    #ff6b35 10px,
+    #ffd93d 10px,
+    #ffd93d 20px
+  );
+  transition: width 0.3s ease;
+}
+
+/* Engineer Navigation Item */
+.engineer-nav-item {
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.15s ease;
+  border-left: 4px solid transparent;
+  background: transparent;
+}
+
+.engineer-nav-item:hover {
+  background: rgba(255, 107, 53, 0.1);
+  border-left-color: #ff6b35;
+}
+
+.engineer-nav-item.active {
+  background: rgba(255, 107, 53, 0.2);
+  border-left-color: #ff6b35;
+  color: #ff6b35;
+}
+
+/* Engineer Blueprint Background for Dashboard */
+.engineer-blueprint-bg {
+  background-color: #2c3e50;
+  background-image:
+    /* Grid lines - electrical blueprint style */
+    linear-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.15) 1px, transparent 1px),
+    /* Circuit pattern - subtle electrical traces */
+    radial-gradient(circle at 25% 25%, rgba(255, 107, 53, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(255, 217, 61, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(74, 144, 164, 0.05) 0%, transparent 70%);
+  background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%, 100% 100%;
+  position: relative;
+}
+
+/* Electrical symbols watermark */
+.engineer-blueprint-bg::before {
+  content: '⚡ 🔌 💡 🔧 ⚙️ 🏗️';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 120px;
+  opacity: 0.03;
+  letter-spacing: 50px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Engineer Hover Lift Effect */
+.engineer-hover-lift {
+  transition: all 0.2s ease;
+}
+
+.engineer-hover-lift:hover {
+  transform: translate(-4px, -4px);
+  box-shadow: 10px 10px 0px #2c3e50 !important;
+}
+
+.engineer-hover-lift:active {
+  transform: translate(2px, 2px);
+  box-shadow: 4px 4px 0px #2c3e50 !important;
+}

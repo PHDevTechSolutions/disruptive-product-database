@@ -19,6 +19,7 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
   const { setUserId } = useUser();
   const { theme } = useTheme();
   const isComic = theme === "comic";
+  const isEngineer = theme === "engineer";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -90,12 +91,12 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
       <FieldGroup>
         <div className="mb-4 sm:mb-6 text-center">
           <h1 className={`text-2xl sm:text-3xl text-red-500 ${
-            isComic ? "font-comic-title comic-text-shadow comic-animate-bounce" : "font-formal-title"
+            isComic ? "font-comic-title comic-text-shadow comic-animate-bounce" : isEngineer ? "font-engineer-title text-orange-600 engineer-text-shadow engineer-animate-wiggle" : "font-formal-title"
           }`}>
-            {isComic ? "Login to your account" : "Sign In"}
+            {isComic ? "Login to your account" : isEngineer ? "👷 Sign In" : "Sign In"}
           </h1>
 
-          <p className={`mt-2 text-xs sm:text-sm text-gray-600 ${isComic ? "font-comic" : "font-formal"}`}>
+          <p className={`mt-2 text-xs sm:text-sm text-gray-600 ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"}`}>
             Disruptive Solutions Inc. · Internal Operations Portal
           </p>
         </div>
@@ -104,39 +105,41 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
           <div className={`mb-4 ${
             isComic
               ? "comic-bubble bg-red-100 border-red-400 comic-animate-shake"
+              : isEngineer
+              ? "engineer-sign bg-red-100 engineer-animate-hammer"
               : "bg-red-50 border border-red-200 rounded-lg p-3"
           }`}>
-            <p className={`text-sm text-red-600 text-center font-bold ${isComic ? "font-comic" : "font-formal"}`}>
+            <p className={`text-sm text-red-600 text-center font-bold ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"}`}>
               {isComic && "⚠️ "}{error}
             </p>
           </div>
         )}
 
         <Field>
-          <FieldLabel className={`font-bold text-gray-700 ${isComic ? "font-comic" : "font-formal"}`}>
-            {isComic ? "📧 Email" : "Email"}
+          <FieldLabel className={`font-bold text-gray-700 ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"}`}>
+            {isComic ? "📧 Email" : isEngineer ? "🔧 Email" : "Email"}
           </FieldLabel>
           <Input
             type="email"
             required
-            className={`h-10 sm:h-12 text-base sm:text-lg ${isComic ? "comic-input" : "border-gray-300 focus:border-red-500 focus:ring-red-500"}`}
+            className={`h-10 sm:h-12 text-base sm:text-lg ${isComic ? "comic-input" : isEngineer ? "engineer-input" : "border-gray-300 focus:border-red-500 focus:ring-red-500"}`}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder={isComic ? "hero@disruptive.com" : "Enter your email"}
+            placeholder={isComic ? "hero@disruptive.com" : isEngineer ? "worker@construction.com" : "Enter your email"}
           />
         </Field>
 
         <Field>
-          <FieldLabel className={`font-bold text-gray-700 ${isComic ? "font-comic" : "font-formal"}`}>
-            {isComic ? "🔑 Password" : "Password"}
+          <FieldLabel className={`font-bold text-gray-700 ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"}`}>
+            {isComic ? "🔑 Password" : isEngineer ? "🔐 Password" : "Password"}
           </FieldLabel>
           <Input
             type="password"
             required
-            className={`h-10 sm:h-12 text-base sm:text-lg ${isComic ? "comic-input" : "border-gray-300 focus:border-red-500 focus:ring-red-500"}`}
+            className={`h-10 sm:h-12 text-base sm:text-lg ${isComic ? "comic-input" : isEngineer ? "engineer-input" : "border-gray-300 focus:border-red-500 focus:ring-red-500"}`}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={isComic ? "Your secret code!" : "Enter your password"}
+            placeholder={isComic ? "Your secret code!" : isEngineer ? "Your access code!" : "Enter your password"}
           />
         </Field>
 
@@ -146,23 +149,26 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
           className={`mt-3 sm:mt-4 h-12 sm:h-14 w-full text-base sm:text-lg text-white ${
             isComic
               ? "comic-button bg-linear-to-r from-red-500 to-orange-500 font-comic comic-animate-pulse"
+              : isEngineer
+              ? "engineer-button font-engineer engineer-animate-wiggle"
               : "bg-red-600 hover:bg-red-700 font-formal rounded-md shadow-md hover:shadow-lg transition-all"
           }`}
         >
           {loading ? (
-            <span className={`flex items-center gap-2 ${isComic ? "font-comic" : "font-formal"}`}>
+            <span className={`flex items-center gap-2 ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"}`}>
               {isComic && <span className="animate-spin">⚡</span>}
-              {isComic ? "Powering up..." : "Signing in..."}
+              {isEngineer && <span className="animate-spin">🔧</span>}
+              {isComic ? "Powering up..." : isEngineer ? "Building..." : "Signing in..."}
             </span>
           ) : (
-            <span className={`flex items-center gap-2 ${isComic ? "font-comic" : "font-formal"}`}>
-              {isComic ? "🚀 Let's Go!" : "Sign In"}
+            <span className={`flex items-center gap-2 ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"}`}>
+              {isComic ? "🚀 Let's Go!" : isEngineer ? "🔧 Let's Build!" : "Sign In"}
             </span>
           )}
         </Button>
 
-        <p className={`mt-3 sm:mt-4 text-center text-xs text-gray-500 ${isComic ? "font-comic" : "font-formal"}`}>
-          Having trouble? Contact your administrator{isComic && " 🦸"}
+        <p className={`mt-3 sm:mt-4 text-center text-xs text-gray-500 ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"}`}>
+          Having trouble? Contact your administrator{isComic && " 🦸"}{isEngineer && " 👷"}
         </p>
       </FieldGroup>
     </form>

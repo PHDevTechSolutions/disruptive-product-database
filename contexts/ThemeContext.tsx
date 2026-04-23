@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 const STORAGE_KEY = "app_theme";
-export type Theme = "comic" | "formal";
+export type Theme = "comic" | "formal" | "engineer";
 
 type ThemeContextType = {
   theme: Theme;
@@ -11,19 +11,19 @@ type ThemeContextType = {
 };
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: "formal",
+  theme: "engineer",
   setTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("formal");
+  const [theme, setThemeState] = useState<Theme>("engineer");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     try {
       const savedTheme = localStorage.getItem(STORAGE_KEY) as Theme | null;
-      if (savedTheme && (savedTheme === "comic" || savedTheme === "formal")) {
+      if (savedTheme && (savedTheme === "comic" || savedTheme === "formal" || savedTheme === "engineer")) {
         setThemeState(savedTheme);
       }
     } catch {}
@@ -39,7 +39,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Prevent hydration mismatch by rendering children only after mount
   if (!mounted) {
     return (
-      <ThemeContext.Provider value={{ theme: "formal", setTheme }}>
+      <ThemeContext.Provider value={{ theme: "engineer", setTheme }}>
         {children}
       </ThemeContext.Provider>
     );

@@ -5,7 +5,7 @@ import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Palette, Sparkles, Building2 } from "lucide-react";
+import { Palette, Sparkles, Building2, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
@@ -25,26 +25,26 @@ export default function SettingsPage() {
     <div className="container mx-auto max-w-4xl p-6 space-y-6">
       {/* Header */}
       <div className="space-y-1">
-        <h1 className={`text-3xl font-bold ${theme === "comic" ? "font-comic-title text-red-500 comic-text-outline" : "font-formal-title text-red-600"}`}>
+        <h1 className={`text-3xl font-bold ${theme === "comic" ? "font-comic-title text-red-500 comic-text-outline" : theme === "engineer" ? "font-engineer-title text-orange-600 engineer-text-shadow" : "font-formal-title text-red-600"}`}>
           Settings
         </h1>
-        <p className={`text-muted-foreground ${theme === "comic" ? "font-comic" : "font-formal"}`}>
+        <p className={`text-muted-foreground ${theme === "comic" ? "font-comic" : theme === "engineer" ? "font-engineer" : "font-formal"}`}>
           Customize your application experience
         </p>
       </div>
 
       {/* Theme Settings */}
-      <Card className={theme === "comic" ? "comic-card" : "formal-card"}>
+      <Card className={theme === "comic" ? "comic-card" : theme === "engineer" ? "engineer-card" : "formal-card"}>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${theme === "comic" ? "comic-card-primary" : "formal-card-primary"}`}>
+            <div className={`p-2 rounded-lg ${theme === "comic" ? "comic-card-primary" : theme === "engineer" ? "engineer-card-primary" : "formal-card-primary"}`}>
               <Palette className="h-5 w-5 text-white" />
             </div>
             <div>
               <CardTitle className={theme === "comic" ? "font-comic-title" : "font-formal-title"}>
                 Theme
               </CardTitle>
-              <CardDescription className={theme === "comic" ? "font-comic" : "font-formal"}>
+              <CardDescription className={theme === "comic" ? "font-comic" : theme === "engineer" ? "font-engineer" : "font-formal"}>
                 Choose your preferred visual style
               </CardDescription>
             </div>
@@ -54,7 +54,7 @@ export default function SettingsPage() {
           <RadioGroup
             value={theme}
             onValueChange={(value) => setTheme(value as Theme)}
-            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            className="grid grid-cols-1 md:grid-cols-3 gap-4"
           >
             {/* Comic Theme Option */}
             <Label
@@ -125,17 +125,52 @@ export default function SettingsPage() {
                 </div>
               </div>
             </Label>
+
+            {/* Engineer Theme Option */}
+            <Label
+              htmlFor="engineer"
+              className={`cursor-pointer transition-all ${
+                theme === "engineer"
+                  ? "engineer-card-primary scale-[1.02]"
+                  : "engineer-card hover:scale-[1.01]"
+              }`}
+            >
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wrench className="h-5 w-5" />
+                    <span className="font-engineer-title text-lg">Engineer</span>
+                  </div>
+                  <RadioGroupItem value="engineer" id="engineer" className="sr-only" />
+                  {theme === "engineer" && (
+                    <span className="engineer-badge bg-orange-500 text-white px-2 py-0.5 text-xs">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <div className="h-2 w-full bg-linear-to-r from-orange-500 via-yellow-400 to-orange-500 rounded-full" />
+                  <p className="font-engineer text-sm opacity-90">
+                    Bob the Builder inspired - construction site aesthetic with safety colors
+                  </p>
+                  <div className="flex gap-1">
+                    <span className="engineer-badge bg-orange-500 text-white px-2 py-0.5 text-xs">Industrial</span>
+                    <span className="engineer-badge bg-yellow-400 text-gray-900 px-2 py-0.5 text-xs">Construction</span>
+                  </div>
+                </div>
+              </div>
+            </Label>
           </RadioGroup>
         </CardContent>
       </Card>
 
       {/* Preview Section */}
-      <Card className={theme === "comic" ? "comic-card" : "formal-card"}>
+      <Card className={theme === "comic" ? "comic-card" : theme === "engineer" ? "engineer-card" : "formal-card"}>
         <CardHeader>
-          <CardTitle className={theme === "comic" ? "font-comic-title" : "font-formal-title"}>
+          <CardTitle className={theme === "comic" ? "font-comic-title" : theme === "engineer" ? "font-engineer-title" : "font-formal-title"}>
             Preview
           </CardTitle>
-          <CardDescription className={theme === "comic" ? "font-comic" : "font-formal"}>
+          <CardDescription className={theme === "comic" ? "font-comic" : theme === "engineer" ? "font-engineer" : "font-formal"}>
             See how your theme looks
           </CardDescription>
         </CardHeader>
@@ -146,6 +181,8 @@ export default function SettingsPage() {
               className={
                 theme === "comic"
                   ? "comic-button px-4 py-2 bg-red-500 text-white"
+                  : theme === "engineer"
+                  ? "engineer-button px-4 py-2"
                   : "formal-button px-4 py-2 bg-red-600 text-white hover:bg-red-700"
               }
             >
@@ -155,6 +192,8 @@ export default function SettingsPage() {
               className={
                 theme === "comic"
                   ? "comic-button px-4 py-2 bg-white text-gray-800 border-2 border-gray-800"
+                  : theme === "engineer"
+                  ? "engineer-button px-4 py-2 bg-yellow-400 text-gray-900"
                   : "formal-button px-4 py-2 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
               }
             >
@@ -165,34 +204,34 @@ export default function SettingsPage() {
           {/* Sample Card */}
           <div
             className={`p-4 ${
-              theme === "comic" ? "comic-card-yellow" : "formal-card bg-gray-50"
+              theme === "comic" ? "comic-card-yellow" : theme === "engineer" ? "engineer-card-yellow" : "formal-card bg-gray-50"
             }`}
           >
-            <h3 className={`font-bold mb-2 ${theme === "comic" ? "font-comic-title" : "font-formal-title"}`}>
+            <h3 className={`font-bold mb-2 ${theme === "comic" ? "font-comic-title" : theme === "engineer" ? "font-engineer-title" : "font-formal-title"}`}>
               Sample Card
             </h3>
-            <p className={theme === "comic" ? "font-comic" : "font-formal"}>
-              This is how cards appear in the {theme === "comic" ? "Comic" : "Formal"} theme.
+            <p className={theme === "comic" ? "font-comic" : theme === "engineer" ? "font-engineer" : "font-formal"}>
+              This is how cards appear in the {theme === "comic" ? "Comic" : theme === "engineer" ? "Engineer" : "Formal"} theme.
             </p>
           </div>
 
           {/* Sample Text */}
           <div className="space-y-2">
-            <p className={`text-sm ${theme === "comic" ? "font-comic" : "font-formal"}`}>
-              Font: {theme === "comic" ? "Fredoka / Comic Neue (Playful)" : "Arial / Helvetica (Professional)"}
+            <p className={`text-sm ${theme === "comic" ? "font-comic" : theme === "engineer" ? "font-engineer" : "font-formal"}`}>
+              Font: {theme === "comic" ? "Fredoka / Comic Neue (Playful)" : theme === "engineer" ? "Roboto Condensed / Arial Narrow (Industrial)" : "Arial / Helvetica (Professional)"}
             </p>
-            <p className={`text-sm ${theme === "comic" ? "font-comic" : "font-formal"}`}>
-              Primary Color: {theme === "comic" ? "Superhero Red #ff4757" : "Professional Red #dc2626"}
+            <p className={`text-sm ${theme === "comic" ? "font-comic" : theme === "engineer" ? "font-engineer" : "font-formal"}`}>
+              Primary Color: {theme === "comic" ? "Superhero Red #ff4757" : theme === "engineer" ? "Safety Orange #ff6b35" : "Professional Red #dc2626"}
             </p>
-            <p className={`text-sm ${theme === "comic" ? "font-comic" : "font-formal"}`}>
-              Background: {theme === "comic" ? "Sky Blue #87CEEB" : "Clean White #ffffff"}
+            <p className={`text-sm ${theme === "comic" ? "font-comic" : theme === "engineer" ? "font-engineer" : "font-formal"}`}>
+              Background: {theme === "comic" ? "Sky Blue #87CEEB" : theme === "engineer" ? "Construction Beige #f4e4bc" : "Clean White #ffffff"}
             </p>
           </div>
         </CardContent>
       </Card>
 
       {/* Info Section */}
-      <div className={`text-center text-sm text-muted-foreground ${theme === "comic" ? "font-comic" : "font-formal"}`}>
+      <div className={`text-center text-sm text-muted-foreground ${theme === "comic" ? "font-comic" : theme === "engineer" ? "font-engineer" : "font-formal"}`}>
         <p>Changes are saved automatically and apply across all pages.</p>
       </div>
     </div>
