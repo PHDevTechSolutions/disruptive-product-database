@@ -121,14 +121,84 @@ const normalizeJoin = (arr?: string[]) => arr && arr.length ? arr.join(" | ") : 
 const normalizeContacts = (arr?: { name: string; phone: string }[]) =>
   arr && arr.length ? arr.map((c) => `${c.name}|${c.phone}`).join(" | ") : "";
 
-const parseContacts = (rawNames: string, rawPhones: string): { name: string; phone: string }[] => {
+const parseContacts = (rawNames: string, rawPhones: string): { name: string; phone: string; type: "phone" | "other" }[] => {
   const names = safeSplit(rawNames);
   const phones = safeSplit(rawPhones);
   return names.map((name, i) => {
     const rawPhone = phones[i] || "";
-    const { normalized } = parsePhone(rawPhone);
-    return { name, phone: normalized };
+    const { normalized, isPhone } = parsePhone(rawPhone);
+    return { name, phone: normalized, type: isPhone ? "phone" : "other" };
   });
+};
+
+const extractCountryFromAddress = (address: string): { address: string; country: string } => {
+  const trimmed = address.trim();
+  // Check if address already has country in parentheses like "Address (CN)"
+  const match = trimmed.match(/\((\w{2})\)$/);
+  if (match) {
+    return {
+      address: trimmed.replace(/\(\w{2}\)$/, "").trim(),
+      country: match[1] as any,
+    };
+  }
+  // Default to CN if no country specified
+  return { address: trimmed, country: "CN" };
+};
+
+const parseBranchLabel = (value: string): { branchIndex: number | null; content: string } => {
+  const trimmed = value.trim();
+  // Match patterns like "Branch 1: ..." or "Branch 2:..."
+  const match = trimmed.match(/^Branch\s+(\d+)\s*:\s*(.*)$/i);
+  if (match) {
+    return {
+      branchIndex: parseInt(match[1], 10) - 1, // Convert to 0-based index
+      content: match[2].trim(),
+    };
+  }
+  return { branchIndex: null, content: trimmed };
+};
+
+const groupByBranch = (items: string[]): Map<number, string[]> => {
+  const grouped = new Map<number, string[]>();
+  let currentBranch = 0;
+  
+  items.forEach((item) => {
+    const { branchIndex, content } = parseBranchLabel(item);
+    if (branchIndex !== null) {
+      currentBranch = branchIndex;
+    }
+    if (!grouped.has(currentBranch)) {
+      grouped.set(currentBranch, []);
+    }
+    grouped.get(currentBranch)!.push(content);
+  });
+  
+  return grouped;
+};
+
+const groupContactsByBranch = (names: string[], phones: string[]): Map<number, { name: string; phone: string; type: "phone" | "other" }[]> => {
+  const grouped = new Map<number, { name: string; phone: string; type: "phone" | "other" }[]>();
+  let currentBranch = 0;
+  
+  names.forEach((name, i) => {
+    const { branchIndex, content: parsedName } = parseBranchLabel(name);
+    if (branchIndex !== null) {
+      currentBranch = branchIndex;
+    }
+    const phone = phones[i] || "";
+    const { normalized, isPhone } = parsePhone(phone);
+    
+    if (!grouped.has(currentBranch)) {
+      grouped.set(currentBranch, []);
+    }
+    grouped.get(currentBranch)!.push({
+      name: parsedName,
+      phone: normalized,
+      type: isPhone ? "phone" : "other",
+    });
+  });
+  
+  return grouped;
 };
 
 /* ─────────────────────────────────────────────────────────────────
@@ -515,22 +585,83 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
         // 🔁 EXISTING BUT INACTIVE → REACTIVATE
         if (existing) {
           const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
-          await updateDoc(doc(db, "suppliers", existing.id), {
-            whatHappened   : "Supplier Added",
-            date_updated   : serverTimestamp(),
-            supplierId     : existing.id,
-            supplierBrand,
-            supplierbrandId: existing.id,
-            addresses      : safeSplit(row.Addresses),
-            emails         : safeSplit(row.Emails),
-            website        : row.Website || "",
-            contacts       : incomingContacts,
-            forteProducts  : safeSplit(row["Forte Product(s)"]),
-            products       : safeSplit(row["Product(s)"]),
-            certificates   : safeSplit(row["Certificate(s)"]),
-            isActive       : true,
-            updatedAt      : serverTimestamp(),
-          });
+          const addresses = safeSplit(row.Addresses);
+          const firstAddress = addresses[0] || "";
+          
+          // Check if addresses have branch labels
+          const hasBranchLabels = addresses.some(a => parseBranchLabel(a).branchIndex !== null);
+          
+          if (hasBranchLabels) {
+            // Multi-branch mode - parse branch labels
+            const addressesByBranch = groupByBranch(addresses);
+            const emailsByBranch = groupByBranch(safeSplit(row.Emails));
+            const contactsByBranch = groupContactsByBranch(
+              safeSplit(String(row["Contact Name(s)"] ?? "")),
+              safeSplit(String(row["Phone Number(s)"] ?? "")),
+            );
+            
+            const branches: any[] = [];
+            const branchIndices = Array.from(new Set([...addressesByBranch.keys(), ...emailsByBranch.keys(), ...contactsByBranch.keys()])).sort((a, b) => a - b);
+            
+            branchIndices.forEach(branchIdx => {
+              const branchAddresses = addressesByBranch.get(branchIdx) || [];
+              const firstBranchAddr = branchAddresses[0] || "";
+              const { address, country } = extractCountryFromAddress(firstBranchAddr);
+              branches.push({
+                address,
+                country,
+                emails: emailsByBranch.get(branchIdx) || [],
+                contacts: contactsByBranch.get(branchIdx) || [],
+              });
+            });
+            
+            const countries = branches.map(b => b.country);
+            const displayAddresses = branches.map(b => `${b.address} (${b.country})`);
+            
+            await updateDoc(doc(db, "suppliers", existing.id), {
+              whatHappened   : "Supplier Added",
+              date_updated   : serverTimestamp(),
+              supplierId     : existing.id,
+              supplierBrand,
+              supplierbrandId: existing.id,
+              hasMultipleBranches: true,
+              branches,
+              addresses: displayAddresses,
+              countries,
+              website        : row.Website || "",
+              forteProducts  : safeSplit(row["Forte Product(s)"]),
+              products       : safeSplit(row["Product(s)"]),
+              certificates   : safeSplit(row["Certificate(s)"]),
+              isActive       : true,
+              updatedAt      : serverTimestamp(),
+            });
+          } else {
+            // Single branch mode
+            const { address, country } = extractCountryFromAddress(firstAddress);
+            await updateDoc(doc(db, "suppliers", existing.id), {
+              whatHappened   : "Supplier Added",
+              date_updated   : serverTimestamp(),
+              supplierId     : existing.id,
+              supplierBrand,
+              supplierbrandId: existing.id,
+              hasMultipleBranches: false,
+              address,
+              country,
+              addresses: addresses.length > 0 ? addresses.map(a => {
+                const { address: addr, country: c } = extractCountryFromAddress(a);
+                return `${addr} (${c})`;
+              }) : [],
+              countries: addresses.length > 0 ? addresses.map(a => extractCountryFromAddress(a).country) : [country],
+              emails         : safeSplit(row.Emails),
+              website        : row.Website || "",
+              contacts       : incomingContacts,
+              forteProducts  : safeSplit(row["Forte Product(s)"]),
+              products       : safeSplit(row["Product(s)"]),
+              certificates   : safeSplit(row["Certificate(s)"]),
+              isActive       : true,
+              updatedAt      : serverTimestamp(),
+            });
+          }
 
           await logSupplierEvent({
             whatHappened : "Supplier Reactivated",
@@ -549,21 +680,72 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
 
         // 🟢 NEW SUPPLIER → INSERT
         const supplierBrand = String(row["Supplier Brand"] ?? "").trim();
-        const docRef = await addDoc(collection(db, "suppliers"), {
+        const addresses = safeSplit(row.Addresses);
+        const firstAddress = addresses[0] || "";
+        
+        // Check if addresses have branch labels
+        const hasBranchLabels = addresses.some(a => parseBranchLabel(a).branchIndex !== null);
+        
+        let supplierData: any = {
           company,
           supplierBrand,
-          addresses    : safeSplit(row.Addresses),
-          emails       : safeSplit(row.Emails),
-          website      : row.Website || "",
-          contacts     : incomingContacts,
+          website: row.Website || "",
           forteProducts: safeSplit(row["Forte Product(s)"]),
-          products     : safeSplit(row["Product(s)"]),
-          certificates : safeSplit(row["Certificate(s)"]),
-          createdBy    : userId,
-          referenceID  : user!.ReferenceID,
-          isActive     : true,
-          createdAt    : serverTimestamp(),
-        });
+          products: safeSplit(row["Product(s)"]),
+          certificates: safeSplit(row["Certificate(s)"]),
+          createdBy: userId,
+          referenceID: user!.ReferenceID,
+          isActive: true,
+          createdAt: serverTimestamp(),
+        };
+        
+        if (hasBranchLabels) {
+          // Multi-branch mode - parse branch labels
+          const addressesByBranch = groupByBranch(addresses);
+          const emailsByBranch = groupByBranch(safeSplit(row.Emails));
+          const contactsByBranch = groupContactsByBranch(
+            safeSplit(String(row["Contact Name(s)"] ?? "")),
+            safeSplit(String(row["Phone Number(s)"] ?? "")),
+          );
+          
+          const branches: any[] = [];
+          const branchIndices = Array.from(new Set([...addressesByBranch.keys(), ...emailsByBranch.keys(), ...contactsByBranch.keys()])).sort((a, b) => a - b);
+          
+          branchIndices.forEach(branchIdx => {
+            const branchAddresses = addressesByBranch.get(branchIdx) || [];
+            const firstBranchAddr = branchAddresses[0] || "";
+            const { address, country } = extractCountryFromAddress(firstBranchAddr);
+            branches.push({
+              address,
+              country,
+              emails: emailsByBranch.get(branchIdx) || [],
+              contacts: contactsByBranch.get(branchIdx) || [],
+            });
+          });
+          
+          const countries = branches.map(b => b.country);
+          const displayAddresses = branches.map(b => `${b.address} (${b.country})`);
+          
+          supplierData.hasMultipleBranches = true;
+          supplierData.branches = branches;
+          supplierData.addresses = displayAddresses;
+          supplierData.countries = countries;
+        } else {
+          // Single branch mode
+          const { address, country } = extractCountryFromAddress(firstAddress);
+          supplierData.hasMultipleBranches = false;
+          supplierData.address = address;
+          supplierData.country = country;
+          supplierData.addresses = addresses.length > 0 ? addresses.map(a => {
+            const { address: addr, country: c } = extractCountryFromAddress(a);
+            return `${addr} (${c})`;
+          }) : [];
+          supplierData.countries = addresses.length > 0 ? addresses.map(a => extractCountryFromAddress(a).country) : [country];
+          supplierData.emails = safeSplit(row.Emails);
+          supplierData.contacts = incomingContacts;
+        }
+        
+        const docRef = await addDoc(collection(db, "suppliers"), supplierData);
 
         await updateDoc(doc(db, "suppliers", docRef.id), {
           supplierId     : docRef.id,
@@ -721,10 +903,21 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
             setLoading(true);
 
             for (const c of conflicts) {
+              const addresses = c.incoming.addresses || [];
+              const firstAddress = addresses[0] || "";
+              const { address, country } = extractCountryFromAddress(firstAddress);
+              
               await updateDoc(doc(db, "suppliers", c.supplierId), {
                 supplierBrand        : c.incoming.supplierBrand,
                 supplierbrandId      : c.supplierId,
-                addresses            : c.incoming.addresses,
+                hasMultipleBranches: false,
+                address,
+                country,
+                addresses: addresses.length > 0 ? addresses.map(a => {
+                  const { address: addr, country: c } = extractCountryFromAddress(a);
+                  return `${addr} (${c})`;
+                }) : [],
+                countries: addresses.length > 0 ? addresses.map(a => extractCountryFromAddress(a).country) : [country],
                 emails               : c.incoming.emails,
                 website              : c.incoming.website,
                 contacts             : c.incoming.contacts,

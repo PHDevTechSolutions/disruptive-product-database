@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useWallpaper } from "@/contexts/WallpaperContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,7 +112,9 @@ export default function NotesPage() {
   const router = useRouter();
   const { userId } = useUser();
   const { theme } = useTheme();
+  const { wallpaper } = useWallpaper();
   const isComic = theme === "comic";
+  const isEngineer = theme === "engineer";
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -600,7 +603,9 @@ export default function NotesPage() {
       </div>
 
       {/* ── CONTENT ── */}
-      <div className="flex-1 overflow-auto p-4 md:p-6">
+      <div className={`flex-1 overflow-auto p-4 md:p-6 ${
+        isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
+      }`}>
         {sortedNotes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
             <div

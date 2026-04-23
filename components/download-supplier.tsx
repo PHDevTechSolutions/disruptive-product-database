@@ -7,7 +7,7 @@ type Supplier = {
   id: string;
   company: string;
   supplierBrand?: string;
-  addresses: string[];
+  addresses?: string[];
   emails?: string[];
   website?: string[];
   contacts?: {
@@ -17,6 +17,17 @@ type Supplier = {
   forteProducts?: string[];
   products?: string[];
   certificates?: string[];
+  // New fields
+  hasMultipleBranches?: boolean;
+  address?: string;
+  country?: string;
+  countries?: string[];
+  branches?: {
+    address: string;
+    country: string;
+    contacts: { name: string; phone: string; type: string }[];
+    emails: string[];
+  }[];
 };
 
 type DownloadSupplierProps = {
@@ -64,19 +75,44 @@ export default function DownloadSupplier({ suppliers, iconOnly = false }: Downlo
     ];
 
     const rows = suppliers.map((s) => {
-      const contactNames =
-        s.contacts?.map((c) => c.name).filter(Boolean) ?? [];
+      let addresses: string[] = [];
+      let emails: string[] = [];
+      let contactNames: string[] = [];
+      let contactPhones: string[] = [];
 
-      const contactPhones =
-        s.contacts
-          ?.map((c) => normalizePhone(c.phone))
-          .filter(Boolean) ?? [];
+      // Handle new data structure
+      if (s.hasMultipleBranches && s.branches?.length) {
+        // Multiple branches mode - include branch labels
+        addresses = s.branches.map((b, idx) => `Branch ${idx + 1}: ${b.address} (${b.country})`);
+        emails = s.branches.map((b, idx) => {
+          const emailStr = b.emails?.join(", ") || "";
+          return emailStr ? `Branch ${idx + 1}: ${emailStr}` : "";
+        }).filter(Boolean);
+        s.branches.forEach((b, idx) => {
+          (b.contacts || []).forEach(c => {
+            contactNames.push(`Branch ${idx + 1}: ${c.name}`);
+            contactPhones.push(normalizePhone(c.phone));
+          });
+        });
+      } else if (s.address && s.country) {
+        // Single branch mode (new structure)
+        addresses = [`${s.address} (${s.country})`];
+        emails = s.emails || [];
+        contactNames = s.contacts?.map(c => c.name).filter(Boolean) ?? [];
+        contactPhones = s.contacts?.map(c => normalizePhone(c.phone)).filter(Boolean) ?? [];
+      } else if (s.addresses?.length) {
+        // Old structure (backward compatibility)
+        addresses = s.addresses;
+        emails = s.emails || [];
+        contactNames = s.contacts?.map(c => c.name).filter(Boolean) ?? [];
+        contactPhones = s.contacts?.map(c => normalizePhone(c.phone)).filter(Boolean) ?? [];
+      }
 
       return [
         s.company ?? "",
         s.supplierBrand ?? "",
-        s.addresses?.join(" | ") ?? "",
-        s.emails?.join(" | ") ?? "",
+        addresses.join(" | "),
+        emails.join(" | "),
         s.website?.join(" | ") ?? "",
         contactNames.join(" | "),
         contactPhones.join(" | "),

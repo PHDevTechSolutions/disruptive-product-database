@@ -24,7 +24,7 @@ type Supplier = {
   id: string;
   company: string;
   supplierBrand?: string;
-  addresses: string[];
+  addresses?: string[];
   emails?: string[];
   website?: string[];
   contacts?: { name: string; phone: string }[];
@@ -36,6 +36,17 @@ type Supplier = {
   isActive?: boolean;
   createdAt?: any;
   updatedAt?: any;
+  // New fields for branch structure
+  hasMultipleBranches?: boolean;
+  address?: string;
+  country?: string;
+  countries?: string[];
+  branches?: {
+    address: string;
+    country: string;
+    contacts: { name: string; phone: string; type: string }[];
+    emails: string[];
+  }[];
 };
 
 const COL_WIDTHS = [
@@ -317,10 +328,36 @@ export default function Suppliers() {
                     ) : <span className="text-muted-foreground">-</span>}
                   </td>
                   <td className={`${COL_WIDTHS[3]} px-3 py-3 text-center`}>
-                    {s.addresses?.length ? <div className="flex flex-col gap-2">{s.addresses.map((v, i) => <div key={i}>{highlightText(v, search)}</div>)}</div> : <span className="text-muted-foreground">-</span>}
+                    {s.hasMultipleBranches && s.branches?.length ? (
+                      <div className="flex flex-col gap-2">
+                        {s.branches.map((b, idx) => (
+                          <div key={idx}>
+                            <span className="text-xs font-semibold text-blue-600">Branch {idx + 1}:</span>
+                            <div>{highlightText(`${b.address} (${b.country})`, search)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : s.addresses?.length ? (
+                      <div className="flex flex-col gap-2">{s.addresses.map((v, i) => <div key={i}>{highlightText(v, search)}</div>)}</div>
+                    ) : <span className="text-muted-foreground">-</span>}
                   </td>
                   <td className={`${COL_WIDTHS[4]} px-3 py-3 text-center`}>
-                    {s.emails?.length ? <div className="flex flex-col gap-2">{s.emails.map((v, i) => <div key={i} className="break-all">{highlightText(v, search)}</div>)}</div> : <span className="text-muted-foreground">-</span>}
+                    {s.hasMultipleBranches && s.branches?.length ? (
+                      <div className="flex flex-col gap-2">
+                        {s.branches.map((b, idx) => (
+                          <div key={idx}>
+                            <span className="text-xs font-semibold text-blue-600">Branch {idx + 1}:</span>
+                            <div className="flex flex-col gap-1">
+                              {b.emails?.map((email, emailIdx) => (
+                                <div key={emailIdx} className="break-all text-xs">{highlightText(email, search)}</div>
+                              )) || <span className="text-muted-foreground">-</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : s.emails?.length ? (
+                      <div className="flex flex-col gap-2">{s.emails.map((v, i) => <div key={i} className="break-all">{highlightText(v, search)}</div>)}</div>
+                    ) : <span className="text-muted-foreground">-</span>}
                   </td>
                   <td className={`${COL_WIDTHS[5]} px-3 py-3 text-center`}>
                     {s.website?.length ? (
@@ -334,7 +371,25 @@ export default function Suppliers() {
                     ) : <span className="text-muted-foreground">-</span>}
                   </td>
                   <td className={`${COL_WIDTHS[6]} px-3 py-3 text-center`}>
-                    {s.contacts?.length ? (
+                    {s.hasMultipleBranches && s.branches?.length ? (
+                      <div className="flex flex-col gap-2">
+                        {s.branches.map((b, idx) => (
+                          <div key={idx}>
+                            <span className="text-xs font-semibold text-blue-600">Branch {idx + 1}:</span>
+                            <div className="flex flex-col gap-1">
+                              {b.contacts?.length ? (
+                                b.contacts.map((c, contactIdx) => (
+                                  <div key={contactIdx}>
+                                    <div className="font-medium text-xs">{highlightText(c.name, search)}</div>
+                                    <div className="text-xs text-muted-foreground">{highlightText(c.phone, search)}</div>
+                                  </div>
+                                ))
+                              ) : <span className="text-muted-foreground">-</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : s.contacts?.length ? (
                       <div className="flex flex-col gap-2">
                         {s.contacts.map((c, i) => (
                           <div key={i}>
@@ -401,9 +456,85 @@ export default function Suppliers() {
               </div>
 
               <div className="space-y-2 text-sm">
+                {/* Address - with branch labels */}
+                {s.hasMultipleBranches && s.branches?.length ? (
+                  <div className="flex gap-2">
+                    <span className="text-xs font-semibold text-gray-500 w-24 shrink-0 pt-0.5">Address</span>
+                    <div className="flex flex-col gap-2 flex-1">
+                      {s.branches.map((b, idx) => (
+                        <div key={idx}>
+                          <span className="text-xs font-semibold text-blue-600">Branch {idx + 1}:</span>
+                          <span className="text-gray-700 text-xs ml-1">{highlightText(`${b.address} (${b.country})`, search)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : s.addresses?.length ? (
+                  <div className="flex gap-2">
+                    <span className="text-xs font-semibold text-gray-500 w-24 shrink-0 pt-0.5">Address</span>
+                    <div className="flex flex-col gap-1 flex-1">
+                      {s.addresses.map((item, i) => <span key={i} className="text-gray-700 text-xs">{highlightText(item, search)}</span>)}
+                    </div>
+                  </div>
+                ) : null}
+                {/* Email - with branch labels */}
+                {s.hasMultipleBranches && s.branches?.length ? (
+                  <div className="flex gap-2">
+                    <span className="text-xs font-semibold text-gray-500 w-24 shrink-0 pt-0.5">Email</span>
+                    <div className="flex flex-col gap-2 flex-1">
+                      {s.branches.map((b, idx) => (
+                        <div key={idx}>
+                          <span className="text-xs font-semibold text-blue-600">Branch {idx + 1}:</span>
+                          <div className="flex flex-col gap-1 ml-1">
+                            {b.emails?.length ? (
+                              b.emails.map((email, emailIdx) => (
+                                <span key={emailIdx} className="text-gray-700 text-xs break-all">{highlightText(email, search)}</span>
+                              ))
+                            ) : <span className="text-muted-foreground text-xs">-</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : s.emails?.length ? (
+                  <div className="flex gap-2">
+                    <span className="text-xs font-semibold text-gray-500 w-24 shrink-0 pt-0.5">Email</span>
+                    <div className="flex flex-col gap-1 flex-1">
+                      {s.emails.map((item, i) => <span key={i} className="text-gray-700 text-xs break-all">{highlightText(item, search)}</span>)}
+                    </div>
+                  </div>
+                ) : null}
+                {/* Contact - with branch labels */}
+                {s.hasMultipleBranches && s.branches?.length ? (
+                  <div className="flex gap-2">
+                    <span className="text-xs font-semibold text-gray-500 w-24 shrink-0 pt-0.5">Contact</span>
+                    <div className="flex flex-col gap-2 flex-1">
+                      {s.branches.map((b, idx) => (
+                        <div key={idx}>
+                          <span className="text-xs font-semibold text-blue-600">Branch {idx + 1}:</span>
+                          <div className="flex flex-col gap-1 ml-1">
+                            {b.contacts?.length ? (
+                              b.contacts.map((c, contactIdx) => (
+                                <span key={contactIdx} className="text-gray-700 text-xs">{highlightText(c.name, search)} · {highlightText(c.phone, search)}</span>
+                              ))
+                            ) : <span className="text-muted-foreground text-xs">-</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : s.contacts?.length ? (
+                  <div className="flex gap-2">
+                    <span className="text-xs font-semibold text-gray-500 w-24 shrink-0 pt-0.5">Contact</span>
+                    <div className="flex flex-col gap-1 flex-1">
+                      {s.contacts.map((c, i) => (
+                        <span key={i} className="text-gray-700 text-xs">{highlightText(c.name, search)} · {highlightText(c.phone, search)}</span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {/* Other fields */}
                 {[
-                  { label: "Address", items: s.addresses },
-                  { label: "Email",   items: s.emails    },
                   { label: "Forte Products", items: s.forteProducts },
                   { label: "Products",       items: s.products      },
                   { label: "Certificates",   items: s.certificates  },
