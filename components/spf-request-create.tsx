@@ -60,6 +60,7 @@ export type SPFRequest = {
   process_by?: string;
   tin_no?: string;
   manager?: string;
+  date_approved_sales_head?: string;
 };
 
 type Props = {

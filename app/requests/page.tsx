@@ -328,7 +328,7 @@ export default function RequestsPage() {
         <table className="w-full text-sm border-collapse">
           <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">
             <tr>
-              {["SPF Number", "Customer Name", "Special Instructions", "Prepared By", "Approved By", "Approval Status", "Date Updated", "Action"].map((h) => (
+              {["SPF Number", "Customer Name", "Special Instructions", "Prepared By", "Approved By", "Approval Status", "Date Approved Sales Head", "Date Updated", "Action"].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-bold border-b whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -336,19 +336,22 @@ export default function RequestsPage() {
           <tbody>
             {loadingPage ? (
               <tr>
-                <td colSpan={8} className="text-center py-10 text-muted-foreground">Loading...</td>
+                <td colSpan={9} className="text-center py-10 text-muted-foreground">Loading...</td>
               </tr>
             ) : filteredRequests.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-10 text-muted-foreground">No SPF requests yet.</td>
+                <td colSpan={9} className="text-center py-10 text-muted-foreground">No SPF requests yet.</td>
               </tr>
             ) : (
               paginatedRequests.map((req) => {
                 const formattedDate = req.date_updated
-                  ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
+                  ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(req.date_updated))
                   : (req.date_created
-                    ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
+                    ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(req.date_created))
                     : "-");
+                const formattedDateApprovedSalesHead = req.date_approved_sales_head
+                  ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(req.date_approved_sales_head))
+                  : "-";
                 const spfStatus = createdSPF[req.spf_number];
                 const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);
                 const isUnreadRow = unreadCountForRow > 0;
@@ -391,6 +394,7 @@ export default function RequestsPage() {
                     <td className="px-4 py-3">
                       <StatusBadge status={req.status} />
                     </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formattedDateApprovedSalesHead}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formattedDate}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 flex-nowrap items-center">
@@ -439,10 +443,13 @@ export default function RequestsPage() {
         ) : (
           paginatedRequests.map((req) => {
             const formattedDate = req.date_updated
-              ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_updated))
+              ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(req.date_updated))
               : (req.date_created
-                ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(req.date_created))
+                ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(req.date_created))
                 : "-");
+            const formattedDateApprovedSalesHead = req.date_approved_sales_head
+              ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(req.date_approved_sales_head))
+              : "-";
             const spfStatus = createdSPF[req.spf_number];
             const unreadCountForRow = getSPFRequestUnreadCount(req.spf_number);
             const isUnreadRow = unreadCountForRow > 0;
@@ -486,6 +493,7 @@ export default function RequestsPage() {
                 <div>
                   <StatusBadge status={req.status} />
                 </div>
+                <p className="text-xs text-gray-600"><span className="text-gray-400">Date Approved Sales Head:</span> {formattedDateApprovedSalesHead}</p>
                 <div className="flex gap-2 pt-1 flex-wrap items-center">
                   <CollaborationHubRowTrigger
                     requestId={String(createdSPFIds[req.spf_number] || "")}
