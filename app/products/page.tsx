@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useUser } from "@/contexts/UserContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useWallpaper } from "@/contexts/WallpaperContext";
 import { AccessGuard } from "@/components/AccessGuard";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -29,6 +31,9 @@ const convertDriveToThumbnail = (url: string) => {
 export default function ProductsPage() {
   const router = useRouter();
   const { userId } = useUser();
+  const { theme } = useTheme();
+  const { wallpaper } = useWallpaper();
+  const isEngineer = theme === "engineer";
 
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
@@ -66,7 +71,7 @@ export default function ProductsPage() {
 
       const containerWidth = gridRef.current.offsetWidth;
 
-      // 🔥 FIX: fallback kung 0 width (common after navigation)
+      // 
       if (!containerWidth) return;
 
       const cardMinWidth = 220 * cardScale;
@@ -76,10 +81,10 @@ export default function ProductsPage() {
       setItemsPerPage(cols * 4);
     };
 
-  // 🔥 run immediately
+  // 
   updateGridPagination();
 
-  // 🔥 run AGAIN after render (important)
+  // 
   const timeout = setTimeout(updateGridPagination, 50);
 
   window.addEventListener("resize", updateGridPagination);
@@ -229,7 +234,9 @@ export default function ProductsPage() {
         On mobile: relative container so the drawer can be positioned absolute within it.
         The products grid stays fully rendered and visible behind the drawer.
       */}
-      <div className="flex flex-1 min-h-0 w-full overflow-hidden relative">
+      <div className={`flex flex-1 min-h-0 w-full overflow-hidden relative ${
+        isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
+      }`}>
 
         {/* ── PRODUCT GRID AREA ── */}
         <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden">

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useUser } from "@/contexts/UserContext";
 import { useRoleAccess, AccessKey } from "@/contexts/RoleAccessContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useWallpaper } from "@/contexts/WallpaperContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -33,6 +35,9 @@ export default function RolesPage() {
   const router = useRouter();
   const { userId: currentUserId } = useUser();
   const { toggleAccess, getUserAccess } = useRoleAccess();
+  const { theme } = useTheme();
+  const { wallpaper } = useWallpaper();
+  const isEngineer = theme === "engineer";
 
   const [users, setUsers] = useState<UserWithAccess[]>([]);
   const [loading, setLoading] = useState(true);
@@ -278,7 +283,7 @@ export default function RolesPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-6">
+      <div className={`flex-1 overflow-y-auto p-3 md:p-6 ${isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""}`}>
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="h-8 w-8 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />

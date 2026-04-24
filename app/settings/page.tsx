@@ -2,6 +2,7 @@
 
 import { useTheme, type Theme } from "@/contexts/ThemeContext";
 import { useUser } from "@/contexts/UserContext";
+import { useWallpaper } from "@/contexts/WallpaperContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -11,6 +12,8 @@ import { useEffect, useState } from "react";
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { userId } = useUser();
+  const { wallpaper } = useWallpaper();
+  const isEngineer = theme === "engineer";
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -22,7 +25,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl p-6 space-y-6">
+    <div className={`container mx-auto max-w-4xl p-6 space-y-6 min-h-screen ${
+      isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
+    }`}>
       {/* Header */}
       <div className="space-y-1">
         <h1 className={`text-3xl font-bold ${theme === "comic" ? "font-comic-title text-red-500 comic-text-outline" : theme === "engineer" ? "font-engineer-title text-orange-600 engineer-text-shadow" : "font-formal-title text-red-600"}`}>

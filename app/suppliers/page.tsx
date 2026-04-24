@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useWallpaper } from "@/contexts/WallpaperContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { AccessGuard } from "@/components/AccessGuard";
@@ -96,6 +98,9 @@ const formatWebsite = (url?: string) => {
 export default function Suppliers() {
   const router = useRouter();
   const { userId } = useUser();
+  const { theme } = useTheme();
+  const { wallpaper } = useWallpaper();
+  const isEngineer = theme === "engineer";
 
   const [loading, setLoading] = useState(true);
   const [addSupplierOpen, setAddSupplierOpen] = useState(false);
@@ -289,7 +294,9 @@ export default function Suppliers() {
       </div>
 
       {/* ── DESKTOP TABLE — bg-white → bg-white/60 ── */}
-      <div className="hidden md:block flex-1 min-h-0 overflow-auto bg-white/60 backdrop-blur-sm">
+      <div className={`hidden md:block flex-1 min-h-0 overflow-auto bg-white/60 backdrop-blur-sm ${
+        isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
+      }`}>
         <table className="w-full text-sm border-collapse">
           {/* thead bg-red-50 → bg-red-50/80 */}
           <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">

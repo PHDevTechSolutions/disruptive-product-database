@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useWallpaper } from "@/contexts/WallpaperContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { AccessGuard } from "@/components/AccessGuard";
@@ -76,6 +78,9 @@ function useIsMobile(breakpoint = 768) {
 export default function RequestsPage() {
   const { userId }            = useUser();
   const { markSPFRequestAsRead, getSPFRequestUnreadCount } = useNotifications();
+  const { theme }             = useTheme();
+  const { wallpaper }         = useWallpaper();
+  const isEngineer            = theme === "engineer";
   const isMobile              = useIsMobile();
 
   /* ── User ── */
@@ -324,7 +329,9 @@ export default function RequestsPage() {
       </div>
 
       {/* ── DESKTOP TABLE ── */}
-      <div className="hidden md:block flex-1 min-h-0 overflow-auto bg-white/60 backdrop-blur-sm">
+      <div className={`hidden md:block flex-1 min-h-0 overflow-auto bg-white/60 backdrop-blur-sm ${
+        isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
+      }`}>
         <table className="w-full text-sm border-collapse">
           <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">
             <tr>

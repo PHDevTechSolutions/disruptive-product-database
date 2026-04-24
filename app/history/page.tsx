@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useWallpaper } from "@/contexts/WallpaperContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -425,6 +427,9 @@ function TabLayout({
 export default function HistoryPage() {
   const router = useRouter();
   const { userId } = useUser();
+  const { theme } = useTheme();
+  const { wallpaper } = useWallpaper();
+  const isEngineer = theme === "engineer";
 
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -667,7 +672,9 @@ export default function HistoryPage() {
           </div>
 
           {/* ════ SUPPLIERS ════ */}
-          <TabsContent value="suppliers" className="flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6">
+          <TabsContent value="suppliers" className={`flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6 ${
+            isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
+          }`}>
             <TabLayout
               tab="suppliers"
               searchPlaceholder="Search company, brand, name…"
@@ -708,7 +715,9 @@ export default function HistoryPage() {
           </TabsContent>
 
           {/* ════ PRODUCTS ════ */}
-          <TabsContent value="products" className="flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6">
+          <TabsContent value="products" className={`flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6 ${
+            isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
+          }`}>
             <TabLayout
               tab="products"
               searchPlaceholder="Search ref ID, supplier, name…"
@@ -807,7 +816,9 @@ export default function HistoryPage() {
           </TabsContent>
 
           {/* ════ PRODUCT FAMILIES ════ */}
-          <TabsContent value="productFamilies" className="flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6">
+          <TabsContent value="productFamilies" className={`flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6 ${
+            isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
+          }`}>
             <TabLayout
               tab="productFamilies"
               searchPlaceholder="Search family name…"
@@ -845,7 +856,9 @@ export default function HistoryPage() {
           </TabsContent>
 
           {/* ════ PRODUCT USAGE ════ */}
-          <TabsContent value="productUsages" className="flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6">
+          <TabsContent value="productUsages" className={`flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6 ${
+            isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
+          }`}>
             <TabLayout
               tab="productUsages"
               searchPlaceholder="Search product usage name…"
@@ -883,7 +896,9 @@ export default function HistoryPage() {
           </TabsContent>
 
           {/* ════ SPF VERSIONS ════ */}
-          <TabsContent value="spfVersions" className="flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6">
+          <TabsContent value="spfVersions" className={`flex-1 min-h-0 overflow-hidden mt-0 p-4 md:p-6 ${
+            isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
+          }`}>
             <TabLayout
               tab="spfVersions"
               searchPlaceholder="Search SPF number…"
