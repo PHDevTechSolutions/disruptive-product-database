@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Minus, ImagePlus, ChevronLeft, Trash2 } from "lucide-react";
+import { Plus, Minus, ImagePlus, ChevronLeft, Trash2, Pencil } from "lucide-react";
 import { useRef } from "react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -56,6 +56,8 @@ import AddProductDeleteProductType from "@/components/add-product-delete-select-
 import AddProductDeleteProduct from "@/components/add-product-delete-select-product";
 import AddProductDeleteTechnicalSpecification from "@/components/add-product-delete-technical-specification";
 import RequestApprovalDialog from "@/components/request-approval-dialog";
+import AddSupplier from "@/components/add-supplier";
+import EditSupplier from "@/components/edit-supplier";
 import {
   createApprovalRequest,
   getApprovalUserProfile,
@@ -80,6 +82,7 @@ type SelectedCategoryType = { id: string; name: string };
 type PackagingDimension = { length: string; width: string; height: string; pcsPerCarton: string };
 
 const COUNTRY_NAMES: Record<string, string> = {
+  AC: "Ascension Islands",
   CN: "China",
   VN: "Vietnam",
   TH: "Thailand",
@@ -289,6 +292,8 @@ export default function EditProductPage() {
   const [newClassification, setNewClassification] = useState("");
   const [newCategoryType, setNewCategoryType] = useState("");
   const [categoryTypes, setCategoryTypes] = useState<CategoryType[]>([]);
+  const [addSupplierOpen, setAddSupplierOpen] = useState(false);
+  const [editSupplierOpen, setEditSupplierOpen] = useState(false);
   const [productFamilies, setProductFamilies] = useState<ProductFamily[]>([]);
   const [selectedProductFamily, setSelectedProductFamily] = useState<ProductFamily | null>(null);
   const [technicalSpecs, setTechnicalSpecs] = useState<TechnicalSpecification[]>([]);
@@ -329,8 +334,9 @@ export default function EditProductPage() {
     const fetchSupplierData = async () => {
       const snap = await getDocs(query(collection(db, "suppliers"), where("supplierId", "==", selectedSupplier.supplierId)));
       if (!snap.empty) {
-        const data = snap.docs[0].data();
-        setSelectedSupplierData(data);
+        const doc = snap.docs[0];
+        const data = doc.data();
+        setSelectedSupplierData({ ...data, id: doc.id });
         // Auto-populate countries from supplier
         if (data.countries && data.countries.length > 0) {
           setCountries(data.countries);
@@ -895,7 +901,30 @@ const handleSaveProduct = async () => {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="text-sm">Supplier & Classification</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between py-3">
+                <CardTitle className="text-sm">Supplier & Classification</CardTitle>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setAddSupplierOpen(true)}
+                  >
+                    Add Supplier
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    disabled={!selectedSupplier}
+                    onClick={() => setEditSupplierOpen(true)}
+                  >
+                    Edit Supplier
+                  </Button>
+                </div>
+              </CardHeader>
               <CardContent className="space-y-4">
                 <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
                   <input type="checkbox" checked={noSupplier} onChange={e => { setNoSupplier(e.target.checked); if (e.target.checked) { setSelectedSupplier(null); setSelectedSupplierBrand(null); setPricePoint("ECONOMY"); setBrandOrigin("CHINA"); setCountries([]); } }} className="rounded" />
@@ -1322,6 +1351,8 @@ const handleSaveProduct = async () => {
       onConfirm={handleRequestApproval}
       loading={requestingApproval}
     />
+    <AddSupplier open={addSupplierOpen} onOpenChange={setAddSupplierOpen} />
+    {selectedSupplierData && <EditSupplier open={editSupplierOpen} onOpenChange={setEditSupplierOpen} supplier={selectedSupplierData} />}
 </>
   );
 }
