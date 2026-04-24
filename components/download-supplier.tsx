@@ -83,7 +83,7 @@ export default function DownloadSupplier({ suppliers, iconOnly = false }: Downlo
       // Handle new data structure
       if (s.hasMultipleBranches && s.branches?.length) {
         // Multiple branches mode - include branch labels
-        addresses = s.branches.map((b, idx) => `Branch ${idx + 1}: ${b.address} (${b.country})`);
+        addresses = s.branches.map((b, idx) => `Branch ${idx + 1}: ${b.address ? `${b.address} (${b.country})` : `(${b.country})`}`);
         emails = s.branches.map((b, idx) => {
           const emailStr = b.emails?.join(", ") || "";
           return emailStr ? `Branch ${idx + 1}: ${emailStr}` : "";
@@ -94,9 +94,9 @@ export default function DownloadSupplier({ suppliers, iconOnly = false }: Downlo
             contactPhones.push(normalizePhone(c.phone));
           });
         });
-      } else if (s.address && s.country) {
-        // Single branch mode (new structure)
-        addresses = [`${s.address} (${s.country})`];
+      } else if (s.country) {
+        // Single branch mode (new structure) - show country even if address is empty
+        addresses = s.address ? [`${s.address} (${s.country})`] : [`(${s.country})`];
         emails = s.emails || [];
         contactNames = s.contacts?.map(c => c.name).filter(Boolean) ?? [];
         contactPhones = s.contacts?.map(c => normalizePhone(c.phone)).filter(Boolean) ?? [];

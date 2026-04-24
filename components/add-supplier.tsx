@@ -558,7 +558,7 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
               })),
             emails: b.emails.filter(Boolean),
           })),
-          addresses: branches.map((b) => `${b.address} (${b.country})`),
+          addresses: branches.map((b) => b.address ? `${b.address} (${b.country})` : `(${b.country})`),
           countries: branches.map((b) => b.country),
           website: website.filter(Boolean),
           forteProducts: forteProducts.filter(Boolean),
@@ -585,7 +585,7 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
           hasMultipleBranches: false,
           address: singleAddress,
           country: singleCountry,
-          addresses: singleAddress ? [`${singleAddress} (${singleCountry})`] : [],
+          addresses: singleAddress ? [`${singleAddress} (${singleCountry})`] : [`(${singleCountry})`],
           countries: [singleCountry],
           emails: singleEmails.filter(Boolean),
           website: website.filter(Boolean),
@@ -632,6 +632,14 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
   const handleRequestApproval = async (message: string) => {
     try {
       if (!userId) return;
+      if (!company.trim()) {
+        toast.error("Company is required");
+        return;
+      }
+      if (!hasMultipleBranches && !singleAddress.trim()) {
+        toast.error("Address is required");
+        return;
+      }
       setRequestingApproval(true);
       const profile = await getApprovalUserProfile(userId);
       if (!profile) {
@@ -1081,7 +1089,7 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
             type="button"
             className="cursor-pointer"
             onClick={handleSaveSupplier}
-            disabled={isDuplicateCompany || !!emailError || !company.trim()}
+            disabled={isDuplicateCompany || !!emailError || !company.trim() || (!hasMultipleBranches && !singleAddress.trim())}
           >
             Save Supplier
           </Button>

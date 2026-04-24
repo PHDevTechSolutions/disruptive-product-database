@@ -616,7 +616,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
             });
             
             const countries = branches.map(b => b.country);
-            const displayAddresses = branches.map(b => `${b.address} (${b.country})`);
+            const displayAddresses = branches.map(b => b.address ? `${b.address} (${b.country})` : `(${b.country})`);
             
             await updateDoc(doc(db, "suppliers", existing.id), {
               whatHappened   : "Supplier Added",
@@ -650,7 +650,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
               addresses: addresses.length > 0 ? addresses.map(a => {
                 const { address: addr, country: c } = extractCountryFromAddress(a);
                 return `${addr} (${c})`;
-              }) : [],
+              }) : [`(${country})`],
               countries: addresses.length > 0 ? addresses.map(a => extractCountryFromAddress(a).country) : [country],
               emails         : safeSplit(row.Emails),
               website        : row.Website || "",
@@ -724,7 +724,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           });
           
           const countries = branches.map(b => b.country);
-          const displayAddresses = branches.map(b => `${b.address} (${b.country})`);
+          const displayAddresses = branches.map(b => b.address ? `${b.address} (${b.country})` : `(${b.country})`);
           
           supplierData.hasMultipleBranches = true;
           supplierData.branches = branches;
@@ -739,7 +739,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
           supplierData.addresses = addresses.length > 0 ? addresses.map(a => {
             const { address: addr, country: c } = extractCountryFromAddress(a);
             return `${addr} (${c})`;
-          }) : [];
+          }) : [`(${country})`];
           supplierData.countries = addresses.length > 0 ? addresses.map(a => extractCountryFromAddress(a).country) : [country];
           supplierData.emails = safeSplit(row.Emails);
           supplierData.contacts = incomingContacts;
@@ -916,7 +916,7 @@ function UploadSupplier({ open, onOpenChange }: UploadSupplierProps) {
                 addresses: addresses.length > 0 ? addresses.map(a => {
                   const { address: addr, country: c } = extractCountryFromAddress(a);
                   return `${addr} (${c})`;
-                }) : [],
+                }) : [`(${country})`],
                 countries: addresses.length > 0 ? addresses.map(a => extractCountryFromAddress(a).country) : [country],
                 emails               : c.incoming.emails,
                 website              : c.incoming.website,

@@ -347,12 +347,14 @@ export default function Suppliers() {
                         {s.branches.map((b, idx) => (
                           <div key={idx}>
                             <span className="text-xs font-semibold text-blue-600">Branch {idx + 1}:</span>
-                            <div>{highlightText(`${b.address} (${b.country})`, search)}</div>
+                            <div>{highlightText(b.address ? `${b.address} (${b.country})` : `(${b.country})`, search)}</div>
                           </div>
                         ))}
                       </div>
                     ) : s.addresses?.length ? (
                       <div className="flex flex-col gap-2">{s.addresses.map((v, i) => <div key={i}>{highlightText(v, search)}</div>)}</div>
+                    ) : s.country ? (
+                      <span className="text-muted-foreground">({s.country})</span>
                     ) : <span className="text-muted-foreground">-</span>}
                   </td>
                   <td className={`${COL_WIDTHS[4]} px-3 py-3 text-center`}>
@@ -478,7 +480,7 @@ export default function Suppliers() {
                       {s.branches.map((b, idx) => (
                         <div key={idx}>
                           <span className="text-xs font-semibold text-blue-600">Branch {idx + 1}:</span>
-                          <span className="text-gray-700 text-xs ml-1">{highlightText(`${b.address} (${b.country})`, search)}</span>
+                          <span className="text-gray-700 text-xs ml-1">{highlightText(b.address ? `${b.address} (${b.country})` : `(${b.country})`, search)}</span>
                         </div>
                       ))}
                     </div>
@@ -489,6 +491,11 @@ export default function Suppliers() {
                     <div className="flex flex-col gap-1 flex-1">
                       {s.addresses.map((item, i) => <span key={i} className="text-gray-700 text-xs">{highlightText(item, search)}</span>)}
                     </div>
+                  </div>
+                ) : s.country ? (
+                  <div className="flex gap-2">
+                    <span className="text-xs font-semibold text-gray-500 w-24 shrink-0 pt-0.5">Address</span>
+                    <span className="text-gray-700 text-xs">({s.country})</span>
                   </div>
                 ) : null}
                 {/* Email - with branch labels */}
