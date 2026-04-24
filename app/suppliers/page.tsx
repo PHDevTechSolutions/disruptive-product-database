@@ -183,13 +183,20 @@ export default function Suppliers() {
           (!filters.email || s.emails?.some((e) => e.toLowerCase().includes(filters.email.toLowerCase()))) &&
           (filters.hasContacts === null || (filters.hasContacts ? s.contacts && s.contacts.length > 0 : !s.contacts || s.contacts.length === 0)) &&
           (!filters.phoneCountry || s.contacts?.some((c) => {
-            try { return c.phone?.startsWith("+" + getCountryCallingCode(filters.phoneCountry as CountryCode)); }
-            catch { return false; }
-          })) &&
-          (!filters.addressCountry || s.addresses?.some((addr) =>
-            addr.toLowerCase().endsWith(filters.addressCountry.toLowerCase()) ||
-            addr.toLowerCase().includes(`, ${filters.addressCountry.toLowerCase()}`)
-          ));
+            // phoneCountry is now a calling code like +63, +81, +86
+            return c.phone?.startsWith(filters.phoneCountry);
+          }) ||
+            s.branches?.some((branch) =>
+              branch.contacts?.some((c) => c.phone?.startsWith(filters.phoneCountry))
+            )) &&
+          (!filters.addressCountry || 
+            // Check if the supplier's countries array includes the selected country code
+            s.countries?.includes(filters.addressCountry) ||
+            // Fallback: check branches for country field
+            s.branches?.some((branch) => branch.country === filters.addressCountry) ||
+            // Fallback: check single country field
+            s.country === filters.addressCountry
+          );
 
         return searchMatch && filterMatch;
       })

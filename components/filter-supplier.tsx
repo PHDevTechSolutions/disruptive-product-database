@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useState, useMemo } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
+import { parsePhoneNumber } from "libphonenumber-js";
 
 import {
   Dialog,
@@ -56,6 +57,82 @@ type FilterSupplierProps = {
 };
 
 /* ---------------- Helper ---------------- */
+
+/**
+ * Map of country names to their ISO 3166-1 alpha-2 codes
+ */
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  "china": "CN",
+  "japan": "JP",
+  "philippines": "PH",
+  "south korea": "KR",
+  "taiwan": "TW",
+  "united states": "US",
+  "united kingdom": "GB",
+  "germany": "DE",
+  "france": "FR",
+  "netherlands": "NL",
+  "italy": "IT",
+  "spain": "ES",
+  "canada": "CA",
+  "australia": "AU",
+  "india": "IN",
+  "indonesia": "ID",
+  "malaysia": "MY",
+  "singapore": "SG",
+  "thailand": "TH",
+  "vietnam": "VN",
+  "brazil": "BR",
+  "mexico": "MX",
+  "argentina": "AR",
+  "russia": "RU",
+  "turkey": "TR",
+  "switzerland": "CH",
+  "sweden": "SE",
+  "norway": "NO",
+  "denmark": "DK",
+  "finland": "FI",
+  "belgium": "BE",
+  "austria": "AT",
+  "portugal": "PT",
+  "greece": "GR",
+  "czechia": "CZ",
+  "hungary": "HU",
+  "poland": "PL",
+  "romania": "RO",
+  "ukraine": "UA",
+  "israel": "IL",
+  "pakistan": "PK",
+  "bangladesh": "BD",
+  "sri lanka": "LK",
+  "myanmar": "MM",
+  "cambodia": "KH",
+  "laos": "LA",
+  "nepal": "NP",
+  "egypt": "EG",
+  "nigeria": "NG",
+  "kenya": "KE",
+  "ghana": "GH",
+  "ethiopia": "ET",
+  "tanzania": "TZ",
+  "south africa": "ZA",
+  "morocco": "MA",
+  "algeria": "DZ",
+  "tunisia": "TN",
+  "saudi arabia": "SA",
+  "iran": "IR",
+  "iraq": "IQ",
+  "jordan": "JO",
+  "lebanon": "LB",
+  "united arab emirates": "AE",
+  "qatar": "QA",
+  "kuwait": "KW",
+  "new zealand": "NZ",
+  "chile": "CL",
+  "colombia": "CO",
+  "peru": "PE",
+  "venezuela": "VE",
+};
 
 /**
  * Known alias map — any segment that matches a key (case-insensitive)
@@ -143,6 +220,46 @@ function extractCountryFromAddress(address: string): string | null {
   return null;
 }
 
+/**
+ * Extract country code from country name
+ */
+function getCountryCodeFromName(countryName: string): string | null {
+  if (!countryName?.trim()) return null;
+  const lower = countryName.toLowerCase().trim();
+  return COUNTRY_NAME_TO_CODE[lower] || null;
+}
+
+/**
+ * Extract phone country calling code from phone number
+ * e.g., "+63 9123456789" → "+63"
+ */
+function extractPhoneCallingCode(phone: string): string | null {
+  if (!phone?.trim()) return null;
+  
+  // Remove spaces and dashes
+  const cleaned = phone.replace(/[\s\-]/g, "");
+  
+  // Check if it starts with +
+  if (!cleaned.startsWith("+")) return null;
+  
+  // Try to parse the phone number to get the country calling code
+  try {
+    const phoneNumber = parsePhoneNumber(cleaned);
+    if (phoneNumber && phoneNumber.countryCallingCode) {
+      return "+" + phoneNumber.countryCallingCode;
+    }
+  } catch (e) {
+    // If parsing fails, try to extract the calling code manually
+    // Most calling codes are 1-3 digits after the +
+    const match = cleaned.match(/^\+(\d{1,3})/);
+    if (match) {
+      return "+" + match[1];
+    }
+  }
+  
+  return null;
+}
+
 /* ---------------- AddressCountryCombobox ---------------- */
 type AddressCountryComboboxProps = {
   options: string[];
@@ -177,7 +294,7 @@ function AddressCountryCombobox({
 
       {/* ← fixed width + z-index so it doesn't get clipped by Dialog */}
       <PopoverContent
-        className="p-0 w-[380px]"
+        className="p-0 w-95"
         align="start"
         side="bottom"
         style={{ zIndex: 9999 }}
@@ -186,7 +303,7 @@ function AddressCountryCombobox({
           <CommandInput placeholder="Search country…" className="h-9" />
           {/* ← explicit height + overflow-y-auto so mouse-wheel scroll works */}
           <CommandList
-className="max-h-[200px] overflow-y-auto"
+            className="max-h-50 overflow-y-auto"
             style={{ overflowY: "auto" }}
             onWheel={(e) => e.stopPropagation()}
           >
@@ -238,6 +355,99 @@ className="max-h-[200px] overflow-y-auto"
   );
 }
 
+/* ---------------- PhoneCountryCodeCombobox ---------------- */
+type PhoneCountryCodeComboboxProps = {
+  options: string[];
+  value: string;
+  onChange: (val: string) => void;
+};
+
+function PhoneCountryCodeCombobox({
+  options,
+  value,
+  onChange,
+}: PhoneCountryCodeComboboxProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          <span className="truncate text-sm">
+            {value || (
+              <span className="text-muted-foreground">Any country code…</span>
+            )}
+          </span>
+          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        className="p-0 w-95"
+        align="start"
+        side="bottom"
+        style={{ zIndex: 9999 }}
+      >
+        <Command>
+          <CommandInput placeholder="Search country code…" className="h-9" />
+          <CommandList
+            className="max-h-50 overflow-y-auto"
+            style={{ overflowY: "auto" }}
+            onWheel={(e) => e.stopPropagation()}
+          >
+            <CommandEmpty>No country code found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__any__"
+                onSelect={() => {
+                  onChange("");
+                  setOpen(false);
+                }}
+                className="cursor-pointer"
+              >
+                <span className="flex-1 text-sm text-muted-foreground italic">
+                  Any
+                </span>
+                <Check
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0",
+                    value === "" ? "opacity-100" : "opacity-0",
+                  )}
+                />
+              </CommandItem>
+
+              {options.map((code) => (
+                <CommandItem
+                  key={code}
+                  value={code}
+                  onSelect={(selected) => {
+                    onChange(selected === value ? "" : selected);
+                    setOpen(false);
+                  }}
+                  className="cursor-pointer"
+                >
+                  <span className="flex-1 text-sm">{code}</span>
+                  <Check
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      value === code ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /* ---------------- FilterSupplier ---------------- */
 export default function FilterSupplier({
   open,
@@ -253,16 +463,41 @@ export default function FilterSupplier({
   const [phoneCountry, setPhoneCountry] = useState("");
   const [addressCountry, setAddressCountry] = useState("");
 
-  /* Derive unique, deduplicated, title-cased countries from all addresses */
+  /* Derive unique, deduplicated country codes from stored countries array */
   const addressCountryOptions = useMemo(() => {
     const countrySet = new Set<string>();
     suppliers.forEach((s) => {
-      s.addresses?.forEach((addr) => {
-        const country = extractCountryFromAddress(addr);
-        if (country) countrySet.add(country);
+      // Use the countries array if it exists
+      s.countries?.forEach((countryCode: string) => {
+        if (countryCode) countrySet.add(countryCode);
       });
+      // Fallback: check branches for country field
+      s.branches?.forEach((branch: any) => {
+        if (branch.country) countrySet.add(branch.country);
+      });
+      // Fallback: check single country field
+      if (s.country) countrySet.add(s.country);
     });
     return Array.from(countrySet).sort((a, b) => a.localeCompare(b));
+  }, [suppliers]);
+
+  /* Derive unique phone country calling codes from all contacts */
+  const phoneCountryCodeOptions = useMemo(() => {
+    const codeSet = new Set<string>();
+    suppliers.forEach((s) => {
+      s.contacts?.forEach((contact) => {
+        const callingCode = extractPhoneCallingCode(contact.phone);
+        if (callingCode) codeSet.add(callingCode);
+      });
+      // Also check branches if they exist
+      s.branches?.forEach((branch: any) => {
+        branch.contacts?.forEach((contact: any) => {
+          const callingCode = extractPhoneCallingCode(contact.phone);
+          if (callingCode) codeSet.add(callingCode);
+        });
+      });
+    });
+    return Array.from(codeSet).sort((a, b) => a.localeCompare(b));
   }, [suppliers]);
 
   const handleApply = () => {
@@ -371,15 +606,20 @@ export default function FilterSupplier({
             )}
           </div>
 
-          {/* Phone Country */}
-          <div>
-            <label className="font-medium">Contact Phone Country</label>
-            <input
-              className="w-full h-9 border rounded-md px-3"
-              placeholder="e.g. CN, US, PH"
-              value={phoneCountry}
-              onChange={(e) => setPhoneCountry(e.target.value.toUpperCase())}
-            />
+          {/* Phone Country Code */}
+          <div className="space-y-1">
+            <label className="font-medium">Contact Phone Country Code</label>
+            {phoneCountryCodeOptions.length === 0 ? (
+              <p className="text-xs text-muted-foreground px-1">
+                No phone country codes detected yet.
+              </p>
+            ) : (
+              <PhoneCountryCodeCombobox
+                options={phoneCountryCodeOptions}
+                value={phoneCountry}
+                onChange={setPhoneCountry}
+              />
+            )}
           </div>
 
           {/* Alphabetical Sort */}
