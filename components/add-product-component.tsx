@@ -77,6 +77,152 @@ type ProductFamily = { id: string; name: string; productUsageId: string };
 type SelectedCategoryType = { id: string; name: string };
 type PackagingDimension = { length: string; width: string; height: string; pcsPerCarton: string };
 
+const COUNTRY_NAMES: Record<string, string> = {
+  CN: "China",
+  VN: "Vietnam",
+  TH: "Thailand",
+  ID: "Indonesia",
+  MY: "Malaysia",
+  PH: "Philippines",
+  SG: "Singapore",
+  JP: "Japan",
+  KR: "South Korea",
+  TW: "Taiwan",
+  HK: "Hong Kong",
+  IN: "India",
+  BD: "Bangladesh",
+  PK: "Pakistan",
+  LK: "Sri Lanka",
+  MM: "Myanmar",
+  KH: "Cambodia",
+  LA: "Laos",
+  BN: "Brunei",
+  US: "United States",
+  DE: "Germany",
+  IT: "Italy",
+  ES: "Spain",
+  FR: "France",
+  GB: "United Kingdom",
+  NL: "Netherlands",
+  BE: "Belgium",
+  AT: "Austria",
+  CH: "Switzerland",
+  SE: "Sweden",
+  NO: "Norway",
+  DK: "Denmark",
+  FI: "Finland",
+  PL: "Poland",
+  CZ: "Czech Republic",
+  HU: "Hungary",
+  RO: "Romania",
+  BG: "Bulgaria",
+  GR: "Greece",
+  PT: "Portugal",
+  IE: "Ireland",
+  HR: "Croatia",
+  SI: "Slovenia",
+  SK: "Slovakia",
+  LT: "Lithuania",
+  LV: "Latvia",
+  EE: "Estonia",
+  UA: "Ukraine",
+  BY: "Belarus",
+  KZ: "Kazakhstan",
+  UZ: "Uzbekistan",
+  KG: "Kyrgyzstan",
+  TJ: "Tajikistan",
+  TM: "Turkmenistan",
+  AZ: "Azerbaijan",
+  GE: "Georgia",
+  AM: "Armenia",
+  TR: "Turkey",
+  IL: "Israel",
+  AE: "United Arab Emirates",
+  SA: "Saudi Arabia",
+  QA: "Qatar",
+  KW: "Kuwait",
+  BH: "Bahrain",
+  OM: "Oman",
+  JO: "Jordan",
+  LB: "Lebanon",
+  SY: "Syria",
+  IQ: "Iraq",
+  IR: "Iran",
+  AF: "Afghanistan",
+  NP: "Nepal",
+  BT: "Bhutan",
+  MV: "Maldives",
+  TL: "Timor-Leste",
+  AU: "Australia",
+  NZ: "New Zealand",
+  FJ: "Fiji",
+  PG: "Papua New Guinea",
+  SB: "Solomon Islands",
+  VU: "Vanuatu",
+  WS: "Samoa",
+  TO: "Tonga",
+  KI: "Kiribati",
+  NR: "Nauru",
+  TV: "Tuvalu",
+  FM: "Micronesia",
+  MH: "Marshall Islands",
+  PW: "Palau",
+  MP: "Northern Mariana Islands",
+  GU: "Guam",
+  AS: "American Samoa",
+  CK: "Cook Islands",
+  NU: "Niue",
+  PF: "French Polynesia",
+  WF: "Wallis and Futuna",
+  NC: "New Caledonia",
+  CA: "Canada",
+  MX: "Mexico",
+  GT: "Guatemala",
+  BZ: "Belize",
+  SV: "El Salvador",
+  HN: "Honduras",
+  NI: "Nicaragua",
+  CR: "Costa Rica",
+  PA: "Panama",
+  CO: "Colombia",
+  VE: "Venezuela",
+  GY: "Guyana",
+  SR: "Suriname",
+  GF: "French Guiana",
+  EC: "Ecuador",
+  PE: "Peru",
+  BO: "Bolivia",
+  CL: "Chile",
+  AR: "Argentina",
+  PY: "Paraguay",
+  UY: "Uruguay",
+  BR: "Brazil",
+  CU: "Cuba",
+  HT: "Haiti",
+  DO: "Dominican Republic",
+  JM: "Jamaica",
+  TT: "Trinidad and Tobago",
+  BB: "Barbados",
+  GD: "Grenada",
+  LC: "Saint Lucia",
+  VC: "Saint Vincent and the Grenadines",
+  AG: "Antigua and Barbuda",
+  DM: "Dominica",
+  KN: "Saint Kitts and Nevis",
+  BS: "Bahamas",
+  PR: "Puerto Rico",
+  VI: "Virgin Islands",
+  AI: "Anguilla",
+  MS: "Montserrat",
+  TC: "Turks and Caicos Islands",
+  BM: "Bermuda",
+  KY: "Cayman Islands",
+  GL: "Greenland",
+  IS: "Iceland",
+  FO: "Faroe Islands",
+  RU: "Russia",
+};
+
 const convertDriveToThumbnail = (url: string) => {
   const trimmed = url.trim();
   if (!trimmed) return "";
@@ -113,10 +259,12 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [selectedSupplierBrand, setSelectedSupplierBrand] = useState<Supplier | null>(null);
+  const [selectedSupplierData, setSelectedSupplierData] = useState<any>(null);
   const [noSupplier, setNoSupplier] = useState(false);
 
   const [pricePoint, setPricePoint] = useState("");
   const [brandOrigin, setBrandOrigin] = useState("");
+  const [countries, setCountries] = useState<string[]>([]);
   const [productClass, setProductClass] = useState("");
   const [unitCost, setUnitCost] = useState("");
   const [packLength, setPackLength] = useState("");
@@ -181,6 +329,28 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
       setSuppliers(list.sort((a, b) => a.company.localeCompare(b.company)));
     });
   }, []);
+
+  // Fetch supplier details when selected to get countries
+  useEffect(() => {
+    if (!selectedSupplier) {
+      setSelectedSupplierData(null);
+      return;
+    }
+    const fetchSupplierData = async () => {
+      const snap = await getDocs(query(collection(db, "suppliers"), where("supplierId", "==", selectedSupplier.supplierId)));
+      if (!snap.empty) {
+        const data = snap.docs[0].data();
+        setSelectedSupplierData(data);
+        // Auto-populate countries from supplier
+        if (data.countries && data.countries.length > 0) {
+          setCountries(data.countries);
+          // Set brandOrigin to first country
+          setBrandOrigin(data.countries[0] === "CN" ? "CHINA" : "NON-CHINA");
+        }
+      }
+    };
+    fetchSupplierData();
+  }, [selectedSupplier]);
 
   useEffect(() => {
     const q = query(collection(db, "brands"), where("isActive", "==", true));
@@ -413,6 +583,7 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
         productReferenceID: newProductReferenceID,
         pricePoint: noSupplier ? "ECONOMY" : pricePoint,
         brandOrigin: noSupplier ? "CHINA" : brandOrigin,
+        countries: countries,
         productClass,
         supplier: noSupplier ? null : { supplierId: selectedSupplier!.supplierId, company: selectedSupplier!.company, supplierBrand: selectedSupplierBrand?.supplierBrand || "" },
         productFamilies: [{ productFamilyId: selectedProductFamily.id, productFamilyName: selectedProductFamily.name, productUsageId: categoryTypeId || "" }],
@@ -452,6 +623,7 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
         productClass,
         pricePoint        : noSupplier ? "ECONOMY" : pricePoint,
         brandOrigin       : noSupplier ? "CHINA" : brandOrigin,
+        countries         : countries,
         supplier          : noSupplier ? null : {
           supplierId   : selectedSupplier!.supplierId,
           company      : selectedSupplier!.company,
@@ -503,6 +675,7 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
           productClass,
           pricePoint: noSupplier ? "ECONOMY" : pricePoint,
           brandOrigin: noSupplier ? "CHINA" : brandOrigin,
+          countries: countries,
           supplier: noSupplier ? null : {
             supplierId: selectedSupplier?.supplierId ?? null,
             company: selectedSupplier?.company ?? "",
@@ -536,6 +709,7 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
         productClass,
         pricePoint: noSupplier ? "ECONOMY" : pricePoint,
         brandOrigin: noSupplier ? "CHINA" : brandOrigin,
+        countries: countries,
         referenceID: profile.referenceID,
         userId,
       });
@@ -619,7 +793,7 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
             <CardHeader><CardTitle className="text-sm">Supplier & Classification</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-                <input type="checkbox" checked={noSupplier} onChange={e => { setNoSupplier(e.target.checked); if (e.target.checked) { setSelectedSupplier(null); setSelectedSupplierBrand(null); setPricePoint("ECONOMY"); setBrandOrigin("CHINA"); } }} className="rounded" />
+                <input type="checkbox" checked={noSupplier} onChange={e => { setNoSupplier(e.target.checked); if (e.target.checked) { setSelectedSupplier(null); setSelectedSupplierBrand(null); setPricePoint("ECONOMY"); setBrandOrigin("CHINA"); setCountries([]); } }} className="rounded" />
                 No supplier for this product
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -716,6 +890,77 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
                       </Command>
                     </PopoverContent>
                   </Popover>
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label className="text-xs text-gray-500">Available Countries</Label>
+                  {noSupplier ? (
+                    <>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between text-sm h-10">
+                            <span className="truncate">{countries.length > 0 ? `${countries.length} countries selected` : "Select countries..."}</span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0 w-72 max-h-80 overflow-y-auto">
+                          <Command>
+                            <CommandInput placeholder="Search country..." />
+                            <CommandEmpty>No country found.</CommandEmpty>
+                            <CommandGroup>
+                              {Object.entries(COUNTRY_NAMES).map(([code, name]) => (
+                                <CommandItem 
+                                  key={code} 
+                                  value={code} 
+                                  onSelect={() => {
+                                    setCountries(prev => 
+                                      prev.includes(code) 
+                                        ? prev.filter(c => c !== code)
+                                        : [...prev, code]
+                                    );
+                                  }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", countries.includes(code) ? "opacity-100" : "opacity-0")} />
+                                  {name} ({code})
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {countries.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {countries.map(code => (
+                            <span key={code} className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded flex items-center gap-1">
+                              {COUNTRY_NAMES[code] || code} ({code})
+                              <button 
+                                type="button" 
+                                onClick={() => setCountries(prev => prev.filter(c => c !== code))}
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full">
+                      {countries.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 p-2 border rounded-md bg-gray-50">
+                          {countries.map(code => (
+                            <span key={code} className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                              {COUNTRY_NAMES[code] || code} ({code})
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500 p-2 border rounded-md bg-gray-50">
+                          Auto-populated from supplier
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1 sm:col-span-2">
                   <Label className="text-xs text-gray-500">Product Class</Label>

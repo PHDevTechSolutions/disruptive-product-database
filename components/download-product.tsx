@@ -77,7 +77,8 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
        *  Cols 1-7  : static product fields (Usage → Image URL)
        *  Cols 8+   : technical spec columns (grouped)
        *  Next 7    : COMMERCIAL DETAILS (Unit Cost … Port of Discharge)
-       *  Last 2    : Dimensional Drawing, Illuminance Level   ← moved here
+       *  Next 2    : Dimensional Drawing, Illuminance Level   ← moved here
+       *  Next 1    : Available Countries
        * ─────────────────────────────────────────────────────────────── */
       const staticColumns = [
         "Product Usage",
@@ -119,6 +120,11 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
       header2.push("DRAWINGS", "");
       header3.push("", "");
 
+      // Available Countries column — AFTER drawings
+      header1.push("Available Countries");
+      header2.push("");
+      header3.push("");
+
       ws.addRow(header1);
       ws.addRow(header2);
       ws.addRow(header3);
@@ -138,6 +144,9 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
       const drawStart = cdEnd + 1;
       const drawEnd   = drawStart + 1; // 2 drawing cols
       ws.mergeCells(2, drawStart, 2, drawEnd);
+
+      // ── Available Countries column (no merge needed, single column) ──
+      const countriesCol = drawEnd + 1;
 
       // ── Style: static cols (blue) ──
       for (let col = 1; col <= staticColumns.length; col++) {
@@ -171,6 +180,15 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
           c.alignment = { vertical: "middle", horizontal: "center" };
         });
       }
+
+      // ── Style: Available Countries column (light orange) ──
+      const countriesColor = "FCE4D6";
+      [ws.getRow(1), ws.getRow(2), ws.getRow(3)].forEach((r, ri) => {
+        const c = r.getCell(countriesCol);
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: countriesColor } };
+        c.font = { bold: true, italic: ri === 2 };
+        c.alignment = { vertical: "middle", horizontal: "center" };
+      });
 
       // ── Style: technical spec group cols (alternating colors) ──
       let colStart = staticColumns.length + 1;
@@ -236,6 +254,10 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
 
         let illuminanceURL = convertDriveToThumbnail(product.illuminanceDrawing?.url || "");
         row.push(illuminanceURL);
+
+        // Available Countries — AFTER drawings
+        const countriesArray = product.countries || [];
+        row.push(countriesArray.join(" | "));
 
         ws.addRow(row);
       });

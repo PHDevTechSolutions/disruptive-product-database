@@ -39,6 +39,7 @@ export type ParsedProductRow = {
   pcsPerCarton: string;
   factoryAddress: string;
   portOfDischarge: string;
+  countries: string;
   wsIndex: number;
   rowIndex: number;
   specValues: Record<string, string>;
@@ -78,6 +79,7 @@ export function buildExcelColumnsMapFromWorkbook(workbook: Workbook): ExcelColum
       )
         continue;
       if (specHeader === "Dimensional Drawing" || specHeader === "Illuminance Level") continue;
+      if (specHeader === "Available Countries") continue;
       if (col < 8) continue;
       if (groupHeader === "COMMERCIAL DETAILS") continue;
       if (!groupHeader || !specHeader) continue;
@@ -328,6 +330,7 @@ export async function insertParsedProductBulk(params: {
         factoryAddress: row.factoryAddress || "",
         portOfDischarge: row.portOfDischarge || "",
       },
+      countries: row.countries ? row.countries.split("|").map(c => c.trim()) : [],
       isActive: true,
       createdAt: serverTimestamp(),
       createdBy: userId,

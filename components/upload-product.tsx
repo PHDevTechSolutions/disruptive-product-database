@@ -415,6 +415,7 @@ export default function UploadProduct({ iconOnly = false }: Props) {
         portOfDischarge: -1,
         dimensionalURL: -1,   // ← now read from header1 after commercial block
         illuminanceURL: -1,   // ← now read from header1 after commercial block
+        countries: -1,        // ← Available Countries column after drawings
       };
       const excelColumns: { title: string; specId: string; col: number }[] = [];
 
@@ -435,6 +436,9 @@ export default function UploadProduct({ iconOnly = false }: Props) {
         // ── Drawing columns — identified by row-1 header name ──
         if (specHeader === "Dimensional Drawing")     { commercialColMap.dimensionalURL = col; continue; }
         if (specHeader === "Illuminance Level")     { commercialColMap.illuminanceURL = col; continue; }
+
+        // ── Available Countries column — identified by row-1 header name ──
+        if (specHeader === "Available Countries")   { commercialColMap.countries = col; continue; }
 
         // ── Skip static first 7 columns ──
         if (col < 8) continue;
@@ -484,6 +488,9 @@ export default function UploadProduct({ iconOnly = false }: Props) {
           ),
         );
 
+        // Available Countries column — after drawings
+        const countries = getCellVal(row, commercialColMap.countries);
+
         lastUsage = usage; lastFamily = family; lastClass = productClass;
         lastPricePoint = pricePoint; lastBrandOrigin = brandOrigin;
         lastSupplier = supplierBrand; lastImage = imageURL;
@@ -508,6 +515,7 @@ export default function UploadProduct({ iconOnly = false }: Props) {
           pcsPerCarton   : getCellVal(row, commercialColMap.pcsPerCarton),
           factoryAddress : getCellVal(row, commercialColMap.factoryAddress),
           portOfDischarge: getCellVal(row, commercialColMap.portOfDischarge),
+          countries      : countries,
           wsIndex, rowIndex: r,
           specValues,
         });
@@ -807,6 +815,9 @@ export default function UploadProduct({ iconOnly = false }: Props) {
           // Skip drawing columns (now trailing)
           if (specHeader === "Dimensional Drawing" || specHeader === "Illuminance Level") continue;
 
+          // Skip Available Countries column
+          if (specHeader === "Available Countries") continue;
+
           // Skip static first 7 columns
           if (col < 8) continue;
 
@@ -877,6 +888,7 @@ export default function UploadProduct({ iconOnly = false }: Props) {
             factoryAddress : row.factoryAddress || "",
             portOfDischarge: row.portOfDischarge || "",
           },
+          countries          : row.countries ? row.countries.split("|").map(c => c.trim()) : [],
           isActive    : true,
           createdAt   : serverTimestamp(),
           whatHappened: "Product Added",

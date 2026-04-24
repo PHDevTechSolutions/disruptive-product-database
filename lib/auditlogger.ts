@@ -84,6 +84,7 @@ export type ProductEventPayload = {
   productClass?       : string;
   pricePoint?         : string;
   brandOrigin?        : string;
+  countries?          : string[];
   supplier?           : { supplierId?: string; company?: string; supplierBrand?: string } | null;
 
   categoryTypes?      : { productUsageId: string; categoryTypeName: string }[];
