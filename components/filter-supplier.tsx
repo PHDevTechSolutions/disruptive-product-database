@@ -186,8 +186,9 @@ function AddressCountryCombobox({
           <CommandInput placeholder="Search country…" className="h-9" />
           {/* ← explicit height + overflow-y-auto so mouse-wheel scroll works */}
           <CommandList
-            className="max-h-[200px] overflow-y-auto"
+className="max-h-[200px] overflow-y-auto"
             style={{ overflowY: "auto" }}
+            onWheel={(e) => e.stopPropagation()}
           >
             <CommandEmpty>No country found.</CommandEmpty>
             <CommandGroup>

@@ -125,7 +125,10 @@ function CountryCombobox({ value, onChange }: CountryComboboxProps) {
       <PopoverContent className="w-70 p-0" align="start">
         <Command>
           <CommandInput placeholder="Search country…" className="h-9" />
-          <CommandList className="max-h-60">
+            <CommandList
+              className="max-h-60 overflow-y-auto"
+              onWheel={(e) => e.stopPropagation()}
+            >
             <CommandEmpty>No country found.</CommandEmpty>
             <CommandGroup>
               {ALL_COUNTRIES.map((country) => (
@@ -763,7 +766,14 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl overflow-y-auto px-6 z-50 pb-35">
+          <SheetContent
+            className="w-full sm:max-w-xl overflow-y-auto px-6 z-50 pb-35"
+            onWheel={(e) => {
+              const target = e.target as HTMLElement;
+              const insidePopover = target.closest('[data-radix-popper-content-wrapper]');
+              if (insidePopover) e.stopPropagation();
+            }}
+          >
         <SheetHeader>
           <SheetTitle>Add Supplier</SheetTitle>
           <SheetDescription>Enter supplier information</SheetDescription>
