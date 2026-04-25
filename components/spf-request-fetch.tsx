@@ -630,6 +630,7 @@ useEffect(() => {
     const rowDimensionalEdit = splitByRow(data.dimensional_drawing);
     const rowIlluminanceEdit = splitByRow(data.illuminance_drawing);
     const rowTdsBrands = splitByRow(data.tds);
+    const rowBranches = splitByRow(data.supplier_branch);
     const rowSpecs = splitSpecsByRow(
       data.product_offer_technical_specification,
     );
@@ -657,6 +658,7 @@ useEffect(() => {
       const selling = rowSellingCosts[rowIndex] ?? [];
       const leads = rowLeadTimes[rowIndex] ?? [];
       const codes = rowItemCodes[rowIndex] ?? [];
+      const branches = rowBranches[rowIndex] ?? [];
 
       const hasData = imgs.length > 0 && !(imgs.length === 1 && imgs[0] === "");
       if (!hasData) {
@@ -705,6 +707,7 @@ useEffect(() => {
           supplier: {
             supplierBrand: brands[i] !== "-" ? brands[i] : "",
             supplierBrandName: brands[i] !== "-" ? brands[i] : "",
+            supplierBranch: branches[i] !== "-" ? branches[i] : "",
           },
           commercialDetails: {
             unitCost: costs[i] || "0",
@@ -1084,6 +1087,17 @@ useEffect(() => {
           setIsSubmitting(false);
           return;
         }
+
+        // Validate branch selection for products with multiple countries
+        const availableCountries = prod.countries || [];
+        if (availableCountries.length > 1) {
+          const selectedBranch = prod.__selectedBranch;
+          if (!selectedBranch || selectedBranch.trim() === "") {
+            toast.error(`Row ${i + 1}, Option ${j + 1}: Branch selection is required (multiple countries available)`);
+            setIsSubmitting(false);
+            return;
+          }
+        }
       }
     }
 
@@ -1158,6 +1172,7 @@ useEffect(() => {
   const rowPorts = splitByRow(data?.product_offer_port_of_discharge);
   const rowSubtotals = splitByRow(data?.product_offer_subtotal);
   const rowSupplierBrands = splitByRow(data?.supplier_brand);
+  const rowBranches = splitByRow(data?.supplier_branch);
   const rowSpecs = splitSpecsByRow(data?.product_offer_technical_specification);
   const rowCompanyNames = splitByRow(data?.company_name);
   const rowContactNames = splitByRow(data?.contact_name);
@@ -1845,7 +1860,8 @@ useEffect(() => {
                 (_, i) => !productOffers[i] || productOffers[i].length === 0,
               ) ||
               Object.values(productOffers).flat().some(
-                (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim()
+                (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim() ||
+                  (p.countries?.length > 1 && !p.__selectedBranch?.trim())
               )
             }
           >
@@ -2079,6 +2095,9 @@ useEffect(() => {
                                   <th className="border px-0.5 py-0.5 text-center w-12.5">
                                     Brand
                                   </th>
+                                  <th className="border px-0.5 py-0.5 text-center w-12.5">
+                                    Branch
+                                  </th>
                                   <th className="border px-0.5 py-0.5 text-center w-8.75">
                                     Img
                                   </th>
@@ -2209,6 +2228,43 @@ useEffect(() => {
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle font-medium">
                                           {brand}
+                                        </td>
+                                        <td className="border px-2 py-1 text-center align-middle text-[9px]">
+                                          {(() => {
+                                            const availableCountries = prod.countries || [];
+                                            const selectedBranch = prod.__selectedBranch || (availableCountries.length === 1 ? availableCountries[0] : "");
+
+                                            if (availableCountries.length === 0) {
+                                              return <span>-</span>;
+                                            }
+
+                                            if (availableCountries.length === 1) {
+                                              return <span className="font-medium">{availableCountries[0]}</span>;
+                                            }
+
+                                            // Multiple countries - show dropdown
+                                            return (
+                                              <select
+                                                className="border rounded px-0.5 py-0.5 text-[8px] w-full"
+                                                value={selectedBranch}
+                                                onChange={(e) => {
+                                                  const branch = e.target.value;
+                                                  setProductOffers((prev) => {
+                                                    const copy = { ...prev };
+                                                    const row = [...(copy[index] || [])];
+                                                    row[i] = { ...row[i], __selectedBranch: branch };
+                                                    copy[index] = row;
+                                                    return copy;
+                                                  });
+                                                }}
+                                              >
+                                                <option value="">-- Select --</option>
+                                                {availableCountries.map((country: string) => (
+                                                  <option key={country} value={country}>{country}</option>
+                                                ))}
+                                              </select>
+                                            );
+                                          })()}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle">
                                           {prod.mainImage?.url ? (
@@ -2720,7 +2776,8 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                   (_, i) => !productOffers[i] || productOffers[i].length === 0,
                 ) ||
                 Object.values(productOffers).flat().some(
-                  (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim()
+                  (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim() ||
+                    (p.countries?.length > 1 && !p.__selectedBranch?.trim())
                 )
               }
               onClick={handleSubmitEdit}
@@ -3063,6 +3120,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
             const prodPorts = rowPorts[rowIndex] ?? [];
             const prodSubtotals = rowSubtotals[rowIndex] ?? [];
             const prodBrands = rowSupplierBrands[rowIndex] ?? [];
+            const prodBranches = rowBranches[rowIndex] ?? [];
             const prodSpecs = rowSpecs[rowIndex] ?? [];
             const prodCompanyNames = rowCompanyNames[rowIndex] ?? [];
             const prodContactNames = rowContactNames[rowIndex] ?? [];
@@ -3130,6 +3188,9 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
                                       Supplier Brand
                                     </th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
+                                      Branch
+                                    </th>
                                     <th className="border px-2 py-1 text-center whitespace-nowrap w-28">
                                       Image
                                     </th>
@@ -3194,6 +3255,9 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                   <tr className="align-top">
                                     <td className="border px-2 py-2 text-center align-middle font-medium">
                                       {prodBrands[i] || "-"}
+                                    </td>
+                                    <td className="border px-2 py-2 text-center align-middle font-medium">
+                                      {prodBranches[i] || "-"}
                                     </td>
                                     <td className="border px-2 py-2 text-center align-middle">
                                       {img && img !== "-" ? (

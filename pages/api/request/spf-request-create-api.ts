@@ -124,6 +124,7 @@ export default async function handler(
     const rowIlluminanceDrawings: string[] = [];
     const rowOriginalSpecs:      string[] = [];
     const rowProductRefIDs:      string[] = [];
+    const rowBranches:          string[] = [];
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
@@ -148,6 +149,7 @@ export default async function handler(
       const dimensionalDrawings: string[] = [];
       const illuminanceDrawings: string[] = [];
       const productRefIDs: string[] = [];
+      const branches: string[] = [];
 
       const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
 
@@ -262,6 +264,11 @@ export default async function handler(
 
         /* ── Product Reference ID for syncing ── */
         productRefIDs.push(p?.productReferenceID || p?.id || "-");
+
+        /* ── Branch/Country selection ── */
+        const availableCountries = p?.countries || [];
+        const selectedBranch = p?.__selectedBranch || (availableCountries.length === 1 ? availableCountries[0] : "-");
+        branches.push(selectedBranch);
       }
 
       if (rowProducts.length === 0) {
@@ -291,6 +298,7 @@ export default async function handler(
       rowDimensionalDrawings.push(dimensionalDrawings.join(","));
       rowIlluminanceDrawings.push(illuminanceDrawings.join(","));
       rowProductRefIDs.push(productRefIDs.join(","));
+      rowBranches.push(branches.join(","));
     }
 
     // Fill arrays for empty rows
@@ -320,6 +328,7 @@ export default async function handler(
     const finalIlluminanceDrawings = rowIlluminanceDrawings.join(ROW_SEP);
     const finalOriginalSpecs       = rowOriginalSpecs.join(ROW_SEP);
     const finalProductRefIDs       = rowProductRefIDs.join(ROW_SEP);
+    const finalBranches            = rowBranches.join(ROW_SEP);
     const finalItemCode        = rowItemCodes.some((r) => r !== "-" && r !== "")
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
@@ -367,6 +376,7 @@ export default async function handler(
           product_offer_technical_specification: finalSpecs,
           original_technical_specification:        finalOriginalSpecs,
           product_reference_id:                    finalProductRefIDs,
+          supplier_branch:                         finalBranches,
           product_offer_unit_cost:               finalUnitCosts,
           product_offer_pcs_per_carton:          finalPcsPerCarton,
           product_offer_packaging_details:       finalPackaging,
@@ -417,6 +427,7 @@ export default async function handler(
           product_offer_technical_specification: finalSpecs,
           original_technical_specification:        finalOriginalSpecs,
           product_reference_id:                    finalProductRefIDs,
+          supplier_branch:                         finalBranches,
           product_offer_unit_cost:               finalUnitCosts,
           product_offer_pcs_per_carton:          finalPcsPerCarton,
           product_offer_packaging_details:       finalPackaging,

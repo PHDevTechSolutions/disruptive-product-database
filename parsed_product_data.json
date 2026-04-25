@@ -1,0 +1,90 @@
+{
+  "products": [
+    {
+      "variant": "75W",
+      "lamp_details": {
+        "wattage": "75 W",
+        "lumen_output": "10500 lm",
+        "cri": "Ra 80",
+        "cct": "5700 K",
+        "beam_angle": "120º",
+        "light_source": "LED SMD",
+        "life_hours": "50000 Hrs"
+      },
+      "electrical": {
+        "working_voltage": "100-277 Vac",
+        "power_factor": "0.92"
+      },
+      "fixture_details": {
+        "dimension": "260 x 260 x 382 mm",
+        "materials": "Aluminum Alloy + High-Strength Tempered Glass",
+        "cover": "Transparent High-Strenth Glass Cover",
+        "color": "Industrial Gray",
+        "mounting": "Barcket-Mounted",
+        "accessories": "Bracket",
+        "zone_classification": "IP66",
+        "hazardous_rating": "II 2G Ex db IIC T5/T6 Gb & II 2D Ex tb IIIC T95°C/T80°C Db IP66",
+        "certification_standard": "IECEx ATEX CE EAC",
+        "warranty": "3 Years"
+      }
+    },
+    {
+      "variant": "50W",
+      "lamp_details": {
+        "wattage": "50 W",
+        "lumen_output": "7000 lm",
+        "cri": "Ra 80",
+        "cct": "5700K",
+        "beam_angle": "120º",
+        "light_source": "LED SMD",
+        "life_hours": "50000 Hrs"
+      },
+      "electrical": {
+        "working_voltage": "100-277 Vac",
+        "power_factor": "0.92"
+      },
+      "fixture_details": {
+        "dimension": "260 x 260 x 382 mm",
+        "materials": "Aluminum Alloy + High-Strength Tempered Glass",
+        "cover": "Transparent High-Strength Glass Cover",
+        "color": "Industrial Gray",
+        "mounting": "Barcket-Mounted",
+        "accessories": "Bracket",
+        "ip_rating": "IP66",
+        "zone_classification": "Zone 1,2 & 21,22",
+        "hazardous_rating": "II 2G Ex db IIC T5/T6 Gb & II 2D Ex tb IIIC T95°C/T80°C Db IP66",
+        "certification_standard": "IECEx ATEX CE EAC",
+        "warranty": "3 Years"
+      }
+    },
+    {
+      "variant": "100W",
+      "lamp_details": {
+        "wattage": "100 W",
+        "lumen_output": "12000 lm",
+        "cri": "Ra 80",
+        "cct": "5700K",
+        "beam_angle": "120º",
+        "light_source": "LED",
+        "life_hours": "50000 hrs"
+      },
+      "electrical": {
+        "working_voltage": "100-277 Vac , 50/60Hz",
+        "power_factor": "0.98"
+      },
+      "fixture_details": {
+        "dimension": "224 x 224 x 262 mm",
+        "materials": "Aluminum Alloy + High-Strength Tempered Glass",
+        "cover": "Transparent High-Strength Glass Cover",
+        "color": "Industrial Gray",
+        "mounting": "Barcket-Mounted",
+        "accessories": "Bracket",
+        "ip_rating": "IP66",
+        "zone_classification": "Zone 1,2 & 21,22",
+        "hazardous_rating": "II 2 G Ex db eb IIC T6 Gb & II 2 D Ex tb IIIC T80°C Db IP66",
+        "certification_standard": "ATEX CE EAC",
+        "warranty": "3 Years"
+      }
+    }
+  ]
+}

@@ -635,6 +635,16 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
           toast.error(`Row ${i + 1}, Option ${j + 1}: Price Validity is required`);
           return;
         }
+
+        // Validate branch selection for products with multiple countries
+        const availableCountries = prod.countries || [];
+        if (availableCountries.length > 1) {
+          const selectedBranch = prod.__selectedBranch;
+          if (!selectedBranch || selectedBranch.trim() === "") {
+            toast.error(`Row ${i + 1}, Option ${j + 1}: Branch selection is required (multiple countries available)`);
+            return;
+          }
+        }
         if (!prod.__tdsBrand || prod.__tdsBrand.trim() === "") {
           toast.error(`Row ${i + 1}, Option ${j + 1}: TDS Brand is required`);
           return;
@@ -1330,7 +1340,8 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                   (_, i) => !productOffers[i] || productOffers[i].length === 0,
                 ) ||
                 Object.values(productOffers).flat().some(
-                  (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim()
+                  (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim() ||
+                    (p.countries?.length > 1 && !p.__selectedBranch?.trim())
                 )
               }
             >
@@ -1573,6 +1584,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                   <th className="border px-0.5 py-0.5 text-center w-12.5">
                                     Brand
                                   </th>
+                                  <th className="border px-0.5 py-0.5 text-center w-12.5">
+                                    Branch
+                                  </th>
                                   <th className="border px-0.5 py-0.5 text-center w-20">
                                     Image
                                   </th>
@@ -1704,6 +1718,43 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                         </td>
                                         <td className="border px-0.5 py-0.5 text-center align-middle font-medium text-[9px]">
                                           {brand}
+                                        </td>
+                                        <td className="border px-0.5 py-0.5 text-center align-middle text-[9px]">
+                                          {(() => {
+                                            const availableCountries = prod.countries || [];
+                                            const selectedBranch = prod.__selectedBranch || (availableCountries.length === 1 ? availableCountries[0] : "");
+                                            
+                                            if (availableCountries.length === 0) {
+                                              return <span>-</span>;
+                                            }
+                                            
+                                            if (availableCountries.length === 1) {
+                                              return <span className="font-medium">{availableCountries[0]}</span>;
+                                            }
+                                            
+                                            // Multiple countries - show dropdown
+                                            return (
+                                              <select
+                                                className="border rounded px-0.5 py-0.5 text-[8px] w-full"
+                                                value={selectedBranch}
+                                                onChange={(e) => {
+                                                  const branch = e.target.value;
+                                                  setProductOffers((prev) => {
+                                                    const copy = { ...prev };
+                                                    const row = [...(copy[index] || [])];
+                                                    row[i] = { ...row[i], __selectedBranch: branch };
+                                                    copy[index] = row;
+                                                    return copy;
+                                                  });
+                                                }}
+                                              >
+                                                <option value="">-- Select --</option>
+                                                {availableCountries.map((country: string) => (
+                                                  <option key={country} value={country}>{country}</option>
+                                                ))}
+                                              </select>
+                                            );
+                                          })()}
                                         </td>
                                         <td className="border px-0.5 py-0.5 text-center align-middle">
                                           {prod.mainImage?.url ? (
@@ -2164,7 +2215,8 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                   (_, i) => !productOffers[i] || productOffers[i].length === 0,
                 ) ||
                 Object.values(productOffers).flat().some(
-                  (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim()
+                  (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim() ||
+                    (p.countries?.length > 1 && !p.__selectedBranch?.trim())
                 )
               }
             >
