@@ -139,6 +139,7 @@ export default async function handler(
     const rowOriginalSpecs:      string[] = [];
     const rowProductRefIDs:      string[] = [];
     const rowBranches:          string[] = [];
+    const rowSpfRemarksPD:      string[] = [];
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
@@ -164,6 +165,7 @@ export default async function handler(
       const illuminanceDrawings: string[] = [];
       const productRefIDs: string[] = [];
       const branches: string[] = [];
+      const spfRemarksPD: string[] = [];
 
       const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
 
@@ -286,6 +288,9 @@ export default async function handler(
         const availableCountries = p?.countries || [];
         const selectedBranch = p?.__selectedBranch || (availableCountries.length === 1 ? availableCountries[0] : "-");
         branches.push(selectedBranch);
+
+        /* ── PD Remarks ── */
+        spfRemarksPD.push(p?.__spfRemarksPD || "-");
       }
 
       rowImages.push(images.join(","));
@@ -309,6 +314,7 @@ export default async function handler(
       rowIlluminanceDrawings.push(illuminanceDrawings.join(","));
       rowProductRefIDs.push(productRefIDs.join(","));
       rowBranches.push(branches.join(","));
+      rowSpfRemarksPD.push(spfRemarksPD.join(","));
     }
 
     // Fill arrays for empty rows
@@ -339,6 +345,7 @@ export default async function handler(
     const finalOriginalSpecs       = rowOriginalSpecs.join(ROW_SEP);
     const finalProductRefIDs       = rowProductRefIDs.join(ROW_SEP);
     const finalBranches            = rowBranches.join(ROW_SEP);
+    const finalSpfRemarksPD        = rowSpfRemarksPD.join(ROW_SEP);
     const rowTdsBrands: string[] = [];
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
@@ -376,6 +383,7 @@ export default async function handler(
       product_offer_factory_address:         finalFactories,
       product_offer_port_of_discharge:       finalPorts,
       product_offer_subtotal:                finalSubtotals,
+      spf_remarks_pd:                          finalSpfRemarksPD,
       company_name:   finalCompanyNames,
       contact_name:   finalContactNames,
       contact_number: finalContactNumbers,
@@ -403,20 +411,8 @@ export default async function handler(
         tsm:         tsm         ?? null,
         manager:     manager     ?? null,
 
-        product_offer_image:                   finalImages,
-        product_offer_qty:                     finalQtys,
-        product_offer_technical_specification: finalSpecs,
-        original_technical_specification:        finalOriginalSpecs,
-        product_reference_id:                    finalProductRefIDs,
-        supplier_branch:                         finalBranches,
-        product_offer_unit_cost:               finalUnitCosts,
-        product_offer_pcs_per_carton:          finalPcsPerCarton,
-        product_offer_packaging_details:       finalPackaging,
-        product_offer_factory_address:         finalFactories,
-        product_offer_port_of_discharge:       finalPorts,
-        product_offer_subtotal:                finalSubtotals,
-        company_name:   finalCompanyNames,
         supplier_brand: finalSupplierBrands,
+        spf_remarks_pd: finalSpfRemarksPD,
         contact_name:   finalContactNames,
         contact_number: finalContactNumbers,
         final_selling_cost: finalSellingCosts,

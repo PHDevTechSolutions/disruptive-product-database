@@ -125,6 +125,7 @@ export default async function handler(
     const rowOriginalSpecs:      string[] = [];
     const rowProductRefIDs:      string[] = [];
     const rowBranches:          string[] = [];
+    const rowSpfRemarksPD:      string[] = [];
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
@@ -150,6 +151,7 @@ export default async function handler(
       const illuminanceDrawings: string[] = [];
       const productRefIDs: string[] = [];
       const branches: string[] = [];
+      const spfRemarksPD: string[] = [];
 
       const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
 
@@ -269,6 +271,9 @@ export default async function handler(
         const availableCountries = p?.countries || [];
         const selectedBranch = p?.__selectedBranch || (availableCountries.length === 1 ? availableCountries[0] : "-");
         branches.push(selectedBranch);
+
+        /* ── PD Remarks ── */
+        spfRemarksPD.push(p?.__spfRemarksPD || "-");
       }
 
       if (rowProducts.length === 0) {
@@ -299,6 +304,7 @@ export default async function handler(
       rowIlluminanceDrawings.push(illuminanceDrawings.join(","));
       rowProductRefIDs.push(productRefIDs.join(","));
       rowBranches.push(branches.join(","));
+      rowSpfRemarksPD.push(spfRemarksPD.join(","));
     }
 
     // Fill arrays for empty rows
@@ -329,6 +335,7 @@ export default async function handler(
     const finalOriginalSpecs       = rowOriginalSpecs.join(ROW_SEP);
     const finalProductRefIDs       = rowProductRefIDs.join(ROW_SEP);
     const finalBranches            = rowBranches.join(ROW_SEP);
+    const finalSpfRemarksPD        = rowSpfRemarksPD.join(ROW_SEP);
     const finalItemCode        = rowItemCodes.some((r) => r !== "-" && r !== "")
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
@@ -377,6 +384,7 @@ export default async function handler(
           original_technical_specification:        finalOriginalSpecs,
           product_reference_id:                    finalProductRefIDs,
           supplier_branch:                         finalBranches,
+          spf_remarks_pd:                          finalSpfRemarksPD,
           product_offer_unit_cost:               finalUnitCosts,
           product_offer_pcs_per_carton:          finalPcsPerCarton,
           product_offer_packaging_details:       finalPackaging,
@@ -428,6 +436,7 @@ export default async function handler(
           original_technical_specification:        finalOriginalSpecs,
           product_reference_id:                    finalProductRefIDs,
           supplier_branch:                         finalBranches,
+          spf_remarks_pd:                          finalSpfRemarksPD,
           product_offer_unit_cost:               finalUnitCosts,
           product_offer_pcs_per_carton:          finalPcsPerCarton,
           product_offer_packaging_details:       finalPackaging,

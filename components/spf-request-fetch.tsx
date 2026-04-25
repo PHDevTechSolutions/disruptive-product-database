@@ -84,6 +84,8 @@ type SPFData = {
   illuminance_drawing?: string;
   revision_type?: string;
   revision_remarks?: string;
+  spf_remarks_pd?: string;
+  spf_remarks_procurement?: string;
 };
 
 type SPFRequestData = {
@@ -630,7 +632,7 @@ useEffect(() => {
     const rowDimensionalEdit = splitByRow(data.dimensional_drawing);
     const rowIlluminanceEdit = splitByRow(data.illuminance_drawing);
     const rowTdsBrands = splitByRow(data.tds);
-    const rowBranches = splitByRow(data.supplier_branch);
+    const rowBranches = splitByRow(data.supplier_brand);
     const rowSpecs = splitSpecsByRow(
       data.product_offer_technical_specification,
     );
@@ -638,6 +640,7 @@ useEffect(() => {
       data.original_technical_specification,
     );
     const rowProductRefIDs = splitByRow(data.product_reference_id);
+    const rowSpfRemarksPD = splitByRow(data.spf_remarks_pd);
     const descs = (requestData.item_description || "")
       .split(",")
       .map((s) => s.trim());
@@ -659,6 +662,7 @@ useEffect(() => {
       const leads = rowLeadTimes[rowIndex] ?? [];
       const codes = rowItemCodes[rowIndex] ?? [];
       const branches = rowBranches[rowIndex] ?? [];
+      const spfRemarksPD = rowSpfRemarksPD[rowIndex] ?? [];
 
       const hasData = imgs.length > 0 && !(imgs.length === 1 && imgs[0] === "");
       if (!hasData) {
@@ -795,6 +799,7 @@ useEffect(() => {
             const b = (rowTdsBrands[rowIndex] ?? [])[i];
             return b && b !== "-" ? b : "";
           })(),
+          __spfRemarksPD: spfRemarksPD[i] && spfRemarksPD[i] !== "-" ? spfRemarksPD[i] : "",
           dimensionalDrawing: (() => {
             const u = (rowDimensionalEdit[rowIndex] ?? [])[i];
             return u && u !== "-" ? { url: u } : null;
@@ -1162,6 +1167,7 @@ useEffect(() => {
   const isForRevision = data?.status === "For Revision";
   const isPendingForProcurement = data?.status === "Pending For Procurement";
   const canEditOffer = isForRevision || isPendingForProcurement || isApproved;
+  const showProcurementRemarks = isApproved || isForRevision;
 
   const rowImages = splitByRow(data?.product_offer_image);
   const rowQtys = splitByRow(data?.product_offer_qty);
@@ -1172,7 +1178,7 @@ useEffect(() => {
   const rowPorts = splitByRow(data?.product_offer_port_of_discharge);
   const rowSubtotals = splitByRow(data?.product_offer_subtotal);
   const rowSupplierBrands = splitByRow(data?.supplier_brand);
-  const rowBranches = splitByRow(data?.supplier_branch);
+  const rowBranches = splitByRow(data?.supplier_brand);
   const rowSpecs = splitSpecsByRow(data?.product_offer_technical_specification);
   const rowCompanyNames = splitByRow(data?.company_name);
   const rowContactNames = splitByRow(data?.contact_name);
@@ -1186,6 +1192,8 @@ useEffect(() => {
   const rowTdsBrands = splitByRow(data?.tds);
   const rowDimensionalDrawings = splitByRow(data?.dimensional_drawing);
   const rowIlluminanceDrawings = splitByRow(data?.illuminance_drawing);
+  const rowSpfRemarksPD = splitByRow(data?.spf_remarks_pd);
+  const rowSpfRemarksProcurement = splitByRow(data?.spf_remarks_procurement);
 
   const itemDescriptions: string[] = (requestData?.item_description || "")
     .split(",")
@@ -1375,7 +1383,7 @@ useEffect(() => {
                         No img
                       </div>
                     )}
-                    <div className="min-w-0 flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium line-clamp-2">
                         {desc.replace(/\|/g, " · ")}
                       </p>
@@ -2131,6 +2139,35 @@ useEffect(() => {
                                   <th className="border px-0.5 py-0.5 text-center w-11.25">
                                     Subtotal
                                   </th>
+                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                    PD Remarks
+                                  </th>
+                                  {showProcurementRemarks && (
+                                    <th className="border px-0.5 py-0.5 text-center w-20">
+                                      Procurement Remarks
+                                    </th>
+                                  )}
+                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                    Company
+                                  </th>
+                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                    Contact Name
+                                  </th>
+                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                    Contact No.
+                                  </th>
+                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                    Lead Time
+                                  </th>
+                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                    Selling Cost
+                                  </th>
+                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                    Final Unit Cost
+                                  </th>
+                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                    Final Subtotal
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -2151,6 +2188,9 @@ useEffect(() => {
                                               <span className="font-semibold">Pkg {idx + 1}:</span>
                                               <br />
                                               {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
+                                              {dim.pcsPerCarton && dim.pcsPerCarton !== "-" && (
+                                                <span className="text-muted-foreground"> (PCS: {dim.pcsPerCarton})</span>
+                                              )}
                                             </div>
                                           ))}
                                         </div>
@@ -2478,17 +2518,73 @@ useEffect(() => {
                                             );
                                           })()}
                                         </td>
+                                        <td className="border px-2 py-1 text-center align-middle">
+                                          <textarea
+                                            className="w-full border px-1 py-0.5 text-[8px] resize-none"
+                                            rows={2}
+                                            placeholder="Remarks..."
+                                            value={prod.__spfRemarksPD || ""}
+                                            onChange={(e) => {
+                                              setProductOffers((prev) => {
+                                                const copy = { ...prev };
+                                                const row = [...(copy[index] || [])];
+                                                row[i] = { ...row[i], __spfRemarksPD: e.target.value };
+                                                copy[index] = row;
+                                                return copy;
+                                              });
+                                            }}
+                                          />
+                                        </td>
+                                        {showProcurementRemarks && (
+                                          <td className="border px-2 py-1 text-center align-middle">
+                                            <textarea
+                                              className="w-full border px-1 py-0.5 text-[8px] resize-none"
+                                              rows={2}
+                                              placeholder="Procurement Remarks..."
+                                              value={prod.__spfRemarksProcurement || ""}
+                                              onChange={(e) => {
+                                                setProductOffers((prev) => {
+                                                  const copy = { ...prev };
+                                                  const row = [...(copy[index] || [])];
+                                                  row[i] = { ...row[i], __spfRemarksProcurement: e.target.value };
+                                                  copy[index] = row;
+                                                  return copy;
+                                                });
+                                              }}
+                                            />
+                                          </td>
+                                        )}
+                                        <td className="border px-2 py-1 text-center align-middle">
+                                          {prod.__spfRemarksCompany || "-"}
+                                        </td>
+                                        <td className="border px-2 py-1 text-center align-middle">
+                                          {prod.__spfRemarksContactName || "-"}
+                                        </td>
+                                        <td className="border px-2 py-1 text-center align-middle">
+                                          {prod.__spfRemarksContactNumber || "-"}
+                                        </td>
+                                        <td className="border px-2 py-1 text-center align-middle">
+                                          {prod.__spfRemarksLeadTime || "-"}
+                                        </td>
+                                        <td className="border px-2 py-1 text-center align-middle">
+                                          {prod.__spfRemarksSellingCost || "-"}
+                                        </td>
+                                        <td className="border px-2 py-1 text-center align-middle">
+                                          {prod.__spfRemarksFinalUnitCost || "-"}
+                                        </td>
+                                        <td className="border px-2 py-1 text-center align-middle">
+                                          {prod.__spfRemarksFinalSubtotal || "-"}
+                                        </td>
                                       </tr>
                                     );
-                                  },
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             ) : (
@@ -2815,6 +2911,8 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
         const prodFinalUnitCosts = rowFinalUnitCosts[rowIndex] ?? [];
         const prodFinalSubtotals = rowFinalSubtotals[rowIndex] ?? [];
         const prodItemCodes = rowItemCodes[rowIndex] ?? [];
+        const prodSpfRemarksPD = rowSpfRemarksPD[rowIndex] ?? [];
+        const prodSpfRemarksProcurement = rowSpfRemarksProcurement[rowIndex] ?? [];
 
         const hasProducts =
           prodImages.length > 0 &&
@@ -2999,6 +3097,16 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                             </p>
                           )}
                           <MobileSpecsBlock groups={groups} />
+                          <p className="text-[10px] text-gray-500 truncate">
+                            <span className="text-gray-400">PD Remarks: </span>
+                            {prodSpfRemarksPD[i] && prodSpfRemarksPD[i] !== "-" ? prodSpfRemarksPD[i] : "-"}
+                          </p>
+                          {showProcurementRemarks && (
+                            <p className="text-[10px] text-gray-500 truncate">
+                              <span className="text-gray-400">Procurement Remarks: </span>
+                              {prodSpfRemarksProcurement[i] && prodSpfRemarksProcurement[i] !== "-" ? prodSpfRemarksProcurement[i] : "-"}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -3032,7 +3140,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                 {prodContactNumbers[i] || "-"}
                               </span>
                             </div>
-                            <div>
+                            <div className="col-span-2">
                               <span className="text-gray-400 block">
                                 Lead Time
                               </span>
@@ -3042,7 +3150,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                   : "-"}
                               </span>
                             </div>
-                            <div className="col-span-2">
+                            <div>
                               <span className="text-gray-400 block">
                                 Selling Cost
                               </span>
@@ -3130,6 +3238,8 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
             const prodFinalUnitCosts = rowFinalUnitCosts[rowIndex] ?? [];
             const prodFinalSubtotals = rowFinalSubtotals[rowIndex] ?? [];
             const prodItemCodes = rowItemCodes[rowIndex] ?? [];
+            const prodSpfRemarksPD = rowSpfRemarksPD[rowIndex] ?? [];
+            const prodSpfRemarksProcurement = rowSpfRemarksProcurement[rowIndex] ?? [];
 
             const hasProducts =
               prodImages.length > 0 &&
@@ -3224,6 +3334,14 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
                                       Subtotal
                                     </th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap bg-blue-50 text-blue-700">
+                                      PD Remarks
+                                    </th>
+                                    {showProcurementRemarks && (
+                                      <th className="border px-2 py-1 text-center whitespace-nowrap bg-blue-50 text-blue-700">
+                                        Procurement Remarks
+                                      </th>
+                                    )}
                                     {isApproved && (
                                       <>
                                         <th className="border px-2 py-1 text-center whitespace-nowrap">
@@ -3382,6 +3500,14 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                         prodSubtotals[i] || 0,
                                       ).toLocaleString()}
                                     </td>
+                                    <td className="border px-2 py-2 text-center align-middle bg-blue-50 whitespace-pre-wrap">
+                                      {prodSpfRemarksPD[i] && prodSpfRemarksPD[i] !== "-" ? prodSpfRemarksPD[i] : "-"}
+                                    </td>
+                                    {showProcurementRemarks && (
+                                      <td className="border px-2 py-2 text-center align-middle bg-blue-50 whitespace-pre-wrap">
+                                        {prodSpfRemarksProcurement[i] && prodSpfRemarksProcurement[i] !== "-" ? prodSpfRemarksProcurement[i] : "-"}
+                                      </td>
+                                    )}
                                     {isApproved && (
                                       <>
                                         <td className="border px-2 py-2 text-center align-middle">

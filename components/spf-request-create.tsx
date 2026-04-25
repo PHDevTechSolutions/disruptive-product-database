@@ -1620,6 +1620,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                   <th className="border px-0.5 py-0.5 text-center w-10">
                                     Subtotal
                                   </th>
+                                  <th className="border px-0.5 py-0.5 text-center w-20">
+                                    PD Remarks
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1914,6 +1917,23 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                             const cost = Number(prod?.commercialDetails?.unitCost || 0);
                                             return (qty * cost).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
                                           })()}
+                                        </td>
+                                        <td className="border px-0.5 py-0.5 text-center align-middle">
+                                          <textarea
+                                            className="w-full border px-0.5 py-0.5 text-[8px] resize-none"
+                                            rows={2}
+                                            placeholder="Remarks..."
+                                            value={prod.__spfRemarksPD || ""}
+                                            onChange={(e) => {
+                                              setProductOffers((prev) => {
+                                                const copy = { ...prev };
+                                                const row = [...(copy[index] || [])];
+                                                row[i] = { ...row[i], __spfRemarksPD: e.target.value };
+                                                copy[index] = row;
+                                                return copy;
+                                              });
+                                            }}
+                                          />
                                         </td>
                                       </tr>
                                     );
