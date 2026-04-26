@@ -2147,27 +2147,31 @@ useEffect(() => {
                                       Procurement Remarks
                                     </th>
                                   )}
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
-                                    Company
-                                  </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
-                                    Contact Name
-                                  </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
-                                    Contact No.
-                                  </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
-                                    Lead Time
-                                  </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
-                                    Selling Cost
-                                  </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
-                                    Final Unit Cost
-                                  </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
-                                    Final Subtotal
-                                  </th>
+                                  {!editMode && (
+                                    <>
+                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                        Company
+                                      </th>
+                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                        Contact Name
+                                      </th>
+                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                        Contact No.
+                                      </th>
+                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                        Lead Time
+                                      </th>
+                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                        Selling Cost
+                                      </th>
+                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                        Final Unit Cost
+                                      </th>
+                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                        Final Subtotal
+                                      </th>
+                                    </>
+                                  )}
                                 </tr>
                               </thead>
                               <tbody>
@@ -2536,45 +2540,35 @@ useEffect(() => {
                                           />
                                         </td>
                                         {showProcurementRemarks && (
-                                          <td className="border px-2 py-1 text-center align-middle">
-                                            <textarea
-                                              className="w-full border px-1 py-0.5 text-[8px] resize-none"
-                                              rows={2}
-                                              placeholder="Procurement Remarks..."
-                                              value={prod.__spfRemarksProcurement || ""}
-                                              onChange={(e) => {
-                                                setProductOffers((prev) => {
-                                                  const copy = { ...prev };
-                                                  const row = [...(copy[index] || [])];
-                                                  row[i] = { ...row[i], __spfRemarksProcurement: e.target.value };
-                                                  copy[index] = row;
-                                                  return copy;
-                                                });
-                                              }}
-                                            />
+                                          <td className="border px-2 py-1 text-center align-middle text-[8px]">
+                                            {prod.__spfRemarksProcurement || "-"}
                                           </td>
                                         )}
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod.__spfRemarksCompany || "-"}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod.__spfRemarksContactName || "-"}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod.__spfRemarksContactNumber || "-"}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod.__spfRemarksLeadTime || "-"}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod.__spfRemarksSellingCost || "-"}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod.__spfRemarksFinalUnitCost || "-"}
-                                        </td>
-                                        <td className="border px-2 py-1 text-center align-middle">
-                                          {prod.__spfRemarksFinalSubtotal || "-"}
-                                        </td>
+                                        {!editMode && (
+                                          <>
+                                            <td className="border px-2 py-1 text-center align-middle">
+                                              {prod.__spfRemarksCompany || "-"}
+                                            </td>
+                                            <td className="border px-2 py-1 text-center align-middle">
+                                              {prod.__spfRemarksContactName || "-"}
+                                            </td>
+                                            <td className="border px-2 py-1 text-center align-middle">
+                                              {prod.__spfRemarksContactNumber || "-"}
+                                            </td>
+                                            <td className="border px-2 py-1 text-center align-middle">
+                                              {prod.__spfRemarksLeadTime || "-"}
+                                            </td>
+                                            <td className="border px-2 py-1 text-center align-middle">
+                                              {prod.__spfRemarksSellingCost || "-"}
+                                            </td>
+                                            <td className="border px-2 py-1 text-center align-middle">
+                                              {prod.__spfRemarksFinalUnitCost || "-"}
+                                            </td>
+                                            <td className="border px-2 py-1 text-center align-middle">
+                                              {prod.__spfRemarksFinalSubtotal || "-"}
+                                            </td>
+                                          </>
+                                        )}
                                       </tr>
                                     );
                                   })}
