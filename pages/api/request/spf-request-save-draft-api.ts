@@ -192,15 +192,29 @@ export default async function handler(
           packagingStr = `${length} x ${width} x ${height}`;
         }
 
-        // price_validity
+        // price_validity - preserve datetime-local format (YYYY-MM-DDTHH:mm)
         const rawPV = p?.__priceValidity || p?.price_validity;
         let priceValidity = "-";
         if (rawPV && rawPV !== "" && rawPV !== "-") {
-          try {
-            const parsed = new Date(rawPV);
-            priceValidity = isNaN(parsed.getTime()) ? "-" : parsed.toISOString();
-          } catch {
-            priceValidity = "-";
+          // If it's already in datetime-local format (YYYY-MM-DDTHH:mm), use it directly
+          if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(rawPV)) {
+            priceValidity = rawPV;
+          } else {
+            // Try to parse and convert to datetime-local format
+            try {
+              const parsed = new Date(rawPV);
+              if (!isNaN(parsed.getTime())) {
+                // Convert to YYYY-MM-DDTHH:mm format for datetime-local input
+                const year = parsed.getFullYear();
+                const month = String(parsed.getMonth() + 1).padStart(2, '0');
+                const day = String(parsed.getDate()).padStart(2, '0');
+                const hours = String(parsed.getHours()).padStart(2, '0');
+                const minutes = String(parsed.getMinutes()).padStart(2, '0');
+                priceValidity = `${year}-${month}-${day}T${hours}:${minutes}`;
+              }
+            } catch {
+              priceValidity = "-";
+            }
           }
         }
 
