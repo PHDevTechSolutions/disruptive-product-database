@@ -80,7 +80,7 @@ export default function LoginPage() {
           {/* LEFT CARD (LOGIN FORM) */}
           <div className="bg-white p-4 sm:p-6 lg:p-8 flex flex-col justify-center gap-4 sm:gap-6">
 
-            <div className={`flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6 ${isComic ? "comic-animate-bounce" : isEngineer ? "engineer-animate-wiggle" : ""}`}>
+            <div className={`flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6 ${isComic ? "comic-animate-bounce" : ""}`}>
               <div className={`relative w-16 h-16 sm:w-20 sm:h-20 lg:w-28 lg:h-28 p-1 sm:p-2 flex items-center justify-center ${
                 isComic ? "comic-card-primary" : isEngineer ? "engineer-card-primary" : "bg-red-50 rounded-lg border border-red-100"
               }`}>
@@ -93,11 +93,16 @@ export default function LoginPage() {
                 />
               </div>
               <div className="flex flex-col">
-                <span className={`text-xl sm:text-2xl ${
-                  isComic ? "text-red-500 font-comic-title comic-text-outline" : isEngineer ? "text-orange-600 font-engineer-title engineer-text-shadow" : "text-red-500 font-formal-title"
-                }`}>
-                  ESPIRON
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xl sm:text-2xl ${
+                    isComic ? "text-red-500 font-comic-title comic-text-outline" : isEngineer ? "text-orange-600 font-engineer-title engineer-text-shadow" : "text-red-500 font-formal-title"
+                  }`}>
+                    ESPIRON
+                  </span>
+                  {isEngineer && (
+                    <span className="text-xl" style={{ marginTop: '-4px' }}>⚠️</span>
+                  )}
+                </div>
                 <span className={`text-xs sm:text-sm ${isComic ? "text-gray-600 font-comic" : isEngineer ? "text-gray-700 font-engineer" : "text-gray-600 font-formal"}`}>
                   Product Database
                 </span>

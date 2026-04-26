@@ -91,7 +91,7 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
       <FieldGroup>
         <div className="mb-4 sm:mb-6 text-center">
           <h1 className={`text-2xl sm:text-3xl text-red-500 ${
-            isComic ? "font-comic-title comic-text-shadow comic-animate-bounce" : isEngineer ? "font-engineer-title text-orange-600 engineer-text-shadow engineer-animate-wiggle" : "font-formal-title"
+            isComic ? "font-comic-title comic-text-shadow comic-animate-bounce" : isEngineer ? "font-engineer-title text-orange-600 engineer-text-shadow" : "font-formal-title"
           }`}>
             {isComic ? "Login to your account" : isEngineer ? "👷 Sign In" : "Sign In"}
           </h1>
@@ -150,7 +150,7 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
             isComic
               ? "comic-button bg-linear-to-r from-red-500 to-orange-500 font-comic comic-animate-pulse"
               : isEngineer
-              ? "engineer-button font-engineer engineer-animate-wiggle"
+              ? "engineer-button font-engineer"
               : "bg-red-600 hover:bg-red-700 font-formal rounded-md shadow-md hover:shadow-lg transition-all"
           }`}
         >

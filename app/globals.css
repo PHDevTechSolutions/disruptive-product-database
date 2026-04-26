@@ -1786,19 +1786,6 @@
   position: relative;
 }
 
-.engineer-sign::before {
-  content: '⚠️';
-  position: absolute;
-  top: -15px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 24px;
-  background: #ffd93d;
-  padding: 0 8px;
-  border: 3px solid #2c3e50;
-  border-radius: 50%;
-}
-
 /* Engineer Tool Box Pattern */
 .engineer-toolbox {
   background: linear-gradient(180deg, #ff6b35 0%, #e55a2b 100%);
