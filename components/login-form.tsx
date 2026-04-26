@@ -106,7 +106,7 @@ export function LoginForm({ onLoginSuccess, ...props }: LoginFormProps) {
             isComic
               ? "comic-bubble bg-red-100 border-red-400 comic-animate-shake"
               : isEngineer
-              ? "engineer-sign bg-red-100 engineer-animate-hammer"
+              ? "engineer-sign bg-red-100"
               : "bg-red-50 border border-red-200 rounded-lg p-3"
           }`}>
             <p className={`text-sm text-red-600 text-center font-bold ${isComic ? "font-comic" : isEngineer ? "font-engineer" : "font-formal"}`}>
