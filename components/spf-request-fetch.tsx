@@ -3334,14 +3334,6 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
                                       Subtotal
                                     </th>
-                                    <th className="border px-2 py-1 text-center whitespace-nowrap bg-blue-50 text-blue-700">
-                                      PD Remarks
-                                    </th>
-                                    {showProcurementRemarks && (
-                                      <th className="border px-2 py-1 text-center whitespace-nowrap bg-blue-50 text-blue-700">
-                                        Procurement Remarks
-                                      </th>
-                                    )}
                                     {isApproved && (
                                       <>
                                         <th className="border px-2 py-1 text-center whitespace-nowrap">
@@ -3367,6 +3359,14 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                         </th>
                                       </>
                                     )}
+                                    {showProcurementRemarks && (
+                                      <th className="border px-2 py-1 text-center whitespace-nowrap bg-blue-50 text-blue-700">
+                                        Procurement Remarks
+                                      </th>
+                                    )}
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap bg-blue-50 text-blue-700">
+                                      PD Remarks
+                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -3500,14 +3500,6 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                         prodSubtotals[i] || 0,
                                       ).toLocaleString()}
                                     </td>
-                                    <td className="border px-2 py-2 text-center align-middle bg-blue-50 whitespace-pre-wrap">
-                                      {prodSpfRemarksPD[i] && prodSpfRemarksPD[i] !== "-" ? prodSpfRemarksPD[i] : "-"}
-                                    </td>
-                                    {showProcurementRemarks && (
-                                      <td className="border px-2 py-2 text-center align-middle bg-blue-50 whitespace-pre-wrap">
-                                        {prodSpfRemarksProcurement[i] && prodSpfRemarksProcurement[i] !== "-" ? prodSpfRemarksProcurement[i] : "-"}
-                                      </td>
-                                    )}
                                     {isApproved && (
                                       <>
                                         <td className="border px-2 py-2 text-center align-middle">
@@ -3545,6 +3537,14 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                         </td>
                                       </>
                                     )}
+                                    {showProcurementRemarks && (
+                                      <td className="border px-2 py-2 text-center align-middle bg-blue-50 whitespace-pre-wrap">
+                                        {prodSpfRemarksProcurement[i] && prodSpfRemarksProcurement[i] !== "-" ? prodSpfRemarksProcurement[i] : "-"}
+                                      </td>
+                                    )}
+                                    <td className="border px-2 py-2 text-center align-middle bg-blue-50 whitespace-pre-wrap">
+                                      {prodSpfRemarksPD[i] && prodSpfRemarksPD[i] !== "-" ? prodSpfRemarksPD[i] : "-"}
+                                    </td>
                                   </tr>
                                 </tbody>
                               </table>
