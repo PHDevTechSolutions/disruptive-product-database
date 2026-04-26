@@ -24,6 +24,7 @@ import {
   Plus,
   Trash2,
   Pencil,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { collection, query, where, onSnapshot, getDocs, limit } from "firebase/firestore";
@@ -470,6 +471,11 @@ useEffect(() => {
   /* ── Submit loading state ── */
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  /* ── Draft state ── */
+  const [hasDraft, setHasDraft] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
+
   /* ── Image Preview modal ── */
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -481,6 +487,25 @@ useEffect(() => {
     setSpfCreationEndTime(null);
     setTimerActive(true);
   }, [open]);
+
+  /* ── Check for existing draft ── */
+  useEffect(() => {
+    if (!open || !spfNumber) return;
+
+    const checkDraft = async () => {
+      try {
+        const res = await fetch(`/api/request/spf-request-check-draft-api?spf_number=${spfNumber}`);
+        const data = await res.json();
+        if (data?.success) {
+          setHasDraft(data.hasDraft);
+        }
+      } catch (err) {
+        console.error("Error checking draft:", err);
+      }
+    };
+
+    checkDraft();
+  }, [open, spfNumber]);
 
   /* ── Responsive ── */
   useEffect(() => {
@@ -1021,7 +1046,10 @@ useEffect(() => {
 
   /* ── Add Button Click Handler ── */
   const handleAddButtonClick = (product: any) => {
-    const itemCount = itemDescriptions.length || 0;
+    const descs = (requestData?.item_description || "")
+      .split(",")
+      .map((s) => s.trim());
+    const itemCount = descs.length || 0;
 
     if (itemCount === 0) {
       toast.error("No items available. Please add items first.");
@@ -1055,10 +1083,88 @@ useEffect(() => {
     setPendingRowSelectProduct(null);
   };
 
-  /* ── Row Selection Cancel ── */
   const handleRowSelectCancel = () => {
     setShowRowSelectModal(false);
     setPendingRowSelectProduct(null);
+  };
+
+  /* ── Load Draft ── */
+  const handleLoadDraft = async () => {
+    if (!spfNumber || isLoadingDraft) return;
+
+    setIsLoadingDraft(true);
+    try {
+      const res = await fetch(`/api/request/spf-request-get-draft-api?spf_number=${spfNumber}`);
+      const data = await res.json();
+
+      if (data?.success && data?.hasDraft && data?.productOffers) {
+        // Set the product offers from draft
+        setProductOffers(data.productOffers);
+        // Switch to edit mode with draft loaded
+        setViewMode(false);
+        setEditMode(true);
+        toast.success("Draft loaded successfully. Continue editing...");
+      } else {
+        toast.info("No draft found for this SPF request");
+        setHasDraft(false);
+      }
+    } catch (err) {
+      console.error("Error loading draft:", err);
+      toast.error("Failed to load draft");
+    } finally {
+      setIsLoadingDraft(false);
+    }
+  };
+
+  /* ── Save Draft (Edit Mode) ── */
+  const handleSaveDraft = async () => {
+    if (!spfNumber || isSavingDraft) return;
+
+    setIsSavingDraft(true);
+    try {
+      const allProducts = Object.entries(productOffers).flatMap(
+        ([rowIndex, prods]) =>
+          prods.map((p) => ({
+            ...p,
+            __rowIndex: Number(rowIndex),
+            __originalTechnicalSpecifications: p.__originalTechnicalSpecifications || p.technicalSpecifications,
+            productReferenceID: p.productReferenceID || p.id || null,
+          })),
+      );
+
+      const res = await fetch("/api/request/spf-request-save-draft-api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spf_number: spfNumber,
+          item_code: data?.item_code,
+          selectedProducts: allProducts,
+          totalItemRows: requestData?.item_description?.split(",").length ?? 1,
+          spf_creation_start_time: spfCreationStartTime,
+          is_edit_mode: true,
+          original_spf_number: null,
+          userId,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("Draft save error:", errText);
+        toast.error("Failed to save draft");
+        return;
+      }
+
+      const result = await res.json();
+      if (result?.success) {
+        setHasDraft(true);
+        toast.success("Draft saved successfully");
+      }
+    } catch (err) {
+      console.error("Draft save error:", err);
+      toast.error("Failed to save draft");
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   /* ── Submit edit ── */

@@ -1,0 +1,413 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+import { getPhilippinesISOString } from "@/lib/datetime";
+import { supabase } from "@/utils/supabase";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+
+const ROW_SEP = "|ROW|";
+
+const supplierCache = new Map<
+  string,
+  { company: string; contactNames: string; contactNumbers: string }
+>();
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Method not allowed" });
+  }
+
+  try {
+    const {
+      spf_number,
+      item_code,
+      totalItemRows,
+      selectedProducts,
+      spf_creation_start_time,
+      is_edit_mode,
+      original_spf_number,
+      userId,
+    } = req.body;
+
+    if (!spf_number) {
+      return res.status(400).json({ message: "Missing SPF number" });
+    }
+
+    /* ── Fetch spf_request metadata ── */
+    const { data: spfRequest, error: spfRequestError } = await supabase
+      .from("spf_request")
+      .select("referenceid, tsm, manager")
+      .eq("spf_number", spf_number)
+      .single();
+
+    if (spfRequestError || !spfRequest) {
+      console.error("spf_request fetch error:", spfRequestError);
+      return res.status(400).json({ message: "SPF request not found" });
+    }
+
+    const referenceIdValue = spfRequest.referenceid ?? null;
+    const tsmValue         = spfRequest.tsm          ?? null;
+    const managerValue     = spfRequest.manager       ?? null;
+
+    /* ── Resolve draft_author ── */
+    let draft_author: string | null = null;
+    try {
+      if (userId) {
+        const { connectToDatabase } = await import("@/lib/mongodb");
+        const { ObjectId } = await import("mongodb");
+        const mongoDb = await connectToDatabase();
+        const user = await mongoDb.collection("users").findOne(
+          { _id: new ObjectId(userId) },
+          { projection: { ReferenceID: 1 } }
+        );
+        draft_author = user?.ReferenceID || null;
+      }
+    } catch (err) {
+      console.error("Failed to resolve draft_author:", err);
+    }
+
+    const products = Array.isArray(selectedProducts) ? selectedProducts : [];
+    const rowCount = typeof totalItemRows === "number" ? totalItemRows : 1;
+
+    /* ── Pre-fetch all unique supplier contacts ── */
+    const uniqueSupplierIds = [
+      ...new Set(products.map((p: any) => p?.supplier?.supplierId).filter(Boolean)),
+    ] as string[];
+
+    for (const supplierId of uniqueSupplierIds) {
+      if (supplierCache.has(supplierId)) continue;
+      try {
+        const supplierSnap = await getDoc(doc(db, "suppliers", supplierId));
+        if (supplierSnap.exists()) {
+          const d: any   = supplierSnap.data();
+          const contacts = d.contacts || [];
+          supplierCache.set(supplierId, {
+            company:        d.company || "-",
+            contactNames:   contacts.map((c: any) => c.name).filter(Boolean).join(" | "),
+            contactNumbers: contacts.map((c: any) => c.phone).filter(Boolean).join(" | "),
+          });
+        }
+      } catch (err) {
+        console.error("Supplier fetch error:", err);
+      }
+    }
+
+    /* ── Group products by row ── */
+    const rowMap: Record<number, any[]> = {};
+    for (let i = 0; i < rowCount; i++) rowMap[i] = [];
+    for (const p of products) {
+      const idx = typeof p.__rowIndex === "number" ? p.__rowIndex : 0;
+      if (!rowMap[idx]) rowMap[idx] = [];
+      rowMap[idx].push(p);
+    }
+
+    /* ── Per-row accumulators ── */
+    const rowImages:          string[] = [];
+    const rowQtys:            string[] = [];
+    const rowSpecs:           string[] = [];
+    const rowUnitCosts:       string[] = [];
+    const rowPcsPerCarton:    string[] = [];
+    const rowPackaging:       string[] = [];
+    const rowFactories:       string[] = [];
+    const rowPorts:           string[] = [];
+    const rowSubtotals:       string[] = [];
+    const rowSupplierBrands:  string[] = [];
+    const rowCompanyNames:    string[] = [];
+    const rowContactNames:    string[] = [];
+    const rowContactNumbers:  string[] = [];
+    const rowSellingCosts:    string[] = [];
+    const rowLeadTimes:       string[] = [];
+    const rowItemCodes:       string[] = [];
+    const rowPriceValidities: string[] = [];
+    const rowDimensionalDrawings: string[] = [];
+    const rowIlluminanceDrawings: string[] = [];
+    const rowOriginalSpecs:      string[] = [];
+    const rowProductRefIDs:      string[] = [];
+    const rowBranches:          string[] = [];
+    const rowSpfRemarksPD:      string[] = [];
+    const rowTdsBrands:         string[] = [];
+
+    for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+      const rowProducts = rowMap[rowIdx] || [];
+
+      const images:          string[] = [];
+      const qtys:            string[] = [];
+      const specs:           string[] = [];
+      const unitCosts:       string[] = [];
+      const pcsPerCartons:   string[] = [];
+      const packaging:       string[] = [];
+      const factories:       string[] = [];
+      const ports:           string[] = [];
+      const subtotals:       string[] = [];
+      const supplierBrands:  string[] = [];
+      const companyNames:    string[] = [];
+      const contactNames:    string[] = [];
+      const contactNumbers:  string[] = [];
+      const sellingCosts:    string[] = [];
+      const leadTimes:       string[] = [];
+      const itemCodes:       string[] = [];
+      const priceValidities: string[] = [];
+      const dimensionalDrawings: string[] = [];
+      const illuminanceDrawings: string[] = [];
+      const productRefIDs: string[] = [];
+      const branches: string[] = [];
+      const spfRemarksPD: string[] = [];
+      const tdsBrands: string[] = [];
+
+      const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
+
+      for (let optIdx = 0; optIdx < rowProducts.length; optIdx++) {
+        const p = rowProducts[optIdx];
+
+        const qty          = Number(p.qty || 0);
+        const unitCost     = Number(p?.commercialDetails?.unitCost || 0);
+        const factory      = p?.commercialDetails?.factoryAddress    || "-";
+        const port         = p?.commercialDetails?.portOfDischarge   || "-";
+        const subtotal     = qty * unitCost;
+
+        // Handle multiple dimensions vs single dimension
+        const productHasMultipleDims = p?.commercialDetails?.hasMultipleDimensions === true;
+        const packagingData = p?.commercialDetails?.packaging;
+        
+        let pcsPerCarton: string;
+        let packagingStr: string;
+        
+        if (productHasMultipleDims && Array.isArray(packagingData) && packagingData.length > 0) {
+          const dimSets = packagingData.map((dim: any) => {
+            const len = dim?.length || "-";
+            const wid = dim?.width || "-";
+            const hgt = dim?.height || "-";
+            const pcs = dim?.pcsPerCarton ?? "-";
+            return `${len} x ${wid} x ${hgt} (PCS: ${pcs})`;
+          });
+          packagingStr = dimSets.join(" || ");
+          pcsPerCarton = packagingData.map((dim: any) => dim?.pcsPerCarton ?? "-").join(" | ");
+        } else {
+          const length = packagingData?.length || "-";
+          const width  = packagingData?.width  || "-";
+          const height = packagingData?.height || "-";
+          pcsPerCarton = String(p?.commercialDetails?.pcsPerCarton ?? "-");
+          packagingStr = `${length} x ${width} x ${height}`;
+        }
+
+        // price_validity
+        const rawPV = p?.__priceValidity || p?.price_validity;
+        let priceValidity = "-";
+        if (rawPV && rawPV !== "" && rawPV !== "-") {
+          try {
+            const parsed = new Date(rawPV);
+            priceValidity = isNaN(parsed.getTime()) ? "-" : parsed.toISOString();
+          } catch {
+            priceValidity = "-";
+          }
+        }
+
+        images.push(p?.mainImage?.url || "-");
+        qtys.push(String(qty));
+        unitCosts.push(String(unitCost));
+        pcsPerCartons.push(pcsPerCarton);
+        packaging.push(packagingStr);
+        factories.push(factory);
+        ports.push(port);
+        subtotals.push(String(subtotal));
+        supplierBrands.push(p?.supplier?.supplierBrand || p?.supplier?.supplierBrandName || "-");
+        sellingCosts.push(p?.__sellingCost ?? "-");
+        leadTimes.push(p?.__leadTime ?? "-");
+        itemCodes.push(`${rowBase}-OPT-${optIdx + 1}`);
+        priceValidities.push(priceValidity);
+        dimensionalDrawings.push(p?.dimensionalDrawing?.url || "-");
+        illuminanceDrawings.push(p?.illuminanceDrawing?.url || "-");
+        tdsBrands.push(p?.__tdsBrand ?? "");
+
+        const supplierId = String(p?.supplier?.supplierId || "");
+        const cached     = supplierId ? supplierCache.get(supplierId) : undefined;
+        companyNames.push(cached?.company        || p?.supplier?.company || "-");
+        contactNames.push(cached?.contactNames    || "-");
+        contactNumbers.push(cached?.contactNumbers || "-");
+
+        /* ── Tech specs ── */
+        if (p?.technicalSpecifications?.length) {
+          const groupedTech = p.technicalSpecifications
+            .map((g: any) => {
+              const title     = (g.title || "").trim();
+              const specLines = (g.specs || [])
+                .filter((s: any) => s.value && s.value.trim() !== "")
+                .map((s: any) => `${s.specId}: ${s.value.trim()}`)
+                .join(";;");
+              if (!specLines) return null;
+              return title ? `${title}~~${specLines}` : specLines;
+            })
+            .filter(Boolean)
+            .join("@@");
+          specs.push(groupedTech || "-");
+        } else {
+          specs.push("-");
+        }
+
+        /* ── Original tech specs ── */
+        const origSpecs = p?.__originalTechnicalSpecifications || p?.technicalSpecifications;
+        if (origSpecs?.length) {
+          const groupedOrig = origSpecs
+            .map((g: any) => {
+              const title     = (g.title || "").trim();
+              const specLines = (g.specs || [])
+                .filter((s: any) => s.value && s.value.trim() !== "")
+                .map((s: any) => `${s.specId}: ${s.value.trim()}`)
+                .join(";;");
+              if (!specLines) return null;
+              return title ? `${title}~~${specLines}` : specLines;
+            })
+            .filter(Boolean)
+            .join("@@");
+          rowOriginalSpecs.push(groupedOrig || "-");
+        } else {
+          rowOriginalSpecs.push("-");
+        }
+
+        productRefIDs.push(p?.productReferenceID || p?.id || "-");
+
+        /* ── Branch/Country selection ── */
+        const availableCountries = p?.countries || [];
+        const selectedBranch = p?.__selectedBranch || (availableCountries.length === 1 ? availableCountries[0] : "-");
+        branches.push(selectedBranch);
+
+        /* ── PD Remarks ── */
+        spfRemarksPD.push(p?.__spfRemarksPD || "-");
+      }
+
+      if (rowProducts.length === 0) {
+        itemCodes.push("-");
+        priceValidities.push("-");
+        dimensionalDrawings.push("-");
+        illuminanceDrawings.push("-");
+      }
+
+      rowImages.push(images.join(","));
+      rowQtys.push(qtys.join(","));
+      rowSpecs.push(specs.join(" || "));
+      rowUnitCosts.push(unitCosts.join(","));
+      rowPcsPerCarton.push(pcsPerCartons.join(","));
+      rowPackaging.push(packaging.join(","));
+      rowFactories.push(factories.join(","));
+      rowPorts.push(ports.join(","));
+      rowSubtotals.push(subtotals.join(","));
+      rowSupplierBrands.push(supplierBrands.join(","));
+      rowCompanyNames.push(companyNames.join(","));
+      rowContactNames.push(contactNames.join(","));
+      rowContactNumbers.push(contactNumbers.join(","));
+      rowSellingCosts.push(sellingCosts.join(","));
+      rowLeadTimes.push(leadTimes.join(","));
+      rowItemCodes.push(itemCodes.join(","));
+      rowPriceValidities.push(priceValidities.join(","));
+      rowDimensionalDrawings.push(dimensionalDrawings.join(","));
+      rowIlluminanceDrawings.push(illuminanceDrawings.join(","));
+      rowProductRefIDs.push(productRefIDs.join(","));
+      rowBranches.push(branches.join(","));
+      rowSpfRemarksPD.push(spfRemarksPD.join(","));
+      rowTdsBrands.push(tdsBrands.join(","));
+    }
+
+    // Fill arrays for empty rows
+    for (let i = rowOriginalSpecs.length; i < rowCount; i++) {
+      rowOriginalSpecs.push("-");
+      rowProductRefIDs.push("-");
+    }
+
+    /* ── Final strings ── */
+    const finalImages          = rowImages.join(ROW_SEP);
+    const finalQtys            = rowQtys.join(ROW_SEP);
+    const finalSpecs           = rowSpecs.join(ROW_SEP);
+    const finalUnitCosts       = rowUnitCosts.join(ROW_SEP);
+    const finalPcsPerCarton    = rowPcsPerCarton.join(ROW_SEP);
+    const finalPackaging       = rowPackaging.join(ROW_SEP);
+    const finalFactories       = rowFactories.join(ROW_SEP);
+    const finalPorts           = rowPorts.join(ROW_SEP);
+    const finalSubtotals       = rowSubtotals.join(ROW_SEP);
+    const finalSupplierBrands  = rowSupplierBrands.join(ROW_SEP);
+    const finalCompanyNames    = rowCompanyNames.join(ROW_SEP);
+    const finalContactNames    = rowContactNames.join(ROW_SEP);
+    const finalContactNumbers  = rowContactNumbers.join(ROW_SEP);
+    const finalSellingCosts    = rowSellingCosts.join(ROW_SEP);
+    const finalLeadTimes       = rowLeadTimes.join(ROW_SEP);
+    const finalPriceValidities = rowPriceValidities.join(ROW_SEP);
+    const finalDimensionalDrawings = rowDimensionalDrawings.join(ROW_SEP);
+    const finalIlluminanceDrawings = rowIlluminanceDrawings.join(ROW_SEP);
+    const finalOriginalSpecs       = rowOriginalSpecs.join(ROW_SEP);
+    const finalProductRefIDs       = rowProductRefIDs.join(ROW_SEP);
+    const finalBranches            = rowBranches.join(ROW_SEP);
+    const finalSpfRemarksPD        = rowSpfRemarksPD.join(ROW_SEP);
+    const finalTds                 = rowTdsBrands.join(ROW_SEP);
+    const finalItemCode        = rowItemCodes.some((r) => r !== "-" && r !== "")
+      ? rowItemCodes.join(ROW_SEP)
+      : (item_code ?? null);
+
+    const nowISO = getPhilippinesISOString();
+
+    /* ── Upsert draft ── */
+    const { error: upsertError } = await supabase
+      .from("spf_creation_draft")
+      .upsert({
+        spf_number,
+        referenceid: referenceIdValue,
+        tsm: tsmValue,
+        manager: managerValue,
+        draft_author,
+        item_code: finalItemCode,
+
+        company_name: finalCompanyNames,
+        supplier_brand: finalSupplierBrands,
+        contact_name: finalContactNames,
+        contact_number: finalContactNumbers,
+
+        product_offer_image: finalImages,
+        product_offer_qty: finalQtys,
+        product_offer_technical_specification: finalSpecs,
+        original_technical_specification: finalOriginalSpecs,
+        product_reference_id: finalProductRefIDs,
+        supplier_branch: finalBranches,
+        spf_remarks_pd: finalSpfRemarksPD,
+        product_offer_unit_cost: finalUnitCosts,
+        product_offer_pcs_per_carton: finalPcsPerCarton,
+        product_offer_packaging_details: finalPackaging,
+        product_offer_factory_address: finalFactories,
+        product_offer_port_of_discharge: finalPorts,
+        product_offer_subtotal: finalSubtotals,
+
+        final_selling_cost: finalSellingCosts,
+        proj_lead_time: finalLeadTimes,
+        price_validity: finalPriceValidities,
+        tds: finalTds,
+        dimensional_drawing: finalDimensionalDrawings,
+        illuminance_drawing: finalIlluminanceDrawings,
+
+        status: "Draft",
+        is_edit_mode: is_edit_mode ?? false,
+        original_spf_number: original_spf_number ?? null,
+
+        spf_creation_start_time: spf_creation_start_time ?? null,
+        spf_creation_end_time: null,
+
+        date_created: nowISO,
+        date_updated: nowISO,
+      }, {
+        onConflict: "spf_number",
+      });
+
+    if (upsertError) {
+      console.error("Draft upsert error:", upsertError);
+      return res.status(500).json({ message: "Failed to save draft", error: upsertError });
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      message: "Draft saved successfully",
+      spf_number,
+    });
+
+  } catch (err: any) {
+    console.error(err);
+    return res.status(500).json({ message: err.message || "Server error" });
+  }
+}

@@ -16,7 +16,7 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import { Funnel, Plus, Trash2, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { Funnel, Plus, Trash2, ChevronDown, ChevronUp, Pencil, Save } from "lucide-react";
 import { toast } from "sonner";
 import FilteringComponent from "@/components/filtering-component-v2";
 import AddProductComponent from "@/components/add-product-component";
@@ -311,6 +311,11 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   /* ── Submit loading state ── */
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  /* ── Draft state ── */
+  const [hasDraft, setHasDraft] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
   /* ── Sync formData when rowData changes ── */
   useEffect(() => {
     if (!open) return;
@@ -348,6 +353,35 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
     fetchProducts(rowData.customer_name || "");
   }, [open, rowData, processBy]);
+
+  /* ── Check for existing draft and load it ── */
+  useEffect(() => {
+    if (!open || !formData.spf_number) return;
+
+    const loadDraft = async () => {
+      try {
+        const res = await fetch(`/api/request/spf-request-get-draft-api?spf_number=${formData.spf_number}`);
+        const data = await res.json();
+
+        if (data?.success && data?.hasDraft) {
+          setHasDraft(true);
+          // Load the draft product offers
+          if (data.productOffers) {
+            setProductOffers(data.productOffers);
+            setDraftLoaded(true);
+            toast.info("Draft loaded. You can continue where you left off.");
+          }
+        } else {
+          setHasDraft(false);
+          setDraftLoaded(false);
+        }
+      } catch (err) {
+        console.error("Error loading draft:", err);
+      }
+    };
+
+    loadDraft();
+  }, [open, formData.spf_number]);
 
   /* ── Product search filter ── */
   useEffect(() => {
@@ -702,6 +736,57 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     }
   };
 
+  /* ── Save Draft ── */
+  const handleSaveDraft = async () => {
+    if (isSavingDraft) return;
+
+    setIsSavingDraft(true);
+    try {
+      const allProducts = Object.entries(productOffers).flatMap(
+        ([rowIndex, prods]) =>
+          prods.map((p) => ({
+            ...p,
+            __rowIndex: Number(rowIndex),
+            __originalTechnicalSpecifications: p.__originalTechnicalSpecifications || p.technicalSpecifications,
+            productReferenceID: p.productReferenceID || p.id || null,
+          })),
+      );
+
+      const res = await fetch("/api/request/spf-request-save-draft-api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spf_number: formData.spf_number,
+          item_code: formData.item_code,
+          selectedProducts: allProducts,
+          totalItemRows: formData.item_description?.length ?? 1,
+          spf_creation_start_time: spfCreationStartTime,
+          is_edit_mode: false,
+          original_spf_number: null,
+          userId,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("Draft save error:", errText);
+        toast.error("Failed to save draft");
+        return;
+      }
+
+      const data = await res.json();
+      if (data?.success) {
+        setHasDraft(true);
+        toast.success("Draft saved successfully");
+      }
+    } catch (err: any) {
+      console.error("Draft save error:", err);
+      toast.error("Failed to save draft");
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   /* ════════════════════════════════════════════════════════════ */
   /* MOBILE LAYOUT                                               */
   /* ════════════════════════════════════════════════════════════ */
@@ -709,9 +794,16 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     <>
       <DialogHeader className="px-4 pt-4 pb-2 border-b shrink-0">
         <div className="flex items-center justify-between gap-2">
-          <DialogTitle className="text-sm font-semibold truncate">
-            {formData.spf_number || "Create SPF"}
-          </DialogTitle>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="text-sm font-semibold truncate">
+              {formData.spf_number || "Create SPF"}
+            </DialogTitle>
+            {draftLoaded && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                Draft Loaded
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1 shrink-0">
             <input
               type="text"
@@ -1349,6 +1441,18 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
             </Button>
           )}
         </div>
+        <div className="w-full">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full rounded"
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft || (formData.item_description?.length || 0) === 0}
+          >
+            <Save size={16} className="mr-2" />
+            {isSavingDraft ? "Saving..." : hasDraft ? "Update Draft" : "Save Draft"}
+          </Button>
+        </div>
       </DialogFooter>
 
       {/* ── MultipleSpecsDetected — rendered OUTSIDE Dialog scroll area to avoid close ── */}
@@ -1367,9 +1471,16 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const renderDesktop = () => (
     <>
       <DialogHeader className="w-full mb-4 relative">
-        <DialogTitle className="text-center w-full">
-          Create SPF Request
-        </DialogTitle>
+        <div className="flex items-center justify-center gap-2">
+          <DialogTitle className="text-center">
+            Create SPF Request
+          </DialogTitle>
+          {draftLoaded && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+              Draft Loaded
+            </span>
+          )}
+        </div>
         <div className="absolute right-0 top-0 flex gap-2 items-center">
           <input
             type="text"
@@ -2209,40 +2320,52 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
             onTick={() => {}}
           />
         </div>
-        <div className="w-full flex justify-end gap-2">
+        <div className="w-full flex justify-between items-center gap-2">
           <Button
-            variant="outline"
+            type="button"
+            variant="secondary"
             className="rounded-none p-6"
-            onClick={() => onOpenChange(false)}
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft || (formData.item_description?.length || 0) === 0}
           >
-            Cancel
+            <Save size={18} className="mr-2" />
+            {isSavingDraft ? "Saving..." : hasDraft ? "Update Draft" : "Save Draft"}
           </Button>
-          <Button
-            variant="outline"
-            className="rounded-none p-6"
-            onClick={() => setViewMode((prev) => !prev)}
-          >
-            {viewMode ? "Back" : "View"}
-          </Button>
-          {viewMode && (
+          <div className="flex gap-2">
             <Button
+              variant="outline"
               className="rounded-none p-6"
-              onClick={handleSubmit}
-              disabled={
-                isSubmitting ||
-                (formData.item_description?.length || 0) === 0 ||
-                formData.item_description?.some(
-                  (_, i) => !productOffers[i] || productOffers[i].length === 0,
-                ) ||
-                Object.values(productOffers).flat().some(
-                  (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim() ||
-                    (p.countries?.length > 1 && !p.__selectedBranch?.trim())
-                )
-              }
+              onClick={() => onOpenChange(false)}
             >
-              {isSubmitting ? "Submitting..." : "Submit"}
+              Cancel
             </Button>
-          )}
+            <Button
+              variant="outline"
+              className="rounded-none p-6"
+              onClick={() => setViewMode((prev) => !prev)}
+            >
+              {viewMode ? "Back" : "View"}
+            </Button>
+            {viewMode && (
+              <Button
+                className="rounded-none p-6"
+                onClick={handleSubmit}
+                disabled={
+                  isSubmitting ||
+                  (formData.item_description?.length || 0) === 0 ||
+                  formData.item_description?.some(
+                    (_, i) => !productOffers[i] || productOffers[i].length === 0,
+                  ) ||
+                  Object.values(productOffers).flat().some(
+                    (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim() ||
+                      (p.countries?.length > 1 && !p.__selectedBranch?.trim())
+                  )
+                }
+              >
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </Button>
+            )}
+          </div>
         </div>
       </DialogFooter>
     </>
