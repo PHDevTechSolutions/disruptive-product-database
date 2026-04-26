@@ -186,7 +186,7 @@ export default function Dashboard() {
               </p>
             </div>
             <p className={`text-4xl text-gray-900 group-hover:scale-105 transition-transform ${
-              isComic ? "font-comic-title comic-text-shadow" : isEngineer ? "font-engineer-title engineer-text-shadow" : "font-formal-title"
+              isComic ? "font-comic-title comic-text-shadow" : isEngineer ? "font-engineer-title engineer-text-stencil" : "font-formal-title"
             }`}>
               {value === null
                 ? <span className={`text-gray-400 text-2xl ${isComic ? "comic-animate-pulse" : ""}`}>
