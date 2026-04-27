@@ -1098,6 +1098,17 @@ useEffect(() => {
       const data = await res.json();
 
       if (data?.success && data?.hasDraft && data?.productOffers) {
+        // Debug: Log loaded draft products
+        console.log("[Edit SPF] Loaded draft products:", Object.entries(data.productOffers).flatMap(
+          ([rowIndex, prods]: [string, any]) =>
+            prods.map((p: any) => ({
+              name: p.productName,
+              brand: p?.supplier?.supplierBrand,
+              isExisting: p.__isExisting,
+              rowIndex: Number(rowIndex),
+            }))
+        ));
+
         // Set the product offers from draft
         setProductOffers(data.productOffers);
         // Switch to edit mode with draft loaded
@@ -1225,6 +1236,15 @@ useEffect(() => {
           })),
       );
 
+      // Debug: Log products being sent
+      console.log("[Edit SPF] Submitting products:", allProducts.length);
+      console.log("[Edit SPF] Products:", allProducts.map((p: any) => ({
+        name: p.productName,
+        brand: p?.supplier?.supplierBrand,
+        isExisting: p.__isExisting,
+        rowIndex: p.__rowIndex,
+      })));
+
       const res = await fetch("/api/request/spf-request-edit-api", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1341,6 +1361,18 @@ useEffect(() => {
             </span>
           </DialogTitle>
           <div className="flex items-center gap-1 shrink-0">
+            {hasDraft && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs rounded text-blue-600 border-blue-300 hover:bg-blue-50"
+                onClick={handleLoadDraft}
+                disabled={isLoadingDraft}
+              >
+                {isLoadingDraft ? "Loading..." : "Load Draft"}
+              </Button>
+            )}
             <input
               type="text"
               placeholder="Search..."
@@ -1928,60 +1960,73 @@ useEffect(() => {
         )}
       </div>
 
-      <div className="flex justify-start mb-2 px-4">
-        <SPFTimer
-          isActive={timerActive}
-          startTime={spfCreationStartTime}
-          label="Edit SPF Timer"
-          onStart={(v) => setSpfCreationStartTime(v)}
-          onStop={(v) => setSpfCreationEndTime(v)}
-          onTick={() => {}}
-        />
-      </div>
-
-      <DialogFooter className="px-4 py-3 border-t shrink-0 flex-row gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          className="flex-1 rounded"
-          onClick={() => {
-            setEditMode(false);
-            setViewMode(false);
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="flex-1 rounded"
-          onClick={() => {
-            setViewMode((p) => !p);
-            if (!viewMode) setActiveTab("items");
-          }}
-        >
-          {viewMode ? "Edit" : "Preview"}
-        </Button>
-        {viewMode && (
+      <DialogFooter className="px-4 py-3 border-t shrink-0 flex-col gap-2">
+        <div className="w-full">
+          <SPFTimer
+            isActive={timerActive}
+            startTime={spfCreationStartTime}
+            label="Edit SPF Timer"
+            onStart={(v) => setSpfCreationStartTime(v)}
+            onStop={(v) => setSpfCreationEndTime(v)}
+            onTick={() => {}}
+          />
+        </div>
+        <div className="w-full">
           <Button
             type="button"
-            className="flex-1 rounded bg-orange-600 hover:bg-orange-700"
-            onClick={handleSubmitEdit}
-            disabled={
-              isSubmitting ||
-              itemDescriptions.length === 0 ||
-              itemDescriptions.some(
-                (_, i) => !productOffers[i] || productOffers[i].length === 0,
-              ) ||
-              Object.values(productOffers).flat().some(
-                (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim() ||
-                  (p.countries?.length > 1 && !p.__selectedBranch?.trim())
-              )
-            }
+            variant="secondary"
+            className="w-full rounded"
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft || itemDescriptions.length === 0}
           >
-            {isSubmitting ? "Saving..." : "Save"}
+            <Save size={16} className="mr-2" />
+            {isSavingDraft ? "Saving..." : hasDraft ? "Update Draft" : "Save Draft"}
           </Button>
-        )}
+        </div>
+        <div className="w-full flex flex-row gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 rounded"
+            onClick={() => {
+              setEditMode(false);
+              setViewMode(false);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 rounded"
+            onClick={() => {
+              setViewMode((p) => !p);
+              if (!viewMode) setActiveTab("items");
+            }}
+          >
+            {viewMode ? "Edit" : "Preview"}
+          </Button>
+          {viewMode && (
+            <Button
+              type="button"
+              className="flex-1 rounded bg-orange-600 hover:bg-orange-700"
+              onClick={handleSubmitEdit}
+              disabled={
+                isSubmitting ||
+                itemDescriptions.length === 0 ||
+                itemDescriptions.some(
+                  (_, i) => !productOffers[i] || productOffers[i].length === 0,
+                ) ||
+                Object.values(productOffers).flat().some(
+                  (p: any) => !p.__priceValidity?.trim() || !p.__tdsBrand?.trim() ||
+                    (p.countries?.length > 1 && !p.__selectedBranch?.trim())
+                )
+              }
+            >
+              {isSubmitting ? "Saving..." : "Save"}
+            </Button>
+          )}
+        </div>
       </DialogFooter>
 
       {/* ── MultipleSpecsDetected — rendered as fixed bottom sheet (not nested Dialog) ── */}
@@ -2025,6 +2070,18 @@ useEffect(() => {
             </span>
           </DialogTitle>
           <div className="flex-1 flex gap-2 items-center justify-end">
+            {hasDraft && (
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-none p-6 text-blue-600 border-blue-300 hover:bg-blue-50"
+                onClick={handleLoadDraft}
+                disabled={isLoadingDraft}
+              >
+                <Save size={16} className="mr-2" />
+                {isLoadingDraft ? "Loading..." : "Load Draft"}
+              </Button>
+            )}
             <input
               type="text"
               placeholder="Search product..."
@@ -2944,24 +3001,35 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
             onTick={() => {}}
           />
         </div>
-        <div className="w-full flex justify-end gap-2">
+        <div className="w-full flex justify-between items-center gap-2">
           <Button
-            variant="outline"
+            type="button"
+            variant="secondary"
             className="rounded-none p-6"
-            onClick={() => {
-              setEditMode(false);
-              setViewMode(false);
-            }}
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft || itemDescriptions.length === 0}
           >
-            Cancel
+            <Save size={18} className="mr-2" />
+            {isSavingDraft ? "Saving..." : hasDraft ? "Update Draft" : "Save Draft"}
           </Button>
-          <Button
-            variant="outline"
-            className="rounded-none p-6"
-            onClick={() => setViewMode((prev) => !prev)}
-          >
-            {viewMode ? "Back" : "Preview"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="rounded-none p-6"
+              onClick={() => {
+                setEditMode(false);
+                setViewMode(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-none p-6"
+              onClick={() => setViewMode((prev) => !prev)}
+            >
+              {viewMode ? "Back" : "Preview"}
+            </Button>
           {viewMode && (
             <Button
               className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
@@ -2981,6 +3049,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
               {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           )}
+          </div>
         </div>
       </DialogFooter>
     </div>

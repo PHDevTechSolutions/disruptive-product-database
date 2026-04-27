@@ -117,6 +117,7 @@ export default async function handler(
     const branches = parseCommaDelimited(draft.supplier_branch);
     const spfRemarksPD = parseCommaDelimited(draft.spf_remarks_pd);
     const tdsBrands = parseCommaDelimited(draft.tds);
+    const isExisting = parseCommaDelimited(draft.is_existing);
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts: any[] = [];
@@ -152,6 +153,7 @@ export default async function handler(
           __selectedBranch: branches[rowIdx]?.[optIdx] || "-",
           __spfRemarksPD: spfRemarksPD[rowIdx]?.[optIdx] || "-",
           __tdsBrand: tdsBrands[rowIdx]?.[optIdx] || "",
+          __isExisting: isExisting[rowIdx]?.[optIdx] === "true",
           __rowIndex: rowIdx,
         };
 

@@ -128,6 +128,7 @@ export default async function handler(
     const rowBranches:          string[] = [];
     const rowSpfRemarksPD:      string[] = [];
     const rowTdsBrands:         string[] = [];
+    const rowIsExisting:        string[] = [];
 
     for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
       const rowProducts = rowMap[rowIdx] || [];
@@ -155,6 +156,7 @@ export default async function handler(
       const branches: string[] = [];
       const spfRemarksPD: string[] = [];
       const tdsBrands: string[] = [];
+      const isExisting: string[] = [];
 
       const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
 
@@ -289,6 +291,9 @@ export default async function handler(
 
         /* ── PD Remarks ── */
         spfRemarksPD.push(p?.__spfRemarksPD || "-");
+
+        /* ── Is Existing (for tracking products from original SPF vs newly added) ── */
+        isExisting.push(p?.__isExisting === true ? "true" : "false");
       }
 
       if (rowProducts.length === 0) {
@@ -321,6 +326,7 @@ export default async function handler(
       rowBranches.push(branches.join(","));
       rowSpfRemarksPD.push(spfRemarksPD.join(","));
       rowTdsBrands.push(tdsBrands.join(","));
+      rowIsExisting.push(isExisting.join(","));
     }
 
     // Fill arrays for empty rows
@@ -353,6 +359,7 @@ export default async function handler(
     const finalBranches            = rowBranches.join(ROW_SEP);
     const finalSpfRemarksPD        = rowSpfRemarksPD.join(ROW_SEP);
     const finalTds                 = rowTdsBrands.join(ROW_SEP);
+    const finalIsExisting          = rowIsExisting.join(ROW_SEP);
     const finalItemCode        = rowItemCodes.some((r) => r !== "-" && r !== "")
       ? rowItemCodes.join(ROW_SEP)
       : (item_code ?? null);
@@ -395,6 +402,7 @@ export default async function handler(
         tds: finalTds,
         dimensional_drawing: finalDimensionalDrawings,
         illuminance_drawing: finalIlluminanceDrawings,
+        is_existing: finalIsExisting,
 
         status: "Draft",
         is_edit_mode: is_edit_mode ?? false,
