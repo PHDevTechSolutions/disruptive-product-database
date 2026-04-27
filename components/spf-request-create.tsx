@@ -697,6 +697,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
           prods.map((p) => ({ 
             ...p, 
             __rowIndex: Number(rowIndex),
+            price_validity: p.__priceValidity ?? p.price_validity,
             // Include original specs for later editing
             __originalTechnicalSpecifications: p.__originalTechnicalSpecifications || p.technicalSpecifications,
             // Include product reference ID for syncing changes from Firebase
@@ -747,6 +748,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
           prods.map((p) => ({
             ...p,
             __rowIndex: Number(rowIndex),
+            price_validity: p.__priceValidity ?? p.price_validity,
             __originalTechnicalSpecifications: p.__originalTechnicalSpecifications || p.technicalSpecifications,
             productReferenceID: p.productReferenceID || p.id || null,
           })),

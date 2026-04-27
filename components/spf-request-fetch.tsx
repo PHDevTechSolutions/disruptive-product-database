@@ -657,7 +657,7 @@ useEffect(() => {
     const rowDimensionalEdit = splitByRow(data.dimensional_drawing);
     const rowIlluminanceEdit = splitByRow(data.illuminance_drawing);
     const rowTdsBrands = splitByRow(data.tds);
-    const rowBranches = splitByRow(data.supplier_brand);
+    const rowBranches = splitByRow(data.supplier_branch);
     const rowSpecs = splitSpecsByRow(
       data.product_offer_technical_specification,
     );
