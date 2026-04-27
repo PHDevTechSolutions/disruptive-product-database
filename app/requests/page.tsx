@@ -101,6 +101,11 @@ export default function RequestsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
 
+  /* ── Filter / sort ── */
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"date_updated" | "date_received" | "alphabetical">("date_updated");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
   /* ── Dialog ── */
   const [openDialog, setOpenDialog]     = useState(false);
   const [selectedRow, setSelectedRow]   = useState<SPFRequest | null>(null);
@@ -220,13 +225,54 @@ export default function RequestsPage() {
   /* ─────────────────────── */
   const filteredRequests = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
-    return requests.filter(
+    
+    // Apply search filter
+    let filtered = requests.filter(
       (r) =>
         !term ||
         (r.spf_number || "").toLowerCase().includes(term) ||
         (r.customer_name || "").toLowerCase().includes(term)
     );
-  }, [requests, searchTerm]);
+
+    // Apply status filter
+    if (statusFilter) {
+      filtered = filtered.filter((r) => {
+        const spfStatus = createdSPF[r.spf_number];
+        if (!spfStatus) return false;
+        
+        if (statusFilter === "For Procurement Costing") {
+          return spfStatus.toLowerCase() === "pending for procurement";
+        }
+        if (statusFilter === "Ready For Quotation") {
+          return spfStatus.toLowerCase() === "approved by procurement";
+        }
+        if (statusFilter === "For Revision") {
+          return spfStatus.toLowerCase() === "for revision";
+        }
+        return false;
+      });
+    }
+
+    // Apply sorting
+    filtered = [...filtered].sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === "alphabetical") {
+        comparison = (a.spf_number || "").localeCompare(b.spf_number || "");
+      } else if (sortBy === "date_received") {
+        const dateA = a.date_approved_sales_head ? new Date(a.date_approved_sales_head).getTime() : 0;
+        const dateB = b.date_approved_sales_head ? new Date(b.date_approved_sales_head).getTime() : 0;
+        comparison = dateA - dateB;
+      } else {
+        // date_updated (default)
+        const dateA = a.date_updated ? new Date(a.date_updated).getTime() : (a.date_created ? new Date(a.date_created).getTime() : 0);
+        const dateB = b.date_updated ? new Date(b.date_updated).getTime() : (b.date_created ? new Date(b.date_created).getTime() : 0);
+        comparison = dateA - dateB;
+      }
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+
+    return filtered;
+  }, [requests, searchTerm, statusFilter, sortBy, sortOrder, createdSPF]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
 
@@ -235,7 +281,7 @@ export default function RequestsPage() {
     return filteredRequests.slice(start, start + PAGE_SIZE);
   }, [filteredRequests, currentPage]);
 
-  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, sortBy, sortOrder]);
 
   /* ─────────────────────── */
   /* Helpers                 */
@@ -255,6 +301,13 @@ export default function RequestsPage() {
     markSPFRequestAsRead(rowData.spf_number);
     setSelectedRow(rowData);
     setOpenDialog(true);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter(null);
+    setSortBy("date_updated");
+    setSortOrder("desc");
   };
 
   /* ─────────────────────── */
@@ -288,7 +341,70 @@ export default function RequestsPage() {
               />
             </div>
             <span className="text-sm text-muted-foreground">{filteredRequests.length} results</span>
+            {(searchTerm !== "" || statusFilter !== null) && (
+              <Button
+                variant="ghost"
+                onClick={clearFilters}
+                className="text-xs h-8 px-2"
+              >
+                Clear Filters
+              </Button>
+            )}
           </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-gray-500 font-medium">Status:</span>
+          <Button
+            size="sm"
+            variant={statusFilter === null ? "default" : "outline"}
+            onClick={() => setStatusFilter(null)}
+            className="text-xs"
+          >
+            All
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === "For Procurement Costing" ? "default" : "outline"}
+            onClick={() => setStatusFilter("For Procurement Costing")}
+            className="text-xs"
+          >
+            For Procurement Costing
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === "Ready For Quotation" ? "default" : "outline"}
+            onClick={() => setStatusFilter("Ready For Quotation")}
+            className="text-xs"
+          >
+            Ready For Quotation
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === "For Revision" ? "default" : "outline"}
+            onClick={() => setStatusFilter("For Revision")}
+            className="text-xs"
+          >
+            For Revision
+          </Button>
+          <div className="w-px h-6 bg-gray-300 mx-2" />
+          <span className="text-xs text-gray-500 font-medium">Sort by:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as "date_updated" | "date_received" | "alphabetical")}
+            className="h-8 px-2 rounded-md border text-sm bg-white/70"
+          >
+            <option value="date_updated">Date Updated</option>
+            <option value="date_received">Date Received</option>
+            <option value="alphabetical">Alphabetical</option>
+          </select>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            className="text-xs h-8 px-2"
+          >
+            {sortOrder === "asc" ? "↑ Asc" : "↓ Desc"}
+          </Button>
         </div>
       </div>
 
@@ -298,7 +414,7 @@ export default function RequestsPage() {
           <h1 className="text-lg font-bold text-gray-900">SPF Requests</h1>
           <SPFRequestDownloadAll requests={filteredRequests} />
         </div>
-        <div className="relative">
+        <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           <input
             type="text"
@@ -308,9 +424,75 @@ export default function RequestsPage() {
             className="w-full h-10 pl-9 pr-3 bg-white/70 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-gray-300"
           />
         </div>
-        <p className="text-xs text-gray-400 mt-2">
-          {filteredRequests.length} result{filteredRequests.length !== 1 ? "s" : ""}
-        </p>
+        <div className="flex flex-wrap gap-2 mb-2">
+          <span className="text-xs text-gray-500 font-medium self-center">Status:</span>
+          <Button
+            size="sm"
+            variant={statusFilter === null ? "default" : "outline"}
+            onClick={() => setStatusFilter(null)}
+            className="text-xs h-7 px-2"
+          >
+            All
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === "For Procurement Costing" ? "default" : "outline"}
+            onClick={() => setStatusFilter("For Procurement Costing")}
+            className="text-xs h-7 px-2"
+          >
+            Procurement
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === "Ready For Quotation" ? "default" : "outline"}
+            onClick={() => setStatusFilter("Ready For Quotation")}
+            className="text-xs h-7 px-2"
+          >
+            Quotation
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === "For Revision" ? "default" : "outline"}
+            onClick={() => setStatusFilter("For Revision")}
+            className="text-xs h-7 px-2"
+          >
+            Revision
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 font-medium">Sort:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as "date_updated" | "date_received" | "alphabetical")}
+            className="h-7 px-2 rounded-md border text-xs bg-white/70"
+          >
+            <option value="date_updated">Date Updated</option>
+            <option value="date_received">Date Received</option>
+            <option value="alphabetical">Alphabetical</option>
+          </select>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            className="text-xs h-7 px-2"
+          >
+            {sortOrder === "asc" ? "↑" : "↓"}
+          </Button>
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray-400">
+            {filteredRequests.length} result{filteredRequests.length !== 1 ? "s" : ""}
+          </p>
+          {(searchTerm !== "" || statusFilter !== null) && (
+            <Button
+              variant="ghost"
+              onClick={clearFilters}
+              className="text-xs h-7 px-2"
+            >
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── DESKTOP PAGINATION BAR ── */}
