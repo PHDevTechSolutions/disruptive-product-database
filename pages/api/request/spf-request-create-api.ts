@@ -509,6 +509,20 @@ export default async function handler(
       console.error("Audit log error:", auditErr);
     }
 
+    /* ── Delete draft from spf_creation_draft ── */
+    try {
+      const { error: deleteDraftError } = await supabase
+        .from("spf_creation_draft")
+        .delete()
+        .eq("spf_number", spf_number);
+      
+      if (deleteDraftError) {
+        console.error("Draft deletion error:", deleteDraftError);
+      }
+    } catch (deleteErr) {
+      console.error("Draft deletion error:", deleteErr);
+    }
+
     return res.status(200).json({ success: true, message: "SPF created successfully" });
 
   } catch (err: any) {

@@ -56,6 +56,7 @@ type SPFData = {
   status?: string;
   item_code?: string;
   supplier_brand: string;
+  supplier_branch?: string;
   product_offer_image: string;
   product_offer_qty: string;
   product_offer_technical_specification: string;
@@ -488,16 +489,23 @@ useEffect(() => {
     setTimerActive(true);
   }, [open]);
 
-  /* ── Check for existing draft ── */
+  /* ── Check for existing draft and restore timer ── */
   useEffect(() => {
     if (!open || !spfNumber) return;
 
     const checkDraft = async () => {
       try {
-        const res = await fetch(`/api/request/spf-request-check-draft-api?spf_number=${spfNumber}`);
+        const res = await fetch(`/api/request/spf-request-get-draft-api?spf_number=${spfNumber}`);
         const data = await res.json();
-        if (data?.success) {
-          setHasDraft(data.hasDraft);
+        if (data?.success && data?.hasDraft) {
+          setHasDraft(true);
+          // Restore the saved timer start time from draft - timer continues running
+          if (data.draft?.spf_creation_start_time) {
+            setSpfCreationStartTime(data.draft.spf_creation_start_time);
+            setTimerActive(true);
+          }
+        } else {
+          setHasDraft(false);
         }
       } catch (err) {
         console.error("Error checking draft:", err);
@@ -1114,6 +1122,11 @@ useEffect(() => {
         // Switch to edit mode with draft loaded
         setViewMode(false);
         setEditMode(true);
+        // Restore the saved timer start time from draft - timer continues running
+        if (data.draft?.spf_creation_start_time) {
+          setSpfCreationStartTime(data.draft.spf_creation_start_time);
+          setTimerActive(true);
+        }
         toast.success("Draft loaded successfully. Continue editing...");
       } else {
         toast.info("No draft found for this SPF request");

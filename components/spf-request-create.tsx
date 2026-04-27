@@ -346,6 +346,8 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     setPendingPipeProduct(null);
     setPendingPipeRowIndex(null);
 
+    // Only initialize a new timer if no draft exists yet
+    // The draft loading useEffect will override this if a draft with saved time is found
     const start = new Date().toISOString();
     setSpfCreationStartTime(start);
     setSpfCreationEndTime(null);
@@ -370,6 +372,11 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
             setProductOffers(data.productOffers);
             setDraftLoaded(true);
             toast.info("Draft loaded. You can continue where you left off.");
+          }
+          // Restore the saved timer start time from draft - timer continues running
+          if (data.draft?.spf_creation_start_time) {
+            setSpfCreationStartTime(data.draft.spf_creation_start_time);
+            setTimerActive(true);
           }
         } else {
           setHasDraft(false);
