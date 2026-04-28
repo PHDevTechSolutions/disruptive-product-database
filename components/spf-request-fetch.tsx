@@ -3519,6 +3519,11 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                             <div className="border rounded overflow-hidden">
                               <table className="w-full border text-xs">
                                 <thead>
+                                  <tr>
+                                    <th colSpan={isApproved ? (showProcurementRemarks ? 22 : 21) : (showProcurementRemarks ? 15 : 14)} className="border px-2 py-1 text-center text-xs font-bold bg-orange-100 text-orange-700">
+                                      Product Offer
+                                    </th>
+                                  </tr>
                                   <tr className="bg-gray-50">
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
                                       Supplier Brand

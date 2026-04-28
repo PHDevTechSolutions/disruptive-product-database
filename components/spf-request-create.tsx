@@ -1741,6 +1741,11 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                               <table className="w-full table-fixed text-[9px]">
                               <thead className="bg-muted">
                                 <tr>
+                                  <th colSpan={16} className="border px-0.5 py-0.5 text-center text-[9px] font-bold bg-orange-100 text-orange-700">
+                                    Product Offer
+                                  </th>
+                                </tr>
+                                <tr>
                                   <th className="border px-0.5 py-0.5 text-center w-6 text-[9px]">
                                     Actions
                                   </th>
