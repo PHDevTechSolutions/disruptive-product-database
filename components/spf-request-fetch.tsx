@@ -2309,8 +2309,9 @@ useEffect(() => {
         <td colSpan={3} className="border px-2 py-1 text-center align-middle">
           {(productOffers[index] || []).length > 0 && (
                           <div className="border rounded mb-2 overflow-hidden">
+                            <div className="max-h-64 overflow-y-auto">
                             <table className="w-full table-fixed text-[9px]">
-                              <thead className="bg-muted">
+                              <thead className="bg-muted sticky top-0 z-10">
                                 <tr>
                                   <th className="border px-0.5 py-0.5 text-center w-6 text-[9px]">
                                     Actions
@@ -2792,6 +2793,7 @@ useEffect(() => {
                                   })}
                                 </tbody>
                               </table>
+                            </div>
                             </div>
                           )}
                   </td>

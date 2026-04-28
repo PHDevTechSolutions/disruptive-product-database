@@ -1720,8 +1720,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                         <td colSpan={3} className="border px-2 py-1 text-center align-middle">
                           {(productOffers[index] || []).length > 0 && (
                             <div className="border rounded mb-2 overflow-hidden">
+                              <div className="max-h-64 overflow-y-auto">
                               <table className="w-full table-fixed text-[9px]">
-                              <thead className="bg-muted">
+                              <thead className="bg-muted sticky top-0 z-10">
                                 <tr>
                                   <th colSpan={16} className="border px-0.5 py-0.5 text-center text-[9px] font-bold bg-orange-100 text-orange-700">
                                     Product Offer
@@ -2095,6 +2096,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                 )}
                               </tbody>
                             </table>
+                          </div>
                           </div>
                         )}
                       </td>
