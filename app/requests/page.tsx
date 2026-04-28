@@ -238,6 +238,10 @@ export default function RequestsPage() {
     if (statusFilter) {
       filtered = filtered.filter((r) => {
         const spfStatus = createdSPF[r.spf_number];
+        
+        if (statusFilter === "No Status Yet") {
+          return !spfStatus;
+        }
         if (!spfStatus) return false;
         
         if (statusFilter === "For Procurement Costing") {
@@ -386,6 +390,14 @@ export default function RequestsPage() {
           >
             For Revision
           </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === "No Status Yet" ? "default" : "outline"}
+            onClick={() => setStatusFilter("No Status Yet")}
+            className="text-xs"
+          >
+            No Status Yet
+          </Button>
           <div className="w-px h-6 bg-gray-300 mx-2" />
           <span className="text-xs text-gray-500 font-medium">Sort by:</span>
           <select
@@ -457,6 +469,14 @@ export default function RequestsPage() {
             className="text-xs h-7 px-2"
           >
             Revision
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === "No Status Yet" ? "default" : "outline"}
+            onClick={() => setStatusFilter("No Status Yet")}
+            className="text-xs h-7 px-2"
+          >
+            No Status
           </Button>
         </div>
         <div className="flex items-center gap-2">
