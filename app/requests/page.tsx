@@ -538,7 +538,7 @@ export default function RequestsPage() {
           <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-10">
             <tr>
               {["SPF Number", "Customer Name", "Special Instructions", "Prepared By", "Approved By", "Approval Status", "Date Received", "Date Updated", "Action"].map((h) => (
-                <th key={h} className="px-4 py-3 text-left font-bold border-b whitespace-nowrap">{h}</th>
+                <th key={h} className="px-4 py-3 text-center font-bold border-b whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
@@ -567,8 +567,8 @@ export default function RequestsPage() {
 
                 return (
                   <tr key={req.id} className={`border-b hover:bg-white/60 align-middle ${isUnreadRow ? "bg-red-50/40 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.20)]" : ""}`}>
-                    <td className="px-4 py-3 font-medium uppercase">
-                      <div className="inline-flex items-center gap-2">
+                    <td className="px-4 py-3 font-medium uppercase text-center">
+                      <div className="inline-flex items-center gap-2 justify-center">
                         <span>{req.spf_number}</span>
                         {isUnreadRow && (
                           <span className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] rounded-full bg-red-600 text-white font-bold shadow-[0_0_16px_rgba(239,68,68,0.75)] animate-pulse">
@@ -577,9 +577,9 @@ export default function RequestsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 uppercase">{req.customer_name}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-start gap-2">
+                    <td className="px-4 py-3 uppercase text-center">{req.customer_name}</td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-start gap-2 justify-center">
                         {/* Person icon */}
                         <div className="shrink-0 w-8 h-8 rounded-full bg-linear-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
                           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -598,15 +598,15 @@ export default function RequestsPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 uppercase">{req.prepared_by || "-"}</td>
-                    <td className="px-4 py-3 uppercase">{req.approved_by || "-"}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 uppercase text-center">{req.prepared_by || "-"}</td>
+                    <td className="px-4 py-3 uppercase text-center">{req.approved_by || "-"}</td>
+                    <td className="px-4 py-3 text-center">
                       <StatusBadge status={req.status} />
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formattedDateApprovedSalesHead}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formattedDate}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2 flex-nowrap items-center">
+                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap text-center">{formattedDateApprovedSalesHead}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap text-center">{formattedDate}</td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex gap-2 flex-nowrap items-center justify-center">
                         <CollaborationHubRowTrigger
                           requestId={String(createdSPFIds[req.spf_number] || "")}
                           spfNumber={req.spf_number}
@@ -676,7 +676,7 @@ export default function RequestsPage() {
                   </div>
                   <span className="text-[10px] text-muted-foreground">{formattedDate}</span>
                 </div>
-                <p className="text-sm font-medium text-gray-800 uppercase">{req.customer_name}</p>
+                <p className="text-sm font-medium text-gray-800 uppercase text-center">{req.customer_name}</p>
                 <div className="flex items-start gap-2">
                   {/* Person icon */}
                   <div className="shrink-0 w-7 h-7 rounded-full bg-linear-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-md">
@@ -695,15 +695,15 @@ export default function RequestsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="text-xs text-gray-600 space-y-1 uppercase">
+                <div className="text-xs text-gray-600 space-y-1 uppercase text-center">
                   <p><span className="text-gray-400">Prepared By:</span> {req.prepared_by || "-"}</p>
                   <p><span className="text-gray-400">Approved By:</span> {req.approved_by || "-"}</p>
                 </div>
-                <div>
+                <div className="text-center">
                   <StatusBadge status={req.status} />
                 </div>
-                <p className="text-xs text-gray-600"><span className="text-gray-400">Date Received:</span> {formattedDateApprovedSalesHead}</p>
-                <div className="flex gap-2 pt-1 flex-wrap items-center">
+                <p className="text-xs text-gray-600 text-center"><span className="text-gray-400">Date Received:</span> {formattedDateApprovedSalesHead}</p>
+                <div className="flex gap-2 pt-1 flex-wrap items-center justify-center">
                   <CollaborationHubRowTrigger
                     requestId={String(createdSPFIds[req.spf_number] || "")}
                     spfNumber={req.spf_number}

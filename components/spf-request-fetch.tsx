@@ -3887,7 +3887,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
       <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap">
         <Button
           variant="outline"
-          className="rounded-none px-4 py-2 h-9 shrink-0"
+          className="rounded-none h-9 px-4 py-2 shrink-0"
           onClick={() => {
             onOpen?.();
             setOpen(true);
