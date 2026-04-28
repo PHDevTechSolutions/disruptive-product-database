@@ -2184,23 +2184,22 @@ useEffect(() => {
           <div className="overflow-y-auto relative">
             {itemDescriptions.length ? (
               <table className="w-full table-fixed border text-[10px]">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border px-1 py-1 text-center w-15">#</th>
-                    <th className="border px-1 py-1 text-center w-12.5">Image</th>
-                    <th className="border px-1 py-1 text-center w-30">
-                      Item Description
-                    </th>
-                    <th className="border px-1 py-1 text-center">Product Offer</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {itemDescriptions.map((desc, index) => (
-                    <tr
-                      key={index}
-                      className="text-sm"
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => {
+<thead>
+  <tr className="bg-gray-100">
+    <th className="border px-1 py-1 text-center w-15">#</th>
+    <th className="border px-1 py-1 text-center w-28">Image</th>
+    <th className="border px-1 py-1 text-center w-30">
+      Item Description
+    </th>
+  </tr>
+</thead>
+<tbody>
+  {itemDescriptions.map((desc, index) => (
+    <React.Fragment key={`row-${index}`}>
+      <tr
+        className="text-[10px]"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={() => {
                         if (!draggedProduct) return;
                         const frozen =
                           draggedProduct.__fromRow !== undefined
@@ -2261,11 +2260,54 @@ useEffect(() => {
                           )}
                         </div>
                       </td>
-                      <td className="border px-1 py-1 whitespace-pre-wrap text-center align-middle text-[10px] leading-tight">
-                        {desc.replace(/\|/g, "\n")}
-                      </td>
-                      <td className="border px-1 py-1 text-center align-middle">
-                        {(productOffers[index] || []).length > 0 && (
+        <td className="border px-1 py-1 whitespace-pre-wrap text-center align-middle text-[10px] leading-tight">
+          {desc.replace(/\|/g, "\n")}
+        </td>
+      </tr>
+      <tr
+        className="text-[10px]"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={() => {
+          if (!draggedProduct) return;
+          const frozen =
+            draggedProduct.__fromRow !== undefined
+              ? draggedProduct
+              : freezeSpecs(draggedProduct);
+          if (hasMultipleSpecValues(frozen)) {
+            if (draggedProduct.__fromRow !== undefined) {
+              setProductOffers((prev) => {
+                const copy = { ...prev };
+                const original = [...(copy[draggedProduct.__fromRow] || [])];
+                original.splice(draggedProduct.__fromIndex, 1);
+                copy[draggedProduct.__fromRow] = original;
+                return copy;
+              });
+            }
+            setPendingPipeProduct(frozen);
+            setPendingPipeRowIndex(index);
+            setShowPipeModal(true);
+            setDraggedProduct(null);
+            setShowTrash(false);
+          } else {
+            setProductOffers((prev) => {
+              const copy = { ...prev };
+              if (draggedProduct.__fromRow !== undefined) {
+                const original = [...(copy[draggedProduct.__fromRow] || [])];
+                original.splice(draggedProduct.__fromIndex, 1);
+                copy[draggedProduct.__fromRow] = original;
+              }
+              copy[index] = [
+                ...(copy[index] || []),
+                { ...frozen, qty: frozen.qty ?? 1 },
+              ];
+              return copy;
+            });
+            setDraggedProduct(null);
+          }
+        }}
+      >
+        <td colSpan={3} className="border px-2 py-1 text-center align-middle">
+          {(productOffers[index] || []).length > 0 && (
                           <div className="border rounded mb-2 overflow-hidden">
                             <table className="w-full table-fixed text-[9px]">
                               <thead className="bg-muted">
@@ -2752,10 +2794,11 @@ useEffect(() => {
                               </table>
                             </div>
                           )}
-                        </td>
-                      </tr>
+                  </td>
+                        </tr>
+                      </React.Fragment>
                     ))}
-                </tbody>
+                  </tbody>
               </table>
             ) : (
               <p className="text-sm text-muted-foreground">No items.</p>

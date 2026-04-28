@@ -1597,102 +1597,148 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                     <th className="border px-1 py-1 text-center w-30">
                       Item Description
                     </th>
-                    <th className="border px-1 py-1 text-center">Product Offer</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(formData.item_description || []).map((desc, index) => (
-                    <tr
-                      key={index}
-                      className="text-[10px]"
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => {
-                        if (viewMode || !draggedProduct) return;
-                        const frozen =
-                          draggedProduct.__fromRow !== undefined
-                            ? draggedProduct
-                            : freezeSpecs(draggedProduct);
-                        if (hasMultipleSpecValues(frozen)) {
-                          if (draggedProduct.__fromRow !== undefined) {
+                    <React.Fragment key={`row-${index}`}>
+                      <tr
+                        className="text-[10px]"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => {
+                          if (viewMode || !draggedProduct) return;
+                          const frozen =
+                            draggedProduct.__fromRow !== undefined
+                              ? draggedProduct
+                              : freezeSpecs(draggedProduct);
+                          if (hasMultipleSpecValues(frozen)) {
+                            if (draggedProduct.__fromRow !== undefined) {
+                              setProductOffers((prev) => {
+                                const copy = { ...prev };
+                                const original = [
+                                  ...(copy[draggedProduct.__fromRow] || []),
+                                ];
+                                original.splice(draggedProduct.__fromIndex, 1);
+                                copy[draggedProduct.__fromRow] = original;
+                                return copy;
+                              });
+                            }
+                            setPendingPipeProduct(frozen);
+                            setPendingPipeRowIndex(index);
+                            setShowPipeModal(true);
+                            setDraggedProduct(null);
+                            setShowTrash(false);
+                          } else {
                             setProductOffers((prev) => {
                               const copy = { ...prev };
-                              const original = [
-                                ...(copy[draggedProduct.__fromRow] || []),
+                              if (draggedProduct.__fromRow !== undefined) {
+                                const original = [
+                                  ...(copy[draggedProduct.__fromRow] || []),
+                                ];
+                                original.splice(draggedProduct.__fromIndex, 1);
+                                copy[draggedProduct.__fromRow] = original;
+                              }
+                              copy[index] = [
+                                ...(copy[index] || []),
+                                { ...frozen, qty: frozen.qty ?? 1 },
                               ];
-                              original.splice(draggedProduct.__fromIndex, 1);
-                              copy[draggedProduct.__fromRow] = original;
                               return copy;
                             });
+                            setDraggedProduct(null);
                           }
-                          setPendingPipeProduct(frozen);
-                          setPendingPipeRowIndex(index);
-                          setShowPipeModal(true);
-                          setDraggedProduct(null);
-                          setShowTrash(false);
-                        } else {
-                          setProductOffers((prev) => {
-                            const copy = { ...prev };
-                            if (draggedProduct.__fromRow !== undefined) {
-                              const original = [
-                                ...(copy[draggedProduct.__fromRow] || []),
-                              ];
-                              original.splice(draggedProduct.__fromIndex, 1);
-                              copy[draggedProduct.__fromRow] = original;
-                            }
-                            copy[index] = [
-                              ...(copy[index] || []),
-                              { ...frozen, qty: frozen.qty ?? 1 },
-                            ];
-                            return copy;
-                          });
-                          setDraggedProduct(null);
-                        }
-                      }}
-                    >
-                      <td className="border px-1 py-1 font-medium text-center align-middle text-[10px]">
-                        {formData.spf_number
-                          ? `${formData.spf_number}-${String(index + 1).padStart(3, "0")}`
-                          : "-"}
-                      </td>
-                      <td className="border px-1 py-1 align-middle">
-                        <div className="flex justify-center items-center">
-                          {formData.item_photo?.[index] ? (
-                            <img
-                              src={formData.item_photo[index]}
-                              alt={desc}
-                              className="w-24 h-24 object-contain cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => openImagePreview(formData.item_photo?.[index])}
-                            />
-                          ) : (
-                            <span className="text-[10px]">-</span>
-                          )}
-                        </div>
-                      </td>
-                      <td
-                        className="border px-1 py-1 whitespace-pre-wrap text-center align-middle text-[10px] leading-tight"
-                        contentEditable
-                        suppressContentEditableWarning
-                        onBlur={(e) => {
-                          const updated = [
-                            ...(formData.item_description || []),
-                          ];
-                          const newLines = e.currentTarget.innerText
-                            .split("\n")
-                            .map((l) => l.trim())
-                            .filter(Boolean);
-                          updated[index] = newLines.join(" | ");
-                          setFormData({
-                            ...formData,
-                            item_description: updated,
-                          });
                         }}
                       >
-                        {desc.replace(/\|/g, "\n")}
-                      </td>
-                      <td className="border px-2 py-1 text-center align-middle">
-                        {(productOffers[index] || []).length > 0 && (
-                          <div className="border rounded mb-2 overflow-hidden">
-                            <table className="w-full table-fixed text-[9px]">
+                        <td className="border px-1 py-1 font-medium text-center align-middle text-[10px]">
+                          {formData.spf_number
+                            ? `${formData.spf_number}-${String(index + 1).padStart(3, "0")}`
+                            : "-"}
+                        </td>
+                        <td className="border px-1 py-1 align-middle">
+                          <div className="flex justify-center items-center">
+                            {formData.item_photo?.[index] ? (
+                              <img
+                                src={formData.item_photo[index]}
+                                alt={desc}
+                                className="w-24 h-24 object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => openImagePreview(formData.item_photo?.[index])}
+                              />
+                            ) : (
+                              <span className="text-[10px]">-</span>
+                            )}
+                          </div>
+                        </td>
+                        <td
+                          className="border px-1 py-1 whitespace-pre-wrap text-center align-middle text-[10px] leading-tight"
+                          contentEditable
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            const updated = [
+                              ...(formData.item_description || []),
+                            ];
+                            const newLines = e.currentTarget.innerText
+                              .split("\n")
+                              .map((l) => l.trim())
+                              .filter(Boolean);
+                            updated[index] = newLines.join(" | ");
+                            setFormData({
+                              ...formData,
+                              item_description: updated,
+                            });
+                          }}
+                        >
+                          {desc.replace(/\|/g, "\n")}
+                        </td>
+                      </tr>
+                      <tr
+                        className="text-[10px]"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => {
+                          if (viewMode || !draggedProduct) return;
+                          const frozen =
+                            draggedProduct.__fromRow !== undefined
+                              ? draggedProduct
+                              : freezeSpecs(draggedProduct);
+                          if (hasMultipleSpecValues(frozen)) {
+                            if (draggedProduct.__fromRow !== undefined) {
+                              setProductOffers((prev) => {
+                                const copy = { ...prev };
+                                const original = [
+                                  ...(copy[draggedProduct.__fromRow] || []),
+                                ];
+                                original.splice(draggedProduct.__fromIndex, 1);
+                                copy[draggedProduct.__fromRow] = original;
+                                return copy;
+                              });
+                            }
+                            setPendingPipeProduct(frozen);
+                            setPendingPipeRowIndex(index);
+                            setShowPipeModal(true);
+                            setDraggedProduct(null);
+                            setShowTrash(false);
+                          } else {
+                            setProductOffers((prev) => {
+                              const copy = { ...prev };
+                              if (draggedProduct.__fromRow !== undefined) {
+                                const original = [
+                                  ...(copy[draggedProduct.__fromRow] || []),
+                                ];
+                                original.splice(draggedProduct.__fromIndex, 1);
+                                copy[draggedProduct.__fromRow] = original;
+                              }
+                              copy[index] = [
+                                ...(copy[index] || []),
+                                { ...frozen, qty: frozen.qty ?? 1 },
+                              ];
+                              return copy;
+                            });
+                            setDraggedProduct(null);
+                          }
+                        }}
+                      >
+                        <td colSpan={3} className="border px-2 py-1 text-center align-middle">
+                          {(productOffers[index] || []).length > 0 && (
+                            <div className="border rounded mb-2 overflow-hidden">
+                              <table className="w-full table-fixed text-[9px]">
                               <thead className="bg-muted">
                                 <tr>
                                   <th className="border px-0.5 py-0.5 text-center w-6 text-[9px]">
@@ -2065,7 +2111,8 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                         )}
                       </td>
                     </tr>
-                  ))}
+                  </React.Fragment>
+                ))}
                 </tbody>
               </table>
             ) : (
