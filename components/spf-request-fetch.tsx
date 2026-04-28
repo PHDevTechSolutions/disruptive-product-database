@@ -2260,7 +2260,7 @@ useEffect(() => {
                           )}
                         </div>
                       </td>
-        <td className="border px-1 py-1 whitespace-pre-wrap text-center align-middle text-[10px] leading-tight">
+        <td className="border px-1 py-1 whitespace-pre-wrap text-center align-middle text-[10px] leading-tight select-none">
           {desc.replace(/\|/g, "\n")}
         </td>
       </tr>

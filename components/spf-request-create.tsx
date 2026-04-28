@@ -1667,25 +1667,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                             )}
                           </div>
                         </td>
-                        <td
-                          className="border px-1 py-1 whitespace-pre-wrap text-center align-middle text-[10px] leading-tight"
-                          contentEditable
-                          suppressContentEditableWarning
-                          onBlur={(e) => {
-                            const updated = [
-                              ...(formData.item_description || []),
-                            ];
-                            const newLines = e.currentTarget.innerText
-                              .split("\n")
-                              .map((l) => l.trim())
-                              .filter(Boolean);
-                            updated[index] = newLines.join(" | ");
-                            setFormData({
-                              ...formData,
-                              item_description: updated,
-                            });
-                          }}
-                        >
+                        <td className="border px-1 py-1 whitespace-pre-wrap text-center align-middle text-[10px] leading-tight select-none">
                           {desc.replace(/\|/g, "\n")}
                         </td>
                       </tr>
