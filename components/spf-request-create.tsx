@@ -1846,11 +1846,12 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                       <tr
                                         key={i}
                                         draggable={!viewMode}
-                                        className={
+                                        className={`bg-orange-50 ${
                                           viewMode
                                             ? "cursor-default"
                                             : "cursor-grab active:cursor-grabbing"
-                                        }
+                                        }`}
+
                                         onDragStart={(e) => {
                                           if (viewMode) return;
                                           e.dataTransfer.setData(

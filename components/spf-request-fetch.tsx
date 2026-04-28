@@ -2449,7 +2449,7 @@ useEffect(() => {
                                       <tr
                                         key={i}
                                         draggable={!prod.__isExisting}
-                                        className={`${prod.__isExisting ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
+                                        className={`bg-orange-50 ${prod.__isExisting ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
                                         onDragStart={(e) => {
                                           if (prod.__isExisting) {
                                             e.preventDefault();
@@ -3595,7 +3595,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  <tr className="align-top">
+                                  <tr className="align-top bg-orange-50">
                                     <td className="border px-2 py-2 text-center align-middle font-medium">
                                       {prodBrands[i] || "-"}
                                     </td>
