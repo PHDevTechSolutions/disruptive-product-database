@@ -169,30 +169,12 @@ export default async function handler(
         const port         = p?.commercialDetails?.portOfDischarge   || "-";
         const subtotal     = qty * unitCost;
 
-        // Handle multiple dimensions vs single dimension
-        const productHasMultipleDims = p?.commercialDetails?.hasMultipleDimensions === true;
         const packagingData = p?.commercialDetails?.packaging;
-        
-        let pcsPerCarton: string;
-        let packagingStr: string;
-        
-        if (productHasMultipleDims && Array.isArray(packagingData) && packagingData.length > 0) {
-          const dimSets = packagingData.map((dim: any) => {
-            const len = dim?.length || "-";
-            const wid = dim?.width || "-";
-            const hgt = dim?.height || "-";
-            const pcs = dim?.pcsPerCarton ?? "-";
-            return `${len} x ${wid} x ${hgt} (PCS: ${pcs})`;
-          });
-          packagingStr = dimSets.join(" || ");
-          pcsPerCarton = packagingData.map((dim: any) => dim?.pcsPerCarton ?? "-").join(" | ");
-        } else {
-          const length = packagingData?.length || "-";
-          const width  = packagingData?.width  || "-";
-          const height = packagingData?.height || "-";
-          pcsPerCarton = String(p?.commercialDetails?.pcsPerCarton ?? "-");
-          packagingStr = `${length} x ${width} x ${height}`;
-        }
+        const length = packagingData?.length || "-";
+        const width  = packagingData?.width  || "-";
+        const height = packagingData?.height || "-";
+        const pcsPerCarton = String(p?.commercialDetails?.pcsPerCarton ?? "-");
+        const packagingStr = `${length} x ${width} x ${height}`;
 
         // price_validity - preserve datetime-local format (YYYY-MM-DDTHH:mm)
         const rawPV = p?.__priceValidity || p?.price_validity;

@@ -1006,26 +1006,9 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                             prod?.commercialDetails?.unitCost || 0,
                           );
                           const subtotal = qty * cost;
-                          // Handle multiple dimensions display
-                          const hasMultipleDims = prod?.commercialDetails?.hasMultipleDimensions === true;
                           const packagingData = prod?.commercialDetails?.packaging;
                           let packagingDisplay: React.ReactNode = "-";
-                          if (hasMultipleDims && Array.isArray(packagingData) && packagingData.length > 0) {
-                            packagingDisplay = (
-                              <div className="space-y-1">
-                                {packagingData.map((dim: any, idx: number) => (
-                                  <div key={idx} className="text-[9px]">
-                                    <span className="font-semibold">Pkg {idx + 1}:</span>
-                                    <br />
-                                    {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
-                                    {dim.pcsPerCarton && dim.pcsPerCarton !== "-" && (
-                                      <span className="text-muted-foreground"> (PCS: {dim.pcsPerCarton})</span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          } else if (packagingData) {
+                          if (packagingData) {
                             const length = packagingData.length || "-";
                             const width = packagingData.width || "-";
                             const height = packagingData.height || "-";
@@ -1134,13 +1117,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                   </select>
                                 </div>
                                 <div className="text-[10px] text-muted-foreground">
-                                  {hasMultipleDims && Array.isArray(packagingData) ? (
-                                    <div className="mt-1">
-                                      {packagingDisplay}
-                                    </div>
-                                  ) : (
-                                    <p>Pack: {packagingDisplay}</p>
-                                  )}
+                                  <p>Pack: {packagingDisplay}</p>
                                 </div>
                                 {factory !== "-" && (
                                   <p className="text-[10px] text-muted-foreground truncate">
@@ -1352,20 +1329,7 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                         {(() => {
                           const details = p.commercialDetails;
                           if (!details) return null;
-                          const hasMulti = details.hasMultipleDimensions === true;
-                          const packaging = details.packaging;
-                          if (hasMulti && Array.isArray(packaging) && packaging.length > 0) {
-                            return (
-                              <div className="text-[10px] text-muted-foreground mt-0.5">
-                                <span className="font-medium">Qty/Per Carton:</span>
-                                {packaging.map((dim: any, idx: number) => (
-                                  <div key={idx} className="ml-2">
-                                    P{idx + 1}: {dim.pcsPerCarton || "-"}
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          } else if (details.pcsPerCarton) {
+                          if (details.pcsPerCarton) {
                             return (
                               <p className="text-[10px] text-muted-foreground mt-0.5">
                                 Qty/Per Carton: {details.pcsPerCarton}
@@ -1784,35 +1748,10 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                                   (prod: any, i: number) => {
                                     const unitCost =
                                       prod?.commercialDetails?.unitCost || "-";
-                                    // Handle multiple dimensions display
-                                    const hasMultipleDims = prod?.commercialDetails?.hasMultipleDimensions === true;
                                     const packagingData = prod?.commercialDetails?.packaging;
                                     let packagingDisplay: React.ReactNode = "-";
                                     let qtyCtnDisplay: React.ReactNode = "-";
-                                    if (hasMultipleDims && Array.isArray(packagingData) && packagingData.length > 0) {
-                                      packagingDisplay = (
-                                        <div className="space-y-1">
-                                          {packagingData.map((dim: any, idx: number) => (
-                                            <div key={idx} className="text-[8px]">
-                                              <span className="font-semibold">Pkg {idx + 1}:</span>
-                                              <br />
-                                              {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      );
-                                      qtyCtnDisplay = (
-                                        <div className="space-y-1">
-                                          {packagingData.map((dim: any, idx: number) => (
-                                            <div key={idx} className="text-[8px]">
-                                              <span className="font-semibold">Pkg {idx + 1}:</span>
-                                              <br />
-                                              {dim.pcsPerCarton || "-"}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      );
-                                    } else if (packagingData) {
+                                    if (packagingData) {
                                       const length = packagingData.length || "-";
                                       const width = packagingData.width || "-";
                                       const height = packagingData.height || "-";
@@ -2251,34 +2190,6 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
                               </p>
                             )}
                             {(() => {
-                              const hasMulti = details.hasMultipleDimensions === true;
-                              const packArray = details.packaging;
-                              if (hasMulti && Array.isArray(packArray) && packArray.length > 0) {
-                                return (
-                                  <>
-                                    <div>
-                                      <span className="font-medium">Qty/Per Carton:</span>
-                                      <ul className="ml-3 list-disc">
-                                        {packArray.map((dim: any, idx: number) => (
-                                          <li key={idx}>
-                                            Pkg {idx + 1}: {dim.pcsPerCarton || "-"}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                    <div>
-                                      <p className="font-medium">Packaging</p>
-                                      <ul className="ml-3 list-disc">
-                                        {packArray.map((dim: any, idx: number) => (
-                                          <li key={idx}>
-                                            Pkg {idx + 1}: {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  </>
-                                );
-                              }
                               return (
                                 <>
                                   {details.pcsPerCarton && (

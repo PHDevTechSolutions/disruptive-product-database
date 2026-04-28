@@ -75,7 +75,6 @@ type Supplier = { supplierId: string; company: string; supplierBrand?: string };
 type Brand = { id: string; name: string };
 type ProductFamily = { id: string; name: string; productUsageId: string };
 type SelectedCategoryType = { id: string; name: string };
-type PackagingDimension = { length: string; width: string; height: string; pcsPerCarton: string };
 
 const COUNTRY_NAMES: Record<string, string> = {
   AC: "Ascension Islands",
@@ -316,8 +315,6 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
   const [packWidth, setPackWidth] = useState("");
   const [packHeight, setPackHeight] = useState("");
   const [pcsPerCarton, setPcsPerCarton] = useState("");
-  const [hasMultipleDimensions, setHasMultipleDimensions] = useState(false);
-  const [packagingDimensions, setPackagingDimensions] = useState<PackagingDimension[]>([{ length: "", width: "", height: "", pcsPerCarton: "" }]);
   const [factoryAddress, setFactoryAddress] = useState("");
   const [portOfDischarge, setPortOfDischarge] = useState("");
 
@@ -415,32 +412,11 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
         setFactoryAddress(data.commercialDetails.factoryAddress || "");
         setPortOfDischarge(data.commercialDetails.portOfDischarge || "");
 
-        // Handle packaging - single or multiple dimensions
-        const hasMulti = data.commercialDetails.hasMultipleDimensions || false;
-        setHasMultipleDimensions(hasMulti);
-
-        if (hasMulti && Array.isArray(data.commercialDetails.packaging)) {
-          // Multiple dimensions mode
-          setPackagingDimensions(
-            data.commercialDetails.packaging.map((p: any) => ({
-              length: (p.length || "").replace(" cm", ""),
-              width: (p.width || "").replace(" cm", ""),
-              height: (p.height || "").replace(" cm", ""),
-              pcsPerCarton: p.pcsPerCarton?.toString() || "",
-            }))
-          );
-          setPcsPerCarton("");
-          setPackLength("");
-          setPackWidth("");
-          setPackHeight("");
-        } else {
-          // Single dimension mode
-          setPackLength((data.commercialDetails.packaging?.length || "").replace(" cm", ""));
-          setPackWidth((data.commercialDetails.packaging?.width || "").replace(" cm", ""));
-          setPackHeight((data.commercialDetails.packaging?.height || "").replace(" cm", ""));
-          setPcsPerCarton(data.commercialDetails.pcsPerCarton?.toString() || "");
-          setPackagingDimensions([{ length: "", width: "", height: "", pcsPerCarton: "" }]);
-        }
+        // Handle packaging - single dimension only
+        setPackLength((data.commercialDetails.packaging?.length || "").replace(" cm", ""));
+        setPackWidth((data.commercialDetails.packaging?.width || "").replace(" cm", ""));
+        setPackHeight((data.commercialDetails.packaging?.height || "").replace(" cm", ""));
+        setPcsPerCarton(data.commercialDetails.pcsPerCarton?.toString() || "");
       }
       if (data.supplier) {
         const supplierObj = { supplierId: data.supplier.supplierId, company: data.supplier.company, supplierBrand: data.supplier.supplierBrand || "" };
@@ -547,13 +523,6 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
     setIlluminanceDrawing(file);
     if (illuminancePreview) URL.revokeObjectURL(illuminancePreview);
     setIlluminancePreview(URL.createObjectURL(file));
-  };
-
-  // Multiple dimensions helpers
-  const addPackagingDimension = () => setPackagingDimensions(p => [...p, { length: "", width: "", height: "", pcsPerCarton: "" }]);
-  const removePackagingDimension = (index: number) => setPackagingDimensions(p => p.length > 1 ? p.filter((_, i) => i !== index) : p);
-  const updatePackagingDimension = (index: number, field: keyof PackagingDimension, value: string) => {
-    setPackagingDimensions(p => p.map((dim, i) => i === index ? { ...dim, [field]: value } : dim));
   };
 
   const handleAddCategoryType = async () => {
@@ -684,25 +653,14 @@ const handleSaveProduct = async () => {
       const productRef = doc(db, "products", productId);
       await syncTemplateChangesToFamily();
 
-      // Prepare packaging data based on multiple dimensions checkbox
-      const packagingData = hasMultipleDimensions
-        ? packagingDimensions
-            .filter(d => d.length || d.width || d.height)
-            .map(d => ({
-              length: d.length ? `${parseFloat(d.length)} cm` : null,
-              width: d.width ? `${parseFloat(d.width)} cm` : null,
-              height: d.height ? `${parseFloat(d.height)} cm` : null,
-              pcsPerCarton: d.pcsPerCarton ? parseInt(d.pcsPerCarton) : null,
-            }))
-        : {
-            length: packLength ? `${parseFloat(packLength)} cm` : null,
-            width: packWidth ? `${parseFloat(packWidth)} cm` : null,
-            height: packHeight ? `${parseFloat(packHeight)} cm` : null,
-          };
+      // Prepare packaging data
+      const packagingData = {
+        length: packLength ? `${parseFloat(packLength)} cm` : null,
+        width: packWidth ? `${parseFloat(packWidth)} cm` : null,
+        height: packHeight ? `${parseFloat(packHeight)} cm` : null,
+      };
 
-      const pcsPerCartonValue = hasMultipleDimensions
-        ? null
-        : pcsPerCarton ? parseInt(pcsPerCarton) : null;
+      const pcsPerCartonValue = pcsPerCarton ? parseInt(pcsPerCarton) : null;
 
       await updateDoc(productRef, {
         mainImage: mainImage
@@ -733,7 +691,6 @@ const handleSaveProduct = async () => {
           pcsPerCarton: pcsPerCartonValue,
           factoryAddress: factoryAddress || "",
           portOfDischarge: portOfDischarge || "",
-          hasMultipleDimensions,
         },
         technicalSpecifications: technicalSpecs.filter(s => s.title.trim()).map((s, index) => ({
           technicalSpecificationId: s.id || "",
@@ -1229,98 +1186,18 @@ const handleSaveProduct = async () => {
                   <Label className="text-xs text-gray-500">Unit Cost (USD)</Label>
                   <Input type="number" step="0.01" placeholder="0.00" value={unitCost} onChange={e => setUnitCost(e.target.value)} />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="multiple-dimensions"
-                    checked={hasMultipleDimensions}
-                    onCheckedChange={(checked) => setHasMultipleDimensions(checked as boolean)}
-                  />
-                  <Label htmlFor="multiple-dimensions" className="text-sm text-gray-600 cursor-pointer">
-                    Multiple Dimensions
-                  </Label>
-                </div>
-
-                {/* Single Dimension Mode */}
-                {!hasMultipleDimensions && (
-                  <>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-gray-500">Packaging (cm) — L × W × H</Label>
-                      <div className="grid grid-cols-3 gap-2">
-                        <Input type="number" step="0.01" placeholder="Length" value={packLength} onChange={e => setPackLength(e.target.value)} />
-                        <Input type="number" step="0.01" placeholder="Width" value={packWidth} onChange={e => setPackWidth(e.target.value)} />
-                        <Input type="number" step="0.01" placeholder="Height" value={packHeight} onChange={e => setPackHeight(e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-gray-500">pcs / carton</Label>
-                      <Input type="number" step="1" placeholder="0" value={pcsPerCarton} onChange={e => setPcsPerCarton(e.target.value)} />
-                    </div>
-                  </>
-                )}
-
-                {/* Multiple Dimensions Mode */}
-                {hasMultipleDimensions && (
-                  <div className="space-y-3">
-                    {packagingDimensions.map((dim, index) => (
-                      <div key={index} className="border rounded-lg p-3 bg-gray-50 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-gray-600">Dimension Set {index + 1}</span>
-                          {packagingDimensions.length > 1 && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6 text-red-500"
-                              onClick={() => removePackagingDimension(index)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="Length"
-                            value={dim.length}
-                            onChange={e => updatePackagingDimension(index, 'length', e.target.value)}
-                          />
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="Width"
-                            value={dim.width}
-                            onChange={e => updatePackagingDimension(index, 'width', e.target.value)}
-                          />
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="Height"
-                            value={dim.height}
-                            onChange={e => updatePackagingDimension(index, 'height', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            type="number"
-                            step="1"
-                            placeholder="pcs / carton"
-                            value={dim.pcsPerCarton}
-                            onChange={e => updatePackagingDimension(index, 'pcsPerCarton', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={addPackagingDimension}
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Dimension Set
-                    </Button>
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">Packaging (cm) — L × W × H</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input type="number" step="0.01" placeholder="Length" value={packLength} onChange={e => setPackLength(e.target.value)} />
+                    <Input type="number" step="0.01" placeholder="Width" value={packWidth} onChange={e => setPackWidth(e.target.value)} />
+                    <Input type="number" step="0.01" placeholder="Height" value={packHeight} onChange={e => setPackHeight(e.target.value)} />
                   </div>
-                )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">pcs / carton</Label>
+                  <Input type="number" step="1" placeholder="0" value={pcsPerCarton} onChange={e => setPcsPerCarton(e.target.value)} />
+                </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-gray-500">Factory Address</Label>
                   <textarea className="w-full border rounded-xl p-2.5 text-sm bg-white resize-none" rows={3} placeholder="Enter factory address..." value={factoryAddress} onChange={e => setFactoryAddress(e.target.value)} />

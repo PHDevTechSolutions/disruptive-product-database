@@ -65,7 +65,6 @@ type SPFData = {
   product_offer_unit_cost: string;
   product_offer_pcs_per_carton?: string;
   product_offer_packaging_details: string;
-  product_offer_has_multiple_dimensions?: string;
   product_offer_factory_address: string;
   product_offer_port_of_discharge: string;
   product_offer_subtotal: string;
@@ -199,49 +198,8 @@ function splitSpecsByRow(value: string | undefined): SpecGroup[][][] {
     .map((rowStr) => rowStr.split(" || ").map(parseTechSpec));
 }
 
-/* Helper to format packaging display with Pkg labels */
+/* Helper to format packaging display */
 function formatPackagingWithLabels(packagingStr: string, pcsPerCartonStr: string): { qtyCtn: React.ReactNode, packaging: React.ReactNode } {
-  // Check if multiple dimensions (contains "||")
-  const hasMultipleDims = packagingStr && packagingStr.includes(" || ");
-  
-  if (hasMultipleDims) {
-    // Parse packaging: "L x W x H (PCS: N) || L x W x H (PCS: N) || ..."
-    const packParts = packagingStr.split(" || ");
-    const pcsParts = pcsPerCartonStr ? pcsPerCartonStr.split(" | ") : [];
-    
-    const qtyCtnDisplay = (
-      <div className="space-y-1">
-        {packParts.map((_, idx: number) => (
-          <div key={idx} className="text-[9px]">
-            <span className="font-semibold">Pkg {idx + 1}:</span>
-            <br />
-            {pcsParts[idx] || "-"}
-          </div>
-        ))}
-      </div>
-    );
-    
-    const packagingDisplay = (
-      <div className="space-y-1">
-        {packParts.map((dimSet: string, idx: number) => {
-          // Extract dimensions from format "L x W x H (PCS: N)" or just "L x W x H"
-          const match = dimSet.match(/^(.+?)(?:\s*\(PCS:\s*(.+?)\))?$/);
-          const dims = match ? match[1].trim() : dimSet;
-          return (
-            <div key={idx} className="text-[9px]">
-              <span className="font-semibold">Pkg {idx + 1}:</span>
-              <br />
-              {dims}
-            </div>
-          );
-        })}
-      </div>
-    );
-    
-    return { qtyCtn: qtyCtnDisplay, packaging: packagingDisplay };
-  }
-  
-  // Single dimension - return as-is
   return { 
     qtyCtn: pcsPerCartonStr || "-", 
     packaging: packagingStr || "-" 
@@ -653,7 +611,6 @@ useEffect(() => {
     const rowUnitCosts = splitByRow(data.product_offer_unit_cost);
     const rowPcsPerCartons = splitByRow(data.product_offer_pcs_per_carton);
     const rowPackaging = splitByRow(data.product_offer_packaging_details);
-    const rowHasMultipleDims = splitByRow(data.product_offer_has_multiple_dimensions);
     const rowFactories = splitByRow(data.product_offer_factory_address);
     const rowPorts = splitByRow(data.product_offer_port_of_discharge);
     const rowSubtotals = splitByRow(data.product_offer_subtotal);
@@ -687,7 +644,6 @@ useEffect(() => {
       const costs = rowUnitCosts[rowIndex] ?? [];
       const pcsPerCartons = rowPcsPerCartons[rowIndex] ?? [];
       const packs = rowPackaging[rowIndex] ?? [];
-      const hasMultipleDims = rowHasMultipleDims[rowIndex] ?? [];
       const facts = rowFactories[rowIndex] ?? [];
       const ports = rowPorts[rowIndex] ?? [];
       const brands = rowBrands[rowIndex] ?? [];
@@ -704,34 +660,12 @@ useEffect(() => {
       }
 
       initialOffers[rowIndex] = imgs.map((img, i) => {
-        // Detect multiple dimensions by checking for " || " delimiter in packaging string
-        const productHasMultipleDims = (packs[i] || "").includes(" || ");
-        let packagingData;
-        
-        if (productHasMultipleDims) {
-          // Parse multiple dimensions format: "L x W x H (PCS: N) || L x W x H (PCS: N) || ..."
-          const packStr = packs[i] || "";
-          const dimSets = packStr.split(" || ").map((dimSet: string) => {
-            // Extract "L x W x H" and "PCS: N" parts
-            const match = dimSet.match(/^(.+?)\s*\(PCS:\s*(.+?)\)$/);
-            if (match) {
-              const [_, dims, pcs] = match;
-              const [length, width, height] = dims.split(" x ").map((v: string) => v.trim());
-              return { length, width, height, pcsPerCarton: pcs.trim() };
-            }
-            // Fallback: try simple "L x W x H" without PCS
-            const [length, width, height] = dimSet.split(" x ").map((v: string) => v.trim());
-            return { length: length || "-", width: width || "-", height: height || "-", pcsPerCarton: "-" };
-          });
-          packagingData = dimSets;
-        } else {
-          // Single dimension: "L x W x H"
-          const [length, width, height] = (packs[i] || "- x - x -")
-            .split(" x ")
-            .map((v) => v.trim());
-          packagingData = { length, width, height };
-        }
-        
+        // Single dimension: "L x W x H"
+        const [length, width, height] = (packs[i] || "- x - x -")
+          .split(" x ")
+          .map((v) => v.trim());
+        const packagingData = { length, width, height };
+
         const originalQty = Number(qtys[i] || 1);
         // Store original quantity with key format "rowIndex_optionIndex"
         origQtys[`${rowIndex}_${i}`] = originalQty;
@@ -751,7 +685,6 @@ useEffect(() => {
             pcsPerCarton: pcsPerCartons[i] || "-",
             factoryAddress: facts[i] || "-",
             portOfDischarge: ports[i] || "-",
-            hasMultipleDimensions: productHasMultipleDims,
             packaging: packagingData,
           },
           technicalSpecifications: (rowSpecs[rowIndex]?.[i] ?? []).map(
@@ -1569,25 +1502,9 @@ useEffect(() => {
                           prod?.commercialDetails?.unitCost || 0,
                         );
                         const subtotal = qty * cost;
-                        const hasMultipleDims = prod?.commercialDetails?.hasMultipleDimensions === true;
                         const packagingData = prod?.commercialDetails?.packaging;
                         let packagingDisplay: React.ReactNode = "-";
-                        if (hasMultipleDims && Array.isArray(packagingData) && packagingData.length > 0) {
-                          packagingDisplay = (
-                            <div className="space-y-1">
-                              {packagingData.map((dim: any, idx: number) => (
-                                <div key={idx} className="text-[9px]">
-                                  <span className="font-semibold">Pkg {idx + 1}:</span>
-                                  <br />
-                                  {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
-                                  {dim.pcsPerCarton && dim.pcsPerCarton !== "-" && (
-                                    <span className="text-muted-foreground"> (PCS: {dim.pcsPerCarton})</span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        } else if (packagingData) {
+                        if (packagingData) {
                           const length = packagingData.length || "-";
                           const width = packagingData.width || "-";
                           const height = packagingData.height || "-";
@@ -1603,7 +1520,10 @@ useEffect(() => {
                           "";
 
                         return (
-                          <div key={i} className="p-3 flex gap-3 items-start">
+                          <div
+                            key={i}
+                            className="p-3 flex gap-3 items-start"
+                          >
                             {prod.mainImage?.url ? (
                               <img
                                 src={prod.mainImage.url}
@@ -1729,15 +1649,9 @@ useEffect(() => {
                                     ))}
                                   </select>
                                 </div>
-                                {hasMultipleDims && Array.isArray(packagingData) ? (
-                                  <div className="text-[10px] text-muted-foreground mt-1">
-                                    {packagingDisplay}
-                                  </div>
-                                ) : (
-                                  <p className="text-[10px] text-muted-foreground">
-                                    Pack: {packagingDisplay}
-                                  </p>
-                                )}
+                                <div className="text-[10px] text-muted-foreground mt-1">
+                                  {packagingDisplay}
+                                </div>
                               {factory !== "-" && (
                                 <p className="text-[10px] text-muted-foreground truncate">
                                   Factory: {factory}
@@ -2398,38 +2312,10 @@ useEffect(() => {
                                   (prod: any, i: number) => {
                                     const unitCost =
                                       prod?.commercialDetails?.unitCost || "-";
-                                    // Handle multiple dimensions display
-                                    const hasMultipleDims = prod?.commercialDetails?.hasMultipleDimensions === true;
                                     const packagingData = prod?.commercialDetails?.packaging;
                                     let packagingDisplay: React.ReactNode = "-";
                                     let qtyCtnDisplay: React.ReactNode = "-";
-                                    if (hasMultipleDims && Array.isArray(packagingData) && packagingData.length > 0) {
-                                      packagingDisplay = (
-                                        <div className="space-y-1">
-                                          {packagingData.map((dim: any, idx: number) => (
-                                            <div key={idx} className="text-[9px]">
-                                              <span className="font-semibold">Pkg {idx + 1}:</span>
-                                              <br />
-                                              {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
-                                              {dim.pcsPerCarton && dim.pcsPerCarton !== "-" && (
-                                                <span className="text-muted-foreground"> (PCS: {dim.pcsPerCarton})</span>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      );
-                                      qtyCtnDisplay = (
-                                        <div className="space-y-1">
-                                          {packagingData.map((dim: any, idx: number) => (
-                                            <div key={idx} className="text-[9px]">
-                                              <span className="font-semibold">Pkg {idx + 1}:</span>
-                                              <br />
-                                              {dim.pcsPerCarton || "-"}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      );
-                                    } else if (packagingData) {
+                                    if (packagingData) {
                                       const length = packagingData.length || "-";
                                       const width = packagingData.width || "-";
                                       const height = packagingData.height || "-";
@@ -2442,10 +2328,6 @@ useEffect(() => {
                                     const port =
                                       prod?.commercialDetails
                                         ?.portOfDischarge || "-";
-                                    const brand =
-                                      prod?.supplier?.supplierBrand ||
-                                      prod?.supplier?.supplierBrandName ||
-                                      "-";
                                     return (
                                       <tr
                                         key={i}
@@ -2490,7 +2372,7 @@ useEffect(() => {
                                           </span>
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle font-medium">
-                                          {brand}
+                                          {prod.supplier.supplierBrand || prod.supplier.supplierBrandName || "-"}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle text-[9px]">
                                           {(() => {
@@ -2544,14 +2426,14 @@ useEffect(() => {
                                         <td className="border px-2 py-1 text-center align-middle">
                                           {revisionType === "price" ? (
                                             // Price update: Qty not editable, show as read-only
-                                            <span className="text-xs">{prod.qty ?? 1}</span>
+                                            <span className="text-xs">{prod.qty || 1}</span>
                                           ) : (
                                             // Specs or Both: Qty editable with validation
                                             <input
                                               type="number"
                                               min={getMinQty(index, i)}
                                               className="w-full border px-1 text-xs"
-                                              value={prod.qty ?? 1}
+                                              value={prod.qty || 1}
                                               onChange={(e) => {
                                                 const minQty = getMinQty(index, i);
                                                 let qty = Number(e.target.value);
@@ -2678,7 +2560,7 @@ useEffect(() => {
                                         <td className="border px-2 py-1 text-center align-middle">
                                           {revisionType === "specs" ? (
                                             // Specs update: Unit Cost not editable, show as read-only
-                                            <span className="text-xs">{unitCost}</span>
+                                            <span className="text-xs">{prod.commercialDetails.unitCost}</span>
                                           ) : (
                                             // Price or Both: Unit Cost editable with validation
                                             <input
@@ -2686,7 +2568,7 @@ useEffect(() => {
                                               min={getMinUnitCost(index, i)}
                                               step="0.01"
                                               className="w-full border px-1 text-xs"
-                                              value={prod?.commercialDetails?.unitCost || "0"}
+                                              value={prod.commercialDetails.unitCost || "0"}
                                               onChange={(e) => {
                                                 const minCost = getMinUnitCost(index, i);
                                                 let cost = Number(e.target.value);
@@ -2724,8 +2606,7 @@ useEffect(() => {
                                           {(() => {
                                             const qty = prod.qty ?? 1;
                                             const cost = Number(
-                                              prod?.commercialDetails
-                                                ?.unitCost || 0,
+                                              prod.commercialDetails.unitCost || 0,
                                             );
                                             return (
                                               <span className="text-xs font-semibold">
@@ -2925,7 +2806,6 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                         const details = p.commercialDetails;
                         if (!details) return <p>-</p>;
                         const packaging = details.packaging || {};
-                        const hasMultipleDims = details.hasMultipleDimensions === true;
                         return (
                           <>
                             {details.factoryAddress && (
@@ -2947,37 +2827,11 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                               </p>
                             )}
                             {(() => {
-                              if (hasMultipleDims && Array.isArray(packaging) && packaging.length > 0) {
-                                return (
-                                  <>
-                                    <div>
-                                      <span className="font-medium">Qty/Per Carton:</span>
-                                      <ul className="ml-3 list-disc">
-                                        {packaging.map((dim: any, idx: number) => (
-                                          <li key={idx}>
-                                            Pkg {idx + 1}: {dim.pcsPerCarton || "-"}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                    <div>
-                                      <p className="font-medium">Packaging</p>
-                                      <ul className="ml-3 list-disc">
-                                        {packaging.map((dim: any, idx: number) => (
-                                          <li key={idx}>
-                                            Pkg {idx + 1}: {dim.length || "-"} × {dim.width || "-"} × {dim.height || "-"}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  </>
-                                );
-                              }
                               return (
                                 <>
                                   {details.pcsPerCarton && (
                                     <p>
-                                      <span className="font-medium">Qty/Per Carton:</span>{" "}
+                                      <span className="font-medium">Qty/Per Carton:</span>{" "}{details.pcsPerCarton}
                                       {details.pcsPerCarton}
                                     </p>
                                   )}
