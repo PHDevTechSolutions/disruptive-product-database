@@ -77,6 +77,16 @@ type Supplier = { supplierId: string; company: string; supplierBrand?: string };
 type Brand = { id: string; name: string };
 type ProductFamily = { id: string; name: string; productUsageId: string };
 type SelectedCategoryType = { id: string; name: string };
+type MultiRow = {
+  itemName: string;
+  unitCost: number;
+  length: number;
+  width: number;
+  height: number;
+  qtyPerCarton: number;
+  landed: number;
+  srp: number;
+};
 const COUNTRY_NAMES: Record<string, string> = {
   AC: "Ascension Islands",
   CN: "China",
@@ -315,8 +325,31 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
   const [packWidth, setPackWidth] = useState("");
   const [packHeight, setPackHeight] = useState("");
   const [pcsPerCarton, setPcsPerCarton] = useState("");
+  const [moq, setMoq] = useState("");
+  const [warrantyNumber, setWarrantyNumber] = useState("");
+  const [warrantyPeriod, setWarrantyPeriod] = useState<"days" | "months" | "years">("months");
   const [factoryAddress, setFactoryAddress] = useState("");
   const [portOfDischarge, setPortOfDischarge] = useState("");
+
+  type CommercialType = "BASIC" | "LIGHT" | "POLE";
+  const [commercialType, setCommercialType] = useState<CommercialType>("BASIC");
+  const calculationType = commercialType === "POLE" ? "POLE" as const : "LIGHTS" as const;
+  const [useArrayInput, setUseArrayInput] = useState(false);
+  const [qtyPerContainer, setQtyPerContainer] = useState<number>(1);
+  const [landedCost, setLandedCost] = useState<number>(0);
+  const [srp, setSrp] = useState<number>(0);
+  const [multiRows, setMultiRows] = useState<MultiRow[]>([
+    {
+      itemName: "",
+      unitCost: 0,
+      length: 0,
+      width: 0,
+      height: 0,
+      qtyPerCarton: 1,
+      landed: 0,
+      srp: 0,
+    },
+  ]);
 
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -563,6 +596,96 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
     } catch { await updateDoc(doc(db, "products", productId), { mediaStatus: "failed" }); }
   };
 
+  const updateMultiRow = (index: number, field: keyof MultiRow, value: string | number) => {
+    setMultiRows(prev => prev.map((row, i) =>
+      i === index
+        ? {
+            ...row,
+            [field]: typeof value === "number"
+              ? value
+              : field === "itemName"
+              ? value
+              : Number(value) || 0,
+          }
+        : row,
+    ));
+  };
+
+  const addMultiRow = (index: number) => {
+    setMultiRows(prev => {
+      const copy = [...prev];
+      copy.splice(index + 1, 0, {
+        itemName: "",
+        unitCost: 0,
+        length: 0,
+        width: 0,
+        height: 0,
+        qtyPerCarton: 1,
+        landed: 0,
+        srp: 0,
+      });
+      return copy;
+    });
+  };
+
+  const removeMultiRow = (index: number) => {
+    setMultiRows(prev => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  };
+
+  const formatPHP = (value: number, decimals = 2) => {
+    return value.toLocaleString("en-PH", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  };
+
+  useEffect(() => {
+    if (commercialType === "POLE") {
+      let lc = 0;
+      if (Number(unitCost) > 0 && qtyPerContainer > 0) {
+        lc = (Number(unitCost) * 65 + 520000 / qtyPerContainer) * 1.01;
+      }
+      setLandedCost(lc);
+      setSrp(lc ? Math.ceil(lc / 0.45 / 100) * 100 : 0);
+      return;
+    }
+
+    if (commercialType === "LIGHT" && useArrayInput) {
+      let grandTotal = 0;
+      const updated = multiRows.map((row) => {
+        const cbm = (row.length * row.width * row.height) / 1_000_000;
+        let landed = 0;
+        let srp = 0;
+        if (cbm > 0 && row.qtyPerCarton > 0) {
+          const shippingPerItem = 520000 / ((65 / cbm) * row.qtyPerCarton);
+          landed = (row.unitCost * 65 + shippingPerItem) * 1.01;
+          srp = Math.ceil(landed / 0.35 / 10) * 10;
+        }
+        grandTotal += landed;
+        return { ...row, landed, srp };
+      });
+      setMultiRows(updated);
+      setLandedCost(grandTotal);
+      setSrp(grandTotal ? Math.ceil(grandTotal / 0.35 / 100) * 100 : 0);
+      return;
+    }
+
+    if (commercialType === "LIGHT" && !useArrayInput) {
+      let lc = 0;
+      const cbm = (Number(packLength) * Number(packWidth) * Number(packHeight)) / 1_000_000;
+      if (cbm > 0 && Number(pcsPerCarton) > 0 && Number(unitCost) > 0) {
+        const shippingPerItem = 520000 / ((65 / cbm) * Number(pcsPerCarton));
+        lc = (Number(unitCost) * 65 + shippingPerItem) * 1.01;
+      }
+      setLandedCost(lc);
+      setSrp(lc ? Math.ceil(lc / 0.35 / 10) * 10 : 0);
+      return;
+    }
+
+    setLandedCost(0);
+    setSrp(0);
+  }, [commercialType, useArrayInput, qtyPerContainer, unitCost, packLength, packWidth, packHeight, pcsPerCarton, multiRows.map(r => `${r.unitCost}-${r.length}-${r.width}-${r.height}-${r.qtyPerCarton}`).join("|")]);
+
   const generateProductReferenceID = async () => {
     try {
       const snap = await getDocs(query(collection(db, "products"), orderBy("createdAt", "desc"), limit(1)));
@@ -616,9 +739,18 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
         productFamilies: [{ productFamilyId: selectedProductFamily.id, productFamilyName: selectedProductFamily.name, productUsageId: categoryTypeId || "" }],
         categoryTypes: selectedCategoryTypes.map(c => ({ productUsageId: c.id, categoryTypeName: c.name })),
         commercialDetails: {
+          commercialType,
+          calculationType: commercialType === "LIGHT" ? "LIGHTS" : commercialType === "POLE" ? "POLE" : null,
           unitCost: unitCost ? parseFloat(unitCost) : null,
           packaging: packagingData,
           pcsPerCarton: pcsPerCartonValue,
+          qtyPerContainer: commercialType === "POLE" ? qtyPerContainer : null,
+          useArrayInput: commercialType === "LIGHT" ? useArrayInput : false,
+          multiRows: commercialType === "LIGHT" ? multiRows : [],
+          landedCost: landedCost || null,
+          srp: srp || null,
+          moq: moq ? parseInt(moq) : null,
+          warranty: warrantyNumber ? `${warrantyNumber} ${warrantyPeriod}` : null,
           factoryAddress: factoryAddress || "",
           portOfDischarge: portOfDischarge || "",
         },
@@ -710,6 +842,8 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
           categoryTypes: selectedCategoryTypes.map(c => ({ productUsageId: c.id, categoryTypeName: c.name })),
           productFamily: selectedProductFamily ? { productFamilyId: selectedProductFamily.id, productFamilyName: selectedProductFamily.name } : null,
           commercialDetails: {
+            commercialType,
+            calculationType: commercialType === "LIGHT" ? "LIGHTS" : commercialType === "POLE" ? "POLE" : null,
             unitCost: unitCost ? parseFloat(unitCost) : null,
             packaging: {
               length: packLength ? `${parseFloat(packLength)} cm` : null,
@@ -717,6 +851,13 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
               height: packHeight ? `${parseFloat(packHeight)} cm` : null,
             },
             pcsPerCarton: pcsPerCarton ? parseInt(pcsPerCarton) : null,
+            qtyPerContainer: commercialType === "POLE" ? qtyPerContainer : null,
+            useArrayInput: commercialType === "LIGHT" ? useArrayInput : false,
+            multiRows: commercialType === "LIGHT" ? multiRows : [],
+            landedCost: landedCost || null,
+            srp: srp || null,
+            moq: moq ? parseInt(moq) : null,
+            warranty: warrantyNumber ? `${warrantyNumber} ${warrantyPeriod}` : null,
             factoryAddress: factoryAddress || "",
             portOfDischarge: portOfDischarge || "",
           },
@@ -1037,25 +1178,252 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
             </CardContent>
           </Card>
 
+          {/* COMMERCIAL DETAILS - UNIFIED SINGLE CARD */}
           <Card>
             <CardHeader><CardTitle className="text-sm text-center">COMMERCIAL DETAILS</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-1">
-                <Label className="text-xs text-gray-500">Unit Cost (USD)</Label>
-                <Input type="number" step="0.01" placeholder="0.00" value={unitCost} onChange={e => setUnitCost(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-gray-500">Packaging (cm) — L × W × H</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <Input type="number" step="0.01" placeholder="Length" value={packLength} onChange={e => setPackLength(e.target.value)} />
-                  <Input type="number" step="0.01" placeholder="Width" value={packWidth} onChange={e => setPackWidth(e.target.value)} />
-                  <Input type="number" step="0.01" placeholder="Height" value={packHeight} onChange={e => setPackHeight(e.target.value)} />
+                <Label className="text-xs text-gray-500">Commercial Type</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(["BASIC", "LIGHT", "POLE"] as const).map((mode) => (
+                    <Button
+                      key={mode}
+                      size="sm"
+                      variant={commercialType === mode ? "secondary" : "outline"}
+                      className="h-9 text-xs"
+                      onClick={() => setCommercialType(mode)}
+                    >
+                      {mode.charAt(0) + mode.slice(1).toLowerCase()}
+                    </Button>
+                  ))}
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-gray-500">pcs / carton</Label>
-                <Input type="number" step="1" placeholder="0" value={pcsPerCarton} onChange={e => setPcsPerCarton(e.target.value)} />
+
+              {/* BASIC-only fields */}
+              {commercialType === "BASIC" && (
+                <>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-500">Unit Cost (USD)</Label>
+                    <Input type="number" step="0.01" placeholder="0.00" value={unitCost} onChange={e => setUnitCost(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-500">Packaging (cm) — L × W × H</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input type="number" step="0.01" placeholder="Length" value={packLength} onChange={e => setPackLength(e.target.value)} />
+                      <Input type="number" step="0.01" placeholder="Width" value={packWidth} onChange={e => setPackWidth(e.target.value)} />
+                      <Input type="number" step="0.01" placeholder="Height" value={packHeight} onChange={e => setPackHeight(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-500">pcs / carton</Label>
+                    <Input type="number" step="1" placeholder="0" value={pcsPerCarton} onChange={e => setPcsPerCarton(e.target.value)} />
+                  </div>
+                </>
+              )}
+
+              {/* LIGHT/POLE specific fields */}
+              {commercialType !== "BASIC" && (
+                <>
+                  <Separator />
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-500">Calculation Type</Label>
+                    <Input readOnly value={commercialType === "LIGHT" ? "Lights" : "Pole"} className="bg-gray-50" />
+                  </div>
+
+                  {commercialType === "LIGHT" && (
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={useArrayInput}
+                        onCheckedChange={(v) => {
+                          const newValue = !!v;
+                          setUseArrayInput(newValue);
+                          setUnitCost("");
+                          setPackLength("");
+                          setPackWidth("");
+                          setPackHeight("");
+                          setPcsPerCarton("");
+                          setMultiRows([
+                            {
+                              itemName: "",
+                              unitCost: 0,
+                              length: 0,
+                              width: 0,
+                              height: 0,
+                              qtyPerCarton: 1,
+                              landed: 0,
+                              srp: 0,
+                            },
+                          ]);
+                        }}
+                      />
+                      <Label className="text-sm">Multiple Dimensions ?</Label>
+                    </div>
+                  )}
+
+                  {commercialType === "LIGHT" && !useArrayInput && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left text-xs font-semibold text-gray-500 py-2 pr-2 whitespace-nowrap min-w-[130px]">Unit Cost (USD)</th>
+                            <th className="text-left text-xs font-semibold text-gray-500 py-2 px-2 whitespace-nowrap min-w-[100px]">Length (cm)</th>
+                            <th className="text-left text-xs font-semibold text-gray-500 py-2 px-2 whitespace-nowrap min-w-[100px]">Width (cm)</th>
+                            <th className="text-left text-xs font-semibold text-gray-500 py-2 px-2 whitespace-nowrap min-w-[100px]">Height (cm)</th>
+                            <th className="text-left text-xs font-semibold text-gray-500 py-2 pl-2 whitespace-nowrap min-w-[90px]">Qty/Box</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td className="py-1.5 pr-2">
+                              <Input type="number" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} className="h-8 text-sm" />
+                            </td>
+                            <td className="py-1.5 px-2">
+                              <Input type="number" placeholder="0" value={packLength} onChange={(e) => setPackLength(e.target.value)} className="h-8 text-sm" />
+                            </td>
+                            <td className="py-1.5 px-2">
+                              <Input type="number" placeholder="0" value={packWidth} onChange={(e) => setPackWidth(e.target.value)} className="h-8 text-sm" />
+                            </td>
+                            <td className="py-1.5 px-2">
+                              <Input type="number" placeholder="0" value={packHeight} onChange={(e) => setPackHeight(e.target.value)} className="h-8 text-sm" />
+                            </td>
+                            <td className="py-1.5 pl-2">
+                              <Input type="number" placeholder="0" value={pcsPerCarton} onChange={(e) => setPcsPerCarton(e.target.value)} className="h-8 text-sm" />
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {commercialType === "LIGHT" && useArrayInput && (
+                    <div className="space-y-3">
+                      <Label className="text-xs text-gray-500">Multiple Packaging Dimensions</Label>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm border-collapse">
+                          <thead>
+                            <tr className="border-b border-gray-200">
+                              <th className="text-left text-xs font-semibold text-gray-500 py-2 pr-2 whitespace-nowrap min-w-[120px]">Item Name</th>
+                              <th className="text-left text-xs font-semibold text-gray-500 py-2 px-2 whitespace-nowrap min-w-[110px]">Unit Cost (USD)</th>
+                              <th className="text-left text-xs font-semibold text-gray-500 py-2 px-2 whitespace-nowrap min-w-[100px]">Length (cm)</th>
+                              <th className="text-left text-xs font-semibold text-gray-500 py-2 px-2 whitespace-nowrap min-w-[100px]">Width (cm)</th>
+                              <th className="text-left text-xs font-semibold text-gray-500 py-2 px-2 whitespace-nowrap min-w-[100px]">Height (cm)</th>
+                              <th className="text-left text-xs font-semibold text-gray-500 py-2 px-2 whitespace-nowrap min-w-[80px]">Qty/Box</th>
+                              <th className="text-left text-xs font-semibold text-gray-500 py-2 px-2 whitespace-nowrap min-w-[110px]">Landed (PHP)</th>
+                              <th className="text-left text-xs font-semibold text-gray-500 py-2 px-2 whitespace-nowrap min-w-[100px]">SRP (PHP)</th>
+                              <th className="text-left text-xs font-semibold text-gray-500 py-2 pl-2 whitespace-nowrap min-w-[70px]">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {multiRows.map((row, index) => (
+                              <tr key={index} className="border-b border-gray-100">
+                                <td className="py-1.5 pr-2">
+                                  <Input value={row.itemName} onChange={(e) => updateMultiRow(index, "itemName", e.target.value)} className="h-8 text-sm" />
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <Input type="number" value={row.unitCost || ""} onChange={(e) => updateMultiRow(index, "unitCost", Number(e.target.value))} className="h-8 text-sm" />
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <Input type="number" value={row.length || ""} onChange={(e) => updateMultiRow(index, "length", Number(e.target.value))} className="h-8 text-sm" />
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <Input type="number" value={row.width || ""} onChange={(e) => updateMultiRow(index, "width", Number(e.target.value))} className="h-8 text-sm" />
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <Input type="number" value={row.height || ""} onChange={(e) => updateMultiRow(index, "height", Number(e.target.value))} className="h-8 text-sm" />
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <Input type="number" value={row.qtyPerCarton || ""} onChange={(e) => updateMultiRow(index, "qtyPerCarton", Number(e.target.value))} className="h-8 text-sm" />
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <Input disabled value={formatPHP(row.landed, 2)} className="h-8 text-sm bg-gray-50" />
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <Input disabled value={formatPHP(row.srp, 0)} className="h-8 text-sm bg-gray-50" />
+                                </td>
+                                <td className="py-1.5 pl-2">
+                                  <div className="flex gap-1">
+                                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => addMultiRow(index)}>
+                                      <Plus className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button size="icon" variant="outline" className="h-8 w-8" disabled={multiRows.length === 1} onClick={() => removeMultiRow(index)}>
+                                      <Minus className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {commercialType === "POLE" && (
+                    <div className="space-y-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-gray-500">Unit Cost (USD)</Label>
+                        <Input type="number" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-gray-500">Quantity Per Container</Label>
+                        <Input type="number" min={1} value={qtyPerContainer} onChange={(e) => setQtyPerContainer(Number(e.target.value))} />
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-gray-500">Landed Cost (PHP)</Label>
+                      <Input readOnly value={formatPHP(landedCost, 2)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-gray-500">SRP (PHP)</Label>
+                      <Input readOnly value={formatPHP(srp, 0)} />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Common fields for all types */}
+              <Separator />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">Minimum Order Quantity (MOQ)</Label>
+                  <Input type="number" placeholder="0" value={moq} onChange={e => setMoq(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">Warranty</Label>
+                  <div className="flex gap-2">
+                    <Input type="number" placeholder="0" value={warrantyNumber} onChange={e => setWarrantyNumber(e.target.value)} className="flex-1" />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-28 justify-between text-sm h-10">
+                          {warrantyPeriod || "Select..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-0 w-28">
+                        <Command>
+                          <CommandGroup>
+                            {(["days", "months", "years"] as const).map((period) => (
+                              <CommandItem key={period} value={period} onSelect={() => setWarrantyPeriod(period)}>
+                                <Check className={cn("mr-2 h-4 w-4", warrantyPeriod === period ? "opacity-100" : "opacity-0")} />
+                                {period.charAt(0).toUpperCase() + period.slice(1)}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
               </div>
+
+              <Separator />
+
               <div className="space-y-1">
                 <Label className="text-xs text-gray-500">Factory Address</Label>
                 <textarea className="w-full border rounded-xl p-2.5 text-sm bg-white resize-none" rows={3} placeholder="Enter factory address..." value={factoryAddress} onChange={e => setFactoryAddress(e.target.value)} />

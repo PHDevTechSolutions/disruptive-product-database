@@ -31,8 +31,8 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
     let fileId = "";
     const match1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
     const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if (match1 && match1[1]) fileId = match1[1];
-    if (match2 && match2[1]) fileId = match2[1];
+    if (match1?.[1]) fileId = match1[1];
+    if (match2?.[1]) fileId = match2[1];
     if (fileId) return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
     return url;
   };
@@ -73,13 +73,20 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         groupMap.set(data.title, data.specs.map((s: any) => s.specId));
       });
 
-      /* ── Column layout ──────────────────────────────────────────────
-       *  Cols 1-7  : static product fields (Usage → Image URL)
-       *  Cols 8+   : technical spec columns (grouped)
-       *  Next 7    : COMMERCIAL DETAILS (Unit Cost … Port of Discharge)
-       *  Next 2    : Dimensional Drawing, Illuminance Level   ← moved here
-       *  Next 1    : Available Countries
-       * ─────────────────────────────────────────────────────────────── */
+      /* ─────────────────────────────────────────────────────────────────
+       * Column layout:
+       *  Cols 1-7       : static product fields
+       *  Cols 8+        : technical spec columns (grouped)
+       *  Next 7         : COMMERCIAL DETAILS — BASIC (Unit Cost … Port of Discharge)
+       *  Next 2         : Dimensional Drawing, Illuminance Level
+       *  Next 1         : Available Countries
+       *  Next 1         : MOQ
+       *  Next 2         : Warranty Number, Warranty Period
+       *  Next 1         : Commercial Type
+       *  Next 3         : POLE — Qty Per Container, Landed Cost, SRP
+       *  Next 7         : LIGHT (SINGLE DIMENSION) — Unit Cost, L, W, H, Qty/Box, Landed, SRP
+       *  Next 8+        : LIGHT (MULTIPLE DIMENSION) — Item Names|…, Unit Cost|…, L|…, W|…, H|…, Qty/Box|…, Landed|…, SRP|…
+       * ───────────────────────────────────────────────────────────────── */
       const staticColumns = [
         "Product Usage",
         "Product Family",
@@ -94,127 +101,225 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
       const header2: any[] = [];
       const header3: any[] = [];
 
-      // Static cols (1-7)
+      // Static cols 1-7
       staticColumns.forEach((col) => {
         header1.push(col);
         header2.push("");
         header3.push("");
       });
 
-      // Technical spec cols (col 8+)
+      // Technical spec cols
       groupMap.forEach((specIds, groupTitle) => {
-        specIds.forEach((specId, index) => {
+        specIds.forEach((specId) => {
           header1.push(specId);
-          header2.push(index === 0 ? groupTitle : "");
+          header2.push(groupTitle);
           header3.push("");
         });
       });
 
-      // Commercial Details block
+      // ── COMMERCIAL DETAILS (BASIC) ──
       header1.push("Unit Cost", "Length", "Width", "Height", "pcs/carton", "Factory Address", "Port of Discharge");
       header2.push("COMMERCIAL DETAILS", "", "", "", "", "", "");
       header3.push("", "Packaging Details (cm)", "", "", "", "", "");
 
-      // Drawing columns — AFTER commercial details
+      // ── Drawings ──
       header1.push("Dimensional Drawing", "Illuminance Level");
       header2.push("DRAWINGS", "");
       header3.push("", "");
 
-      // Available Countries column — AFTER drawings
+      // ── Available Countries ──
       header1.push("Available Countries");
       header2.push("");
       header3.push("");
+
+      // ── MOQ ──
+      header1.push("MOQ");
+      header2.push("");
+      header3.push("");
+
+      // ── Warranty ──
+      header1.push("Warranty Number", "Warranty Period");
+      header2.push("WARRANTY", "");
+      header3.push("", "");
+
+      // ── Commercial Type ──
+      header1.push("Commercial Type");
+      header2.push("");
+      header3.push("");
+
+      // ── POLE ──
+      header1.push("POLE - Qty Per Container", "POLE - Landed Cost", "POLE - SRP");
+      header2.push("POLE", "", "");
+      header3.push("", "", "");
+
+      // ── LIGHT (SINGLE DIMENSION) ──
+      header1.push(
+        "LIGHT (Single) - Unit Cost",
+        "LIGHT (Single) - Length",
+        "LIGHT (Single) - Width",
+        "LIGHT (Single) - Height",
+        "LIGHT (Single) - Qty/Box",
+        "LIGHT (Single) - Landed Cost",
+        "LIGHT (Single) - SRP",
+      );
+      header2.push("LIGHT (SINGLE DIMENSION)", "", "", "", "", "", "");
+      header3.push("", "", "", "", "", "", "");
+
+      // ── LIGHT (MULTIPLE DIMENSION) — 8 fixed pipe-delimited columns ──
+      header1.push(
+        "LIGHT (Multiple) - Item Names",
+        "LIGHT (Multiple) - Unit Costs",
+        "LIGHT (Multiple) - Lengths",
+        "LIGHT (Multiple) - Widths",
+        "LIGHT (Multiple) - Heights",
+        "LIGHT (Multiple) - Qty/Boxes",
+        "LIGHT (Multiple) - Landed Costs",
+        "LIGHT (Multiple) - SRPs",
+      );
+      header2.push("LIGHT (MULTIPLE DIMENSION)", "", "", "", "", "", "", "");
+      header3.push("", "", "", "", "", "", "", "");
 
       ws.addRow(header1);
       ws.addRow(header2);
       ws.addRow(header3);
 
-      // ── Merge: COMMERCIAL DETAILS group header (row 2) ──
-      const cdStart = staticColumns.length + 1 + (() => {
-        let total = 0;
-        groupMap.forEach((ids) => { total += ids.length; });
-        return total;
-      })();
-      const cdEnd = cdStart + 6; // 7 commercial cols → cdStart … cdStart+6
-
-      ws.mergeCells(2, cdStart, 2, cdEnd);
-      ws.mergeCells(3, cdStart + 1, 3, cdStart + 3); // Packaging Details (L/W/H)
-
-      // ── Merge: DRAWINGS group header (row 2) ──
-      const drawStart = cdEnd + 1;
-      const drawEnd   = drawStart + 1; // 2 drawing cols
-      ws.mergeCells(2, drawStart, 2, drawEnd);
-
-      // ── Available Countries column (no merge needed, single column) ──
-      const countriesCol = drawEnd + 1;
-
-      // ── Style: static cols (blue) ──
-      for (let col = 1; col <= staticColumns.length; col++) {
-        const cell = ws.getRow(1).getCell(col);
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "4472C4" } };
-        cell.font = { bold: true, color: { argb: "FFFFFF" } };
-        cell.alignment = { vertical: "middle", horizontal: "center" };
-      }
-
-      // ── Style: commercial detail cols (purple) ──
-      for (let col = cdStart; col <= cdEnd; col++) {
-        const purple = "D9D2E9";
-        const applyStyle = (row: ExcelJS.Row, italic = false) => {
-          const c = row.getCell(col);
-          c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: purple } };
-          c.font = { bold: true, color: { argb: "000000" }, italic };
-          c.alignment = { vertical: "middle", horizontal: "center" };
-        };
-        applyStyle(ws.getRow(1));
-        applyStyle(ws.getRow(2));
-        applyStyle(ws.getRow(3), true);
-      }
-
-      // ── Style: drawing cols (light green) ──
-      const drawColor = "E2EFDA";
-      for (let col = drawStart; col <= drawEnd; col++) {
-        [ws.getRow(1), ws.getRow(2), ws.getRow(3)].forEach((r, ri) => {
-          const c = r.getCell(col);
-          c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: drawColor } };
-          c.font = { bold: true, italic: ri === 2 };
-          c.alignment = { vertical: "middle", horizontal: "center" };
-        });
-      }
-
-      // ── Style: Available Countries column (light orange) ──
-      const countriesColor = "FCE4D6";
-      [ws.getRow(1), ws.getRow(2), ws.getRow(3)].forEach((r, ri) => {
-        const c = r.getCell(countriesCol);
-        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: countriesColor } };
-        c.font = { bold: true, italic: ri === 2 };
-        c.alignment = { vertical: "middle", horizontal: "center" };
-      });
-
-      // ── Style: technical spec group cols (alternating colors) ──
+      // ── Merge group headers for technical specs ──
       let colStart = staticColumns.length + 1;
       let groupIndex = 0;
-
       groupMap.forEach((specIds) => {
         const colEnd = colStart + specIds.length - 1;
-        ws.mergeCells(2, colStart, 2, colEnd);
+        if (colEnd > colStart) ws.mergeCells(2, colStart, 2, colEnd);
         const color = GROUP_COLORS[groupIndex % GROUP_COLORS.length];
         for (let col = colStart; col <= colEnd; col++) {
-          const headerCell = ws.getRow(1).getCell(col);
-          const groupCell  = ws.getRow(2).getCell(col);
-          headerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
-          headerCell.font = { bold: true };
-          headerCell.alignment = { vertical: "middle", horizontal: "center" };
-          groupCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
-          groupCell.font = { bold: true, italic: true };
-          groupCell.alignment = { vertical: "middle", horizontal: "center" };
+          const h1 = ws.getRow(1).getCell(col);
+          const h2 = ws.getRow(2).getCell(col);
+          h1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+          h1.font = { bold: true };
+          h1.alignment = { vertical: "middle", horizontal: "center" };
+          h2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+          h2.font = { bold: true, italic: true };
+          h2.alignment = { vertical: "middle", horizontal: "center" };
         }
         groupIndex++;
         colStart = colEnd + 1;
       });
 
+      // colStart now points to COMMERCIAL DETAILS
+      const cdStart = colStart;
+      const cdEnd = cdStart + 6;
+
+      // ── Merge COMMERCIAL DETAILS header ──
+      ws.mergeCells(2, cdStart, 2, cdEnd);
+      ws.mergeCells(3, cdStart + 1, 3, cdStart + 3);
+
+      // ── Drawings ──
+      const drawStart = cdEnd + 1;
+      const drawEnd = drawStart + 1;
+      ws.mergeCells(2, drawStart, 2, drawEnd);
+
+      // ── Available Countries ──
+      const countriesCol = drawEnd + 1;
+
+      // ── MOQ ──
+      const moqCol = countriesCol + 1;
+
+      // ── Warranty ──
+      const warrantyStart = moqCol + 1;
+      const warrantyEnd = warrantyStart + 1;
+      ws.mergeCells(2, warrantyStart, 2, warrantyEnd);
+
+      // ── Commercial Type ──
+      const commercialTypeCol = warrantyEnd + 1;
+
+      // ── POLE ──
+      const poleStart = commercialTypeCol + 1;
+      const poleEnd = poleStart + 2;
+      ws.mergeCells(2, poleStart, 2, poleEnd);
+
+      // ── LIGHT (SINGLE) ──
+      const lightSingleStart = poleEnd + 1;
+      const lightSingleEnd = lightSingleStart + 6;
+      ws.mergeCells(2, lightSingleStart, 2, lightSingleEnd);
+
+      // ── LIGHT (MULTIPLE) — always 8 pipe-delimited columns ──
+      const lightMultiStart = lightSingleEnd + 1;
+      const lightMultiEnd = lightMultiStart + 7;
+      ws.mergeCells(2, lightMultiStart, 2, lightMultiEnd);
+
+      // ── Style helpers ──
+      const applyHeaderStyle = (row: ExcelJS.Row, col: number, bgColor: string, white = false, italic = false) => {
+        const cell = row.getCell(col);
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
+        cell.font = { bold: true, color: { argb: white ? "FFFFFF" : "000000" }, italic };
+        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      };
+
+      // Static cols (blue)
+      for (let col = 1; col <= staticColumns.length; col++) {
+        applyHeaderStyle(ws.getRow(1), col, "4472C4", true);
+      }
+
+      // COMMERCIAL DETAILS (purple)
+      for (let col = cdStart; col <= cdEnd; col++) {
+        applyHeaderStyle(ws.getRow(1), col, "D9D2E9");
+        applyHeaderStyle(ws.getRow(2), col, "D9D2E9", false, true);
+        applyHeaderStyle(ws.getRow(3), col, "D9D2E9", false, true);
+      }
+
+      // Drawings (green)
+      for (let col = drawStart; col <= drawEnd; col++) {
+        applyHeaderStyle(ws.getRow(1), col, "E2EFDA");
+        applyHeaderStyle(ws.getRow(2), col, "E2EFDA", false, true);
+        applyHeaderStyle(ws.getRow(3), col, "E2EFDA");
+      }
+
+      // Available Countries (orange)
+      applyHeaderStyle(ws.getRow(1), countriesCol, "FCE4D6");
+      applyHeaderStyle(ws.getRow(2), countriesCol, "FCE4D6");
+      applyHeaderStyle(ws.getRow(3), countriesCol, "FCE4D6");
+
+      // MOQ (yellow)
+      applyHeaderStyle(ws.getRow(1), moqCol, "FFF2CC");
+      applyHeaderStyle(ws.getRow(2), moqCol, "FFF2CC");
+      applyHeaderStyle(ws.getRow(3), moqCol, "FFF2CC");
+
+      // Warranty (light teal)
+      for (let col = warrantyStart; col <= warrantyEnd; col++) {
+        applyHeaderStyle(ws.getRow(1), col, "DDEBF7");
+        applyHeaderStyle(ws.getRow(2), col, "DDEBF7", false, true);
+        applyHeaderStyle(ws.getRow(3), col, "DDEBF7");
+      }
+
+      // Commercial Type (gray)
+      applyHeaderStyle(ws.getRow(1), commercialTypeCol, "EDEDED");
+      applyHeaderStyle(ws.getRow(2), commercialTypeCol, "EDEDED");
+      applyHeaderStyle(ws.getRow(3), commercialTypeCol, "EDEDED");
+
+      // POLE (red-ish)
+      for (let col = poleStart; col <= poleEnd; col++) {
+        applyHeaderStyle(ws.getRow(1), col, "FCE4D6");
+        applyHeaderStyle(ws.getRow(2), col, "FCE4D6", false, true);
+        applyHeaderStyle(ws.getRow(3), col, "FCE4D6");
+      }
+
+      // LIGHT Single (light blue)
+      for (let col = lightSingleStart; col <= lightSingleEnd; col++) {
+        applyHeaderStyle(ws.getRow(1), col, "DEEAF1");
+        applyHeaderStyle(ws.getRow(2), col, "DEEAF1", false, true);
+        applyHeaderStyle(ws.getRow(3), col, "DEEAF1");
+      }
+
+      // LIGHT Multiple (light green)
+      for (let col = lightMultiStart; col <= lightMultiEnd; col++) {
+        applyHeaderStyle(ws.getRow(1), col, "E2EFDA");
+        applyHeaderStyle(ws.getRow(2), col, "E2EFDA", false, true);
+        applyHeaderStyle(ws.getRow(3), col, "E2EFDA");
+      }
+
       // ── Data rows ──
       sheetProducts.forEach((product) => {
         const row: any[] = [];
+        const cd = product.commercialDetails || {};
 
         // Static cols 1-7
         row.push(product.categoryTypes?.[0]?.categoryTypeName || "");
@@ -223,9 +328,7 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         row.push(product.pricePoint || "");
         row.push(product.brandOrigin || "CHINA");
         row.push(product.supplier?.supplierBrand || "ECONOMY");
-
-        let imageURL = convertDriveToThumbnail(product.mainImage?.url || "");
-        row.push(imageURL);
+        row.push(convertDriveToThumbnail(product.mainImage?.url || ""));
 
         // Technical spec cols
         groupMap.forEach((specIds, groupTitle) => {
@@ -238,8 +341,7 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
           });
         });
 
-        // Commercial details
-        const cd = product.commercialDetails || {};
+        // COMMERCIAL DETAILS (BASIC)
         row.push(cd.unitCost || "");
         row.push(cd.packaging?.length || "");
         row.push(cd.packaging?.width || "");
@@ -248,37 +350,80 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
         row.push(cd.factoryAddress || "");
         row.push(cd.portOfDischarge || "");
 
-        // Drawing URLs — AFTER commercial details
-        let dimensionalURL = convertDriveToThumbnail(product.dimensionalDrawing?.url || "");
-        row.push(dimensionalURL);
+        // Drawings
+        row.push(convertDriveToThumbnail(product.dimensionalDrawing?.url || ""));
+        row.push(convertDriveToThumbnail(product.illuminanceDrawing?.url || ""));
 
-        let illuminanceURL = convertDriveToThumbnail(product.illuminanceDrawing?.url || "");
-        row.push(illuminanceURL);
+        // Available Countries
+        row.push((product.countries || []).join(" | "));
 
-        // Available Countries — AFTER drawings
-        const countriesArray = product.countries || [];
-        row.push(countriesArray.join(" | "));
+        // MOQ
+        row.push(cd.moq || "");
+
+        // Warranty
+        const warrantyStr = cd.warranty || "";
+        const warrantyParts = warrantyStr.split(" ");
+        row.push(warrantyParts[0] || "");
+        row.push(warrantyParts.slice(1).join(" ") || "");
+
+        // Commercial Type
+        row.push(cd.commercialType || "BASIC");
+
+        // POLE
+        if (cd.commercialType === "POLE") {
+          row.push(cd.qtyPerContainer || "");
+          // Compute landed & SRP
+          const uc = parseFloat(cd.unitCost) || 0;
+          const qty = parseInt(cd.qtyPerContainer) || 0;
+          const landed = qty > 0 ? (uc * 65 + 520000 / qty) * 1.01 : 0;
+          const srp = landed ? Math.ceil(landed / 0.45 / 100) * 100 : 0;
+          row.push(landed ? landed.toFixed(2) : "");
+          row.push(srp || "");
+        } else {
+          row.push("", "", "");
+        }
+
+        // LIGHT (SINGLE DIMENSION)
+        if (cd.commercialType === "LIGHT" && !cd.useArrayInput) {
+          row.push(cd.unitCost || "");
+          row.push(cd.packaging?.length || "");
+          row.push(cd.packaging?.width || "");
+          row.push(cd.packaging?.height || "");
+          row.push(cd.pcsPerCarton || "");
+          // landedCost & srp stored in db
+          row.push(cd.landedCost ? cd.landedCost.toFixed(2) : "");
+          row.push(cd.srp || "");
+        } else {
+          row.push("", "", "", "", "", "", "");
+        }
+
+        // LIGHT (MULTIPLE DIMENSION) — 8 pipe-delimited columns
+        const multiRows: any[] = (cd.commercialType === "LIGHT" && cd.useArrayInput && Array.isArray(cd.multiRows))
+          ? cd.multiRows
+          : [];
+
+        const joinField = (fn: (r: any) => any) =>
+          multiRows.length ? multiRows.map(fn).join(" | ") : "";
+
+        row.push(joinField((r) => r.itemName || ""));
+        row.push(joinField((r) => r.unitCost ?? ""));
+        row.push(joinField((r) => r.length ?? ""));
+        row.push(joinField((r) => r.width ?? ""));
+        row.push(joinField((r) => r.height ?? ""));
+        row.push(joinField((r) => r.qtyPerCarton ?? ""));
+        row.push(joinField((r) => r.landed ? r.landed.toFixed(2) : ""));
+        row.push(joinField((r) => r.srp ?? ""));
 
         ws.addRow(row);
       });
 
-      // ── Cell alignment for spec cols ──
-      const specStartCol = staticColumns.length + 1;
-      const specEndCol   = cdStart - 1;
-
-      for (let r = 4; r <= ws.rowCount; r++) {
-        for (let col = specStartCol; col <= specEndCol; col++) {
-          const cell = ws.getRow(r).getCell(col);
-          cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
-        }
-      }
-
-      // ── Cell alignment for all cols ──
+      // ── Cell alignment ──
       const totalCols = ws.columnCount;
       for (let r = 4; r <= ws.rowCount; r++) {
         for (let col = 1; col <= totalCols; col++) {
-          const cell = ws.getRow(r).getCell(col);
-          cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+          ws.getRow(r).getCell(col).alignment = {
+            vertical: "middle", horizontal: "center", wrapText: true,
+          };
         }
       }
 
@@ -289,7 +434,7 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
           const len = cell.value?.toString().length || 0;
           if (len > max) max = len;
         });
-        column.width = max + 4;
+        column.width = Math.min(max + 4, 40);
       });
 
       ws.views = [{ state: "frozen", ySplit: 3 }];
