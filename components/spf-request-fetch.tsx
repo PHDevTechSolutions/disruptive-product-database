@@ -2386,7 +2386,7 @@ useEffect(() => {
                                           </span>
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle font-medium">
-                                          {prod.supplier.supplierBrand || prod.supplier.supplierBrandName || "-"}
+                                          {prod?.supplier?.supplierBrand || prod?.supplier?.supplierBrandName || "-"}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle text-[9px]">
                                           {(() => {
@@ -2802,7 +2802,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                   {(p?.supplier?.supplierBrand ||
                     p?.supplier?.supplierBrandName) && (
                     <p className="text-xs font-semibold text-blue-600 mt-0.5 truncate">
-                      {p.supplier.supplierBrand || p.supplier.supplierBrandName}
+                      {p?.supplier?.supplierBrand || p?.supplier?.supplierBrandName}
                     </p>
                   )}
                 </div>
