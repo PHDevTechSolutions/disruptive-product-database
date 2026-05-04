@@ -1269,6 +1269,7 @@ useEffect(() => {
   const rowItemCodes = splitByRow(data?.item_code);
   const rowPriceValidities = splitByRow(data?.price_validity);
   const rowTdsBrands = splitByRow(data?.tds);
+  const rowTdsUrls = splitByRow(data?.tds);
   const rowDimensionalDrawings = splitByRow(data?.dimensional_drawing);
   const rowIlluminanceDrawings = splitByRow(data?.illuminance_drawing);
   const rowSpfRemarksPD = splitByRow(data?.spf_remarks_pd);
@@ -3146,45 +3147,19 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                             </div>
                           </div>
                           {(() => {
-                            const b = (rowTdsBrands[rowIndex] ?? [])[i];
-                            if (!b || b === "-" || b === "") return null;
+                            const tdsUrl = (rowTdsUrls?.[rowIndex] ?? [])[i];
+                            if (!tdsUrl || tdsUrl === "-" || tdsUrl === "") return null;
                             return (
                               <div>
                                 <span className="text-gray-400 block">TDS</span>
-                                <button
-                                  type="button"
-                                  className="text-xs text-green-600 underline font-medium"
-                                  onClick={() => {
-                                    import("jspdf").then(({ default: jsPDF }) =>
-                                      import("jspdf-autotable").then(({ default: autoTable }) => {
-                                        const specs = (rowSpecs[rowIndex] ?? [])[i] ?? [];
-                                        const techSpecs = specs.map((g) => ({
-                                          title: g.title,
-                                          specs: g.specs.map((s) => {
-                                            const idx = s.indexOf(":");
-                                            if (idx === -1) return { specId: s, value: "" };
-                                            return { specId: s.slice(0, idx).trim(), value: s.slice(idx + 1).trim() };
-                                          }),
-                                        }));
-                                        const img = (rowImages[rowIndex] ?? [])[i];
-                                                  generateTDSPdf({
-                                                    jsPDF,
-                                                    autoTable,
-                                                    brand: b,
-                                                    productName: (rowItemCodes[rowIndex] ?? [])[i] || "",
-                                                    itemCode: (rowItemCodes[rowIndex] ?? [])[i] || "",
-                                                    mainImage: img && img !== "-" ? { url: img } : undefined,
-                                                    technicalSpecifications: techSpecs,
-                                                    dimensionalDrawing: (() => { const u = (rowDimensionalDrawings?.[rowIndex] ?? [])[i]; return u && u !== "-" ? { url: u } : null; })(),
-                                                    illuminanceDrawing: (() => { const u = (rowIlluminanceDrawings?.[rowIndex] ?? [])[i]; return u && u !== "-" ? { url: u } : null; })(),
-                                                    hideEmptySpecs: true,
-                                                  });
-                                      })
-                                    );
-                                  }}
+                                <a
+                                  href={tdsUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 underline font-medium"
                                 >
-                                  {b} ⬇ Download TDS
-                                </button>
+                                  View TDS
+                                </a>
                               </div>
                             );
                           })()}
@@ -3521,44 +3496,17 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                     </td>
                                     <td className="border px-2 py-2 text-center align-middle whitespace-nowrap">
                                       {(() => {
-                                        const b = (rowTdsBrands[rowIndex] ?? [])[i];
-                                        if (!b || b === "-" || b === "") return "-";
+                                        const tdsUrl = (rowTdsUrls?.[rowIndex] ?? [])[i];
+                                        if (!tdsUrl || tdsUrl === "-" || tdsUrl === "") return "-";
                                         return (
-                                          <button
-                                            type="button"
-                                            className="text-[11px] text-green-600 underline font-medium"
-                                            onClick={() => {
-                                              import("jspdf").then(({ default: jsPDF }) =>
-                                                import("jspdf-autotable").then(({ default: autoTable }) => {
-                                                  // Reconstruct product data from row
-                                                  const specs = (rowSpecs[rowIndex] ?? [])[i] ?? [];
-                                                  const techSpecs = specs.map((g) => ({
-                                                    title: g.title,
-                                                    specs: g.specs.map((s) => {
-                                                      const idx = s.indexOf(":");
-                                                      if (idx === -1) return { specId: s, value: "" };
-                                                      return { specId: s.slice(0, idx).trim(), value: s.slice(idx + 1).trim() };
-                                                    }),
-                                                  }));
-                                                  const img = (rowImages[rowIndex] ?? [])[i];
-                                                        generateTDSPdf({
-                                                          jsPDF,
-                                                          autoTable,
-                                                          brand: b,
-                                                          productName: (rowItemCodes[rowIndex] ?? [])[i] || "",
-                                                          itemCode: (rowItemCodes[rowIndex] ?? [])[i] || "",
-                                                          mainImage: img && img !== "-" ? { url: img } : undefined,
-                                                          technicalSpecifications: techSpecs,
-                                                          dimensionalDrawing: (() => { const u = (rowDimensionalDrawings?.[rowIndex] ?? [])[i]; return u && u !== "-" ? { url: u } : null; })(),
-                                                          illuminanceDrawing: (() => { const u = (rowIlluminanceDrawings?.[rowIndex] ?? [])[i]; return u && u !== "-" ? { url: u } : null; })(),
-                                                          hideEmptySpecs: true,
-                                                        });
-                                                })
-                                              );
-                                            }}
+                                          <a
+                                            href={tdsUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[11px] text-blue-600 underline font-medium"
                                           >
-                                            {b} ⬇ TDS
-                                          </button>
+                                            View TDS
+                                          </a>
                                         );
                                       })()}
                                     </td>
