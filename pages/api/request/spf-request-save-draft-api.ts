@@ -163,6 +163,15 @@ export default async function handler(
       const isExisting: string[] = [];
 
       const rowBase = `${spf_number}-${String(rowIdx + 1).padStart(3, "0")}`;
+      const optionIndexToLetters = (idx: number) => {
+        let n = idx;
+        let s = "";
+        while (n >= 0) {
+          s = String.fromCharCode(65 + (n % 26)) + s;
+          n = Math.floor(n / 26) - 1;
+        }
+        return s;
+      };
 
       for (let optIdx = 0; optIdx < rowProducts.length; optIdx++) {
         const p = rowProducts[optIdx];
@@ -217,7 +226,7 @@ export default async function handler(
         supplierBrands.push(p?.supplier?.supplierBrand || p?.supplier?.supplierBrandName || "-");
         sellingCosts.push(p?.__sellingCost ?? "-");
         leadTimes.push(p?.__leadTime ?? "-");
-        itemCodes.push(`${rowBase}-OPT-${optIdx + 1}`);
+        itemCodes.push(`${rowBase}-${optionIndexToLetters(optIdx)}`);
         priceValidities.push(priceValidity);
         const dimUrl = p?.dimensionalDrawing?.url;
         const illuUrl = p?.illuminanceDrawing?.url;

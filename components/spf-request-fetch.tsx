@@ -2534,7 +2534,16 @@ useEffect(() => {
                                               className="mt-1 text-[10px] text-green-600 underline block"
                                               onClick={() => {
                                                 const rowBase = `${spfNumber}-${String(index + 1).padStart(3, "0")}`;
-                                                const itemCode = `${rowBase}-OPT-${i + 1}`;
+                                                const optionIndexToLetters = (idx: number) => {
+                                                  let n = idx;
+                                                  let s = "";
+                                                  while (n >= 0) {
+                                                    s = String.fromCharCode(65 + (n % 26)) + s;
+                                                    n = Math.floor(n / 26) - 1;
+                                                  }
+                                                  return s;
+                                                };
+                                                const itemCode = `${rowBase}-${optionIndexToLetters(i)}`;
                                                 setSelectedRowIndexForTDS(index);
                                                 setSelectedOptionIndexForTDS(i);
                                                 setSelectedProductForTDS({
