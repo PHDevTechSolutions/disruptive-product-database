@@ -484,12 +484,19 @@ useEffect(() => {
 
   useEffect(() => {
     if (!open || !spfNumber) return;
+    if (!editMode) return;
     if (!hasDraft) return;
     if (draftAutoLoaded) return;
 
     setDraftAutoLoaded(true);
     handleLoadDraft();
-  }, [open, spfNumber, hasDraft, draftAutoLoaded]);
+  }, [open, spfNumber, editMode, hasDraft, draftAutoLoaded]);
+
+  useEffect(() => {
+    if (!editMode && draftAutoLoaded) {
+      setDraftAutoLoaded(false);
+    }
+  }, [editMode, draftAutoLoaded]);
 
   /* ── Responsive ── */
   useEffect(() => {
