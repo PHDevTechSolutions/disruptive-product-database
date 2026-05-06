@@ -20,6 +20,7 @@ import SPFRequestFetch from "@/components/spf-request-fetch";
 import SPFRequestCreate, { type SPFRequest } from "@/components/spf-request-create";
 import { CollaborationHubRowTrigger } from "@/components/collaboration-hub-row-trigger";
 import SPFRequestDownloadAll from "@/components/spf-request-download-all";
+import SpecialInstructionsDialog from "@/components/special-instructions-dialog";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* STATUS LABEL MAPPING                                            */
@@ -109,6 +110,20 @@ export default function RequestsPage() {
   /* ── Dialog ── */
   const [openDialog, setOpenDialog]     = useState(false);
   const [selectedRow, setSelectedRow]   = useState<SPFRequest | null>(null);
+  const [specialInstructionsDialog, setSpecialInstructionsDialog] = useState<{
+    open: boolean;
+    instructions: string;
+    customerName: string;
+    spfNumber: string;
+    status?: string;
+  }>({
+    open: false,
+    instructions: "",
+    customerName: "",
+    spfNumber: "",
+    status: "",
+  });
+  const [reviseTargetSpfNumber, setReviseTargetSpfNumber] = useState<string | null>(null);
 
   /* ─────────────────────── */
   /* Fetch user              */
@@ -587,13 +602,50 @@ export default function RequestsPage() {
                           </svg>
                         </div>
                         {/* Speech balloon */}
-                        <div className="relative group cursor-pointer">
-                          <div className="relative bg-linear-to-br from-indigo-50 to-purple-50 border-2 border-indigo-300 rounded-2xl px-3 py-2 shadow-sm hover:shadow-md hover:scale-105 hover:-translate-y-0.5 transition-all duration-300 ease-out">
-                            <span className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wide">
+                        <div className="relative group cursor-pointer" onClick={() => {
+                          if (req.special_instructions && req.special_instructions.length > 30) {
+                            setSpecialInstructionsDialog({
+                              open: true,
+                              instructions: req.special_instructions,
+                              customerName: req.customer_name,
+                              spfNumber: req.spf_number
+                            });
+                          }
+                        }}>
+                          <div className="relative bg-linear-to-br from-indigo-50 to-purple-50 border-2 border-indigo-300 rounded-2xl px-3 py-2 shadow-sm hover:shadow-md hover:scale-105 hover:-translate-y-0.5 transition-all duration-300 ease-out max-w-50">
+                            <span className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wide block truncate">
                               {req.special_instructions || "-"}
                             </span>
+                            {/* Show "Click to view more..." indicator */}
+                            {req.special_instructions && (
+                              <span 
+                                className="text-[10px] text-indigo-500 font-medium cursor-pointer hover:text-indigo-700 underline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSpecialInstructionsDialog({
+                                    open: true,
+                                    instructions: req.special_instructions || "",
+                                    customerName: req.customer_name,
+                                    spfNumber: req.spf_number,
+                                    status: req.status
+                                  });
+                                }}
+                              >
+                                Click to view more...
+                              </span>
+                            )}
                             {/* Speech balloon tail pointing to person */}
-                            <div className="absolute -left-2 top-3 w-3 h-3 bg-indigo-50 border-l-2 border-b-2 border-indigo-300 transform rotate-45 group-hover:bg-purple-50 transition-colors duration-300"></div>
+                            <div 
+                              className="absolute -left-2 top-3 w-3 h-3 bg-indigo-50 border-l-2 border-b-2 border-indigo-300 transform rotate-45 group-hover:bg-purple-50 transition-colors duration-300 cursor-pointer hover:scale-105"
+                              onClick={() => {
+                                setSpecialInstructionsDialog({
+                                  open: true,
+                                  spfNumber: req.spf_number,
+                                  customerName: req.customer_name,
+                                  instructions: req.special_instructions || "",
+                                  status: req.status
+                                });
+                              }}></div>
                           </div>
                         </div>
                       </div>
@@ -622,6 +674,10 @@ export default function RequestsPage() {
                             <SPFRequestFetch
                               spfNumber={req.spf_number}
                               onOpen={() => markSPFRequestAsRead(req.spf_number)}
+                              triggerDataAttr={req.spf_number}
+                              triggerMode={
+                                reviseTargetSpfNumber === req.spf_number ? "edit" : "view"
+                              }
                             />
                           </div>
                         )}
@@ -764,6 +820,40 @@ export default function RequestsPage() {
           onSuccess={fetchRequests}
         />
       )}
+
+      {/* ── SPECIAL INSTRUCTIONS DIALOG ── */}
+      <SpecialInstructionsDialog
+        open={specialInstructionsDialog.open}
+        onClose={() => setSpecialInstructionsDialog(prev => ({ ...prev, open: false }))}
+        instructions={specialInstructionsDialog.instructions}
+        customerName={specialInstructionsDialog.customerName}
+        spfNumber={specialInstructionsDialog.spfNumber}
+        status={createdSPF[specialInstructionsDialog.spfNumber]}
+        onCreate={() => {
+          const request = paginatedRequests.find(r => r.spf_number === specialInstructionsDialog.spfNumber);
+          if (request) {
+            handleCreateFromRow(request);
+            setSpecialInstructionsDialog(prev => ({ ...prev, open: false }));
+          }
+        }}
+        onRevise={() => {
+          setSpecialInstructionsDialog(prev => ({ ...prev, open: false }));
+          const spfNo = specialInstructionsDialog.spfNumber;
+          setReviseTargetSpfNumber(spfNo);
+          // Open SPF dialog in edit mode to trigger revision selector directly
+          setTimeout(() => {
+            const btn = document.querySelector(
+              `button[data-spf-fetch="${spfNo}"]`,
+            ) as HTMLButtonElement | null;
+            if (btn) {
+              // Set a flag to indicate this is a revise action from special instructions
+              (btn as any).dataset.reviseFromSpecial = "true";
+              btn.click();
+            }
+            setTimeout(() => setReviseTargetSpfNumber(null), 300);
+          }, 100);
+        }}
+      />
     </div>
   </AccessGuard>
   );

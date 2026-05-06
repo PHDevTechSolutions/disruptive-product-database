@@ -49,6 +49,8 @@ type SPFViewProps = {
   spfNumber: string;
   processBy?: string;
   onOpen?: () => void;
+  triggerDataAttr?: string;
+  triggerMode?: "view" | "edit";
 };
 
 type SPFData = {
@@ -343,6 +345,8 @@ export default function SPFRequestFetch({
   spfNumber,
   processBy,
   onOpen,
+  triggerDataAttr,
+  triggerMode = "view",
 }: SPFViewProps) {
   const { userId } = useUser();
 
@@ -369,6 +373,8 @@ useEffect(() => {
 
   /* ── Dialog / data state ── */
   const [open, setOpen] = useState(false);
+  const [autoEditFired, setAutoEditFired] = useState(false);
+  const [reviseFromSpecial, setReviseFromSpecial] = useState(false);
   const [data, setData] = useState<SPFData | null>(null);
   const [latestVersionLabel, setLatestVersionLabel] = useState<string | null>(
     null,
@@ -465,6 +471,7 @@ useEffect(() => {
       try {
         const res = await fetch(`/api/request/spf-request-get-draft-api?spf_number=${spfNumber}`);
         const data = await res.json();
+
         if (data?.success && data?.hasDraft) {
           setHasDraft(true);
           // Restore the saved timer start time from draft - timer continues running
@@ -616,6 +623,52 @@ useEffect(() => {
     fetchStatus();
   }, [spfNumber]);
 
+  useEffect(() => {
+    if (!open) {
+      if (autoEditFired) setAutoEditFired(false);
+      setReviseFromSpecial(false);
+      return;
+    }
+    if (triggerMode !== "edit") return;
+    if (autoEditFired) return;
+    if (editMode) return;
+    if (!data) return;
+
+    const allowEdit =
+      data?.status === "For Revision" ||
+      data?.status === "Pending For Procurement" ||
+      data?.status === "Approved By Procurement";
+    if (!allowEdit) return;
+
+    const existingRevisionType = data?.revision_type;
+    if (existingRevisionType) {
+      const typeMap: Record<string, RevisionType> = {
+        "Price Update": "price",
+        "Change Item Specs & Qty": "specs",
+        "Both": "both",
+      };
+      const mappedType = typeMap[existingRevisionType];
+      if (mappedType) {
+        setAutoEditFired(true);
+        setRevisionType(mappedType);
+        setOpen(false);
+        setTimeout(() => {
+          enterEditMode(mappedType);
+          setEditMode(true);
+          setOpen(true);
+        }, 50);
+        return;
+      }
+    }
+
+    if (reviseFromSpecial) {
+      setAutoEditFired(true);
+      setShowRevisionSelector(true);
+      // Close main dialog when showing revision selector to prevent two dialogs
+      setOpen(false);
+    }
+  }, [open, triggerMode, autoEditFired, editMode, data, reviseFromSpecial]);
+
   /* ── Handle revision type selection ── */
   const handleRevisionTypeSelect = (type: RevisionType) => {
     setRevisionType(type);
@@ -645,19 +698,18 @@ useEffect(() => {
     const rowLeadTimes = splitByRow(data.proj_lead_time);
     const rowItemCodes = splitByRow(data.item_code);
     const rowPriceValidities = splitByRow(data.price_validity);
-    const rowDimensionalEdit = splitByRow(data.dimensional_drawing);
-    const rowIlluminanceEdit = splitByRow(data.illuminance_drawing);
     const rowTdsBrands = splitByRow(data.tds);
-    const rowBranches = splitByRow(data.supplier_branch);
-    const rowSpecs = splitSpecsByRow(
-      data.product_offer_technical_specification,
-    );
-    const rowOriginalSpecs = splitSpecsByRow(
-      data.original_technical_specification,
-    );
-    const rowProductRefIDs = splitByRow(data.product_reference_id);
+    const rowTdsUrls = splitByRow(data.tds);
+    const rowDimensionalDrawings = splitByRow(data.dimensional_drawing);
+    const rowIlluminanceDrawings = splitByRow(data.illuminance_drawing);
     const rowSpfRemarksPD = splitByRow(data.spf_remarks_pd);
+    const rowSpfRemarksProcurement = splitByRow(data.spf_remarks_procurement);
+    const rowBranches = splitByRow(data.supplier_branch);
     const rowCommercialTypes = splitByRow(data.commercial_type);
+    const rowSpecs = splitSpecsByRow(data.product_offer_technical_specification);
+    const rowOriginalSpecs = splitSpecsByRow(data.original_technical_specification);
+    const rowProductRefIDs = splitByRow(data.product_reference_id);
+
     const descs = (requestData.item_description || "")
       .split(",")
       .map((s) => s.trim());
@@ -687,7 +739,7 @@ useEffect(() => {
         return;
       }
 
-      initialOffers[rowIndex] = imgs.map((img, i) => {
+      initialOffers[rowIndex] = imgs.map((img: string, i: number) => {
         // Single dimension: "L x W x H"
         const [length, width, height] = (packs[i] || "- x - x -")
           .split(" x ")
@@ -796,11 +848,11 @@ useEffect(() => {
           })(),
           __spfRemarksPD: spfRemarksPD[i] && spfRemarksPD[i] !== "-" ? spfRemarksPD[i] : "",
           dimensionalDrawing: (() => {
-            const u = (rowDimensionalEdit[rowIndex] ?? [])[i];
+            const u = (rowDimensionalDrawings[rowIndex] ?? [])[i];
             return u && u !== "-" ? { url: u } : null;
           })(),
           illuminanceDrawing: (() => {
-            const u = (rowIlluminanceEdit[rowIndex] ?? [])[i];
+            const u = (rowIlluminanceDrawings[rowIndex] ?? [])[i];
             return u && u !== "-" ? { url: u } : null;
           })(),
         };
@@ -1110,8 +1162,8 @@ useEffect(() => {
     try {
       const allProducts = Object.entries(productOffers).flatMap(
         ([rowIndex, prods]) =>
-          prods.map((p) => ({
-            ...p,
+          prods.map((p) => ({ 
+            ...p, 
             __rowIndex: Number(rowIndex),
             __originalTechnicalSpecifications: p.__originalTechnicalSpecifications || p.technicalSpecifications,
             productReferenceID: p.productReferenceID || p.id || null,
@@ -1279,7 +1331,7 @@ useEffect(() => {
   const rowPorts = splitByRow(data?.product_offer_port_of_discharge);
   const rowSubtotals = splitByRow(data?.product_offer_subtotal);
   const rowSupplierBrands = splitByRow(data?.supplier_brand);
-  const rowBranches = splitByRow(data?.supplier_brand);
+  const rowBranches = splitByRow(data?.supplier_branch);
   const rowSpecs = splitSpecsByRow(data?.product_offer_technical_specification);
   const rowCompanyNames = splitByRow(data?.company_name);
   const rowContactNames = splitByRow(data?.contact_name);
@@ -1489,7 +1541,7 @@ useEffect(() => {
                     {itemImages[index] ? (
                       <img
                         src={itemImages[index]}
-                        className="w-10 h-10 object-contain shrink-0 rounded"
+                        className="w-10 h-10 object-contain rounded shrink-0"
                         alt=""
                       />
                     ) : (
@@ -1631,7 +1683,7 @@ useEffect(() => {
                               </div>
                             )}
                             <div className="flex-1 min-w-0 space-y-1">
-                              <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                              <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
                                 Option {i + 1}
                                 {supplierBrand && ` · ${supplierBrand}`}
                               </span>
@@ -2601,9 +2653,7 @@ useEffect(() => {
                                                 if (qty < minQty) qty = minQty;
                                                 setProductOffers((prev) => {
                                                   const copy = { ...prev };
-                                                  const row = [
-                                                    ...(copy[index] || []),
-                                                  ];
+                                                  const row = [...(copy[index] || [])];
                                                   row[i] = { ...row[i], qty };
                                                   copy[index] = row;
                                                   return copy;
@@ -2737,7 +2787,7 @@ useEffect(() => {
                                         <td className="border px-2 py-1 text-center align-middle">
                                           {revisionType === "specs" ? (
                                             // Specs update: Unit Cost not editable, show as read-only
-                                            <span className="text-xs">{commercialType === "LIGHT" && useArrayInput ? totalUnitCost : prod.commercialDetails.unitCost}</span>
+                                            <span className="text-xs">{commercialType === "LIGHT" && useArrayInput ? totalUnitCost : unitCost}</span>
                                           ) : (
                                             // Price or Both: Unit Cost editable with validation
                                             <input
@@ -2745,7 +2795,7 @@ useEffect(() => {
                                               min={getMinUnitCost(index, i)}
                                               step="0.01"
                                               className="w-full border px-1 text-xs"
-                                              value={commercialType === "LIGHT" && useArrayInput ? totalUnitCost : (prod.commercialDetails.unitCost || "0")}
+                                              value={commercialType === "LIGHT" && useArrayInput ? totalUnitCost : (prod?.commercialDetails?.unitCost || "0")}
                                               onChange={(e) => {
                                                 const minCost = getMinUnitCost(index, i);
                                                 let cost = Number(e.target.value);
@@ -3124,6 +3174,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
             </Button>
           {viewMode && (
             <Button
+              type="button"
               className="rounded-none p-6 bg-orange-600 hover:bg-orange-700"
               disabled={
                 isSubmitting ||
@@ -3202,12 +3253,10 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
             </div>
 
             {!hasProducts ? (
-              <p className="text-xs text-muted-foreground px-3 py-3">
-                No products added
-              </p>
+              <p className="text-xs text-muted-foreground">No products added</p>
             ) : (
               <div className="divide-y">
-                {prodImages.map((img, i) => {
+                {prodImages.map((img: string, i: number) => {
                   const groups = prodSpecs[i] ?? [];
                   const optItemCode =
                     prodItemCodes[i] && prodItemCodes[i] !== "-"
@@ -3223,7 +3272,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                             : ""}
                         </span>
                         {optItemCode && (
-                          <span className="inline-flex items-center text-[10px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 whitespace-nowrap">
+                          <span className="inline-flex items-center text-[10px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
                             {optItemCode}
                           </span>
                         )}
@@ -3516,7 +3565,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                     </span>
                   ) : (
                     <div className="space-y-3">
-                      {prodImages.map((img, i) => {
+                      {prodImages.map((img: string, i: number) => {
                         const groups = prodSpecs[i] ?? [];
                         const optItemCode =
                           prodItemCodes[i] && prodItemCodes[i] !== "-"
@@ -3879,9 +3928,16 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
           variant="outline"
           className="rounded-none px-4 py-2 h-9 shrink-0"
           onClick={() => {
+            // Check if this is a revise action from Special Instructions
+            const currentBtn = document.activeElement as HTMLElement;
+            const isReviseFromSpecial = currentBtn?.dataset?.reviseFromSpecial === "true";
+            if (isReviseFromSpecial) {
+              setReviseFromSpecial(true);
+            }
             onOpen?.();
             setOpen(true);
           }}
+          data-spf-fetch={triggerDataAttr}
         >
           View
         </Button>
