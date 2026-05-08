@@ -33,6 +33,7 @@ import {
   Key,
   Settings,
   StickyNote,
+  BarChart3,
 } from "lucide-react";
 
 import { useUser } from "@/contexts/UserContext";
@@ -61,6 +62,7 @@ const NAV_ITEMS: Array<{
   onlyForIT?: boolean;
 }> = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/analytics", icon: BarChart3, label: "Analytics" },
   { href: "/products", icon: Package, label: "Products", accessKey: "page:products" },
   { href: "/suppliers", icon: Truck, label: "Suppliers", accessKey: "page:suppliers" },
   { href: "/requests", icon: ClipboardList, label: "Requests", badgeKey: "requests", accessKey: "page:requests" },
