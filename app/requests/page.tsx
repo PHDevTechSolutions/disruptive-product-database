@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   Search,
+  RefreshCw,
 } from "lucide-react";
 import SPFRequestFetch from "@/components/spf-request-fetch";
 import SPFRequestCreate, { type SPFRequest } from "@/components/spf-request-create";
@@ -38,6 +39,15 @@ const ALLOWED_STATUSES = [
   "approved by tsm",
   "approved by sales head",
 ];
+
+/* ─────────────────────────────────────────────────────────────── */
+/* CREATION NOTIFICATION STATUSES                                  */
+/* ─────────────────────────────────────────────────────────────── */
+const CREATION_NOTIFICATION_STATUSES = new Set([
+  "pending for procurement",
+  "approved by procurement", 
+  "for revision",
+]);
 
 /* ─────────────────────────────────────────────────────────────── */
 /* STATUS BADGE                                                     */
@@ -101,6 +111,7 @@ export default function RequestsPage() {
   const [searchTerm, setSearchTerm]   = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   /* ── Filter / sort ── */
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -229,8 +240,30 @@ export default function RequestsPage() {
     fetchRequests();
     const channel = supabase
       .channel("spf-all")
-      .on("postgres_changes", { event: "*", schema: "public", table: "spf_request" }, () => fetchRequests())
-      .on("postgres_changes", { event: "*", schema: "public", table: "spf_creation" }, () => fetchRequests())
+      .on("postgres_changes", { event: "*", schema: "public", table: "spf_request" }, async (payload: any) => {
+        // Only refresh if the record has a status that appears in the UI
+        if (payload.new && typeof payload.new === 'object' && 'status' in payload.new && payload.new.status) {
+          const normalizedStatus = String(payload.new.status).trim().toLowerCase();
+          if (ALLOWED_STATUSES.includes(normalizedStatus)) {
+            fetchRequests();
+          }
+        } else if (payload.old) {
+          // For deletions, always refresh to update the list
+          fetchRequests();
+        }
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "spf_creation" }, async (payload: any) => {
+        // Only refresh if the record has a status that appears in the UI
+        if (payload.new && typeof payload.new === 'object' && 'status' in payload.new && payload.new.status) {
+          const normalizedStatus = String(payload.new.status).trim().toLowerCase();
+          if (CREATION_NOTIFICATION_STATUSES.has(normalizedStatus)) {
+            fetchRequests();
+          }
+        } else if (payload.old) {
+          // For deletions, always refresh to update the list
+          fetchRequests();
+        }
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchRequests]);
@@ -327,6 +360,17 @@ export default function RequestsPage() {
     setStatusFilter(null);
     setSortBy("date_updated");
     setSortOrder("desc");
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    setLoadingPage(true);
+    try {
+      await fetchRequests();
+    } finally {
+      setIsRefreshing(false);
+      setLoadingPage(false);
+    }
   };
 
   /* ─────────────────────── */
@@ -536,6 +580,9 @@ export default function RequestsPage() {
           Page {currentPage} of {totalPages} · {filteredRequests.length} requests
         </span>
         <div className="flex gap-2">
+          <Button size="sm" variant="outline" disabled={isRefreshing} onClick={handleRefresh}>
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
           <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
             Previous
           </Button>
@@ -558,7 +605,7 @@ export default function RequestsPage() {
             </tr>
           </thead>
           <tbody>
-            {loadingPage ? (
+            {isRefreshing ? (
               <tr>
                 <td colSpan={9} className="text-center py-10 text-muted-foreground">Loading...</td>
               </tr>
@@ -693,7 +740,7 @@ export default function RequestsPage() {
 
       {/* ── MOBILE CARD LIST ── */}
       <div className="md:hidden flex-1 overflow-y-auto px-3 pt-3 pb-28 space-y-3 min-h-0">
-        {loadingPage ? (
+        {isRefreshing ? (
           <div className="flex justify-center py-16">
             <div className="h-7 w-7 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />
           </div>
@@ -797,6 +844,13 @@ export default function RequestsPage() {
             className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
           >
             <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            disabled={isRefreshing}
+            onClick={handleRefresh}
+            className="h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
           <span className="text-sm font-medium text-gray-600">{currentPage} / {totalPages}</span>
           <button

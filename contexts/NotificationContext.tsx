@@ -450,17 +450,41 @@ currentSignatureMap.set(
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "spf_request" },
-        () => {
-          void syncUnreadState();
-          playNotificationSound();
+        async (payload: any) => {
+          // Only notify if the record has a status that appears in the UI
+          if (payload.new && typeof payload.new === 'object' && 'status' in payload.new && payload.new.status) {
+            const normalizedStatus = String(payload.new.status).trim().toLowerCase();
+            if (ALLOWED_REQUEST_STATUSES.has(normalizedStatus)) {
+              void syncUnreadState();
+              playNotificationSound();
+            } else {
+              // Sync state but don't play sound or trigger loading for records that won't appear in UI
+              void syncUnreadState();
+            }
+          } else {
+            // For deletions or other events, just sync without notification
+            void syncUnreadState();
+          }
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "spf_creation" },
-        () => {
-          void syncUnreadState();
-          playNotificationSound();
+        async (payload: any) => {
+          // Only notify if the record has a status that appears in the UI
+          if (payload.new && typeof payload.new === 'object' && 'status' in payload.new && payload.new.status) {
+            const normalizedStatus = String(payload.new.status).trim().toLowerCase();
+            if (CREATION_NOTIFICATION_STATUSES.has(normalizedStatus)) {
+              void syncUnreadState();
+              playNotificationSound();
+            } else {
+              // Sync state but don't play sound or trigger loading for records that won't appear in UI
+              void syncUnreadState();
+            }
+          } else {
+            // For deletions or other events, just sync without notification
+            void syncUnreadState();
+          }
         }
       )
       .subscribe();
