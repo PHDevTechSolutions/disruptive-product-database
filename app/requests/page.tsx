@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -92,6 +92,7 @@ export default function RequestsPage() {
   /* ── SPF list ── */
   const [requests, setRequests]               = useState<SPFRequest[]>([]);
   const [fetchError, setFetchError]           = useState<string | null>(null);
+  const [loadingPage, setLoadingPage]         = useState(false);
   const [createdSPF, setCreatedSPF]           = useState<Record<string, string>>({});
   const [createdSPFIds, setCreatedSPFIds]    = useState<Record<string, number>>({});
   const [createdSPFLoaded, setCreatedSPFLoaded] = useState(false);
@@ -123,20 +124,6 @@ export default function RequestsPage() {
     status: "",
   });
   const [reviseTargetSpfNumber, setReviseTargetSpfNumber] = useState<string | null>(null);
-
-  /* ── Track previous state for change detection ── */
-  const previousRequestsRef = useRef<SPFRequest[]>([]);
-  const previousCreatedSPFRef = useRef<Record<string, string>>({});
-
-  /* ── Play notification sound ── */
-  const playNotificationSound = useCallback(() => {
-    try {
-      const audio = new Audio("/musics/notif-sound.mp3");
-      audio.play().catch((err) => console.log("Sound play error:", err));
-    } catch (err) {
-      console.log("Failed to play notification sound", err);
-    }
-  }, []);
 
   /* ─────────────────────── */
   /* Fetch user              */
@@ -212,6 +199,7 @@ export default function RequestsPage() {
     try {
       setFetchError(null);
       setCreatedSPFLoaded(false);
+      setLoadingPage(true);
 
       // Pass allowed statuses to API for server-side filtering
       const statusParams = ALLOWED_STATUSES.map(s => `status=${encodeURIComponent(s)}`).join('&');
@@ -232,6 +220,8 @@ export default function RequestsPage() {
     } catch (err: any) {
       setFetchError(err.message || "Failed to fetch SPF requests");
       setCreatedSPFLoaded(true);
+    } finally {
+      setLoadingPage(false);
     }
   }, [fetchCreatedSPF]);
 
@@ -244,40 +234,6 @@ export default function RequestsPage() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchRequests]);
-
-  /* ─────────────────────── */
-  /* Detect changes and play sound */
-  /* ─────────────────────── */
-  useEffect(() => {
-    let shouldPlaySound = false;
-
-    // Detect new records added to spf_creation that appear in requests
-    Object.keys(createdSPF).forEach((spfNumber) => {
-      if (!(spfNumber in previousCreatedSPFRef.current)) {
-        // New record in createdSPF - check if it appears in requests
-        const existsInRequests = requests.some((r) => r.spf_number === spfNumber);
-        if (existsInRequests) {
-          shouldPlaySound = true;
-        }
-      }
-    });
-
-    // Detect status changes in requests
-    requests.forEach((currentReq) => {
-      const previousReq = previousRequestsRef.current.find((r) => r.id === currentReq.id);
-      if (previousReq && previousReq.status !== currentReq.status) {
-        shouldPlaySound = true;
-      }
-    });
-
-    if (shouldPlaySound) {
-      playNotificationSound();
-    }
-
-    // Update refs for next comparison
-    previousRequestsRef.current = requests;
-    previousCreatedSPFRef.current = createdSPF;
-  }, [requests, createdSPF, playNotificationSound]);
 
   /* ─────────────────────── */
   /* Filtered + paginated    */
@@ -602,7 +558,11 @@ export default function RequestsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredRequests.length === 0 ? (
+            {loadingPage ? (
+              <tr>
+                <td colSpan={9} className="text-center py-10 text-muted-foreground">Loading...</td>
+              </tr>
+            ) : filteredRequests.length === 0 ? (
               <tr>
                 <td colSpan={9} className="text-center py-10 text-muted-foreground">No SPF requests yet.</td>
               </tr>
@@ -733,7 +693,11 @@ export default function RequestsPage() {
 
       {/* ── MOBILE CARD LIST ── */}
       <div className="md:hidden flex-1 overflow-y-auto px-3 pt-3 pb-28 space-y-3 min-h-0">
-        {filteredRequests.length === 0 ? (
+        {loadingPage ? (
+          <div className="flex justify-center py-16">
+            <div className="h-7 w-7 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />
+          </div>
+        ) : filteredRequests.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="h-14 w-14 rounded-full bg-white/60 flex items-center justify-center mb-3">
               <Search className="h-6 w-6 text-gray-300" />
