@@ -140,7 +140,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── CONTENT ── */}
-      <div className={`flex-1 overflow-auto p-6 space-y-6 ${
+      <div className={`flex-1 overflow-auto p-6 space-y-6 pb-20 md:pb-6 ${
         isEngineer && !wallpaper ? "engineer-blueprint-bg" : ""
       }`}>
 
