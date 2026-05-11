@@ -6,6 +6,7 @@ import { UserProvider } from "@/contexts/UserContext";
 import { WallpaperProvider } from "@/contexts/WallpaperContext";
 import { RoleAccessProvider } from "@/contexts/RoleAccessContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { BroadcastNotificationProvider } from "@/contexts/BroadcastNotificationContext";
 import { Toaster } from "sonner";
 
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -41,9 +42,11 @@ export default function RootLayout({
           <UserProvider>
             <RoleAccessProvider>
               <WallpaperProvider>
-                <SidebarProvider>
-                  <LayoutShell>{children}</LayoutShell>
-                </SidebarProvider>
+                <BroadcastNotificationProvider>
+                  <SidebarProvider>
+                    <LayoutShell>{children}</LayoutShell>
+                  </SidebarProvider>
+                </BroadcastNotificationProvider>
 
               <Toaster
                 position="top-right"
