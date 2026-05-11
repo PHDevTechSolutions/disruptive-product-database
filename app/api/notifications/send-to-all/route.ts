@@ -5,7 +5,7 @@ import { NotificationPayload } from "@/types/notifications";
 
 export async function POST(request: NextRequest) {
   try {
-    const { payload } = await request.json();
+    const { payload, excludeUserId } = await request.json();
 
     if (!payload || !payload.title || !payload.body) {
       return NextResponse.json(
@@ -14,10 +14,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get all FCM tokens from database (including creator)
-    const { data: tokens, error } = await supabase
-      .from("fcm_tokens")
-      .select("token, user_id");
+    // Get all FCM tokens from database, optionally excluding a specific user
+    let query = supabase.from("fcm_tokens").select("token, user_id");
+    
+    if (excludeUserId) {
+      query = query.neq("user_id", excludeUserId);
+    }
+
+    const { data: tokens, error } = await query;
 
     if (error) {
       console.error("Error fetching FCM tokens:", error);

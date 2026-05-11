@@ -68,59 +68,59 @@ export function useNotificationTriggers() {
     []
   );
 
-  // Broadcast notification functions (send to all users including creator)
+  // Broadcast notification functions (send to all users except the creator)
   const onProductAddedBroadcast = useCallback(
     async (data: NotificationTriggerData) => {
-      await triggerBroadcastNotification("product_added", data);
+      await triggerBroadcastNotification("product_added", data, data.userId);
     },
     []
   );
 
   const onProductUpdatedBroadcast = useCallback(
     async (data: NotificationTriggerData) => {
-      await triggerBroadcastNotification("product_updated", data);
+      await triggerBroadcastNotification("product_updated", data, data.userId);
     },
     []
   );
 
   const onSupplierAddedBroadcast = useCallback(
     async (data: NotificationTriggerData) => {
-      await triggerBroadcastNotification("supplier_added", data);
+      await triggerBroadcastNotification("supplier_added", data, data.userId);
     },
     []
   );
 
   const onSupplierUpdatedBroadcast = useCallback(
     async (data: NotificationTriggerData) => {
-      await triggerBroadcastNotification("supplier_updated", data);
+      await triggerBroadcastNotification("supplier_updated", data, data.userId);
     },
     []
   );
 
   const onSPFCreatedBroadcast = useCallback(
     async (data: NotificationTriggerData) => {
-      await triggerBroadcastNotification("spf_created", data);
+      await triggerBroadcastNotification("spf_created", data, data.userId);
     },
     []
   );
 
   const onSPFUpdatedBroadcast = useCallback(
     async (data: NotificationTriggerData) => {
-      await triggerBroadcastNotification("spf_updated", data);
+      await triggerBroadcastNotification("spf_updated", data, data.userId);
     },
     []
   );
 
   const onSPFApprovedBroadcast = useCallback(
     async (data: NotificationTriggerData) => {
-      await triggerBroadcastNotification("spf_approved", data);
+      await triggerBroadcastNotification("spf_approved", data, data.userId);
     },
     []
   );
 
   const onSPFRejectedBroadcast = useCallback(
     async (data: NotificationTriggerData) => {
-      await triggerBroadcastNotification("spf_rejected", data);
+      await triggerBroadcastNotification("spf_rejected", data, data.userId);
     },
     []
   );

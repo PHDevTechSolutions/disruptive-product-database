@@ -251,7 +251,8 @@ export async function triggerNotification(
 
 export async function triggerBroadcastNotification(
   type: NotificationType,
-  data: NotificationTriggerData
+  data: NotificationTriggerData,
+  excludeUserId?: string
 ): Promise<void> {
   let payload: NotificationPayload;
 
@@ -290,6 +291,7 @@ export async function triggerBroadcastNotification(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         payload,
+        excludeUserId,
       }),
     });
 
