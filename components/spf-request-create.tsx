@@ -27,6 +27,7 @@ import CardDetails from "@/components/spf/dialog/card-details";
 import SPFTimer from "@/components/spf-timer";
 import MultipleSpecsDetected from "@/components/multiple-specs-detected";
 import { useRoleAccess } from "@/contexts/RoleAccessContext";
+import { useNotificationTriggers } from "@/hooks/use-notification-triggers";
 import { generateTDSPdf } from "@/lib/generateTDSPdf";
 import SPFGenerateTDSDialog from "@/components/spf-generate-tds-dialog";
 
@@ -221,6 +222,7 @@ export default function SPFRequestCreate({
     item_photo: [],
   });
   const { userId } = useUser();
+  const { onSPFCreated } = useNotificationTriggers();
   // ── ACCESS CONTROL ──
 // ── ACCESS CONTROL ──
 const { hasAccess, subscribeToUserAccess } = useRoleAccess();
@@ -741,7 +743,19 @@ const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
       }
 
       const data = await res.json();
-      if (data?.success) toast.success("SPF created successfully");
+      if (data?.success) {
+        toast.success("SPF created successfully");
+        
+        // Trigger notification for SPF creation
+        if (userId) {
+          onSPFCreated({
+            userId,
+            spfNumber: formData.spf_number || "Unknown SPF",
+            spfId: data.spfId || formData.id,
+            url: "/spf-requests",
+          });
+        }
+      }
       onOpenChange(false);
       onSuccess();
     } catch (err: any) {

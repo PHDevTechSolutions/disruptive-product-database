@@ -36,6 +36,7 @@ import CardDetails from "@/components/spf/dialog/card-details";
 import SPFRequestFetchVersionHistory from "./spf-request-fetch-version-history";
 import SPFTimer from "@/components/spf-timer";
 import { useUser } from "@/contexts/UserContext";
+import { useNotificationTriggers } from "@/hooks/use-notification-triggers";
 import MultipleSpecsDetected from "@/components/multiple-specs-detected";
 import { useRoleAccess } from "@/contexts/RoleAccessContext";
 import { generateTDSPdf } from "@/lib/generateTDSPdf";
@@ -350,6 +351,7 @@ export default function SPFRequestFetch({
   triggerMode = "view",
 }: SPFViewProps) {
   const { userId } = useUser();
+  const { onSPFUpdated } = useNotificationTriggers();
 
 // ── ACCESS CONTROL ──
 const { hasAccess, subscribeToUserAccess } = useRoleAccess();
@@ -1305,6 +1307,16 @@ useEffect(() => {
       const result = await res.json();
       if (result?.success) {
         toast.success(`SPF updated — ${result.version_label ?? ""}`);
+
+        if (userId) {
+          onSPFUpdated({
+            userId,
+            spfNumber: spfNumber,
+            spfId: result.spfId || "",
+            url: "/requests",
+          });
+        }
+
         setEditMode(false);
         setViewMode(false);
         fetchSPF();

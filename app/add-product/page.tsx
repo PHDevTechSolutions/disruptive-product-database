@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 import { useUser } from "@/contexts/UserContext";
+import { useNotificationTriggers } from "@/hooks/use-notification-triggers";
 
 import {
   Command,
@@ -263,6 +264,7 @@ const emptySpecRow = (): SpecRow => ({
 export default function AddProductPage() {
   const router = useRouter();
   const { userId } = useUser();
+  const { onProductAdded } = useNotificationTriggers();
 
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -739,10 +741,20 @@ export default function AddProductPage() {
           specs: s.specs.filter(r => r.specId.trim()).map(r => ({ specId: r.specId.trim(), value: r.value?.trim() || "" })),
         })),
         referenceID: user?.ReferenceID,
-        userId     : userId ?? undefined,
+        userId: userId ?? undefined,
       });
 
       toast.success("Product saved successfully");
+
+      if (userId) {
+        onProductAdded({
+          userId,
+          productName: newProductReferenceID,
+          productId: productRef.id,
+          url: "/products",
+        });
+      }
+
       router.push("/products");
     } catch (err) {
       console.error(err);

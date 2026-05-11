@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 import { useUser } from "@/contexts/UserContext";
+import { useNotificationTriggers } from "@/hooks/use-notification-triggers";
 
 import {
   Command,
@@ -251,6 +252,7 @@ const emptySpecRow = (): SpecRow => ({
 export default function EditProductPage() {
   const router = useRouter();
   const { userId } = useUser();
+  const { onProductUpdated } = useNotificationTriggers();
 
   const searchParams = new URLSearchParams(
     typeof window !== "undefined" ? window.location.search : "",
@@ -271,6 +273,7 @@ export default function EditProductPage() {
   const [brandOrigin, setBrandOrigin] = useState("");
   const [countries, setCountries] = useState<string[]>([]);
   const [productClass, setProductClass] = useState("");
+  const [productReferenceID, setProductReferenceID] = useState("");
   const [unitCost, setUnitCost] = useState("");
   const [packLength, setPackLength] = useState("");
   const [packWidth, setPackWidth] = useState("");
@@ -388,6 +391,7 @@ export default function EditProductPage() {
       setBrandOrigin(data.brandOrigin || "");
       setCountries(data.countries || []);
       setProductClass(data.productClass || "");
+      setProductReferenceID(data.productReferenceID || "");
       if (data.commercialDetails) {
         setUnitCost(data.commercialDetails.unitCost?.toString() || "");
         setFactoryAddress(data.commercialDetails.factoryAddress || "");
@@ -897,6 +901,16 @@ const handleSaveProduct = async () => {
       });
 
       toast.success("Product saved successfully");
+
+      if (userId) {
+        onProductUpdated({
+          userId,
+          productName: productReferenceID || "Unknown Product",
+          productId: productId!,
+          url: "/products",
+        });
+      }
+
       router.push("/products");
     } catch (err) {
       console.error(err);
