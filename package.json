@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/build-service-worker.js && next build",
+    "build-sw": "node scripts/build-service-worker.js",
     "start": "next start",
     "lint": "eslint"
   },

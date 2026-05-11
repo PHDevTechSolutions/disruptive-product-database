@@ -19,7 +19,7 @@ export function FCMTokenManager() {
         }
 
         // Get FCM token
-        const vapidKey = "BA4EhLKlgdXa0n1Vq54DgEnsgC0VFA8iKDHjL4aROHrwajhkddDCnCStWYYJfx96YLSor5PUUTdWB-SpERauiCg";
+        const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_PUBLIC_KEY_ESPIRON;
         
         if (!vapidKey) {
           console.error("❌ VAPID key is missing");
@@ -60,13 +60,17 @@ export function FCMTokenManager() {
       
       // Show notification for foreground messages
       if (payload.notification?.title) {
+        // Use a unique tag for foreground notifications to avoid conflicts
+        const uniqueTag = `foreground-${payload.data?.tag || Date.now()}`;
+        
         new Notification(payload.notification.title, {
           body: payload.notification.body || "",
           icon: payload.notification.icon || "/favicon.ico",
           badge: "/favicon.ico",
-          tag: payload.data?.tag || "default",
+          tag: uniqueTag,
           requireInteraction: false,
-          data: payload.data || {}
+          data: payload.data || {},
+          silent: false
         });
       }
     });
