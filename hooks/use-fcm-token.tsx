@@ -182,10 +182,26 @@ export function useFCMToken(userId: string | null | undefined) {
   }, [userId]);
 
   /**
+   * Get device information
+   */
+  const getDeviceInfo = () => {
+    const userAgent = navigator.userAgent;
+    const platform = navigator.platform;
+    
+    return {
+      userAgent,
+      platform,
+      lastActive: new Date().toISOString(),
+    };
+  };
+
+  /**
    * Save FCM token to Supabase database
    */
   const saveTokenToDatabase = async (uid: string, token: string) => {
     try {
+      const deviceInfo = getDeviceInfo();
+      
       // Check if token already exists
       const { data: existing } = await supabase
         .from('fcm_tokens')
@@ -199,6 +215,7 @@ export function useFCMToken(userId: string | null | undefined) {
           .from('fcm_tokens')
           .update({ 
             user_id: uid,
+            device_info: deviceInfo,
             active: true,
             updated_at: new Date().toISOString()
           })
@@ -210,6 +227,7 @@ export function useFCMToken(userId: string | null | undefined) {
           .insert({
             user_id: uid,
             token: token,
+            device_info: deviceInfo,
             active: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()

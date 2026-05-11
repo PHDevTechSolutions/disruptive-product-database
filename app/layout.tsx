@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import LayoutShell from "@/components/layout-shell";
 import { ThemeBody } from "@/components/theme-body";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 export const viewport = {
   width: "device-width",
@@ -52,6 +53,7 @@ export default function RootLayout({
                     "bg-background border border-border text-foreground shadow-lg rounded-lg",
                 }}
               />
+              <ServiceWorkerRegistration />
             </WallpaperProvider>
           </RoleAccessProvider>
           </UserProvider>

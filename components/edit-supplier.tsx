@@ -40,6 +40,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 import { useUser } from "@/contexts/UserContext";
+import { useNotificationTriggers } from "@/hooks/use-notification-triggers";
 
 import { db } from "@/lib/firebase";
 import {
@@ -251,6 +252,7 @@ type BranchData = {
 /* ---------------- Component ---------------- */
 function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
   const { userId } = useUser();
+  const { onSupplierUpdated } = useNotificationTriggers();
   const [user, setUser] = useState<UserDetails | null>(null);
 
   const [companyError, setCompanyError] = useState("");
@@ -654,6 +656,16 @@ function EditSupplier({ open, onOpenChange, supplier }: EditSupplierProps) {
       });
 
       toast.success("Supplier updated everywhere", { description: company });
+
+      if (userId && supplier?.supplierId) {
+        onSupplierUpdated({
+          userId,
+          supplierName: company,
+          supplierId: supplier.supplierId,
+          url: `/suppliers`,
+        });
+      }
+
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving supplier:", error);

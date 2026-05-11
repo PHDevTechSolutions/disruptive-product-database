@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 import { useUser } from "@/contexts/UserContext";
+import { useNotificationTriggers } from "@/hooks/use-notification-triggers";
 
 import {
   Command,
@@ -305,6 +306,7 @@ interface EditProductComponentProps {
 
 export default function EditProductComponent({ productId, onClose }: EditProductComponentProps) {
   const { userId } = useUser();
+  const { onProductUpdated } = useNotificationTriggers();
 
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1021,6 +1023,16 @@ const handleSaveProduct = async () => {
       }
 
       toast.success("Product saved successfully");
+
+      if (userId) {
+        onProductUpdated({
+          userId,
+          productName: productReferenceID || "Product",
+          productId: productId,
+          url: `/products`,
+        });
+      }
+
       if (onClose) onClose();
     } catch (err) {
       console.error(err);

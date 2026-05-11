@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Palette, Sparkles, Building2, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
+import { NotificationSettings } from "@/components/notifications/NotificationSettings";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -168,6 +169,9 @@ export default function SettingsPage() {
           </RadioGroup>
         </CardContent>
       </Card>
+
+      {/* Notification Settings */}
+      <NotificationSettings />
 
       {/* Preview Section */}
       <Card className={theme === "comic" ? "comic-card" : theme === "engineer" ? "engineer-card" : "formal-card"}>

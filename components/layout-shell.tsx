@@ -9,6 +9,7 @@ import { NotificationProvider, useNotifications } from "@/contexts/NotificationC
 import { SidebarLeft } from "@/components/sidebar-left";
 import { SplashScreen } from "@/components/splash-screen";
 import ApprovalToastListener from "@/components/approval-toast-listener";
+import { NotificationPermissionDialog } from "@/components/notifications/NotificationPermissionDialog";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/components/ui/sidebar";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
@@ -114,6 +115,7 @@ export default function LayoutShell({
 
   const [showSplash, setShowSplash] = useState(false);
   const [splashChecked, setSplashChecked] = useState(false);
+  const [showNotificationDialog, setShowNotificationDialog] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -125,6 +127,11 @@ export default function LayoutShell({
     }
 
     setSplashChecked(true);
+
+    const notificationPermissionShown = localStorage.getItem("notificationPermissionShown");
+    if (!notificationPermissionShown && "Notification" in window && Notification.permission === "default") {
+      setShowNotificationDialog(true);
+    }
   }, [userId]);
 
   function handleSplashDone() {
@@ -143,6 +150,10 @@ export default function LayoutShell({
     <NotificationProvider>
       <TitleUpdater pathname={pathname} />
       <ApprovalToastListener />
+      <NotificationPermissionDialog
+        open={showNotificationDialog}
+        onOpenChange={setShowNotificationDialog}
+      />
       <div className="relative flex min-h-svh w-full">
         {/* SidebarLeft handles both desktop (left sidebar) and mobile (bottom nav) */}
         {userId && !isLogin && <SidebarLeft isNavVisible={isNavVisible} setIsNavVisible={setIsNavVisible} />}

@@ -4,6 +4,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getMessaging } from "firebase/messaging";
 
 /* =================================
    MAIN FIREBASE
@@ -110,7 +111,21 @@ if (typeof window !== "undefined") {
 }
 
 /* =================================
+   MESSAGING
+================================= */
+
+let messaging: any = null;
+
+if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+  try {
+    messaging = getMessaging(app);
+  } catch (error) {
+    console.error("Firebase Messaging initialization error:", error);
+  }
+}
+
+/* =================================
    EXPORTS
 ================================= */
 
-export { app, db, dbLogs, dbCollab, storage, analytics };
+export { app, db, dbLogs, dbCollab, storage, analytics, messaging };

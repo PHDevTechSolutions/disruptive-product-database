@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 import { useUser } from "@/contexts/UserContext";
+import { useNotificationTriggers } from "@/hooks/use-notification-triggers";
 
 import {
   collection,
@@ -252,6 +253,7 @@ type BranchData = {
 ───────────────────────────────────────────── */
 function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
   const { userId } = useUser();
+  const { onSupplierAdded } = useNotificationTriggers();
   const [user, setUser] = useState<UserDetails | null>(null);
 
   const [companyError, setCompanyError] = useState("");
@@ -621,6 +623,16 @@ function AddSupplier({ open, onOpenChange }: AddSupplierProps) {
       });
 
       toast.success("Supplier saved successfully", { description: company });
+
+      if (userId) {
+        onSupplierAdded({
+          userId,
+          supplierName: company,
+          supplierId: docRef.id,
+          url: `/suppliers`,
+        });
+      }
+
       resetForm();
       onOpenChange(false);
     } catch (error) {
