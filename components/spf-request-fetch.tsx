@@ -351,7 +351,7 @@ export default function SPFRequestFetch({
   triggerMode = "view",
 }: SPFViewProps) {
   const { userId } = useUser();
-  const { onSPFUpdatedBroadcast } = useNotificationTriggers();
+  const { onSPFUpdated } = useNotificationTriggers();
 
 // ── ACCESS CONTROL ──
 const { hasAccess, subscribeToUserAccess } = useRoleAccess();
@@ -1309,7 +1309,7 @@ useEffect(() => {
         toast.success(`SPF updated — ${result.version_label ?? ""}`);
 
         if (userId) {
-          onSPFUpdatedBroadcast({
+          onSPFUpdated({
             userId,
             spfNumber: spfNumber,
             spfId: result.spfId || "",
