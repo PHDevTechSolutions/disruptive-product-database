@@ -23,6 +23,7 @@ import {
 
 export type ParsedProductRow = {
   usage: string;
+  productName: string;
   family: string;
   productClass: string;
   pricePoint: string;
@@ -106,8 +107,8 @@ export function buildExcelColumnsMapFromWorkbook(workbook: Workbook): ExcelColum
       const specId    = cleanVal(h1.getCell(col).value);
       const groupTitle = cleanVal(h2.getCell(col).value);
 
-      // Skip first 7 static cols
-      if (col < 8) continue;
+      // Skip first 8 static cols
+      if (col < 9) continue;
 
       // Skip all known non-spec headers
       const SKIP_SPECS = [
@@ -226,7 +227,7 @@ export function parseWorkbookRowsNew(workbook: Workbook): ParsedProductRow[] {
       const spec  = cleanVal(h1.getCell(col).value);
       const group = cleanVal(h2.getCell(col).value);
 
-      if (col < 8) continue;
+      if (col < 9) continue;
 
       // Static commercial cols (old BASIC format)
       if (spec === "Unit Cost" && group === "COMMERCIAL DETAILS") { cm.unitCost = col; continue; }
@@ -294,12 +295,13 @@ export function parseWorkbookRowsNew(workbook: Workbook): ParsedProductRow[] {
       const row = ws.getRow(r);
 
       const usage        = cleanVal(row.getCell(1).value) || lastUsage;
-      const family       = cleanVal(row.getCell(2).value) || lastFamily;
-      const productClass = cleanVal(row.getCell(3).value) || lastClass;
-      const pricePoint   = cleanVal(row.getCell(4).value) || lastPP;
-      const brandOrigin  = cleanVal(row.getCell(5).value) || lastBO;
-      const supplierBrand = cleanVal(row.getCell(6).value) || lastSB;
-      const imageURL     = convertDrive(extractHyperlink(row.getCell(7))) || lastImg;
+      const productName  = cleanVal(row.getCell(2).value) || "";
+      const family       = cleanVal(row.getCell(3).value) || lastFamily;
+      const productClass = cleanVal(row.getCell(4).value) || lastClass;
+      const pricePoint   = cleanVal(row.getCell(5).value) || lastPP;
+      const brandOrigin  = cleanVal(row.getCell(6).value) || lastBO;
+      const supplierBrand = cleanVal(row.getCell(7).value) || lastSB;
+      const imageURL     = convertDrive(extractHyperlink(row.getCell(8))) || lastImg;
 
       lastUsage = usage; lastFamily = family; lastClass = productClass;
       lastPP = pricePoint; lastBO = brandOrigin; lastSB = supplierBrand; lastImg = imageURL;
@@ -313,7 +315,7 @@ export function parseWorkbookRowsNew(workbook: Workbook): ParsedProductRow[] {
       }
 
       result.push({
-        usage, family, productClass, pricePoint, brandOrigin, supplierBrand, imageURL,
+        usage, productName, family, productClass, pricePoint, brandOrigin, supplierBrand, imageURL,
         dimensionalURL: convertDrive(extractHyperlink(cm.dimensionalURL > 0 ? row.getCell(cm.dimensionalURL) : null)),
         illuminanceURL: convertDrive(extractHyperlink(cm.illuminanceURL > 0 ? row.getCell(cm.illuminanceURL) : null)),
         unitCost: getCell(row, cm.unitCost),
@@ -639,6 +641,7 @@ export async function insertParsedProductBulk(params: {
 
     const newDocRef = await addDoc(collection(db, "products"), {
       productReferenceID: refID,
+      productName: row.productName,
       productClass: row.productClass,
       pricePoint: row.pricePoint,
       brandOrigin: row.brandOrigin,

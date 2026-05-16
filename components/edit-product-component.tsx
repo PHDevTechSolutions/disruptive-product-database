@@ -385,6 +385,7 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
   const [selectedCategoryTypes, setSelectedCategoryTypes] = useState<SelectedCategoryType[]>([]);
   const [classificationSearch, setClassificationSearch] = useState("");
   const [categoryTypeSearch, setCategoryTypeSearch] = useState("");
+  const [productName, setProductName] = useState("");
   const [requestApprovalOpen, setRequestApprovalOpen] = useState(false);
   const [requestingApproval, setRequestingApproval] = useState(false);
 
@@ -444,6 +445,7 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
       setBrandOrigin(data.brandOrigin || "");
       setCountries(data.countries || []);
       setProductClass(data.productClass || "");
+      setProductName(data.productName || "");
       if (data.commercialDetails) {
         setUnitCost(data.commercialDetails.unitCost?.toString() || "");
         setFactoryAddress(data.commercialDetails.factoryAddress || "");
@@ -835,7 +837,7 @@ export default function EditProductComponent({ productId, onClose }: EditProduct
     setSrp(0);
   }, [commercialType, useArrayInput, qtyPerContainer, unitCost, packLength, packWidth, packHeight, pcsPerCarton, multiRows.map(r => `${r.unitCost}-${r.length}-${r.width}-${r.height}-${r.qtyPerCarton}`).join("|")]);
 
-const handleSaveProduct = async () => {
+  const handleSaveProduct = async () => {
     if (saving) return;
     try {
       setSaving(true);
@@ -843,6 +845,7 @@ const handleSaveProduct = async () => {
       if (!noSupplier && !pricePoint) { toast.error("Please select price point"); return; }
       if (!noSupplier && !brandOrigin) { toast.error("Please select brand origin"); return; }
       if (!productClass) { toast.error("Please select product class"); return; }
+      if (!productName || productName.trim() === "") { toast.error("Please enter a valid product name"); return; }
 
       const profile = userId ? await getApprovalUserProfile(userId) : null;
       const requiresApproval = shouldRequireApproval(profile);
@@ -882,6 +885,7 @@ const handleSaveProduct = async () => {
         pricePoint: noSupplier ? "ECONOMY" : pricePoint,
         brandOrigin: noSupplier ? "CHINA" : brandOrigin,
         countries: countries,
+        productName: productName,
         productClass,
         supplier: noSupplier ? null : { supplierId: selectedSupplier!.supplierId, company: selectedSupplier!.company, supplierBrand: selectedSupplierBrand?.supplierBrand || "" },
         productFamilies: selectedProductFamily ? [{ productFamilyId: selectedProductFamily.id, productFamilyName: selectedProductFamily.name, productUsageId: selectedProductFamily.productUsageId }] : [],
@@ -1747,6 +1751,12 @@ const handleSaveProduct = async () => {
 
           {/* RIGHT COLUMN */}
           <div className="space-y-4 lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto lg:pb-6">
+            <Card>
+              <CardHeader><CardTitle className="text-sm text-center">ADD PRODUCT NAME</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="Enter product name..." className="h-9" />
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader><CardTitle className="text-sm text-center">SELECT PRODUCT USAGE</CardTitle></CardHeader>
               <CardContent className="space-y-3">

@@ -42,6 +42,7 @@ type Props = {
   illuminanceDrawing?: { url: string };
   technicalSpecifications?: TechnicalSpecification[];
   defaultBrand?: string;
+  defaultProductName?: string;
   onBrandChange?: (brand: string) => void;
 };
 
@@ -53,6 +54,7 @@ export default function GenerateTDS({
   illuminanceDrawing,
   technicalSpecifications,
   defaultBrand = "",
+  defaultProductName = "",
   onBrandChange,
 }: Props) {
   const [selectedBrand, setSelectedBrand] = useState(defaultBrand);
@@ -61,7 +63,11 @@ export default function GenerateTDS({
     setSelectedBrand(defaultBrand);
   }, [defaultBrand]);
   const [itemCode, setItemCode] = useState("");
-  const [productName, setProductName] = useState("");
+  const [productName, setProductName] = useState(defaultProductName);
+
+  useEffect(() => {
+    setProductName(defaultProductName);
+  }, [defaultProductName]);
   const [hideEmptySpecs, setHideEmptySpecs] = useState(true);
   const [previewCollapsed, setPreviewCollapsed] = useState(false);
 

@@ -311,6 +311,7 @@ export default function ViewProduct({
                   dimensionalDrawing={product?.dimensionalDrawing}
                   illuminanceDrawing={product?.illuminanceDrawing}
                   technicalSpecifications={product?.technicalSpecifications}
+                  defaultProductName={product?.productName || ""}
                 />
               </div>
             )}

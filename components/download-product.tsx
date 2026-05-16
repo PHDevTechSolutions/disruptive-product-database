@@ -75,7 +75,7 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
 
       /* ─────────────────────────────────────────────────────────────────
        * Column layout:
-       *  Cols 1-7       : static product fields
+       *  Cols 1-8       : static product fields
        *  Cols 8+        : technical spec columns (grouped)
        *  Next 7         : COMMERCIAL DETAILS — BASIC (Unit Cost … Port of Discharge)
        *  Next 2         : Dimensional Drawing, Illuminance Level
@@ -89,6 +89,7 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
        * ───────────────────────────────────────────────────────────────── */
       const staticColumns = [
         "Product Usage",
+        "Product Name",
         "Product Family",
         "Product Class",
         "Price Point",
@@ -336,6 +337,7 @@ export default function DownloadProduct({ products, iconOnly = false }: Props) {
 
         // Static cols 1-7
         row.push(product.categoryTypes?.[0]?.categoryTypeName || "");
+        row.push(product.productName || "");
         row.push(product.productFamilies?.[0]?.productFamilyName || "");
         row.push(product.productClass || "");
         row.push(product.pricePoint || "");

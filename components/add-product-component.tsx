@@ -383,6 +383,7 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
   const [selectedCategoryTypes, setSelectedCategoryTypes] = useState<SelectedCategoryType[]>([]);
   const [classificationSearch, setClassificationSearch] = useState("");
   const [categoryTypeSearch, setCategoryTypeSearch] = useState("");
+  const [productName, setProductName] = useState("");
   const [requestApprovalOpen, setRequestApprovalOpen] = useState(false);
   const [requestingApproval, setRequestingApproval] = useState(false);
 
@@ -728,6 +729,7 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
       if (!noSupplier && !pricePoint) { toast.error("Please select price point"); return; }
       if (!noSupplier && !brandOrigin) { toast.error("Please select brand origin"); return; }
       if (!productClass) { toast.error("Please select product class"); return; }
+      if (!productName) { toast.error("Please enter product name"); return; }
       if (!mainImage && !imageLink) { toast.error("Please upload an image or provide an image link"); return; }
       if (!selectedProductFamily) { toast.error("Please select product family"); setSaving(false); return; }
 
@@ -755,6 +757,7 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
 
       const productRef = await addDoc(collection(db, "products"), {
         productReferenceID: newProductReferenceID,
+        productName: productName,
         pricePoint: noSupplier ? "ECONOMY" : pricePoint,
         brandOrigin: noSupplier ? "CHINA" : brandOrigin,
         countries: countries,
@@ -1539,6 +1542,12 @@ export default function AddProductComponent({ onClose }: AddProductComponentProp
         </div>
 
         <div className="space-y-4 lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto lg:pb-6">
+          <Card>
+            <CardHeader><CardTitle className="text-sm text-center">ADD PRODUCT NAME</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="Enter product name..." className="h-9" />
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader><CardTitle className="text-sm text-center">SELECT PRODUCT USAGE</CardTitle></CardHeader>
             <CardContent className="space-y-3">

@@ -350,7 +350,7 @@ export default function UploadProduct({ iconOnly = false }: Props) {
     }
 
     const COLS = [
-      "Usage", "Family", "Product Class", "Price Point", "Brand Origin", "Supplier Brand",
+      "Usage", "Product Name", "Family", "Product Class", "Price Point", "Brand Origin", "Supplier Brand",
       "Image", "Commercial Type", "MOQ", "Warranty",
       "Dimensional", "Illuminance",
     ];
@@ -359,7 +359,7 @@ export default function UploadProduct({ iconOnly = false }: Props) {
       key: `${i}-${row.usage}-${row.productClass}`,
       columns: COLS,
       values: [
-        row.usage, row.family, row.productClass, row.pricePoint,
+        row.usage, row.productName, row.family, row.productClass, row.pricePoint,
         row.brandOrigin, row.supplierBrand,
         row.imageURL ? "✓ Image" : "—",
         row.commercialType || "BASIC",
@@ -548,7 +548,7 @@ export default function UploadProduct({ iconOnly = false }: Props) {
           const specId = cleanExcelValue(h1.getCell(col).value);
           const group  = cleanExcelValue(h2.getCell(col).value);
 
-          if (col < 8) continue;
+          if (col < 9) continue;
 
           const SKIP_GROUPS = ["COMMERCIAL DETAILS", "DRAWINGS", "WARRANTY", "POLE", "LIGHT (SINGLE DIMENSION)", "LIGHT (MULTIPLE DIMENSION)"];
           const SKIP_SPECS  = [
@@ -612,6 +612,7 @@ export default function UploadProduct({ iconOnly = false }: Props) {
 
         const newDocRef = await addDoc(collection(db, "products"), {
           productReferenceID: referenceID,
+          productName: row.productName,
           productClass: row.productClass,
           pricePoint: row.pricePoint,
           brandOrigin: row.brandOrigin,
