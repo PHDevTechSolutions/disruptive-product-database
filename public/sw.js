@@ -1,3 +1,9 @@
+try {
+  importScripts("/firebase-messaging-sw.js");
+} catch (error) {
+  console.error("Failed to load Firebase Messaging SW code:", error);
+}
+
 const CACHE_NAME = "disruptive-product-db-v1";
 const urlsToCache = [
   "/",

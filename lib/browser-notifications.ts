@@ -14,6 +14,7 @@ export function requestNotificationPermission(): Promise<NotificationPermission>
 
 export function showBrowserNotification(payload: NotificationPayload): Notification | null {
   console.log("🔔 showBrowserNotification called:", payload);
+  console.log("🔍 Current notification permission:", Notification.permission);
   
   if (!("Notification" in window)) {
     console.log("❌ Notification not supported");
@@ -22,6 +23,7 @@ export function showBrowserNotification(payload: NotificationPayload): Notificat
   
   if (Notification.permission !== "granted") {
     console.log("❌ Notification permission not granted:", Notification.permission);
+    console.log("⚠️ Please grant notification permission in browser settings");
     return null;
   }
 
@@ -43,8 +45,9 @@ export function showBrowserNotification(payload: NotificationPayload): Notificat
 
   if (options.requireInteraction === false) {
     setTimeout(() => {
+      console.log("⏰ Auto-closing notification after 10 seconds");
       notification.close();
-    }, 5000);
+    }, 10000); // Increased from 5 to 10 seconds
   }
 
   notification.onclick = (event: Event) => {

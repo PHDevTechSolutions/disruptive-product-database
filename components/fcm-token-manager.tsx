@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getToken, onMessage } from "firebase/messaging";
 import { db, messaging } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useUser } from "@/contexts/UserContext";
@@ -19,6 +19,9 @@ export function FCMTokenManager() {
 
     const registerFCMToken = async () => {
       try {
+        if (!messaging) return;
+        if (!("serviceWorker" in navigator)) return;
+
         // Request notification permission first
         const permission = await Notification.requestPermission();
         if (permission !== "granted") {
@@ -33,9 +36,11 @@ export function FCMTokenManager() {
           console.error("❌ VAPID key is missing");
           return;
         }
-        
-        const currentToken = await getToken(messaging, { 
-          vapidKey: vapidKey as string
+
+        const registration = await navigator.serviceWorker.ready;
+        const currentToken = await getToken(messaging, {
+          vapidKey: vapidKey as string,
+          serviceWorkerRegistration: registration,
         });
 
         if (currentToken) {
@@ -62,7 +67,8 @@ export function FCMTokenManager() {
     registerFCMToken();
 
     // Listen for foreground messages
-    const messaging = getMessaging();
+    if (!messaging) return;
+
     const unsubscribe = onMessage(messaging, (payload: any) => {
       console.log("📨 Foreground FCM message:", payload);
       

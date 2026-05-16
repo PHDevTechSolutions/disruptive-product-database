@@ -1,17 +1,54 @@
 importScripts("https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/12.8.0/firebase-messaging-compat.js");
 
-firebase.initializeApp({
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "",
-  measurementId: "",
-});
+const firebaseConfig = {
+  apiKey: "AIzaSyBcNuHZ_w6c0Qib-NnGyxMtomxIxNOD4p0",
+  authDomain: "disruptive-product-datab-d518f.firebaseapp.com",
+  projectId: "disruptive-product-datab-d518f",
+  storageBucket: "disruptive-product-datab-d518f.firebasestorage.app",
+  messagingSenderId: "130447840889",
+  appId: "1:130447840889:web:e10a1ebd58e61742cea6a8",
+  measurementId: "G-WCNF6TNC3R",
+};
 
-const messaging = firebase.messaging();
+const hasFirebaseConfig =
+  !!firebaseConfig.apiKey &&
+  !!firebaseConfig.authDomain &&
+  !!firebaseConfig.projectId &&
+  !!firebaseConfig.messagingSenderId &&
+  !!firebaseConfig.appId;
+
+let messaging = null;
+
+if (hasFirebaseConfig) {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    messaging = firebase.messaging();
+  } catch (error) {
+    console.error("Firebase init failed in service worker:", error);
+  }
+} else {
+  console.warn("Firebase config missing in service worker. FCM will not work.");
+}
+
+function parseActions(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw !== "string") return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseBoolean(raw) {
+  if (typeof raw === "boolean") return raw;
+  if (typeof raw === "number") return raw === 1;
+  if (typeof raw === "string") return raw === "true" || raw === "1";
+  return false;
+}
 
 self.addEventListener("push", (event) => {
   console.log("📨 Push event received:", event);
@@ -29,9 +66,9 @@ self.addEventListener("push", (event) => {
     icon: payload.notification?.icon || "/favicon.ico",
     badge: payload.notification?.badge || "/favicon.ico",
     tag: payload.data?.tag || "default",
-    requireInteraction: payload.data?.requireInteraction || false,
+    requireInteraction: parseBoolean(payload.data?.requireInteraction),
     data: payload.data || {},
-    actions: payload.data?.actions || [],
+    actions: parseActions(payload.data?.actions),
     silent: false,
   };
 
@@ -63,16 +100,20 @@ self.addEventListener("notificationclick", (event) => {
   }
 });
 
-messaging.onBackgroundMessage((payload) => {
-  const notificationTitle = payload.notification?.title || "Background Message";
-  const notificationOptions = {
-    body: payload.notification?.body,
-    icon: payload.notification?.icon || "/favicon.ico",
-    badge: payload.notification?.badge || "/favicon.ico",
-    tag: payload.data?.tag || "default",
-    requireInteraction: payload.data?.requireInteraction || false,
-    data: payload.data || {},
-  };
+if (messaging) {
+  messaging.onBackgroundMessage((payload) => {
+    const notificationTitle = payload.notification?.title || "Background Message";
+    const notificationOptions = {
+      body: payload.notification?.body,
+      icon: payload.notification?.icon || "/favicon.ico",
+      badge: payload.notification?.badge || "/favicon.ico",
+      tag: payload.data?.tag || "default",
+      requireInteraction: parseBoolean(payload.data?.requireInteraction),
+      data: payload.data || {},
+      actions: parseActions(payload.data?.actions),
+      silent: false,
+    };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+}

@@ -6,8 +6,11 @@ export function middleware(req: NextRequest) {
   if (
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
+    pathname === "/sw.js" ||
+    pathname === "/firebase-messaging-sw.js" ||
     pathname.startsWith("/favicon.ico") ||
-    pathname.match(/\.(png|jpg|jpeg|gif|webp|svg|ico)$/)
+    pathname.match(/\.(png|jpg|jpeg|gif|webp|svg|ico)$/) ||
+    pathname.match(/\.[a-zA-Z0-9]+$/)
   ) {
     return NextResponse.next();
   }

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/build-service-worker.js && next dev",
     "build": "node scripts/build-service-worker.js && next build",
     "build-sw": "node scripts/build-service-worker.js",
     "start": "next start",

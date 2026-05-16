@@ -1,7 +1,38 @@
 const fs = require('fs');
 const path = require('path');
 
-// Read the template file
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  const contents = fs.readFileSync(filePath, 'utf8');
+  const lines = contents.split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith('#')) continue;
+
+    const eqIndex = trimmed.indexOf('=');
+    if (eqIndex === -1) continue;
+
+    const key = trimmed.slice(0, eqIndex).trim();
+    let value = trimmed.slice(eqIndex + 1).trim();
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(process.env, key)) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadEnvFile(path.join(__dirname, '../.env.local'));
+loadEnvFile(path.join(__dirname, '../.env'));
+
 const templatePath = path.join(__dirname, '../public/firebase-messaging-sw-template.js');
 const outputPath = path.join(__dirname, '../public/firebase-messaging-sw.js');
 
