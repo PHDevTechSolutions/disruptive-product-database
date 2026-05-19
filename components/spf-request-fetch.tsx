@@ -1479,9 +1479,6 @@ useEffect(() => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           spf_number: spfNumber,
-          referenceid: userId ?? null,
-          edited_by: userId ?? null,
-          author: userId ?? null,
           tsm: data?.tsm ?? null,
           manager: data?.manager ?? null,
           item_code: data?.item_code ?? null,

@@ -130,18 +130,30 @@ export default async function handler(
 
     /* ── Fetch current status ── */
     let currentStatus: string = "Pending For Procurement";
+    let currentReferenceId: string | null = null;
     try {
       const { data: currentCreation } = await supabase
         .from("spf_creation")
-        .select("status")
+        .select("status, referenceid")
         .eq("spf_number", spf_number)
         .maybeSingle();
       if (currentCreation?.status) {
         currentStatus = currentCreation.status;
       }
+      if (currentCreation?.referenceid) {
+        currentReferenceId = currentCreation.referenceid;
+      }
     } catch (err) {
       console.error("Failed to fetch current status:", err);
     }
+
+    const isObjectIdLike =
+      typeof referenceid === "string" && /^[0-9a-f]{24}$/i.test(referenceid);
+    const effectiveReferenceId =
+      resolvedEditedBy ??
+      (!isObjectIdLike ? (referenceid ?? null) : null) ??
+      currentReferenceId ??
+      null;
 
     /* ── Pre-fetch all unique supplier contacts ── */
     const uniqueSupplierIds = [
@@ -453,7 +465,7 @@ export default async function handler(
       spf_creation_start_time: spf_creation_start_time ?? null,
       spf_creation_end_time:   spf_creation_end_time   ?? null,
 
-      referenceid: referenceid ?? null,
+      referenceid: effectiveReferenceId,
       tsm:         tsm         ?? null,
       manager:     manager     ?? null,
       item_code:   finalItemCode || item_code || null,
@@ -463,7 +475,7 @@ export default async function handler(
     await supabase
       .from("spf_creation")
       .update({
-        referenceid: referenceid ?? null,
+        referenceid: effectiveReferenceId,
         tsm:         tsm         ?? null,
         manager:     manager     ?? null,
 
@@ -518,7 +530,7 @@ export default async function handler(
         spf_number,
         version_label:  `${spf_number}_v${nextVersion}`,
         version_number: nextVersion,
-        referenceID:    resolvedEditedBy ?? undefined,
+        referenceID:    effectiveReferenceId ?? undefined,
         userId:         userId           ?? undefined,
       });
     } catch (auditErr) {
