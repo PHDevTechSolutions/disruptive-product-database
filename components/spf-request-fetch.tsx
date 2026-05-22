@@ -562,6 +562,7 @@ useEffect(() => {
   const [productOffers, setProductOffers] = useState<Record<number, any[]>>({});
   const [originalQuantities, setOriginalQuantities] = useState<Record<string, number>>({});
   const [originalUnitCosts, setOriginalUnitCosts] = useState<Record<string, number>>({});
+  const [deletedOffers, setDeletedOffers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -867,6 +868,7 @@ useEffect(() => {
     const rowTdsUrls = splitByRow(data.tds);
     const rowDimensionalDrawings = splitByRow(data.dimensional_drawing);
     const rowIlluminanceDrawings = splitByRow(data.illuminance_drawing);
+    const rowProductNames = splitByRow((data as any).product_name);
     const rowSpfRemarksPD = splitByRow(data.spf_remarks_pd);
     const rowSpfRemarksProcurement = splitByRow(data.spf_remarks_procurement);
     const rowBranches = splitByRow(data.supplier_branch);
@@ -1048,6 +1050,10 @@ useEffect(() => {
             const b = (rowTdsBrands[rowIndex] ?? [])[i];
             return b && b !== "-" ? b : "";
           })(),
+          __tdsProductName: (() => {
+            const n = (rowProductNames[rowIndex] ?? [])[i];
+            return n && n !== "-" ? n : "";
+          })(),
           __spfRemarksPD: spfRemarksPD[i] && spfRemarksPD[i] !== "-" ? spfRemarksPD[i] : "",
           dimensionalDrawing: (() => {
             const u = (rowDimensionalDrawings[rowIndex] ?? [])[i];
@@ -1115,6 +1121,7 @@ useEffect(() => {
     setShowPipeModal(false);
     setPendingPipeProduct(null);
     setPendingPipeRowIndex(null);
+    setDeletedOffers([]);
   };
 
   /* ── Helpers (edit mode) ── */
@@ -1179,6 +1186,7 @@ useEffect(() => {
         { 
           ...product, 
           qty: product.qty ?? 1,
+          __tdsProductName: product.__tdsProductName ?? product.productName ?? "",
           // Store original specs for editing later
           __originalTechnicalSpecifications: product.__originalTechnicalSpecifications || product.technicalSpecifications,
         },
@@ -1203,6 +1211,20 @@ useEffect(() => {
     setProductOffers((prev) => {
       const copy = { ...prev };
       const arr = [...(copy[rowIndex] || [])];
+      const productToRemove = arr[productIndex];
+      
+      // Track deleted offer if it's an existing product
+      if (productToRemove && productToRemove.__isExisting) {
+        setDeletedOffers((prevDeleted) => [
+          ...prevDeleted,
+          {
+            ...productToRemove,
+            __rowIndex: rowIndex,
+            __productIndex: productIndex,
+          },
+        ]);
+      }
+      
       arr.splice(productIndex, 1);
       copy[rowIndex] = arr;
       return copy;
@@ -1484,6 +1506,7 @@ useEffect(() => {
           item_code: data?.item_code ?? null,
           totalItemRows: totalRows,
           selectedProducts: allProducts,
+          deletedOffers: deletedOffers,
           spf_creation_start_time: spfCreationStartTime ?? null,
           spf_creation_end_time: end ?? null,
           userId: userId ?? null,
@@ -1559,6 +1582,7 @@ useEffect(() => {
   const rowIlluminanceDrawings = splitByRow(data?.illuminance_drawing);
   const rowSpfRemarksPD = splitByRow(data?.spf_remarks_pd);
   const rowSpfRemarksProcurement = splitByRow(data?.spf_remarks_procurement);
+  const rowProductNames = splitByRow((data as any)?.product_name);
 
   const itemDescriptions: string[] = (requestData?.item_description || "")
     .split(",")
@@ -2406,14 +2430,18 @@ useEffect(() => {
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => {
                 if (!draggedProduct) return;
-                // Prevent deletion of existing products
-                if (draggedProduct.__isExisting) {
-                  toast.error("Cannot delete existing products that were already in the SPF. You can only delete newly added products.");
-                  setDraggedProduct(null);
-                  setShowTrash(false);
-                  return;
-                }
                 if (draggedProduct.__fromRow !== undefined) {
+                  // Track deleted offer if it's an existing product
+                  if (draggedProduct.__isExisting) {
+                    setDeletedOffers((prevDeleted) => [
+                      ...prevDeleted,
+                      {
+                        ...draggedProduct,
+                        __rowIndex: draggedProduct.__fromRow,
+                        __productIndex: draggedProduct.__fromIndex,
+                      },
+                    ]);
+                  }
                   setProductOffers((prev) => {
                     const copy = { ...prev };
                     const arr = [...(copy[draggedProduct.__fromRow] || [])];
@@ -2584,7 +2612,11 @@ useEffect(() => {
               }
               copy[index] = [
                 ...(copy[index] || []),
-                { ...frozen, qty: frozen.qty ?? 1 },
+                {
+                  ...frozen,
+                  qty: frozen.qty ?? 1,
+                  __tdsProductName: frozen.__tdsProductName ?? frozen.productName ?? "",
+                },
               ];
               return copy;
             });
@@ -2599,86 +2631,89 @@ useEffect(() => {
                             <table className="w-full table-fixed text-[9px]">
                               <thead className="bg-muted sticky top-0 z-10">
                                 <tr>
-                                  <th className="border px-0.5 py-0.5 text-center w-6 text-[9px]">
+                                  <th className="border px-0.5 py-0.5 text-center w-8 text-[9px]">
                                     Actions
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-10">
+                                  <th className="border px-0.5 py-0.5 text-center w-12">
                                     Opt
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-12.5">
+                                  <th className="border px-0.5 py-0.5 text-center w-40">
+                                    Product Name
+                                  </th>
+                                  <th className="border px-0.5 py-0.5 text-center w-16">
                                     Brand
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-12.5">
+                                  <th className="border px-0.5 py-0.5 text-center w-16">
                                     Branch
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-8.75">
+                                  <th className="border px-0.5 py-0.5 text-center w-12">
                                     Img
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-7.5">
+                                  <th className="border px-0.5 py-0.5 text-center w-10">
                                     Qty
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-16.25">
+                                  <th className="border px-0.5 py-0.5 text-center w-20">
                                     Price Validity
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-10">
+                                  <th className="border px-0.5 py-0.5 text-center w-12">
                                     TDS
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-22.5">
+                                  <th className="border px-0.5 py-0.5 text-center w-48">
                                     Technical Specs
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-10">
+                                  <th className="border px-0.5 py-0.5 text-center w-14">
                                     Unit Cost
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-8.75">
+                                  <th className="border px-0.5 py-0.5 text-center w-12">
                                     Qty/Ctn
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-8">
+                                  <th className="border px-0.5 py-0.5 text-center w-14">
                                     Commercial Type
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                  <th className="border px-0.5 py-0.5 text-center w-16">
                                     Packaging
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                  <th className="border px-0.5 py-0.5 text-center w-14">
                                     Warranty
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                  <th className="border px-0.5 py-0.5 text-center w-16">
                                     Factory
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-8.75">
+                                  <th className="border px-0.5 py-0.5 text-center w-12">
                                     Port
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                  <th className="border px-0.5 py-0.5 text-center w-14">
                                     Subtotal
                                   </th>
-                                  <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                  <th className="border px-0.5 py-0.5 text-center w-16">
                                     PD Remarks
                                   </th>
                                   {showProcurementRemarks && (
-                                    <th className="border px-0.5 py-0.5 text-center w-20">
+                                    <th className="border px-0.5 py-0.5 text-center w-24">
                                       Procurement Remarks
                                     </th>
                                   )}
                                   {!editMode && (
                                     <>
-                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                      <th className="border px-0.5 py-0.5 text-center w-16">
                                         Company
                                       </th>
-                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                      <th className="border px-0.5 py-0.5 text-center w-16">
                                         Contact Name
                                       </th>
-                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                      <th className="border px-0.5 py-0.5 text-center w-14">
                                         Contact No.
                                       </th>
-                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                      <th className="border px-0.5 py-0.5 text-center w-14">
                                         Lead Time
                                       </th>
-                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                      <th className="border px-0.5 py-0.5 text-center w-14">
                                         Selling Cost
                                       </th>
-                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                      <th className="border px-0.5 py-0.5 text-center w-16">
                                         Final Unit Cost
                                       </th>
-                                      <th className="border px-0.5 py-0.5 text-center w-11.25">
+                                      <th className="border px-0.5 py-0.5 text-center w-16">
                                         Final Subtotal
                                       </th>
                                     </>
@@ -2767,13 +2802,9 @@ useEffect(() => {
                                     return (
                                       <tr
                                         key={i}
-                                        draggable={!prod.__isExisting}
-                                        className={`bg-orange-50 ${prod.__isExisting ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
+                                        draggable={true}
+                                        className="bg-orange-50 cursor-grab active:cursor-grabbing"
                                         onDragStart={(e) => {
-                                          if (prod.__isExisting) {
-                                            e.preventDefault();
-                                            return;
-                                          }
                                           e.dataTransfer.setData(
                                             "text/plain",
                                             "dragging",
@@ -2791,21 +2822,43 @@ useEffect(() => {
                                         }}
                                       >
                                         <td className="border px-2 py-1 text-center align-middle">
-                                          {!prod.__isExisting && (
-                                            <button
-                                              type="button"
-                                              onClick={() => removeProduct(index, i)}
-                                              className="text-destructive/60 hover:text-destructive transition-colors"
-                                              title="Delete this option"
-                                            >
-                                              <Trash2 size={14} />
-                                            </button>
-                                          )}
+                                          <button
+                                            type="button"
+                                            onClick={() => removeProduct(index, i)}
+                                            className="text-destructive/60 hover:text-destructive transition-colors"
+                                            title="Delete this option"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle">
                                           <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
                                             Option {i + 1}
                                           </span>
+                                        </td>
+                                        <td className="border px-2 py-1 align-middle">
+                                          {viewMode ? (
+                                            <span className="text-[10px]">
+                                              {prod.__tdsProductName ?? prod.productName ?? "-"}
+                                            </span>
+                                          ) : (
+                                            <input
+                                              disabled
+                                              className="border rounded px-1 py-0.5 text-[10px] w-full"
+                                              value={prod.__tdsProductName ?? prod.productName ?? ""}
+                                              onChange={(e) => {
+                                                const name = e.target.value;
+                                                setProductOffers((prev) => {
+                                                  const copy = { ...prev };
+                                                  const row = [...(copy[index] || [])];
+                                                  row[i] = { ...row[i], __tdsProductName: name };
+                                                  copy[index] = row;
+                                                  return copy;
+                                                });
+                                              }}
+                                              placeholder="Product name"
+                                            />
+                                          )}
                                         </td>
                                         <td className="border px-2 py-1 text-center align-middle font-medium">
                                           {prod?.supplier?.supplierBrand || prod?.supplier?.supplierBrandName || "-"}
@@ -3452,6 +3505,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
         const prodItemCodes = rowItemCodes[rowIndex] ?? [];
         const prodSpfRemarksPD = rowSpfRemarksPD[rowIndex] ?? [];
         const prodSpfRemarksProcurement = rowSpfRemarksProcurement[rowIndex] ?? [];
+        const prodProductNames = rowProductNames[rowIndex] ?? [];
 
         const hasProducts =
           prodImages.length > 0 &&
@@ -3519,6 +3573,12 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                         )}
                         <div className="flex-1 min-w-0 space-y-1.5">
                           <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                            <div>
+                              <span className="text-gray-400 block">Product Name</span>
+                              <span className="font-medium">
+                                {prodProductNames[i] || "-"}
+                              </span>
+                            </div>
                             <div>
                               <span className="text-gray-400 block">Qty</span>
                               <span className="font-medium">
@@ -3774,6 +3834,7 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
             const prodItemCodes = rowItemCodes[rowIndex] ?? [];
             const prodSpfRemarksPD = rowSpfRemarksPD[rowIndex] ?? [];
             const prodSpfRemarksProcurement = rowSpfRemarksProcurement[rowIndex] ?? [];
+            const prodProductNames = rowProductNames[rowIndex] ?? [];
 
             const hasProducts =
               prodImages.length > 0 &&
@@ -3835,13 +3896,16 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                               <table className="w-full border text-xs">
                                 <thead>
                                   <tr>
-                                    <th colSpan={isApproved ? (showProcurementRemarks ? 24 : 23) : (showProcurementRemarks ? 17 : 16)} className="border px-2 py-1 text-center text-xs font-bold bg-orange-100 text-orange-700">
+                                    <th colSpan={isApproved ? (showProcurementRemarks ? 25 : 24) : (showProcurementRemarks ? 18 : 17)} className="border px-2 py-1 text-center text-xs font-bold bg-orange-100 text-orange-700">
                                       Product Offer
                                     </th>
                                   </tr>
                                   <tr className="bg-gray-50">
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
                                       Supplier Brand
+                                    </th>
+                                    <th className="border px-2 py-1 text-center whitespace-nowrap">
+                                      Product Name
                                     </th>
                                     <th className="border px-2 py-1 text-center whitespace-nowrap">
                                       Branch
@@ -3924,6 +3988,9 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                                   <tr className="align-top bg-orange-50">
                                     <td className="border px-2 py-2 text-center align-middle font-medium">
                                       {prodBrands[i] || "-"}
+                                    </td>
+                                    <td className="border px-2 py-2 text-center align-middle font-medium">
+                                      {prodProductNames[i] || "-"}
                                     </td>
                                     <td className="border px-2 py-2 text-center align-middle font-medium">
                                       {prodBranches[i] || "-"}
