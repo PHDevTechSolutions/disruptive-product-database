@@ -102,7 +102,7 @@ type SPFRequestData = {
 };
 
 const ROW_SEP = "|ROW|";
-const ITEM_ROW_SEP = "||";
+const ROW_BOUNDARY = "|ROW||ROW|";
 
 type SpecGroup = { title: string; specs: string[] };
 
@@ -194,14 +194,14 @@ function parseTechSpec(raw: string): SpecGroup[] {
 function splitByRow(value: string | undefined): string[][] {
   if (!value) return [];
   return value
-    .split(ITEM_ROW_SEP)
+    .split(ROW_BOUNDARY)
     .map((rowStr) => rowStr.split(ROW_SEP).map((v) => v.trim()));
 }
 
 function splitSpecsByRow(value: string | undefined): SpecGroup[][][] {
   if (!value) return [];
   return value
-    .split(ITEM_ROW_SEP)
+    .split(ROW_BOUNDARY)
     .map((rowStr) => rowStr.split(ROW_SEP).map(parseTechSpec));
 }
 

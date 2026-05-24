@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
 const ROW_SEP = "|ROW|";
+const ROW_BOUNDARY = "|ROW||ROW|";
 
 const supplierCache = new Map<
   string,
@@ -318,34 +319,34 @@ export default async function handler(
         tdsBrands.push("-");
       }
 
-      rowImages.push(images.join(","));
-      rowQtys.push(qtys.join(","));
-      rowSpecs.push(specs.join(" || "));
-      rowUnitCosts.push(unitCosts.join(","));
-      rowPcsPerCarton.push(pcsPerCartons.join(","));
-      rowPackaging.push(packaging.join(","));
-      rowWarranties.push(warranties.join(","));
-      rowFactories.push(factories.join(","));
-      rowPorts.push(ports.join(","));
-      rowSubtotals.push(subtotals.join(","));
-      rowSupplierBrands.push(supplierBrands.join(","));
-      rowCompanyNames.push(companyNames.join(","));
-      rowContactNames.push(contactNames.join(","));
-      rowContactNumbers.push(contactNumbers.join(","));
-      rowSellingCosts.push(sellingCosts.join(","));
-      rowLeadTimes.push(leadTimes.join(","));
-      rowItemCodes.push(itemCodes.join(","));
-      rowPriceValidities.push(priceValidities.join(","));
-      rowDimensionalDrawings.push(dimensionalDrawings.join(","));
-      rowIlluminanceDrawings.push(illuminanceDrawings.join(","));
-      rowProductNames.push(productNames.join(","));
-      rowTdsBrands.push(tdsBrands.join(","));
-      rowProductRefIDs.push(productRefIDs.join(","));
-      rowBranches.push(branches.join(","));
-      rowSpfRemarksPD.push(spfRemarksPD.join(","));
-      rowCommercialTypes.push(commercialTypes.join(","));
-      rowTdsPdfUrls.push(tdsPdfUrls.join(","));
-      rowIsExisting.push(isExisting.join(","));
+      rowImages.push(images.join(ROW_SEP));
+      rowQtys.push(qtys.join(ROW_SEP));
+      rowSpecs.push(specs.join(ROW_SEP));
+      rowUnitCosts.push(unitCosts.join(ROW_SEP));
+      rowPcsPerCarton.push(pcsPerCartons.join(ROW_SEP));
+      rowPackaging.push(packaging.join(ROW_SEP));
+      rowWarranties.push(warranties.join(ROW_SEP));
+      rowFactories.push(factories.join(ROW_SEP));
+      rowPorts.push(ports.join(ROW_SEP));
+      rowSubtotals.push(subtotals.join(ROW_SEP));
+      rowSupplierBrands.push(supplierBrands.join(ROW_SEP));
+      rowCompanyNames.push(companyNames.join(ROW_SEP));
+      rowContactNames.push(contactNames.join(ROW_SEP));
+      rowContactNumbers.push(contactNumbers.join(ROW_SEP));
+      rowSellingCosts.push(sellingCosts.join(ROW_SEP));
+      rowLeadTimes.push(leadTimes.join(ROW_SEP));
+      rowItemCodes.push(itemCodes.join(ROW_SEP));
+      rowPriceValidities.push(priceValidities.join(ROW_SEP));
+      rowDimensionalDrawings.push(dimensionalDrawings.join(ROW_SEP));
+      rowIlluminanceDrawings.push(illuminanceDrawings.join(ROW_SEP));
+      rowProductNames.push(productNames.join(ROW_SEP));
+      rowTdsBrands.push(tdsBrands.join(ROW_SEP));
+      rowProductRefIDs.push(productRefIDs.join(ROW_SEP));
+      rowBranches.push(branches.join(ROW_SEP));
+      rowSpfRemarksPD.push(spfRemarksPD.join(ROW_SEP));
+      rowCommercialTypes.push(commercialTypes.join(ROW_SEP));
+      rowTdsPdfUrls.push(tdsPdfUrls.join(ROW_SEP));
+      rowIsExisting.push(isExisting.join(ROW_SEP));
     }
 
     // Fill arrays for empty rows
@@ -363,36 +364,36 @@ export default async function handler(
     }
 
     /* ── Final strings ── */
-    const finalImages          = rowImages.join(ROW_SEP);
-    const finalQtys            = rowQtys.join(ROW_SEP);
-    const finalSpecs           = rowSpecs.join(ROW_SEP);
-    const finalUnitCosts       = rowUnitCosts.join(ROW_SEP);
-    const finalPcsPerCarton    = rowPcsPerCarton.join(ROW_SEP);
-    const finalPackaging       = rowPackaging.join(ROW_SEP);
-    const finalWarranties      = rowWarranties.join(ROW_SEP);
-    const finalFactories       = rowFactories.join(ROW_SEP);
-    const finalPorts           = rowPorts.join(ROW_SEP);
-    const finalSubtotals       = rowSubtotals.join(ROW_SEP);
-    const finalSupplierBrands  = rowSupplierBrands.join(ROW_SEP);
-    const finalCompanyNames    = rowCompanyNames.join(ROW_SEP);
-    const finalContactNames    = rowContactNames.join(ROW_SEP);
-    const finalContactNumbers  = rowContactNumbers.join(ROW_SEP);
-    const finalSellingCosts    = rowSellingCosts.join(ROW_SEP);
-    const finalLeadTimes       = rowLeadTimes.join(ROW_SEP);
-    const finalPriceValidities = rowPriceValidities.join(ROW_SEP);
-    const finalDimensionalDrawings = rowDimensionalDrawings.join(ROW_SEP);
-    const finalIlluminanceDrawings = rowIlluminanceDrawings.join(ROW_SEP);
-    const finalProductNames = rowProductNames.join(ROW_SEP);
-    const finalTdsBrands = rowTdsBrands.join(ROW_SEP);
-    const finalOriginalSpecs       = rowOriginalSpecs.join(ROW_SEP);
-    const finalProductRefIDs       = rowProductRefIDs.join(ROW_SEP);
-    const finalBranches            = rowBranches.join(ROW_SEP);
-    const finalSpfRemarksPD        = rowSpfRemarksPD.join(ROW_SEP);
-    const finalCommercialTypes     = rowCommercialTypes.join(ROW_SEP);
-    const finalTdsPdfUrls          = rowTdsPdfUrls.join(ROW_SEP);
-    const finalIsExisting          = rowIsExisting.join(ROW_SEP);
+    const finalImages          = rowImages.join(ROW_BOUNDARY);
+    const finalQtys            = rowQtys.join(ROW_BOUNDARY);
+    const finalSpecs           = rowSpecs.join(ROW_BOUNDARY);
+    const finalUnitCosts       = rowUnitCosts.join(ROW_BOUNDARY);
+    const finalPcsPerCarton    = rowPcsPerCarton.join(ROW_BOUNDARY);
+    const finalPackaging       = rowPackaging.join(ROW_BOUNDARY);
+    const finalWarranties      = rowWarranties.join(ROW_BOUNDARY);
+    const finalFactories       = rowFactories.join(ROW_BOUNDARY);
+    const finalPorts           = rowPorts.join(ROW_BOUNDARY);
+    const finalSubtotals       = rowSubtotals.join(ROW_BOUNDARY);
+    const finalSupplierBrands  = rowSupplierBrands.join(ROW_BOUNDARY);
+    const finalCompanyNames    = rowCompanyNames.join(ROW_BOUNDARY);
+    const finalContactNames    = rowContactNames.join(ROW_BOUNDARY);
+    const finalContactNumbers  = rowContactNumbers.join(ROW_BOUNDARY);
+    const finalSellingCosts    = rowSellingCosts.join(ROW_BOUNDARY);
+    const finalLeadTimes       = rowLeadTimes.join(ROW_BOUNDARY);
+    const finalPriceValidities = rowPriceValidities.join(ROW_BOUNDARY);
+    const finalDimensionalDrawings = rowDimensionalDrawings.join(ROW_BOUNDARY);
+    const finalIlluminanceDrawings = rowIlluminanceDrawings.join(ROW_BOUNDARY);
+    const finalProductNames = rowProductNames.join(ROW_BOUNDARY);
+    const finalTdsBrands = rowTdsBrands.join(ROW_BOUNDARY);
+    const finalOriginalSpecs       = rowOriginalSpecs.join(ROW_BOUNDARY);
+    const finalProductRefIDs       = rowProductRefIDs.join(ROW_BOUNDARY);
+    const finalBranches            = rowBranches.join(ROW_BOUNDARY);
+    const finalSpfRemarksPD        = rowSpfRemarksPD.join(ROW_BOUNDARY);
+    const finalCommercialTypes     = rowCommercialTypes.join(ROW_BOUNDARY);
+    const finalTdsPdfUrls          = rowTdsPdfUrls.join(ROW_BOUNDARY);
+    const finalIsExisting          = rowIsExisting.join(ROW_BOUNDARY);
     const finalItemCode        = rowItemCodes.some((r) => r !== "-" && r !== "")
-      ? rowItemCodes.join(ROW_SEP)
+      ? rowItemCodes.join(ROW_BOUNDARY)
       : (item_code ?? null);
 
     const nowISO = getPhilippinesISOString();

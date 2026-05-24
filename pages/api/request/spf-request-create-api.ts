@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
 const ROW_SEP = "|ROW|";
-const ITEM_ROW_SEP = "||";
+const ROW_BOUNDARY = "|ROW||ROW|";
 
 const encodeBase64Json = (value: any): string =>
   Buffer.from(JSON.stringify(value), "utf8").toString("base64");
@@ -382,33 +382,33 @@ export default async function handler(
     }
 
     /* ── Final strings ── */
-    const finalImages          = rowImages.join(ITEM_ROW_SEP);
-    const finalQtys            = rowQtys.join(ITEM_ROW_SEP);
-    const finalSpecs           = rowSpecs.join(ITEM_ROW_SEP);
-    const finalUnitCosts       = rowUnitCosts.join(ITEM_ROW_SEP);
-    const finalPcsPerCarton    = rowPcsPerCarton.join(ITEM_ROW_SEP);
-    const finalPackaging       = rowPackaging.join(ITEM_ROW_SEP);
-    const finalWarranties      = rowWarranties.join(ITEM_ROW_SEP);
-    const finalFactories       = rowFactories.join(ITEM_ROW_SEP);
-    const finalPorts           = rowPorts.join(ITEM_ROW_SEP);
-    const finalSubtotals       = rowSubtotals.join(ITEM_ROW_SEP);
-    const finalSupplierBrands  = rowSupplierBrands.join(ITEM_ROW_SEP);
-    const finalCompanyNames    = rowCompanyNames.join(ITEM_ROW_SEP);
-    const finalContactNames    = rowContactNames.join(ITEM_ROW_SEP);
-    const finalContactNumbers  = rowContactNumbers.join(ITEM_ROW_SEP);
-    const finalSellingCosts    = rowSellingCosts.join(ITEM_ROW_SEP);
-    const finalLeadTimes       = rowLeadTimes.join(ITEM_ROW_SEP);
-    const finalPriceValidities = rowPriceValidities.join(ITEM_ROW_SEP);
-    const finalDimensionalDrawings = rowDimensionalDrawings.join(ITEM_ROW_SEP);
-    const finalIlluminanceDrawings = rowIlluminanceDrawings.join(ITEM_ROW_SEP);
-    const finalProductNames        = rowProductNames.join(ITEM_ROW_SEP);
-    const finalOriginalSpecs       = rowOriginalSpecs.join(ITEM_ROW_SEP);
-    const finalProductRefIDs       = rowProductRefIDs.join(ITEM_ROW_SEP);
-    const finalBranches            = rowBranches.join(ITEM_ROW_SEP);
-    const finalSpfRemarksPD        = rowSpfRemarksPD.join(ITEM_ROW_SEP);
-    const finalCommercialTypes     = rowCommercialTypes.join(ITEM_ROW_SEP);
+    const finalImages          = rowImages.join(ROW_BOUNDARY);
+    const finalQtys            = rowQtys.join(ROW_BOUNDARY);
+    const finalSpecs           = rowSpecs.join(ROW_BOUNDARY);
+    const finalUnitCosts       = rowUnitCosts.join(ROW_BOUNDARY);
+    const finalPcsPerCarton    = rowPcsPerCarton.join(ROW_BOUNDARY);
+    const finalPackaging       = rowPackaging.join(ROW_BOUNDARY);
+    const finalWarranties      = rowWarranties.join(ROW_BOUNDARY);
+    const finalFactories       = rowFactories.join(ROW_BOUNDARY);
+    const finalPorts           = rowPorts.join(ROW_BOUNDARY);
+    const finalSubtotals       = rowSubtotals.join(ROW_BOUNDARY);
+    const finalSupplierBrands  = rowSupplierBrands.join(ROW_BOUNDARY);
+    const finalCompanyNames    = rowCompanyNames.join(ROW_BOUNDARY);
+    const finalContactNames    = rowContactNames.join(ROW_BOUNDARY);
+    const finalContactNumbers  = rowContactNumbers.join(ROW_BOUNDARY);
+    const finalSellingCosts    = rowSellingCosts.join(ROW_BOUNDARY);
+    const finalLeadTimes       = rowLeadTimes.join(ROW_BOUNDARY);
+    const finalPriceValidities = rowPriceValidities.join(ROW_BOUNDARY);
+    const finalDimensionalDrawings = rowDimensionalDrawings.join(ROW_BOUNDARY);
+    const finalIlluminanceDrawings = rowIlluminanceDrawings.join(ROW_BOUNDARY);
+    const finalProductNames        = rowProductNames.join(ROW_BOUNDARY);
+    const finalOriginalSpecs       = rowOriginalSpecs.join(ROW_BOUNDARY);
+    const finalProductRefIDs       = rowProductRefIDs.join(ROW_BOUNDARY);
+    const finalBranches            = rowBranches.join(ROW_BOUNDARY);
+    const finalSpfRemarksPD        = rowSpfRemarksPD.join(ROW_BOUNDARY);
+    const finalCommercialTypes     = rowCommercialTypes.join(ROW_BOUNDARY);
     const finalItemCode        = rowItemCodes.some((r) => r !== "-" && r !== "")
-      ? rowItemCodes.join(ITEM_ROW_SEP)
+      ? rowItemCodes.join(ROW_BOUNDARY)
       : (item_code ?? null);
 
     const initialStatus = "Pending For Procurement";
