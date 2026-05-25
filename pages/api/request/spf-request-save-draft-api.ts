@@ -390,7 +390,7 @@ export default async function handler(
     const finalBranches            = rowBranches.join(ROW_SEP);
     const finalSpfRemarksPD        = rowSpfRemarksPD.join(ROW_SEP);
     const finalCommercialTypes     = rowCommercialTypes.join(ROW_SEP);
-    const finalTdsPdfUrls          = rowTdsPdfUrls.join(ROW_SEP);
+    const finalTdsPdfUrls          = rowTdsPdfUrls.join(ROW_BOUNDARY);
     const finalIsExisting          = rowIsExisting.join(ROW_SEP);
     const finalItemCode        = rowItemCodes.some((r) => r !== "-" && r !== "")
       ? rowItemCodes.join(ROW_SEP)
