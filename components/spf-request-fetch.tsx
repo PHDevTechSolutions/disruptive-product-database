@@ -213,8 +213,30 @@ function splitByRow(value: string | undefined, rowStructure?: number[]): string[
   return [items];
 }
 
+function splitSpecsByRow(value: string | undefined, rowStructure?: number[]): SpecGroup[][][] {
+  if (!value) return [];
+  const items = value.split(ROW_SEP).map((v) => v.trim());
+  
+  // If we have row structure (item counts per row), use it to distribute items
+  if (rowStructure && rowStructure.length > 0) {
+    const rows: SpecGroup[][][] = [];
+    let itemIndex = 0;
+    
+    for (const itemCount of rowStructure) {
+      const rowItems = items.slice(itemIndex, itemIndex + itemCount);
+      rows.push(rowItems.map(parseTechSpec));
+      itemIndex += itemCount;
+    }
+    
+    return rows;
+  }
+  
+  // Default: return as single row
+  return [items.map(parseTechSpec)];
+}
+
 // Derive row structure from item_code (which has row prefixes like SPF-XXX-001, SPF-XXX-002, etc.)
-function deriveRowStructure(itemCode: string | undefined): number[] {
+const deriveRowStructure = (itemCode: string | undefined): number[] => {
   if (!itemCode || itemCode === "-") return [];
   const items = itemCode.split(ROW_SEP).map((v) => v.trim());
   const structure: number[] = [];
@@ -246,14 +268,7 @@ function deriveRowStructure(itemCode: string | undefined): number[] {
   }
   
   return structure.length > 0 ? structure : [items.length];
-}
-
-function splitSpecsByRow(value: string | undefined): SpecGroup[][][] {
-  if (!value) return [];
-  return value
-    .split(ROW_BOUNDARY)
-    .map((rowStr) => rowStr.split(ROW_SEP).map(parseTechSpec));
-}
+};
 
 type LightMultipleRow = {
   itemName?: string;
@@ -902,7 +917,7 @@ useEffect(() => {
     if (!data || !requestData) return;
 
     const rowStructure = deriveRowStructure(data.item_code);
-
+    
     const rowImages = splitByRow(data.product_offer_image, rowStructure);
     const rowQtys = splitByRow(data.product_offer_qty, rowStructure);
     const rowUnitCosts = splitByRow(data.product_offer_unit_cost, rowStructure);
@@ -926,8 +941,8 @@ useEffect(() => {
     const rowSpfRemarksProcurement = splitByRow(data.spf_remarks_procurement, rowStructure);
     const rowBranches = splitByRow(data.supplier_branch, rowStructure);
     const rowCommercialTypes = splitByRow(data.commercial_type, rowStructure);
-    const rowSpecs = splitSpecsByRow(data.product_offer_technical_specification);
-    const rowOriginalSpecs = splitSpecsByRow(data.original_technical_specification);
+    const rowSpecs = splitSpecsByRow(data.product_offer_technical_specification, rowStructure);
+    const rowOriginalSpecs = splitSpecsByRow(data.original_technical_specification, rowStructure);
     const rowProductRefIDs = splitByRow(data.product_reference_id, rowStructure);
 
     const descs = (requestData.item_description || "")
@@ -1608,7 +1623,7 @@ useEffect(() => {
   const showProcurementRemarks = isApproved || isForRevision;
 
   const rowStructure = deriveRowStructure(data?.item_code);
-
+  
   const rowImages = splitByRow(data?.product_offer_image, rowStructure);
   const rowQtys = splitByRow(data?.product_offer_qty, rowStructure);
   const rowUnitCosts = splitByRow(data?.product_offer_unit_cost, rowStructure);
@@ -1621,7 +1636,7 @@ useEffect(() => {
   const rowSubtotals = splitByRow(data?.product_offer_subtotal, rowStructure);
   const rowSupplierBrands = splitByRow(data?.supplier_brand, rowStructure);
   const rowBranches = splitByRow(data?.supplier_branch, rowStructure);
-  const rowSpecs = splitSpecsByRow(data?.product_offer_technical_specification);
+  const rowSpecs = splitSpecsByRow(data?.product_offer_technical_specification, rowStructure);
   const rowCompanyNames = splitByRow(data?.company_name, rowStructure);
   const rowContactNames = splitByRow(data?.contact_name, rowStructure);
   const rowContactNumbers = splitByRow(data?.contact_number, rowStructure);
