@@ -1622,6 +1622,7 @@ useEffect(() => {
   const isApproved = data?.status === "Approved By Procurement";
   const isForRevision = data?.status === "For Revision";
   const isPendingForProcurement = data?.status === "Pending For Procurement";
+  const isCancelled = data?.status === "Cancelled";
   const canEditOffer = isForRevision || isPendingForProcurement || isApproved;
   const showProcurementRemarks = isApproved || isForRevision;
 
@@ -4355,11 +4356,13 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
         {data?.status && (
           <span
             className={`text-xs px-2 py-1 rounded uppercase shrink-0 ${
-              isApproved
-                ? "bg-green-100 text-green-700"
-                : isForRevision
-                  ? "bg-orange-100 text-orange-700"
-                  : "bg-yellow-100 text-yellow-700"
+              isCancelled
+                ? "bg-red-100 text-red-700"
+                : isApproved
+                  ? "bg-green-100 text-green-700"
+                  : isForRevision
+                    ? "bg-orange-100 text-orange-700"
+                    : "bg-yellow-100 text-yellow-700"
             }`}
           >
             {getStatusLabel(data.status)}
@@ -4413,11 +4416,13 @@ className="relative flex flex-col p-2 border shadow hover:shadow-md break-inside
                   <span className="font-medium text-xs">Status:</span>
                   <span
                     className={`px-2 py-0.5 text-[10px] rounded uppercase font-semibold ${
-                      isApproved
-                        ? "bg-green-100 text-green-700"
-                        : isForRevision
-                          ? "bg-orange-100 text-orange-700"
-                          : "bg-yellow-100 text-yellow-700"
+                      isCancelled
+                        ? "bg-red-100 text-red-700"
+                        : isApproved
+                          ? "bg-green-100 text-green-700"
+                          : isForRevision
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-yellow-100 text-yellow-700"
                     }`}
                   >
                     {getStatusLabel(data.status)}

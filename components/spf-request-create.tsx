@@ -66,6 +66,9 @@ export type SPFRequest = {
   tin_no?: string;
   manager?: string;
   date_approved_sales_head?: string;
+  is_cancelled?: boolean;
+  is_cancelled_reason?: string;
+  is_cancelled_reason_others_remarks?: string;
 };
 
 type Props = {

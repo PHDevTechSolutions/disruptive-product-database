@@ -54,13 +54,23 @@ const CREATION_NOTIFICATION_STATUSES = new Set([
 /* ─────────────────────────────────────────────────────────────── */
 /* STATUS BADGE                                                     */
 /* ─────────────────────────────────────────────────────────────── */
-function StatusBadge({ status }: { status: string | undefined }) {
+function StatusBadge({ status, isCancelled }: { status: string | undefined; isCancelled?: boolean }) {
+  if (isCancelled) {
+    return (
+      <span className="text-xs px-2 py-1 rounded uppercase font-semibold whitespace-nowrap bg-red-100 text-red-700">
+        Cancelled
+      </span>
+    );
+  }
   if (!status) return null;
   const isSalesHead = status.toLowerCase().includes("sales head");
+  const isCancelledStatus = status.toLowerCase() === "cancelled";
   return (
     <span
       className={`text-xs px-2 py-1 rounded uppercase font-semibold whitespace-nowrap ${
-        isSalesHead
+        isCancelledStatus
+          ? "bg-red-100 text-red-700"
+          : isSalesHead
           ? "bg-purple-100 text-purple-700"
           : "bg-blue-100 text-blue-700"
       }`}
@@ -713,10 +723,13 @@ export default function RequestsPage() {
                           spfNumber={req.spf_number}
                           status={spfStatus}
                         />
-                        {!isProcurementStatus(req.spf_number) && (
-                          <Button className="rounded-none h-9 px-4 shrink-0" variant="outline" onClick={() => handleCreateFromRow(req)}>
+                        {!isProcurementStatus(req.spf_number) && spfStatus?.toLowerCase() !== "cancelled" && (
+                          <Button className="rounded-none h-9 px-4 shrink-0" variant="outline" onClick={() => handleCreateFromRow(req)} disabled={req.is_cancelled}>
                             Create
                           </Button>
+                        )}
+                        {req.is_cancelled && spfStatus?.toLowerCase() !== "cancelled" && (
+                          <StatusBadge status={req.status} isCancelled={req.is_cancelled} />
                         )}
                         {spfStatus && (
                           <div className="flex items-center gap-2 shrink-0">
@@ -815,10 +828,13 @@ export default function RequestsPage() {
                     spfNumber={req.spf_number}
                     status={spfStatus}
                   />
-                  {!isProcurementStatus(req.spf_number) && (
-                    <Button size="sm" className="rounded-xl flex-1 h-9" variant="outline" onClick={() => handleCreateFromRow(req)}>
+                  {!isProcurementStatus(req.spf_number) && spfStatus?.toLowerCase() !== "cancelled" && (
+                    <Button size="sm" className="rounded-xl flex-1 h-9" variant="outline" onClick={() => handleCreateFromRow(req)} disabled={req.is_cancelled}>
                       Create
                     </Button>
+                  )}
+                  {req.is_cancelled && spfStatus?.toLowerCase() !== "cancelled" && (
+                    <StatusBadge status={req.status} isCancelled={req.is_cancelled} />
                   )}
                   {spfStatus && (
                     <div className="flex-1">
