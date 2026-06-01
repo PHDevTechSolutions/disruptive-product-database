@@ -794,6 +794,16 @@ const handleSaveProduct = async () => {
       if (!productClass) { toast.error("Please select product class"); return; }
       if (!productName) { toast.error("Please enter product name"); return; }
 
+      // Commercial details validation for BASIC type
+      if (commercialType === "BASIC") {
+        if (!unitCost) { toast.error("Please enter unit cost"); setSaving(false); return; }
+        if (!packLength || !packWidth || !packHeight) { toast.error("Please enter packaging dimensions (length, width, height)"); setSaving(false); return; }
+        if (!pcsPerCarton) { toast.error("Please enter pieces per carton"); setSaving(false); return; }
+        if (!moq) { toast.error("Please enter minimum order quantity (MOQ)"); setSaving(false); return; }
+        if (!factoryAddress) { toast.error("Please enter factory address"); setSaving(false); return; }
+        if (!portOfDischarge) { toast.error("Please enter port of discharge"); setSaving(false); return; }
+      }
+
       const profile = userId ? await getApprovalUserProfile(userId) : null;
       const requiresApproval = shouldRequireApproval(profile);
       if (requiresApproval) {
