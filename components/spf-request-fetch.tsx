@@ -1123,6 +1123,10 @@ useEffect(() => {
             const b = (rowTdsBrands[rowIndex] ?? [])[i];
             return b && b !== "-" ? b : "";
           })(),
+          __tdsPdfUrl: (() => {
+            const u = (rowTdsUrls[rowIndex] ?? [])[i];
+            return u && u !== "-" ? u : "";
+          })(),
           __tdsProductName: (() => {
             const n = (rowProductNames[rowIndex] ?? [])[i];
             return n && n !== "-" ? n : "";
@@ -2121,6 +2125,35 @@ useEffect(() => {
                                     ))}
                                   </select>
                                 </div>
+                                <div className="flex flex-col gap-1 mt-1">
+                                  {!prod.__tdsPdfUrl && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedRowIndexForTDS(index);
+                                        setSelectedOptionIndexForTDS(i);
+                                        setSelectedProductForTDS({
+                                          ...prod,
+                                          itemCode: `${spfNumber}-${String(index + 1).padStart(3, "0")}`,
+                                        });
+                                        setTdsDialogOpen(true);
+                                      }}
+                                      className="text-[10px] bg-blue-50 text-blue-600 border border-blue-200 rounded px-2 py-1 hover:bg-blue-100"
+                                    >
+                                      Generate TDS
+                                    </button>
+                                  )}
+                                  {prod.__tdsPdfUrl && (
+                                    <a
+                                      href={prod.__tdsPdfUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[10px] text-blue-600 underline"
+                                    >
+                                      View TDS
+                                    </a>
+                                  )}
+                                </div>
                                 <div className="text-[10px] text-muted-foreground mt-1">
                                   {packagingDisplay}
                                 </div>
@@ -3067,7 +3100,7 @@ useEffect(() => {
                                               <option key={b} value={b}>{b}</option>
                                             ))}
                                           </select>
-                                          {prod.__tdsBrand && (
+                                          {!prod.__tdsPdfUrl && (
                                             <button
                                               type="button"
                                               className="mt-1 text-[10px] text-green-600 underline block"
