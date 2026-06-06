@@ -87,8 +87,16 @@ export default function SPFGenerateTDSDialog({
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || error.error || "Drawing upload failed");
+      let errorMessage = "Drawing upload failed";
+      try {
+        const error = await response.json();
+        errorMessage = error.message || error.error || errorMessage;
+      } catch {
+        // Response is not JSON, try to get text
+        const errorText = await response.text();
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
@@ -174,8 +182,16 @@ export default function SPFGenerateTDSDialog({
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Upload failed");
+        let errorMessage = "Upload failed";
+        try {
+          const error = await response.json();
+          errorMessage = error.message || error.error || errorMessage;
+        } catch {
+          // Response is not JSON, try to get text
+          const errorText = await response.text();
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
