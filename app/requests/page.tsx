@@ -611,7 +611,7 @@ export default function RequestsPage() {
         <table className="w-full text-sm border-collapse">
           <thead className="bg-red-50/80 backdrop-blur-sm sticky top-0 z-30">
             <tr>
-              {["SPF Number", "Customer Name", "Special Instructions", "Prepared By", "Approved By", "Date Received", "Date Updated", "For Pooling (no function yet)", "Action"].map((h, index) => (
+              {["SPF Number", "Customer Name", "Special Instructions", "Prepared By", "Approved By", "Date Received", "Date Updated", "Queue Button Stopper", "Action"].map((h, index) => (
                 <th key={h} className={`px-4 py-3 text-left font-bold border-b whitespace-nowrap ${index === 0 ? 'sticky left-0 bg-red-50/80 backdrop-blur-sm z-20' : ''}`}>{h}</th>
               ))}
             </tr>
