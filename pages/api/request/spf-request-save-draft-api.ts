@@ -56,13 +56,8 @@ export default async function handler(
     let draft_author: string | null = null;
     try {
       if (userId) {
-        const { connectToDatabase } = await import("@/lib/mongodb");
-        const { ObjectId } = await import("mongodb");
-        const mongoDb = await connectToDatabase();
-        const user = await mongoDb.collection("users").findOne(
-          { _id: new ObjectId(userId) },
-          { projection: { ReferenceID: 1 } }
-        );
+        const { getUserById } = await import("@/lib/supabase-admin");
+        const user = await getUserById(userId);
         draft_author = user?.ReferenceID || null;
       }
     } catch (err) {

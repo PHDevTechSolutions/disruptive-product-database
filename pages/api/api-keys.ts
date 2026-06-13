@@ -12,8 +12,7 @@ import {
   deleteDoc,
   Timestamp,
 } from "firebase/firestore";
-import { connectToDatabase } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { getUserById } from "@/lib/supabase-admin";
 import crypto from "crypto";
 
 // Generate a secure API key
@@ -33,8 +32,7 @@ async function verifyITAccess(sessionCookie: string | undefined): Promise<{ vali
   }
 
   try {
-    const db = await connectToDatabase();
-    const user = await db.collection("users").findOne({ _id: new ObjectId(sessionCookie) });
+    const user = await getUserById(sessionCookie);
 
     if (!user) {
       return { valid: false, error: "User not found" };
@@ -44,7 +42,7 @@ async function verifyITAccess(sessionCookie: string | undefined): Promise<{ vali
       return { valid: false, error: "Access denied. IT department only." };
     }
 
-    return { valid: true, userId: user._id.toString() };
+    return { valid: true, userId: user.UserId || user.id.toString() };
   } catch (error) {
     return { valid: false, error: "Authentication error" };
   }

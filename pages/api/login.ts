@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { validateUser, connectToDatabase } from "@/lib/mongodb";
+import { validateUser, getUserByEmail, updateUserByEmail } from "@/lib/supabase-admin";
 import { serialize } from "cookie";
 
 const ALLOWED_DEPARTMENTS = ["Engineering", "IT"];
@@ -15,15 +15,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ message: "All fields are required." });
   }
 
-  const db = await connectToDatabase();
-  const usersCollection = db.collection("users");
+  try {
+    // Find the user
+    const user = await getUserByEmail(Email);
 
-  // Find the user
-  const user = await usersCollection.findOne({ Email });
-
-  if (!user) {
-    return res.status(401).json({ message: "Invalid credentials." });
-  }
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials." });
+    }
 
   // ❌ Block resigned / terminated
   if (user.Status === "Resigned" || user.Status === "Terminated") {
@@ -64,16 +62,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (attempts >= 3) {
         const newLockUntil = new Date(now.getTime() + lockDuration);
 
-        await usersCollection.updateOne(
-          { Email },
-          {
-            $set: {
-              LoginAttempts: attempts,
-              Status: "Locked",
-              LockUntil: newLockUntil.toISOString(),
-            },
-          }
-        );
+        await updateUserByEmail(Email, {
+          LoginAttempts: attempts,
+          Status: "Locked",
+          LockUntil: newLockUntil.toISOString(),
+        });
 
         return res.status(403).json({
           message: `Account locked after 3 failed attempts. Try again after ${newLockUntil.toLocaleString()}.`,
@@ -81,28 +74,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      await usersCollection.updateOne(
-        { Email },
-        { $set: { LoginAttempts: attempts } }
-      );
+      await updateUserByEmail(Email, {
+        LoginAttempts: attempts,
+      });
 
       return res.status(401).json({ message: "Invalid credentials." });
     }
   }
 
   // Reset attempts after success (master password or normal login)
-  await usersCollection.updateOne(
-    { Email },
-    {
-      $set: {
-        LoginAttempts: 0,
-        Status: "Active",
-        LockUntil: null,
-      },
-    }
-  );
+  await updateUserByEmail(Email, {
+    LoginAttempts: 0,
+    Status: "Active",
+    LockUntil: null,
+  });
 
-  const userId = user._id.toString();
+  const userId = user.UserId || user.id.toString();
 
   // Create session cookie
   res.setHeader(
@@ -122,4 +109,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     Status: user.Status,
     Department: user.Department,
   });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 }

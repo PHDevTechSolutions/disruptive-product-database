@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { connectToDatabase } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { updateUser, getUserById } from "@/lib/supabase-admin";
 import bcrypt from "bcrypt";
 
 export default async function updateProfile(req: NextApiRequest, res: NextApiResponse) {
@@ -27,9 +26,6 @@ export default async function updateProfile(req: NextApiRequest, res: NextApiRes
   }
 
   try {
-    const db = await connectToDatabase();
-    const userCollection = db.collection("users");
-
     const updatedUser: any = {
       Firstname,
       Lastname,
@@ -38,11 +34,10 @@ export default async function updateProfile(req: NextApiRequest, res: NextApiRes
       Department,
       Status,
       ContactNumber,
-      updatedAt: new Date(),
     };
 
     if (profilePicture) {
-      updatedUser.profilePicture = profilePicture; // i-save ang url dito
+      updatedUser.profilePicture = profilePicture;
     }
 
     if (Password && Password.trim() !== "") {
@@ -50,12 +45,9 @@ export default async function updateProfile(req: NextApiRequest, res: NextApiRes
       updatedUser.Password = hashedPassword;
     }
 
-    const result = await userCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updatedUser }
-    );
+    const result = await updateUser(id, updatedUser);
 
-    if (result.modifiedCount === 1) {
+    if (result) {
       return res.status(200).json({ message: "Profile updated successfully" });
     } else {
       return res.status(404).json({ error: "User not found or no changes made" });

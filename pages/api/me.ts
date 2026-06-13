@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { connectToDatabase } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { getUserById } from "@/lib/supabase-admin";
+
 import { serialize } from "cookie";
 
 const ALLOWED_DEPARTMENTS = ["Engineering", "IT"];
@@ -16,11 +16,8 @@ export default async function handler(
   }
 
   try {
-    const db = await connectToDatabase();
+    const user = await getUserById(session);
 
-    const user = await db
-      .collection("users")
-      .findOne({ _id: new ObjectId(session) });
 
     if (!user) {
       return res.status(401).json(null);
@@ -47,7 +44,7 @@ export default async function handler(
     }
 
     return res.status(200).json({
-      userId: user._id.toString(),
+      userId: user.UserId || user.id.toString(),
     });
   } catch (err) {
     console.error("ME API ERROR:", err);
